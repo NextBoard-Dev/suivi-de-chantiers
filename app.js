@@ -8,6 +8,59 @@ const el = (id)=>document.getElementById(id);
 
 const STORAGE_KEY = "suivi_chantiers_state_v1";
 
+// Monitoring simple: capture des erreurs + message utilisateur lisible.
+const APP_ERROR_BUFFER_MAX = 50;
+let __lastErrorSig = "";
+let __lastErrorTs = 0;
+window.__appErrors = window.__appErrors || [];
+
+function _formatErrorMessage(errLike){
+  if(!errLike) return "Erreur inconnue";
+  if(typeof errLike === "string") return errLike;
+  if(errLike.message) return String(errLike.message);
+  try{ return JSON.stringify(errLike); }catch(e){ return String(errLike); }
+}
+
+function showAppErrorBanner(message){
+  const banner = el("appErrorBanner");
+  const text = el("appErrorText");
+  if(!banner || !text) return;
+  text.textContent = message || "Une erreur technique est survenue.";
+  banner.classList.remove("hidden");
+}
+
+function reportAppError(errLike, context="runtime"){
+  const msg = _formatErrorMessage(errLike);
+  const sig = `${context}|${msg}`;
+  const now = Date.now();
+  // anti-spam: ignore la meme erreur pendant 2 secondes
+  if(sig === __lastErrorSig && (now - __lastErrorTs) < 2000) return;
+  __lastErrorSig = sig;
+  __lastErrorTs = now;
+
+  const item = { ts: new Date().toISOString(), context, message: msg };
+  window.__appErrors.push(item);
+  if(window.__appErrors.length > APP_ERROR_BUFFER_MAX){
+    window.__appErrors.splice(0, window.__appErrors.length - APP_ERROR_BUFFER_MAX);
+  }
+
+  console.error("[app-error]", context, msg, errLike);
+  showAppErrorBanner(`Une erreur est survenue (${context}). ${msg}`);
+}
+
+window.reportAppError = reportAppError;
+window.addEventListener("error", (ev)=>{
+  reportAppError(ev?.error || ev?.message || "Erreur JavaScript", "window.error");
+});
+window.addEventListener("unhandledrejection", (ev)=>{
+  reportAppError(ev?.reason || "Promesse rejetee", "promise");
+});
+
+document.addEventListener("DOMContentLoaded", ()=>{
+  el("appErrorClose")?.addEventListener("click", ()=> el("appErrorBanner")?.classList.add("hidden"));
+  el("appErrorReload")?.addEventListener("click", ()=> window.location.reload());
+});
+
 
 
 /* =========================================================
@@ -4129,10 +4182,12 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
     const pieTotal = Math.max(1, totalInt + totalExt + totalRsg);
 
     const cx = pw/2;
-
-    const cy = ph/2 - 8;
-
-    const r = 120;
+    const cy = 148;
+    const r = 104;
+    const titleY = ph - 56;
+    const legendY = ph - 36;
+    const minLabelY = 24;
+    const maxLabelY = ph - 96;
 
     const polar = (cx, cy, r, a)=>{
 
@@ -4167,7 +4222,7 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
       if(segments.length === 1){
         const s = segments[0];
-        const labelPos = polar(cx, cy, r * 1.12, 90);
+          const labelPos = polar(cx, cy, r * 1.14, 90);
         pieMarkup += `
           <circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${s.grad})"></circle>
           <line x1="${cx}" y1="${cy - r * 0.95}" x2="${cx}" y2="${cy - r * 1.06}" stroke="#94a3b8" stroke-width="1" />
@@ -4184,21 +4239,22 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
           const off = polar(0,0,gap,midA);
           const path = arcPath(cx+off.x, cy+off.y, r, startA, endA);
           const innerPos = polar(cx+off.x, cy+off.y, r*0.95, midA);
-          const outerPos = polar(cx+off.x, cy+off.y, r*1.12, midA);
+          const outerPos = polar(cx+off.x, cy+off.y, r*1.14, midA);
+          const labelY = Math.max(minLabelY, Math.min(maxLabelY, outerPos.y));
           const anchor = outerPos.x < cx ? "end" : "start";
           pieMarkup += `
             <path d="${path}" fill="url(#${seg.grad})"></path>
             <line x1="${innerPos.x}" y1="${innerPos.y}" x2="${outerPos.x}" y2="${outerPos.y}" stroke="#94a3b8" stroke-width="1" />
-            <text class="wl-axis" x="${outerPos.x}" y="${outerPos.y}" text-anchor="${anchor}">${seg.pct}%</text>
-            <text class="wl-value" x="${outerPos.x}" y="${outerPos.y + 14}" text-anchor="${anchor}">${seg.value} j</text>
+            <text class="wl-axis" x="${outerPos.x}" y="${labelY}" text-anchor="${anchor}">${seg.pct}%</text>
+            <text class="wl-value" x="${outerPos.x}" y="${labelY + 14}" text-anchor="${anchor}">${seg.value} j</text>
           `;
           cursor = endA;
         });
       }
 
       pieMarkup += `
-        <text class="wl-axis" x="${cx}" y="${cy + r + 26}" text-anchor="middle">Répartition Interne / Externe / RSG/RI</text>
-        <g transform="translate(${cx-210},${cy + r + 42})">
+        <text class="wl-axis" x="${cx}" y="${titleY}" text-anchor="middle">Répartition Interne / Externe / RSG/RI</text>
+        <g transform="translate(${cx-210},${legendY})">
           <rect x="0" y="0" width="12" height="12" rx="3" fill="url(#${gradIntId})"></rect>
           <text class="wl-axis" x="18" y="11">Interne ${pctInt}%  ${totalInt} j</text>
           <rect x="150" y="0" width="12" height="12" rx="3" fill="url(#${gradExtId})"></rect>
@@ -4467,11 +4523,18 @@ function renderMasterMetrics(tasks){
 
   if(!metrics) return;
 
+  const exportBtn = `
+    <button class="btn master-export-inline" id="btnExportMaster" onclick="openExportMasterModal()">
+      <span class="pdf-icon" aria-hidden="true"></span>
+      Export PDF
+    </button>
+  `;
+
   const dated = tasks.filter(t=>t.start && t.end);
 
   if(dated.length===0){
 
-    metrics.innerHTML="";
+    metrics.innerHTML=exportBtn;
 
     return;
 
@@ -4527,6 +4590,7 @@ function renderMasterMetrics(tasks){
 
     <span class="panel-chip" style="background:#b45309;color:#fff;border-color:#b45309;">Externe : <span class="metric-val">${externalDays.size||0} j</span> <span class="metric-val">${externalHours||0} h</span></span>
     <span class="panel-chip" style="background:#2563eb;color:#fff;border-color:#2563eb;">RSG/RI : <span class="metric-val">${rsgDays.size||0} j</span> <span class="metric-val">${rsgHours||0} h</span></span>
+    ${exportBtn}
 
   `;
 

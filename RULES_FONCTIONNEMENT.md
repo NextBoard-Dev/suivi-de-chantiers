@@ -52,3 +52,12 @@ Ce document est la référence à suivre pour toute modification du dashboard.
 - Le logo copyright “©” doit toujours être visible à côté du texte “Concepteur : Sébastien DUC”.
 - Le logo copyright “©” doit aussi être visible dans l’en-tête principal à côté du nom “Sébastien DUC”.
 - Le texte “Concepteur : Sébastien DUC ©” doit apparaître aussi dans les PDF.
+
+9) Uniformité visuelle
+- Les boutons et pastilles KPI doivent garder une hauteur homogène et des arrondis modérés dans tous les onglets.
+
+10) Graphiques
+- Dans les camemberts, les étiquettes (%) et valeurs (j) ne doivent jamais chevaucher le titre ni la légende.
+
+11) Monitoring
+- Pas d'erreur silencieuse: toute erreur runtime ou promesse rejetee doit etre visible via un bandeau utilisateur lisible.

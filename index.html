@@ -253,12 +253,7 @@
             <div class="panel-metrics" id="masterMetrics"></div>
             <div class="panel-live" id="masterLive"></div>
           </div>
-          <div class="row" style="align-items:center;gap:8px;">
-            <button class="btn" id="btnExportMaster" onclick="openExportMasterModal()">
-              <span class="pdf-icon" aria-hidden="true"></span>
-              Export PDF
-            </button>
-          </div>
+          <div class="row panel-actions" style="align-items:center;gap:8px;"></div>
         </div>
         <div id="kpis" class="kpis"></div>
         <div class="panel-controls" style="margin-bottom:6px;">
@@ -476,6 +471,15 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div id="appErrorBanner" class="app-error-banner hidden" role="alert" aria-live="assertive">
+    <div class="app-error-title">Erreur detectee</div>
+    <div id="appErrorText" class="app-error-text">Une erreur technique est survenue.</div>
+    <div class="app-error-actions">
+      <button type="button" class="btn btn-ghost" id="appErrorClose">Fermer</button>
+      <button type="button" class="btn btn-danger" id="appErrorReload">Recharger</button>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
