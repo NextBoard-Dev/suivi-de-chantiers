@@ -2892,6 +2892,24 @@ function endOfWorkWeek(d){
 
 function addDays(d,n){ const x=new Date(d.getTime()); x.setDate(x.getDate()+n); return x; }
 
+// --- Vacances scolaires (Zone B) par NUMÉROS de semaines ---
+// Format : { "2025-2026": [8,9,16,17,28,29,30,31,32,33,34,35,43,44,52] }
+const VACANCES_ZONE_B_WEEKS = {
+  "2025-2026": [8,9,16,17,28,29,30,31,32,33,34,35,43,44,52]
+};
+function getSchoolYearKey(d){
+  const y = d.getFullYear();
+  const m = d.getMonth(); // 0=janv
+  // année scolaire : septembre -> août
+  return (m >= 8) ? `${y}-${y+1}` : `${y-1}-${y}`;
+}
+function isVacationWeek(weekStart){
+  const info = isoWeekInfo(weekStart);
+  const schoolYear = getSchoolYearKey(weekStart);
+  const list = VACANCES_ZONE_B_WEEKS[schoolYear] || [];
+  return list.includes(info.week);
+}
+
 function overlapDays(aStart,aEnd,bStart,bEnd){
 
   const start = Math.max(aStart.getTime(), bStart.getTime());
@@ -3096,8 +3114,8 @@ function renderGantt(projectId){
   const maxEnd   = tasks.map(t=>new Date(t.end+"T00:00:00")).reduce((a,b)=>a>b?a:b);
 
   const weeks=[];
-
   for(let w=startOfWeek(minStart); w<=addDays(startOfWeek(maxEnd),0); w=addDays(w,7)) weeks.push(new Date(w));
+  const vacWeeks = weeks.map(w=>isVacationWeek(w));
 
 
 
@@ -3123,7 +3141,7 @@ function renderGantt(projectId){
 
   html+="<thead><tr><th class='gantt-task-col-project gantt-col-task'>Tâche</th><th class='gantt-col-vendor' style='width:120px'>Prestataire</th><th class='gantt-col-status' style='width:70px'>Statut</th>";
 
-  weeks.forEach(w=>{
+  weeks.forEach((w,i)=>{
 
     const info=isoWeekInfo(w);
 
@@ -3136,8 +3154,8 @@ function renderGantt(projectId){
     const mondayLabel = formatShortDate(w);
 
     const todayClass = isTodayInWeek(w) ? " week-today" : "";
-
-    html+=`<th class="week-cell${todayClass}" data-range="${range}" style='width:72px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
+    const vacClass = vacWeeks[i] ? " vac-week" : "";
+    html+=`<th class="week-cell${todayClass}${vacClass}" data-range="${range}" style='width:72px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
 
   });
 
@@ -3200,7 +3218,7 @@ function renderGantt(projectId){
 
 
 
-    weeks.forEach(w=>{
+    weeks.forEach((w,i)=>{
 
       const sDate=new Date(t.start+"T00:00:00");
 
@@ -3212,11 +3230,13 @@ function renderGantt(projectId){
 
         const title = t.vendor ? ` title="Prestataire : ${attrEscape(t.vendor)}"` : "";
 
-        html+=`<td class="gantt-cell"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color}"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
+        const vacClass = vacWeeks[i] ? " vac-week" : "";
+        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color}"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
 
       }else{
 
-        html+=`<td class="gantt-cell"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+        const vacClass = vacWeeks[i] ? " vac-week" : "";
+        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
 
       }
 
@@ -3386,8 +3406,8 @@ function renderMasterGantt(){
   const maxEnd   = tasks.map(t=>new Date(t.end+"T00:00:00")).reduce((a,b)=>a>b?a:b);
 
   const weeks=[];
-
   for(let w=startOfWeek(minStart); w<=addDays(startOfWeek(maxEnd),0); w=addDays(w,7)) weeks.push(new Date(w));
+  const vacWeeks = weeks.map(w=>isVacationWeek(w));
 
 
 
@@ -3411,7 +3431,7 @@ function renderMasterGantt(){
 
   html+="<thead><tr><th class='gantt-col-task' style='width:150px'>Tâche</th><th class='gantt-col-vendor' style='width:140px'>Prestataire</th><th class='gantt-col-status' style='width:90px'>Statut</th>";
 
-  weeks.forEach(w=>{
+  weeks.forEach((w,i)=>{
 
     const info=isoWeekInfo(w);
 
@@ -3424,8 +3444,8 @@ function renderMasterGantt(){
     const mondayLabel = formatShortDate(w);
 
     const todayClass = isTodayInWeek(w) ? " week-today" : "";
-
-    html+=`<th class="week-cell${todayClass}" data-range="${range}" style='width:72px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
+    const vacClass = vacWeeks[i] ? " vac-week" : "";
+    html+=`<th class="week-cell${todayClass}${vacClass}" data-range="${range}" style='width:72px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
 
   });
 
@@ -3480,7 +3500,7 @@ function renderMasterGantt(){
 
 
 
-    weeks.forEach(w=>{
+    weeks.forEach((w,i)=>{
 
       const sDate=new Date(t.start+"T00:00:00");
 
@@ -3492,11 +3512,13 @@ function renderMasterGantt(){
 
         const title = t.vendor ? ` title="Prestataire : ${attrEscape(t.vendor)}"` : "";
 
-        html+=`<td class="gantt-cell"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color}"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
+        const vacClass = vacWeeks[i] ? " vac-week" : "";
+        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color}"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
 
       }else{
 
-        html+=`<td class="gantt-cell"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+        const vacClass = vacWeeks[i] ? " vac-week" : "";
+        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
 
       }
 
@@ -4766,7 +4788,9 @@ function renderProject(){
     const minStart = tasksDated.length ? tasksDated.map(t=>t.start).sort()[0] : "";
     const maxEnd = tasksDated.length ? tasksDated.map(t=>t.end).sort().slice(-1)[0] : "";
     const endLabel = maxEnd ? formatDate(maxEnd) : "—";
-    projectSummary.textContent = `Résumé : ${tasksAll.length} tâches • ${inProgress} en cours • Fin prévue : ${endLabel}`;
+    const isFinished = !!(maxEnd && maxEnd < todayKey);
+    const finishedLabel = isFinished ? " • Projet terminé" : "";
+    projectSummary.textContent = `Résumé : ${tasksAll.length} tâches • ${inProgress} en cours • Fin prévue : ${endLabel}${finishedLabel}`;
   }
 
   // métriques projet : durée totale + équivalent heures (6h/j)
@@ -5467,11 +5491,20 @@ function bind(){
 
     if(isLocked) return;
 
-    // Dupliquer les valeurs affiches pour faciliter la cration en srie
+    // Nouvelle tâche : vider tous les champs, pré-remplir uniquement la date de début (aujourd'hui)
 
     selectedTaskId=null;
 
     el("btnNewTask")?.classList.add("btn-armed");
+
+    const todayVal = toInputDate(new Date());
+    const tRoom = el("t_room"); if(tRoom) tRoom.value = "";
+    const tOwner = el("t_owner"); if(tOwner) tOwner.value = "";
+    const tVendor = el("t_vendor"); if(tVendor) tVendor.value = "";
+    const tStart = el("t_start"); if(tStart) tStart.value = todayVal;
+    const tEnd = el("t_end"); if(tEnd) tEnd.value = "";
+    if(window.__fpStart){ try{ window.__fpStart.setDate(todayVal || null, true, "Y-m-d"); }catch(e){} }
+    if(window.__fpEnd){ try{ window.__fpEnd.setDate(null, true, "Y-m-d"); }catch(e){} }
 
     setStatusSelection("");
 

@@ -32,6 +32,7 @@ Ce document est la référence à suivre pour toute modification du dashboard.
 - Étendre la détection des problèmes : rechercher systématiquement les chaînes tronquées (ex: “connect”, “tche”), les libellés incomplets, et tout texte anormal dans l’UI.
 - Si un doute existe, faire un scan ciblé dans le code et les données, puis corriger.
 - Ne jamais laisser d’erreurs d’accents dans l’UI ou les textes.
+- Vérifier que les styles spécifiques (ex: surlignage “aujourd’hui”, colonnes spéciales) ne sont pas écrasés par des styles génériques (ex: .table th/td).
 - À chaque demande de correction, mettre à jour ce fichier de règles si nécessaire.
 
 5) Processus d’amélioration
@@ -43,3 +44,11 @@ Ce document est la référence à suivre pour toute modification du dashboard.
 6) Règles de login (temporaire)
 - Le login peut être désactivé temporairement sur demande.
 - Toute modification future du login devra être expliquée et validée avant action.
+
+7) Règles métier (tâches)
+- Dans Édition tâche, le bouton “Nouvelle” doit vider tous les champs et pré‑remplir uniquement la Date début avec la date du jour.
+
+8) UI - Concepteur
+- Le logo copyright “©” doit toujours être visible à côté du texte “Concepteur : Sébastien DUC”.
+- Le logo copyright “©” doit aussi être visible dans l’en-tête principal à côté du nom “Sébastien DUC”.
+- Le texte “Concepteur : Sébastien DUC ©” doit apparaître aussi dans les PDF.

@@ -36,24 +36,10 @@
       "constraints": ""
     },
     {
-      "id": "dd8ca44c19c3cc0ef97",
-      "name": "Nouveau projet",
-      "site": "École",
-      "subproject": "",
-      "constraints": ""
-    },
-    {
-      "id": "6e13492819c3cd4163d",
-      "name": "Nouveau projet",
-      "site": "École",
-      "subproject": "",
-      "constraints": ""
-    },
-    {
-      "id": "daafff4b19c3e639add",
-      "name": "Nouveau projet",
+      "id": "49f0b26319c41787918",
+      "name": "Dojo",
       "site": "LGT",
-      "subproject": "",
+      "subproject": "Peinture",
       "constraints": ""
     }
   ],
@@ -142,13 +128,13 @@
     },
     {
       "id": "92d410e719c23d422cc",
-      "end": "2026-02-06",
-      "owner": "RSG/RI",
-      "start": "2026-01-05",
-      "status": "ETUDE",
+      "end": "2026-04-24",
+      "owner": "Prestataire externe",
+      "start": "2026-04-13",
+      "status": "HUIS_SER",
       "vendor": "",
       "projectId": "83fac1eb19c15d95804",
-      "roomNumber": "Étude"
+      "roomNumber": "Remplacement Porte Ogive"
     },
     {
       "id": "75f862d619c241bfe17",
@@ -188,7 +174,7 @@
       "status": "MOBILIER",
       "vendor": "DPC",
       "projectId": "83fac1eb19c15d95804",
-      "roomNumber": "Livr Mobilier"
+      "roomNumber": "Livraison Mobilier"
     },
     {
       "id": "ab36b4d119c284ee0b9",
@@ -225,10 +211,10 @@
       "end": "2026-04-17",
       "owner": "Prestataire externe",
       "start": "2026-04-13",
-      "status": "HUIS_SER",
+      "status": "MACONNERIE",
       "vendor": "",
       "projectId": "83fac1eb19c15d95804",
-      "roomNumber": "Maçonnerie"
+      "roomNumber": "Remplacement seuil de porte"
     },
     {
       "id": "b5c1e70219c37f2502f",
@@ -239,6 +225,106 @@
       "vendor": "",
       "projectId": "fd47202319c27a87d06",
       "roomNumber": "Étude"
+    },
+    {
+      "id": "3a9e1e9d19c41643baa",
+      "end": "2026-04-17",
+      "owner": "Équipe interne",
+      "start": "2026-04-13",
+      "status": "PREPARATION",
+      "vendor": "",
+      "projectId": "83fac1eb19c15d95804",
+      "roomNumber": "Évacuation Estrade"
+    },
+    {
+      "id": "9d543a0619c416632d1",
+      "end": "2026-04-17",
+      "owner": "Équipe interne",
+      "start": "2026-04-13",
+      "status": "FAUX_PLAFOND",
+      "vendor": "",
+      "projectId": "83fac1eb19c15d95804",
+      "roomNumber": "Évacuation Faux plafonds"
+    },
+    {
+      "id": "2ab895f019c416752c8",
+      "end": "2026-04-17",
+      "owner": "Équipe interne",
+      "start": "2026-04-13",
+      "status": "AMENAGEMENTS",
+      "vendor": "",
+      "projectId": "83fac1eb19c15d95804",
+      "roomNumber": "Évacutaion Anciens casiers"
+    },
+    {
+      "id": "426e68ee19c416afaf6",
+      "end": "2026-07-24",
+      "owner": "Prestataire externe",
+      "start": "2026-07-06",
+      "status": "PEINTURE",
+      "vendor": "DEGRIGNY",
+      "projectId": "83fac1eb19c15d95804",
+      "roomNumber": "Mise en Peinture"
+    },
+    {
+      "id": "dd24ad6f19c416c0b74",
+      "end": "2026-08-14",
+      "owner": "Prestataire externe",
+      "start": "2026-07-27",
+      "status": "SOL",
+      "vendor": "RENOV DECO",
+      "projectId": "83fac1eb19c15d95804",
+      "roomNumber": "Pose du Sol souple"
+    },
+    {
+      "id": "3377d55119c416d4bd9",
+      "end": "2026-08-28",
+      "owner": "Prestataire externe",
+      "start": "2026-08-17",
+      "status": "MOBILIER",
+      "vendor": "DPC",
+      "projectId": "83fac1eb19c15d95804",
+      "roomNumber": "Livraison Mobilier"
+    },
+    {
+      "id": "2149ec3019c4172c2f6",
+      "end": "2026-04-17",
+      "owner": "Prestataire externe",
+      "start": "2026-04-13",
+      "status": "MACONNERIE",
+      "vendor": "",
+      "projectId": "83fac1eb19c15d95804",
+      "roomNumber": "Remplacement seuil de porte"
+    },
+    {
+      "id": "9900e59919c41745c3c",
+      "end": "2026-04-24",
+      "owner": "Prestataire externe",
+      "start": "2026-04-13",
+      "status": "HUIS_SER",
+      "vendor": "",
+      "projectId": "83fac1eb19c15d95804",
+      "roomNumber": "Remplacement Porte Escalier d'Honneur"
+    },
+    {
+      "id": "b2c68e0419c417e1de3",
+      "end": "2026-03-06",
+      "owner": "RSG/RI",
+      "start": "2026-03-02",
+      "status": "ETUDE",
+      "vendor": "",
+      "projectId": "49f0b26319c41787918",
+      "roomNumber": "Étude"
+    },
+    {
+      "id": "d050a6ee19c4180ec5e",
+      "end": "2026-04-24",
+      "owner": "Prestataire externe",
+      "start": "2026-04-13",
+      "status": "PEINTURE",
+      "vendor": "DEGRIGNY",
+      "projectId": "49f0b26319c41787918",
+      "roomNumber": "Mise en Peinture"
     }
   ],
   "ui": {
