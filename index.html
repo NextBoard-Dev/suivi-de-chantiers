@@ -51,6 +51,11 @@
     .lock-input{width:100%;padding:9px 10px;border-radius:10px;border:1px solid #d1d5db;font-size:13px;margin:8px 0;}
     .lock-btn{width:100%;padding:9px 10px;border-radius:10px;border:1px solid #2563eb;background:#2563eb;color:#fff;font-weight:700;cursor:pointer;}
     .lock-msg{font-size:12px;color:#6b7280;margin-top:6px;}
+    .lock-row{display:flex;align-items:center;gap:8px;}
+    .lock-toggle{border:1px solid #d1d5db;background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer;font-size:16px;line-height:1;}
+    .lock-remember{display:flex;align-items:center;gap:8px;justify-content:flex-start;font-size:12px;color:#475569;margin:4px 0 2px;}
+    .lock-checkbox{width:auto;margin:0;}
+    .lock-hint{font-size:11px;color:#64748b;margin:0 0 8px;}
     /* gear */
     .gear-wrap{
       position:relative;
@@ -78,9 +83,11 @@
     .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,0.4);backdrop-filter:blur(2px);z-index:1000000;}
     .modal.hidden{display:none;}
     .modal-card{background:#fff;border:1px solid rgba(0,0,0,0.12);border-radius:12px;padding:14px 16px;min-width:280px;box-shadow:0 18px 36px rgba(0,0,0,0.24);}
+    .modal-card.config-card{min-width:340px;}
     .modal-title{font-weight:800;margin-bottom:6px;}
     .modal-sub{color:#64748b;font-size:12px;margin-bottom:10px;}
     .modal-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+    .modal-actions.spaced{margin-top:10px;}
     .btn-export-no{background:linear-gradient(180deg,#ef4444 0%,#dc2626 100%);border-color:#b91c1c;color:#fff;}
     .btn-export-yes{background:linear-gradient(180deg,#22c55e 0%,#16a34a 100%);border-color:#15803d;color:#fff;}
   </style>
@@ -92,15 +99,15 @@
       <div class="lock-title">Accès restreint</div>
       <form id="lock-form" autocomplete="on" method="post" action="#">
         <select id="lock-email" class="lock-input" name="email" required></select>
-        <div style="display:flex;align-items:center;gap:8px;">
+        <div class="lock-row">
           <input id="lock-pwd" class="lock-input" type="password" placeholder="Mot de passe" autocomplete="current-password" name="password" required />
-          <button id="lock-pwd-toggle" type="button" title="Afficher / masquer" style="border:1px solid #d1d5db;background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer;font-size:16px;line-height:1;">👁</button>
+          <button id="lock-pwd-toggle" class="lock-toggle" type="button" title="Afficher / masquer">👁</button>
         </div>
-        <label style="display:flex;align-items:center;gap:8px;justify-content:flex-start;font-size:12px;color:#475569;margin:4px 0 2px;">
-          <input id="lock-remember" type="checkbox" style="width:auto;margin:0;" />
+        <label class="lock-remember">
+          <input id="lock-remember" type="checkbox" class="lock-checkbox" />
           Se souvenir de moi
         </label>
-        <div style="font-size:11px;color:#64748b;margin:0 0 8px;">Connexion sécurisée requise.</div>
+        <div class="lock-hint">Connexion sécurisée requise.</div>
         <button id="lock-submit" class="lock-btn" type="submit">Entrer</button>
       </form>
       <div class="lock-msg">Mot de passe requis</div>
@@ -130,7 +137,7 @@
     </div>
   </div>
   <div id="configModal" class="modal hidden" aria-hidden="true">
-    <div class="modal-card" style="min-width:340px;">
+    <div class="modal-card config-card">
       <div class="modal-title">Configuration</div>
       <div class="modal-sub">Paramtres du dashboard</div>
       <label class="label">Nom du dashboard</label>
@@ -158,7 +165,7 @@
         <div id="cfg_users_list" class="config-users-list"></div>
       </div>
       <div class="config-footer">Concepteur : Sébastien DUC <span class="config-copyright"></span></div>
-      <div class="modal-actions" style="margin-top:10px;">
+      <div class="modal-actions spaced">
         <button class="btn btn-ghost" id="btnConfigClose">Fermer</button>
         <button class="btn btn-primary" id="btnConfigSave">Enregistrer</button>
       </div>
@@ -170,7 +177,7 @@
       <div class="subtitle" id="brandSub">Tableau maître  Projets  Gantt  Exports locaux</div>
     </div>
     <div class="topbar-user" id="topbarUser"></div>
-    <button class="btn btn-ghost" id="btnSwitchUser" style="display:none;">
+    <button class="btn btn-ghost hidden" id="btnSwitchUser">
       <span class="btn-icon"></span>
       Changer d'utilisateur
     </button>
@@ -181,7 +188,7 @@
     <div class="topbar-lock" id="topbarLock"></div>
     <div class="actions">
       <button class="btn btn-primary" id="btnSave">Sauvegarder</button>
-      <button class="btn" id="btnConfig" style="display:none;">Configuration</button>
+    <button class="btn hidden" id="btnConfig">Configuration</button>
       <div class="gear-wrap">
         <button id="gear-btn" title="Options accs"></button>
         <div id="gear-panel">
@@ -253,13 +260,17 @@
             <div class="panel-metrics" id="masterMetrics"></div>
             <div class="panel-live" id="masterLive"></div>
           </div>
-          <div class="row panel-actions" style="align-items:center;gap:8px;"></div>
+          <div class="row panel-actions row-tight"></div>
         </div>
         <div id="kpis" class="kpis"></div>
-        <div class="panel-controls" style="margin-bottom:6px;">
+        <div class="panel-controls panel-controls-spaced">
           <span class="filters-indicator" id="filtersBadge">Tri/filtre actif</span>
-          <span class="filters-indicator site-indicator" id="siteBadge" style="display:none;"></span>
+          <span class="filters-indicator site-indicator hidden" id="siteBadge"></span>
           <button class="btn btn-ghost" id="btnResetSortMaster">Réinitialiser tri</button>
+          <button class="btn master-export-inline" id="btnExportMaster">
+            <span class="pdf-icon" aria-hidden="true"></span>
+            Export PDF
+          </button>
         </div>
         <div class="tablewrap">
           <table class="table" id="masterTable">
@@ -278,42 +289,42 @@
             <tbody></tbody>
           </table>
         </div>
-        <div class="card" style="margin-top:12px;">
+        <div class="card card-spaced">
           <div class="card-title">Gantt global (toutes tâches dates)</div>
-          <div class="row" style="gap:6px;align-items:center;margin-top:4px;">
+          <div class="row row-compact">
             <button class="btn btn-ghost" id="btnToggleMasterVendor">Prestataire</button>
             <button class="btn btn-ghost" id="btnToggleMasterStatus">Statut</button>
           </div>
           <div id="masterGantt"></div>
         </div>
 
-        <div class="card" style="margin-top:12px;">
-          <div class="card-head" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-            <div class="card-title" style="margin-bottom:0;">Charge de travail</div>
-            <div class="row" style="gap:8px;align-items:center;">
-              <label class="label" style="margin-top:0;">Filtre</label>
-              <select class="input" id="workloadRangeType" style="width:140px;">
+        <div class="card card-spaced">
+          <div class="card-head card-head-tight">
+            <div class="card-title card-title-tight">Charge de travail</div>
+            <div class="row row-tight">
+              <label class="label label-tight">Filtre</label>
+              <select class="input input-sm" id="workloadRangeType">
                 <option value="all">Tout</option>
                 <option value="custom">Priode</option>
                 <option value="school">Anne scolaire</option>
                 <option value="civil">Anne civile</option>
               </select>
-              <select class="input" id="workloadRangeYear" style="width:110px;"></select>
-              <input class="input" id="workloadRangeStart" type="date" style="width:140px;" />
-              <input class="input" id="workloadRangeEnd" type="date" style="width:140px;" />
+              <select class="input input-xs" id="workloadRangeYear"></select>
+              <input class="input input-sm" id="workloadRangeStart" type="date" />
+              <input class="input input-sm" id="workloadRangeEnd" type="date" />
               <button class="btn" id="btnExportWorkload">
                 <span class="pdf-icon" aria-hidden="true"></span>
                 Export PDF
               </button>
             </div>
           </div>
-          <div id="workloadChartWrap" style="overflow:auto;">
+          <div id="workloadChartWrap" class="overflow-auto">
             <svg id="workloadChart" width="100%" height="320" viewBox="0 0 900 320"></svg>
           </div>
         </div>
-        <div class="card" style="margin-top:12px;">
+        <div class="card card-spaced">
           <div class="card-title">Répartition Interne / Externe</div>
-          <div id="workloadPieWrap" style="overflow:auto;">
+          <div id="workloadPieWrap" class="overflow-auto">
             <svg id="workloadPie" width="100%" height="360" viewBox="0 0 720 360"></svg>
           </div>
         </div>
@@ -330,7 +341,10 @@
           </div>
           <div class="row">
             <button class="btn btn-ghost" id="btnBack"> Retour</button>
-            <button class="btn" id="btnProjectExport" onclick="openExportProjectModal()">Export projet</button>
+            <button class="btn master-export-inline" id="btnProjectExport">
+              <span class="pdf-icon" aria-hidden="true"></span>
+              Export projet
+            </button>
           </div>
         </div>
 
@@ -355,14 +369,14 @@
           </div>
 
           <div class="card">
-            <div class="card-title"><span class="card-title-icon"></span> Édition tâche <span class="num-badge" id="t_num_badge" style="margin-left:8px; display:none;"></span></div>
+            <div class="card-title"><span class="card-title-icon"></span> Édition tâche <span class="num-badge num-badge-inline hidden" id="t_num_badge"></span></div>
             <div id="descOverlay" class="desc-overlay"></div>
             <label class="label">Description</label>
             <div class="desc-wrap">
               <input class="input" id="t_room" placeholder="ex: Chambre 11, Local lec, Couloir A" autocomplete="off" aria-label="Description" />
               <button type="button" class="btn icon-btn desc-manage-btn" id="btnManageDescriptions" aria-label="Grer les descriptions"></button>
-              <div id="descDropdown" class="desc-dropdown" role="listbox" aria-label="Suggestions description" style="display:none"></div>
-              <div id="descManagerPanel" class="vendor-panel" style="display:none"></div>
+              <div id="descDropdown" class="desc-dropdown" role="listbox" aria-label="Suggestions description"></div>
+              <div id="descManagerPanel" class="vendor-panel hidden"></div>
             </div>
 
             <label class="label">Statuts / Corps d'état (multi-slection)</label>
@@ -383,8 +397,8 @@
             <div class="vendor-wrap">
               <input class="input" id="t_vendor" placeholder="Nom du prestataire (tri AZ)" autocomplete="off" aria-label="Prestataire externe" />
               <button type="button" class="btn icon-btn vendor-manage-btn" id="btnManageVendors" aria-label="Grer les prestataires"></button>
-              <div id="vendorDropdown" class="vendor-dropdown" role="listbox" aria-label="Suggestions prestataire" style="display:none"></div>
-              <div id="vendorManagerPanel" class="vendor-panel" style="display:none"></div>
+              <div id="vendorDropdown" class="vendor-dropdown" role="listbox" aria-label="Suggestions prestataire"></div>
+              <div id="vendorManagerPanel" class="vendor-panel hidden"></div>
             </div>
 
             <div class="grid2">
@@ -417,7 +431,7 @@
             <table class="table" id="projectTasksTable">
               <thead>
                 <tr>
-                  <th style="width:120px" data-sort="num">N</th>
+                  <th class="col-num" data-sort="num">N</th>
                   <th data-sort="task">Description</th>
                   <th data-sort="status">Statuts</th>
                   <th data-sort="start">Début</th>
@@ -439,33 +453,33 @@
           </div>
           <div id="gantt"></div>
         </div>
-        <div class="card" style="margin-top:12px;">
-          <div class="card-head" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-            <div class="card-title" style="margin-bottom:0;">Charge de travail (projet)</div>
-            <div class="row" style="gap:8px;align-items:center;">
-              <label class="label" style="margin-top:0;">Filtre</label>
-              <select class="input" id="workloadRangeTypeProject" style="width:140px;">
+        <div class="card card-spaced">
+          <div class="card-head card-head-tight">
+            <div class="card-title card-title-tight">Charge de travail (projet)</div>
+            <div class="row row-tight">
+              <label class="label label-tight">Filtre</label>
+              <select class="input input-sm" id="workloadRangeTypeProject">
                 <option value="all">Tout</option>
                 <option value="custom">Priode</option>
                 <option value="school">Anne scolaire</option>
                 <option value="civil">Anne civile</option>
               </select>
-              <select class="input" id="workloadRangeYearProject" style="width:110px;"></select>
-              <input class="input" id="workloadRangeStartProject" type="date" style="width:140px;" />
-              <input class="input" id="workloadRangeEndProject" type="date" style="width:140px;" />
+              <select class="input input-xs" id="workloadRangeYearProject"></select>
+              <input class="input input-sm" id="workloadRangeStartProject" type="date" />
+              <input class="input input-sm" id="workloadRangeEndProject" type="date" />
               <button class="btn" id="btnExportWorkloadProject">
                 <span class="pdf-icon" aria-hidden="true"></span>
                 Export PDF
               </button>
             </div>
           </div>
-          <div id="workloadChartProjectWrap" style="overflow:auto;">
+          <div id="workloadChartProjectWrap" class="overflow-auto">
             <svg id="workloadChartProject" width="100%" height="320" viewBox="0 0 900 320"></svg>
           </div>
         </div>
-        <div class="card" style="margin-top:12px;">
+        <div class="card card-spaced">
           <div class="card-title">Répartition Interne / Externe (projet)</div>
-          <div id="workloadPieProjectWrap" style="overflow:auto;">
+          <div id="workloadPieProjectWrap" class="overflow-auto">
             <svg id="workloadPieProject" width="100%" height="360" viewBox="0 0 720 360"></svg>
           </div>
         </div>

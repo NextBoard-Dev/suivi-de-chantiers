@@ -8,6 +8,27 @@
 @media print {
   body.print-mode > *:not(#printInjection) { display:none !important; }
   #printInjection { display:block !important; page-break-before: avoid; }
+  /* Eviter les coupures au milieu des cartes/graphes */
+  .panel,
+  .card,
+  .gantt-table,
+  .legend,
+  .print-block,
+  .print-order > * {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Permettre aux tableaux longs de s'etendre sur plusieurs pages */
+  .tablewrap{
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+  /* Eviter cartouche/legende isoles si possible */
+  .print-header,
+  .legend{
+    break-after: avoid;
+    page-break-after: avoid;
+  }
 }
 
 /* Cacher les lments d'UI interactifs */

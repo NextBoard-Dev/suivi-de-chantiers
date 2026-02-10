@@ -572,6 +572,17 @@ function updateSidebarScrollState(){
   sb.classList.remove("sidebar-scroll");
 }
 
+function scrollViewToTop(){
+  try{ window.scrollTo(0,0); }catch(e){}
+  document.querySelectorAll(".tablewrap").forEach(el=>{
+    el.scrollTop = 0;
+    el.scrollLeft = 0;
+  });
+  document.querySelectorAll(".tabs-scroll").forEach(el=>{
+    el.scrollTop = 0;
+  });
+}
+
 // verrouille la position de la sidebar une fois la mise en page stabilise
 function _lockSidebarAfterLayout(){
   updateSidebarTop();
@@ -928,6 +939,7 @@ function navigateTo(projectId=null, taskId=null, push=true){
   closeAllOverlays();
   setTimeout(()=> closeAllOverlays(), 0);
   renderAll();
+  setTimeout(()=> scrollViewToTop(), 0);
 }
 function selectTaskInProject(taskId){
   selectedTaskId = taskId || null;
@@ -3190,9 +3202,9 @@ function renderGantt(projectId){
 
 
 
-  let html="<div class='tablewrap gantt-table'><table class='table' style='--gcol1:200px;--gcol2:120px;--gcol3:70px'>";
+  let html="<div class='tablewrap gantt-table'><table class='table' style='--gcol1:200px;--gcol2:120px;--gcol3:120px'>";
 
-  html+="<thead><tr><th class='gantt-task-col-project gantt-col-task'>Tâche</th><th class='gantt-col-vendor' style='width:120px'>Prestataire</th><th class='gantt-col-status' style='width:70px'>Statut</th>";
+  html+="<thead><tr><th class='gantt-task-col-project gantt-col-task'>Tâche</th><th class='gantt-col-vendor' style='width:120px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
 
   weeks.forEach((w,i)=>{
 
@@ -3482,7 +3494,7 @@ function renderMasterGantt(){
 
   let html="<div class='tablewrap gantt-table'><table class='table' style='--gcol1:150px;--gcol2:140px;--gcol3:90px'>";
 
-  html+="<thead><tr><th class='gantt-col-task' style='width:150px'>Tâche</th><th class='gantt-col-vendor' style='width:140px'>Prestataire</th><th class='gantt-col-status' style='width:90px'>Statut</th>";
+  html+="<thead><tr><th class='gantt-col-task' style='width:150px'>Tâche</th><th class='gantt-col-vendor' style='width:140px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
 
   weeks.forEach((w,i)=>{
 
@@ -4523,18 +4535,11 @@ function renderMasterMetrics(tasks){
 
   if(!metrics) return;
 
-  const exportBtn = `
-    <button class="btn master-export-inline" id="btnExportMaster" onclick="openExportMasterModal()">
-      <span class="pdf-icon" aria-hidden="true"></span>
-      Export PDF
-    </button>
-  `;
-
   const dated = tasks.filter(t=>t.start && t.end);
 
   if(dated.length===0){
 
-    metrics.innerHTML=exportBtn;
+    metrics.innerHTML="";
 
     return;
 
@@ -4590,8 +4595,6 @@ function renderMasterMetrics(tasks){
 
     <span class="panel-chip" style="background:#b45309;color:#fff;border-color:#b45309;">Externe : <span class="metric-val">${externalDays.size||0} j</span> <span class="metric-val">${externalHours||0} h</span></span>
     <span class="panel-chip" style="background:#2563eb;color:#fff;border-color:#2563eb;">RSG/RI : <span class="metric-val">${rsgDays.size||0} j</span> <span class="metric-val">${rsgHours||0} h</span></span>
-    ${exportBtn}
-
   `;
 
 }
@@ -5710,21 +5713,29 @@ function bind(){
 
     const endIso   = endNode?.value ? toInputDate(endNode.value) : "";
 
+    let currentStartIso = startIso;
+    let currentEndIso = endIso;
+
     if(startNode){
 
       fpStart = window.flatpickr(startNode, {...fpOpts,
 
         defaultDate: startIso || todayIso,
 
-        onOpen: (_s,_d,inst)=>{ inst.jumpToDate(startIso || todayIso); },
+        onOpen: (_s,_d,inst)=>{ inst.jumpToDate(currentStartIso || todayIso); },
 
         onChange:(selectedDates, dateStr)=>{
-          if(fpEnd) fpEnd.set("minDate", dateStr || null);
+          currentStartIso = dateStr || "";
+          if(fpEnd){
+            fpEnd.set("minDate", dateStr || null);
+            if(dateStr) fpEnd.jumpToDate(dateStr);
+          }
           if(endNode && dateStr){
             const startVal = startNode.value;
             const endVal = endNode.value;
             if(startVal && (!endVal || unformatDate(endVal) < unformatDate(startVal))){
-              endNode.value = startVal;
+              if(fpEnd) fpEnd.setDate(startVal, true);
+              else endNode.value = startVal;
             }
           }
           updateTaskDatesWarning();
@@ -5739,8 +5750,11 @@ function bind(){
       fpEnd = window.flatpickr(endNode, {...fpOpts,
         defaultDate: endIso || startIso || todayIso,
         minDate: startIso || null,
-        onOpen: (_s,_d,inst)=>{ const target = startIso || endIso || todayIso; inst.jumpToDate(target); },
-        onChange:()=>{ updateTaskDatesWarning(); }
+        onOpen: (_s,_d,inst)=>{ const target = currentStartIso || currentEndIso || todayIso; inst.jumpToDate(target); },
+        onChange:(_sel, dateStr)=>{
+          currentEndIso = dateStr || "";
+          updateTaskDatesWarning();
+        }
       });
       window.__fpEnd = fpEnd;
     }
@@ -5983,6 +5997,7 @@ window.addEventListener("popstate",(e)=>{
   closeAllOverlays();
   setTimeout(()=> closeAllOverlays(), 0);
   renderAll();
+  setTimeout(()=> scrollViewToTop(), 0);
 });
 renderAll();
 
