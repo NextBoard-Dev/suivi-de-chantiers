@@ -197,38 +197,66 @@
     <div class="modal-card config-card">
       <div class="modal-title">Configuration</div>
       <div class="modal-sub">Paramtres du dashboard</div>
-      <label class="label">Nom du dashboard</label>
-      <input class="input" id="cfg_name" placeholder="Nom du dashboard" />
-      <label class="label">Adresse HTTP</label>
-      <input class="input" id="cfg_http" placeholder="https://..." />
-      <label class="label">URL Front (GitHub)</label>
-      <input class="input" id="cfg_front" placeholder="https://github.com/..." />
-      <label class="label">URL Back (Supabase)</label>
-      <input class="input" id="cfg_back" placeholder="https://..." />
-      <div id="cfg_users_section" class="config-users">
-        <div class="config-users-title">Utilisateurs / Administrateurs</div>
-        <div class="config-users-row">
-          <input class="input" id="cfg_user_name" placeholder="Nom d'utilisateur" />
-          <input class="input" id="cfg_user_email" placeholder="Email" />
-          <select class="input" id="cfg_user_role">
-            <option value="admin">Admin</option>
-            <option value="user">Utilisateur</option>
-          </select>
-        </div>
-        <div class="config-users-row">
-          <div class="pwd-field">
-            <input class="input" id="cfg_user_pass" type="password" placeholder="Mot de passe" />
-            <button type="button" class="pwd-toggle" id="cfg_user_pass_toggle" aria-label="Afficher / masquer"></button>
+      <div class="config-grid">
+        <div class="config-col">
+          <label class="label">Nom du dashboard</label>
+          <input class="input" id="cfg_name" placeholder="Nom du dashboard" />
+          <label class="label">Adresse HTTP</label>
+          <input class="input" id="cfg_http" placeholder="https://..." />
+          <label class="label">URL Front (GitHub)</label>
+          <input class="input" id="cfg_front" placeholder="https://github.com/..." />
+          <label class="label">URL Back (Supabase)</label>
+          <input class="input" id="cfg_back" placeholder="https://..." />
+          <div id="cfg_users_section" class="config-users">
+            <div class="config-users-title">Utilisateurs / Administrateurs</div>
+            <div class="config-users-row">
+              <input class="input" id="cfg_user_name" placeholder="Nom d'utilisateur" />
+              <input class="input" id="cfg_user_email" placeholder="Email" />
+              <select class="input" id="cfg_user_role">
+                <option value="admin">Admin</option>
+                <option value="user">Utilisateur</option>
+              </select>
+            </div>
+            <div class="config-users-row">
+              <div class="pwd-field">
+                <input class="input" id="cfg_user_pass" type="password" placeholder="Mot de passe" />
+                <button type="button" class="pwd-toggle" id="cfg_user_pass_toggle" aria-label="Afficher / masquer"></button>
+              </div>
+          <button class="btn btn-success" id="btnUserAdd">Ajouter</button>
+            </div>
+            <div id="cfg_users_list" class="config-users-list"></div>
           </div>
-          <button class="btn btn-primary" id="btnUserAdd">Ajouter</button>
         </div>
-        <div id="cfg_users_list" class="config-users-list"></div>
+        <div class="config-col config-col-right">
+          <div id="cfg_login_section" class="config-users">
+            <div class="config-users-title">Journal des connexions</div>
+            <div class="config-users-row">
+              <label class="label">Période</label>
+              <input class="input input-sm" id="cfg_login_start" type="date" />
+              <input class="input input-sm" id="cfg_login_end" type="date" />
+              <button class="btn btn-ghost" id="cfg_login_reset">Réinitialiser</button>
+            </div>
+          <div id="cfg_login_status" class="login-status"></div>
+          <div id="cfg_login_heatmap" class="login-heatmap-wrap"></div>
+          <div class="login-log-wrap">
+            <div class="config-users-title">Détail des connexions</div>
+            <div class="login-log-head">
+              <button class="login-log-sort" data-sort="ts">Date</button>
+              <button class="login-log-sort" data-sort="name">Nom</button>
+              <button class="login-log-sort" data-sort="email">Email</button>
+              <button class="login-log-sort" data-sort="role">Rôle</button>
+              <div class="login-log-count-head">Nb</div>
+            </div>
+            <div id="cfg_login_log" class="login-log"></div>
+          </div>
+        </div>
       </div>
-      <div class="config-footer">Concepteur : Sébastien DUC <span class="config-copyright"></span></div>
+      </div>
       <div class="modal-actions spaced">
         <button class="btn btn-ghost" id="btnConfigClose">Fermer</button>
-        <button class="btn btn-primary" id="btnConfigSave">Enregistrer</button>
+        <button class="btn btn-success" id="btnConfigSave">Enregistrer</button>
       </div>
+      <div class="config-footer">Concepteur : Sébastien DUC <span class="config-copyright"></span></div>
     </div>
   </div>
   <header class="topbar">
@@ -689,11 +717,13 @@
       const role = ((u.role || "user").toLowerCase() === "admin") ? "admin" : "user";
       sessionStorage.setItem("unlocked","1");
       sessionStorage.setItem("current_user", u.name||"");
+      sessionStorage.setItem("current_email", mail);
       sessionStorage.setItem("current_role", role);
       localStorage.setItem("last_login_email", mail);
       lock.classList.add("hidden");
       if(window.applyRoleAccess) window.applyRoleAccess();
       if(window.updateRoleUI) window.updateRoleUI();
+      try{ window.logUserLogin?.({email: mail, name: u.name||"", role}); }catch(e){}
       return u;
     }
     return null;
@@ -802,6 +832,7 @@
       sessionStorage.setItem("unlocked","1");
       sessionStorage.setItem("current_user","Invité");
       sessionStorage.setItem("current_role","user");
+      sessionStorage.removeItem("current_email");
       if(window.applyRoleAccess) window.applyRoleAccess();
       if(window.updateRoleUI) window.updateRoleUI();
     });

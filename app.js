@@ -95,6 +95,7 @@ const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 const SUPABASE_TABLE = "app_states";
 const SUPABASE_USERS_TABLE = "dashboard_users";
+const SUPABASE_LOGINS_TABLE = "dashboard_logins";
 
 
 // Auto-login (pour ne PAS utiliser la console)
@@ -277,6 +278,62 @@ async function saveUsersToSupabase(users){
 
 // expose for login overlay (index.html)
 window.saveUsersToSupabase = saveUsersToSupabase;
+
+async function logLoginToSupabase(payload){
+  const sb = _getSupabaseClient();
+  if(!sb) return false;
+  const session = await _ensureSession();
+  const userId = session?.user?.id || "anon";
+  try{
+    const row = {
+      user_id: userId,
+      email: payload?.email || "",
+      name: payload?.name || "",
+      role: payload?.role || "user",
+      ts: payload?.ts || new Date().toISOString()
+    };
+    const { error } = await sb.from(SUPABASE_LOGINS_TABLE).insert(row);
+    if(error){
+      console.warn("Supabase logins insert error", error);
+      try{ localStorage.setItem("login_log_last_error", error.message || "insert_failed"); }catch(e){}
+      return false;
+    }
+    try{ localStorage.removeItem("login_log_last_error"); }catch(e){}
+    return true;
+  }catch(e){
+    console.warn("logLoginToSupabase failed", e);
+    try{ localStorage.setItem("login_log_last_error", e?.message || "insert_failed"); }catch(err){}
+    return false;
+  }
+}
+window.logUserLogin = async function(payload){
+  try{
+    return await logLoginToSupabase(payload);
+  }catch(e){
+    return false;
+  }
+};
+
+async function loadLoginsFromSupabase(startISO, endISO){
+  const sb = _getSupabaseClient();
+  if(!sb) return [];
+  const session = await _ensureSession();
+  const userId = session?.user?.id || null;
+  try{
+    let q = sb.from(SUPABASE_LOGINS_TABLE)
+      .select("email,name,role,ts")
+      .order("ts", { ascending: true });
+    if(userId) q = q.in("user_id", [userId, "anon"]);
+    if(startISO) q = q.gte("ts", startISO);
+    if(endISO) q = q.lte("ts", endISO);
+    const { data, error } = await q;
+    if(error){ console.warn("Supabase logins select error", error); return []; }
+    return data || [];
+  }catch(e){
+    console.warn("loadLoginsFromSupabase failed", e);
+    return [];
+  }
+}
 
 async function loadUsersFromSupabase(force=false){
   const sb = _getSupabaseClient();
@@ -744,10 +801,18 @@ function saveUsers(list){
 function getCurrentUserName(){
   return sessionStorage.getItem("current_user") || "";
 }
+function getCurrentUserEmail(){
+  return sessionStorage.getItem("current_email") || "";
+}
 function getCurrentUserRecord(){
+  const email = getCurrentUserEmail();
   const name = getCurrentUserName();
-  if(!name) return null;
   const users = loadUsers();
+  if(email){
+    const found = users.find(u=>(u.email||"").toLowerCase()===email.toLowerCase());
+    if(found) return found;
+  }
+  if(!name) return null;
   return users.find(u=>u.name===name) || null;
 }
 function applyTheme(themeId){
@@ -812,9 +877,11 @@ function updateRoleUI(){
   if(cfgBtn) cfgBtn.style.display = (role==="admin") ? "inline-flex" : "none";
   const topUser = el("topbarUser");
   if(topUser){
-    const name = sessionStorage.getItem("current_user") || "Invit";
+    const name = sessionStorage.getItem("current_user") || "Invité";
+    const email = sessionStorage.getItem("current_email") || "";
     const roleLabel = role==="admin" ? "Admin" : "Utilisateur";
-    topUser.textContent = `Utilisateur connecté: ${name} - ${roleLabel}`;
+    const emailPart = email ? ` - ${email}` : "";
+    topUser.textContent = `Utilisateur connecté: ${name}${emailPart} - ${roleLabel}`;
   }
   applyThemeForCurrentUser();
 }
@@ -907,38 +974,37 @@ function renderUsersList(){
         <div class="config-user-meta">${attrEscape(u.email||"") || ""}  ${u.role==="admin" ? "Admin" : "Utilisateur"}</div>
       </div>
       <div class="config-user-actions">
-        <button class="btn btn-ghost cfg-user-edit" data-user="${attrEscape(u.name)}">Modifier</button>
-        <button class="btn btn-ghost cfg-user-pass" data-user="${attrEscape(u.name)}">Changer mdp</button>
-        <button class="btn btn-danger cfg-user-del" data-user="${attrEscape(u.name)}">Supprimer</button>
+        <button class="btn btn-ghost cfg-user-edit" data-user-id="${attrEscape(u.id||"")}">Modifier</button>
+        <button class="btn btn-ghost cfg-user-pass" data-user-id="${attrEscape(u.id||"")}">Changer mdp</button>
+        <button class="btn btn-danger cfg-user-del" data-user-id="${attrEscape(u.id||"")}">Supprimer</button>
       </div>
     </div>
   `).join("");
   list.querySelectorAll(".cfg-user-pass").forEach(btn=>{
     btn.onclick = async ()=>{
-      const name = btn.dataset.user;
-      const next = prompt(`Nouveau mot de passe pour ${name} :`);
-      if(!next) return;
+      const id = btn.dataset.userId;
       const users = loadUsers();
+      const u = users.find(x=>x.id===id);
+      if(!u) return;
+      const next = prompt(`Nouveau mot de passe pour ${u.name} :`);
+      if(!next) return;
       const h = await hashPassword(next);
-      users.forEach(u=>{ if(u.name===name) u.hash = h; });
+      users.forEach(x=>{ if(x.id===id) x.hash = h; });
       saveUsers(users);
       renderUsersList();
     };
   });
   list.querySelectorAll(".cfg-user-edit").forEach(btn=>{
     btn.onclick = ()=>{
-      const name = btn.dataset.user;
+      const id = btn.dataset.userId;
       const users = loadUsers();
-      const idx = users.findIndex(u=>u.name===name);
+      const idx = users.findIndex(u=>u.id===id);
       if(idx<0) return;
       const newName = prompt("Nom d'utilisateur :", users[idx].name) || "";
       if(!newName) return;
       const newEmail = prompt("Email :", users[idx].email||"") || "";
       const newRole = (prompt("Rôle (admin/user) :", users[idx].role||"user") || users[idx].role || "user").toLowerCase();
       const role = newRole === "admin" ? "admin" : "user";
-      if(users.some((u,i)=> i!==idx && u.name.toLowerCase()===newName.toLowerCase())){
-        alert("Nom dj utilis."); return;
-      }
       if(newEmail && users.some((u,i)=> i!==idx && (u.email||"").toLowerCase()===newEmail.toLowerCase())){
         alert("Email dj utilis."); return;
       }
@@ -947,9 +1013,11 @@ function renderUsersList(){
       users[idx].role = role;
       saveUsers(users);
       const current = sessionStorage.getItem("current_user") || "";
-      if(current && current === name){
+      const currentEmail = sessionStorage.getItem("current_email") || "";
+      if((currentEmail && users[idx].email && currentEmail.toLowerCase()===users[idx].email.toLowerCase()) || (current && current === users[idx].name)){
         sessionStorage.setItem("current_user", newName);
         sessionStorage.setItem("current_role", role);
+        if(users[idx].email) sessionStorage.setItem("current_email", users[idx].email);
         updateRoleUI();
       }
       renderUsersList();
@@ -957,15 +1025,19 @@ function renderUsersList(){
   });
   list.querySelectorAll(".cfg-user-del").forEach(btn=>{
     btn.onclick = ()=>{
-      const name = btn.dataset.user;
-      if(!confirm(`Supprimer ${name} ?`)) return;
-      let users = loadUsers();
+      const id = btn.dataset.userId;
+      const users = loadUsers();
+      const u = users.find(x=>x.id===id);
+      if(!u) return;
+      if(!confirm(`Supprimer ${u.name} ?`)) return;
       const admins = users.filter(u=>u.role==="admin");
-      if(admins.length<=1 && admins.some(u=>u.name===name)){
+      if(admins.length<=1 && admins.some(x=>x.id===id)){
         alert("Impossible de supprimer le dernier admin.");
         return;
       }
-      users = users.filter(u=>u.name!==name);
+      const next = users.filter(x=>x.id!==id);
+      users.length = 0;
+      users.push(...next);
       saveUsers(users);
       renderUsersList();
     };
@@ -983,6 +1055,9 @@ function openConfigModal(){
   const usersSection = el("cfg_users_section");
   if(usersSection) usersSection.style.display = role==="admin" ? "block" : "none";
   if(role==="admin") renderUsersList();
+  const loginSection = el("cfg_login_section");
+  if(loginSection) loginSection.style.display = role==="admin" ? "block" : "none";
+  if(role==="admin") initLoginJournalUI();
   modal.classList.remove("hidden");
   modal.style.display = "flex";
   modal.setAttribute("aria-hidden","false");
@@ -2656,6 +2731,213 @@ function getWorkloadRange(tasks, boundsTasks=tasks, stateRef=null){
 
 }
 
+let loginRangeStart = "";
+let loginRangeEnd = "";
+let loginLogSortKey = "ts";
+let loginLogSortDir = "desc";
+
+function toISODateStart(d){
+  if(!d) return "";
+  const x = new Date(d.getTime());
+  x.setHours(0,0,0,0);
+  return x.toISOString();
+}
+function toISODateEnd(d){
+  if(!d) return "";
+  const x = new Date(d.getTime());
+  x.setHours(23,59,59,999);
+  return x.toISOString();
+}
+function toLocalISODate(d){
+  if(!d || isNaN(d)) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+
+function hexToRgba(hex, alpha){
+  const v = (hex || "").replace("#","").trim();
+  if(v.length !== 6) return `rgba(15,23,42,${alpha})`;
+  const r = parseInt(v.slice(0,2),16);
+  const g = parseInt(v.slice(2,4),16);
+  const b = parseInt(v.slice(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function clampLoginRange(start, end, maxDays=35){
+  const s = new Date(start.getTime());
+  const e = new Date(end.getTime());
+  const diff = Math.floor((e - s) / 86400000);
+  if(diff <= maxDays) return {start:s, end:e, clamped:false};
+  const ns = new Date(e.getTime());
+  ns.setDate(ns.getDate() - maxDays);
+  return {start:ns, end:e, clamped:true};
+}
+
+function buildLoginHeatmap(container, events, rangeStart, rangeEnd){
+  if(!container) return;
+  const start = rangeStart ? new Date(rangeStart+"T00:00:00") : new Date();
+  const end = rangeEnd ? new Date(rangeEnd+"T00:00:00") : new Date();
+  if(end < start){
+    const tmp = new Date(start.getTime());
+    start.setTime(end.getTime());
+    end.setTime(tmp.getTime());
+  }
+  const clamp = clampLoginRange(start, end, 34);
+  const startKey = toLocalISODate(clamp.start);
+  const endKey = toLocalISODate(clamp.end);
+  const byUser = {};
+  (events || []).forEach(ev=>{
+    const ts = ev.ts ? new Date(ev.ts) : null;
+    if(!ts || isNaN(ts)) return;
+    const key = toLocalISODate(ts);
+    const userKey = (ev.email || ev.name || "inconnu").toLowerCase();
+    if(!byUser[userKey]) byUser[userKey] = {};
+    byUser[userKey][key] = (byUser[userKey][key] || 0) + 1;
+  });
+  const days = [];
+  const cursor = new Date(clamp.start.getTime());
+  while(cursor <= clamp.end){
+    days.push(new Date(cursor.getTime()));
+    cursor.setDate(cursor.getDate()+1);
+  }
+  const startWeek = startOfWeek(clamp.start);
+  const endWeek = startOfWeek(clamp.end);
+  const weeks = [];
+  for(let w=new Date(startWeek); w<=endWeek; w=addDays(w,7)){
+    weeks.push(new Date(w.getTime()));
+  }
+  const monthLabels = weeks.map((w,i)=>{
+    const label = w.toLocaleDateString("fr-FR",{month:"short"});
+    const prev = i>0 ? weeks[i-1].toLocaleDateString("fr-FR",{month:"short"}) : "";
+    return (label !== prev) ? label : "";
+  });
+
+  const userKeys = Object.keys(byUser);
+  userKeys.sort((a,b)=>{
+    const suma = Object.values(byUser[a] || {}).reduce((x,y)=>x+y,0);
+    const sumb = Object.values(byUser[b] || {}).reduce((x,y)=>x+y,0);
+    if(sumb !== suma) return sumb - suma;
+    return a.localeCompare(b,"fr",{sensitivity:"base"});
+  });
+  const palette = ["#2563eb","#16a34a","#f59e0b","#db2777","#0ea5b7","#7c3aed","#dc2626","#059669"];
+  const userColors = {};
+  userKeys.forEach((u,i)=>{ userColors[u] = palette[i % palette.length]; });
+
+  const userRows = userKeys.map(u=>{
+    let max = 1;
+    Object.values(byUser[u] || {}).forEach(v=>{ if(v>max) max=v; });
+    const total = Object.values(byUser[u] || {}).reduce((a,b)=>a+b,0);
+    const cells = [];
+    const headers = [];
+    weeks.forEach(w=>{
+      for(let row=0; row<7; row++){
+        const d = addDays(w, row);
+        const key = toLocalISODate(d);
+        const inRange = (key >= startKey && key <= endKey);
+        const count = inRange ? ((byUser[u] && byUser[u][key]) || 0) : 0;
+        const level = inRange ? Math.min(4, Math.ceil((count / max) * 4)) : 0;
+        const title = inRange ? `${d.toLocaleDateString("fr-FR")}: ${count} connexion(s)` : "";
+        const cls = inRange ? `lv${level}` : "out";
+        const label = count > 0 ? count : "";
+        cells.push(`<span class="login-cell ${cls}" style="background:${hexToRgba(userColors[u], 0.18 + (0.16*level))};" title="${title}">${label}</span>`);
+        if(u === userKeys[0]){
+          const short = d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"});
+          const hcls = inRange ? "in" : "out";
+          headers.push(`<span class="login-col-head ${hcls}">${short}</span>`);
+        }
+      }
+    });
+    const label = u.includes("@") ? u : u.charAt(0).toUpperCase()+u.slice(1);
+    const headRow = (u === userKeys[0]) ? `<div class="login-col-head-row">${headers.join("")}</div>` : "";
+    return `<div class="login-user-row"><div class="login-user-name"><span class="login-user-dot" style="background:${userColors[u]};"></span>${label}<span class="login-user-count">${total}</span></div><div class="login-user-grid-wrap">${headRow}<div class="login-user-grid">${cells.join("")}</div></div></div>`;
+  }).join("");
+
+  const legend = [0, 1, 2, 3, 4];
+  container.innerHTML = `
+    <div class="login-heatmap">
+      <div class="login-months">
+        ${monthLabels.map(m=>`<div>${m}</div>`).join("")}
+      </div>
+      <div class="login-users-stack">
+        ${userRows || `<div class="login-empty">Aucune connexion dans la période.</div>`}
+      </div>
+      <div class="login-legend">
+        <span>Moins</span>
+        ${legend.map((i)=>`<span class="login-cell lv${i}"></span>`).join("")}
+        <span>Plus</span>
+      </div>
+    </div>
+  `;
+  return {clamped: clamp.clamped, start: clamp.start, end: clamp.end, totalUsers: userKeys.length};
+}
+
+async function initLoginJournalUI(){
+  const wrap = el("cfg_login_heatmap");
+  const startInput = el("cfg_login_start");
+  const endInput = el("cfg_login_end");
+  const status = el("cfg_login_status");
+  const logBox = el("cfg_login_log");
+  const logHead = document.querySelector(".login-log-head");
+  if(!wrap || !startInput || !endInput) return;
+  if(!loginRangeEnd){
+    const end = new Date();
+    loginRangeEnd = end.toISOString().slice(0,10);
+  }
+  if(!loginRangeStart){
+    const start = new Date();
+    start.setDate(start.getDate()-29);
+    loginRangeStart = start.toISOString().slice(0,10);
+  }
+  if(!startInput.value) startInput.value = loginRangeStart;
+  if(!endInput.value) endInput.value = loginRangeEnd;
+  const events = await loadLoginsFromSupabase(
+    toISODateStart(parseInputDate(startInput.value)),
+    toISODateEnd(parseInputDate(endInput.value))
+  );
+  const info = buildLoginHeatmap(wrap, events, startInput.value, endInput.value);
+  if(status){
+    const err = localStorage.getItem("login_log_last_error");
+    const count = (events || []).length;
+    if(err){
+      status.textContent = `Erreur Supabase: ${err}`;
+    }else{
+      const extra = info?.clamped ? " (affichage limité à 30 jours)" : "";
+      status.textContent = `Connexions: ${count}${extra}`;
+    }
+    status.classList.toggle("is-error", !!err);
+  }
+  if(logBox){
+    const rows = (events || []).slice();
+    const dir = loginLogSortDir === "asc" ? 1 : -1;
+    rows.sort((a,b)=>{
+      const va = (a[loginLogSortKey] || "").toString().toLowerCase();
+      const vb = (b[loginLogSortKey] || "").toString().toLowerCase();
+      if(va < vb) return -1 * dir;
+      if(va > vb) return 1 * dir;
+      return 0;
+    });
+    const html = rows.slice(0, 200).map(ev=>{
+      const d = ev.ts ? new Date(ev.ts) : null;
+      const dateStr = d && !isNaN(d) ? d.toLocaleString("fr-FR") : "";
+      const name = ev.name || "";
+      const email = ev.email || "";
+      const role = (ev.role||"") === "admin" ? "Admin" : "Utilisateur";
+      return `<div class="login-log-row"><span>${dateStr}</span><span>${name}</span><span>${email}</span><span>${role}</span><span>1</span></div>`;
+    }).join("");
+    logBox.innerHTML = html || `<div class="login-empty">Aucune connexion dans la période.</div>`;
+  }
+  if(logHead){
+    logHead.querySelectorAll(".login-log-sort").forEach(btn=>{
+      btn.classList.toggle("active", btn.dataset.sort === loginLogSortKey);
+      btn.classList.toggle("asc", btn.dataset.sort === loginLogSortKey && loginLogSortDir === "asc");
+      btn.classList.toggle("desc", btn.dataset.sort === loginLogSortKey && loginLogSortDir === "desc");
+    });
+  }
+}
+
+
 function getMasterGanttExportRange(tasksAllOverride=null){
   const tasks = (tasksAllOverride || filteredTasks()).filter(t=>t.start && t.end);
   const {min, max} = getTasksDateBounds(tasks);
@@ -2665,7 +2947,12 @@ function getMasterGanttExportRange(tasksAllOverride=null){
   const startNode = el("ganttExportRangeStart");
   const endNode = el("ganttExportRangeEnd");
   const type = typeNode ? typeNode.value : "all";
-  if(type === "all") return {start:min, end:max};
+  if(type === "all"){
+    const start = new Date(min.getFullYear(), 0, 1);
+    const end = new Date(max.getFullYear(), 11, 31);
+    end.setHours(23,59,59,999);
+    return {start, end};
+  }
   if(type === "custom"){
     let s = parseInputDate(startNode?.value) || min;
     let e = parseInputDate(endNode?.value) || max;
@@ -3460,9 +3747,12 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
 
   const minStart = rs || tasks.map(t=>new Date(t.start+"T00:00:00")).reduce((a,b)=>a<b?a:b);
   const maxEnd   = re || tasks.map(t=>new Date(t.end+"T00:00:00")).reduce((a,b)=>a>b?a:b);
+  // Afficher la totalité des semaines concernées par la période choisie
+  const displayStart = rs ? startOfWeek(rs) : minStart;
+  const displayEnd = re ? endOfWorkWeek(re) : maxEnd;
 
   const weeks=[];
-  for(let w=startOfWeek(minStart); w<=addDays(startOfWeek(maxEnd),0); w=addDays(w,7)) weeks.push(new Date(w));
+  for(let w=startOfWeek(displayStart); w<=addDays(startOfWeek(displayEnd),0); w=addDays(w,7)) weeks.push(new Date(w));
   const vacWeeks = weeks.map(w=>isVacationWeek(w));
 
   tasks.sort((a,b)=>{
@@ -5257,6 +5547,7 @@ function bind(){
         sessionStorage.removeItem("unlocked");
         sessionStorage.removeItem("current_user");
         sessionStorage.removeItem("current_role");
+        sessionStorage.removeItem("current_email");
       }catch(e){}
       const lock = document.getElementById("lockscreen");
       if(lock) lock.classList.remove("hidden");
@@ -5290,14 +5581,11 @@ function bind(){
     const pass = el("cfg_user_pass")?.value || "";
     if(!name || !pass){ alert("Nom et mot de passe requis."); return; }
     const users = loadUsers();
-    if(users.some(u=>u.name.toLowerCase()===name.toLowerCase())){
-      alert("Utilisateur dj existant."); return;
-    }
     if(email && users.some(u=>(u.email||"").toLowerCase()===email.toLowerCase())){
       alert("Email dj existant."); return;
     }
     const hash = await hashPassword(pass);
-    users.push({name, email, role, hash, theme:"sable"});
+    users.push({id: uid(), name, email, role, hash, theme:"sable"});
     saveUsers(users);
     el("cfg_user_name").value = "";
     el("cfg_user_email").value = "";
@@ -5307,6 +5595,39 @@ function bind(){
   el("btnConfigClose")?.addEventListener("click", ()=> closeConfigModal());
   el("configModal")?.addEventListener("click",(e)=>{
     if(e.target && e.target.id==="configModal") closeConfigModal();
+  });
+  el("cfg_login_start")?.addEventListener("change", ()=>{
+    loginRangeStart = el("cfg_login_start")?.value || "";
+    initLoginJournalUI();
+  });
+  el("cfg_login_end")?.addEventListener("change", ()=>{
+    loginRangeEnd = el("cfg_login_end")?.value || "";
+    initLoginJournalUI();
+  });
+  document.querySelectorAll(".login-log-sort").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const key = btn.dataset.sort || "ts";
+      if(loginLogSortKey === key){
+        loginLogSortDir = (loginLogSortDir === "asc") ? "desc" : "asc";
+      }else{
+        loginLogSortKey = key;
+        loginLogSortDir = "asc";
+      }
+      initLoginJournalUI();
+    });
+  });
+  el("cfg_login_reset")?.addEventListener("click", (e)=>{
+    e.preventDefault();
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate()-29);
+    loginRangeStart = start.toISOString().slice(0,10);
+    loginRangeEnd = end.toISOString().slice(0,10);
+    const startInput = el("cfg_login_start");
+    const endInput = el("cfg_login_end");
+    if(startInput) startInput.value = loginRangeStart;
+    if(endInput) endInput.value = loginRangeEnd;
+    initLoginJournalUI();
   });
   el("btnSave")?.addEventListener("click", ()=>{
     saveState();
@@ -6303,6 +6624,7 @@ function preparePrint(opts={}){
 
 function prepareMasterGanttPrint(rangeStart, rangeEnd, tasksAllOverride=null){
   document.body.classList.add("print-mode");
+  document.body.classList.add("print-gantt-master");
   const tpl = document.getElementById("printTemplate");
   if(!tpl) return;
   let container = document.getElementById("printInjection");
@@ -6353,6 +6675,35 @@ function prepareMasterGanttPrint(rangeStart, rangeEnd, tasksAllOverride=null){
   card.innerHTML = `<div class="card-title">Gantt global</div>${buildMasterGanttHTMLForRange(rangeStart, rangeEnd, tasksAll)}`;
   wrap.appendChild(card);
   container.querySelector(".print-order")?.appendChild(wrap);
+
+  // Ajuster l'échelle du gantt pour tenir sur une page
+  setTimeout(()=> fitMasterGanttPrint(container), 0);
+}
+
+function fitMasterGanttPrint(container){
+  if(!container) return;
+  const tableWrap = container.querySelector(".gantt-table");
+  const table = tableWrap?.querySelector("table");
+  if(!tableWrap || !table) return;
+  tableWrap.style.transform = "scale(1)";
+  tableWrap.style.transformOrigin = "top left";
+  const maxWidth = container.clientWidth || document.documentElement.clientWidth || window.innerWidth;
+  const tableWidth = table.scrollWidth || table.offsetWidth;
+  let scaleW = maxWidth / tableWidth;
+  if(!isFinite(scaleW) || scaleW <= 0) scaleW = 1;
+  const header = container.querySelector(".print-header");
+  const legend = container.querySelector(".legend");
+  const headerH = header ? header.offsetHeight : 0;
+  const legendH = legend ? legend.offsetHeight : 0;
+  const pageH = window.innerHeight || document.documentElement.clientHeight;
+  const availableH = pageH ? Math.max(200, pageH - headerH - legendH - 40) : 0;
+  const tableH = tableWrap.scrollHeight || tableWrap.offsetHeight;
+  let scaleH = availableH && tableH ? (availableH / tableH) : 1;
+  if(!isFinite(scaleH) || scaleH <= 0) scaleH = 1;
+  const scale = Math.min(1, scaleW, scaleH);
+  tableWrap.style.transform = `scale(${scale})`;
+  tableWrap.style.transformOrigin = "top left";
+  tableWrap.style.width = `${Math.floor(100/scale)}%`;
 }
 
 
@@ -6360,6 +6711,7 @@ function prepareMasterGanttPrint(rangeStart, rangeEnd, tasksAllOverride=null){
 function cleanupPrint(){
 
   document.body.classList.remove("print-mode");
+  document.body.classList.remove("print-gantt-master");
 
   const container = document.getElementById("printInjection");
 

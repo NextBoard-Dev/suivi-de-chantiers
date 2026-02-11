@@ -1,7 +1,7 @@
 /* Impression Gantt et tableaux  mode pro A4 paysage */
 @page {
   size: A4 landscape;
-  margin: 10mm;
+  margin: 6mm;
 }
 
 /* Ne garder que le contenu inject pour l'impression */
@@ -29,6 +29,24 @@
     break-after: avoid;
     page-break-after: avoid;
   }
+}
+
+@media print {
+  body.print-gantt-master .print-header{
+    padding: 4mm;
+    margin-bottom: 4mm;
+  }
+  body.print-gantt-master .print-header h1{ font-size: 18px; }
+  body.print-gantt-master .print-meta{ font-size: 9.5px; gap: 2mm; }
+  body.print-gantt-master .legend{ font-size: 9px; }
+  body.print-gantt-master .legend-item{ padding: 3px 6px; }
+  body.print-gantt-master .gantt-table .table th,
+  body.print-gantt-master .gantt-table .table td{
+    padding: 2px 4px !important;
+    font-size: 9px;
+  }
+  body.print-gantt-master .gantt-week-date{ font-size: 8px; }
+  body.print-gantt-master .card{ margin-bottom: 2mm; }
 }
 
 /* Cacher les lments d'UI interactifs */
