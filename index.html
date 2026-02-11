@@ -687,7 +687,7 @@
   async function refreshLoginUsers(){
     try{
       const localUsers = loadUsers();
-      const shouldSync = !localUsers || localUsers.length === 0;
+      const shouldSync = (!localUsers || localUsers.length === 0) || (window.isHostedGithubPages && window.isHostedGithubPages());
       if(shouldSync && window.forceLoadUsersFromSupabase){
         await window.forceLoadUsersFromSupabase();
       }

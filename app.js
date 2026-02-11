@@ -343,7 +343,7 @@ async function loadUsersFromSupabase(force=false){
   try{
     if(!force){
       const localUsers = loadUsers();
-      if(localUsers && localUsers.length > 0){
+      if(localUsers && localUsers.length > 0 && !isHostedGithubPages()){
         return false;
       }
     }
@@ -467,6 +467,13 @@ let sortProject = {key:"start", dir:"asc"};
 let unsavedChanges = false;
 
 let isLocked = true; // verrou logique = droits utilisateur (admin = false)
+const isHostedGithubPages = ()=>{
+  try{
+    const host = (location.hostname || "").toLowerCase();
+    return host.endsWith("github.io");
+  }catch(e){ return false; }
+};
+window.isHostedGithubPages = isHostedGithubPages;
 
 let workloadRangeType = "all"; // all | custom | school | civil
 
