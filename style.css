@@ -447,33 +447,16 @@ body{
   box-shadow:0 0 0 2px rgba(255,255,255,0.7);
 }
 .topbar .btn,
-.topbar #gear-btn,
-.topbar .topbar-lock{
-  box-shadow:0 6px 14px rgba(0,0,0,0.12);
-}
-.topbar .btn,
-.topbar .topbar-lock,
-.topbar #gear-btn{
+.topbar .btn{
   height:34px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
   line-height:1;
 }
-.topbar .btn,
-.topbar .topbar-lock{
+.topbar .btn{
   border-radius:10px;
   padding:0 14px;
-}
-.topbar #gear-btn{
-  width:34px;
-  justify-content:center;
-  padding:0;
-  border-radius:10px;
-}
-.topbar #gear-btn{
-  border:1px solid rgba(0,0,0,0.12);
-  background:#fff;
 }
 .btn-icon{margin-right:6px;}
 .pdf-icon{
@@ -493,32 +476,6 @@ body{
   font-weight:800;
   color:#7a1f2b;
   font-size:16px;
-}
-.topbar-lock{
-  text-align:center;
-  font-weight:800;
-  color:#0b1424;
-  font-size:13px;
-  padding:0 14px;
-  border-radius:999px;
-  background:rgba(255,255,255,0.7);
-  border:1px solid rgba(0,0,0,0.08);
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  line-height:1;
-  padding-top:0;
-  padding-bottom:0;
-}
-.topbar-lock.is-allowed{
-  background:linear-gradient(180deg,#22c55e 0%,#16a34a 100%);
-  color:#fff;
-  border-color:#15803d;
-}
-.topbar-lock.is-denied{
-  background:linear-gradient(180deg,#ef4444 0%,#dc2626 100%);
-  color:#fff;
-  border-color:#b91c1c;
 }
 .brand{font-weight:800;color:var(--text);}
 .brand{font-size:22px;}
@@ -706,13 +663,6 @@ body{
   color:#0f172a;
   font-weight:900;
   font-size:14px;
-}
-#gear-btn::before{
-  content:"⚙";
-  display:inline-block;
-  color:#0f172a;
-  font-size:16px;
-  line-height:1;
 }
 #btnManageVendors::before,
 #btnManageDescriptions::before{
@@ -948,6 +898,13 @@ body{
   margin-top:10px;
   padding-top:8px;
   border-top:1px dashed rgba(0,0,0,0.12);
+}
+.gantt-export-body{
+  padding-top:0;
+  border-top:none;
+}
+.gantt-export-row{
+  margin-top:6px;
 }
 .config-users-title{
   font-size:12px;

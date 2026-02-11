@@ -52,33 +52,65 @@
     .lock-btn{width:100%;padding:9px 10px;border-radius:10px;border:1px solid #2563eb;background:#2563eb;color:#fff;font-weight:700;cursor:pointer;}
     .lock-msg{font-size:12px;color:#6b7280;margin-top:6px;}
     .lock-row{display:flex;align-items:center;gap:8px;}
-    .lock-toggle{border:1px solid #d1d5db;background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer;font-size:16px;line-height:1;}
+    .lock-toggle{
+      position:relative;
+      border:1px solid #d1d5db;
+      background:#fff;
+      border-radius:10px;
+      width:34px;
+      height:34px;
+      padding:0;
+      cursor:pointer;
+      font-size:0;
+      color:transparent;
+      text-indent:-9999px;
+      overflow:hidden;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z'/%3E%3Ccircle cx='12' cy='12' r='3.5'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;
+      background-position:center;
+      background-size:18px 18px;
+    }
+    .lock-toggle.is-hidden::after{
+      content:"";
+      position:absolute;
+      left:6px;right:6px;top:50%;
+      height:2px;
+      background:#111827;
+      transform:translateY(-50%) rotate(-20deg);
+      opacity:0.9;
+      pointer-events:none;
+    }
     .lock-remember{display:flex;align-items:center;gap:8px;justify-content:flex-start;font-size:12px;color:#475569;margin:4px 0 2px;}
     .lock-checkbox{width:auto;margin:0;}
     .lock-hint{font-size:11px;color:#64748b;margin:0 0 8px;}
-    /* gear */
-    .gear-wrap{
-      position:relative;
-      display:flex;
-      align-items:center;
+    .pwd-field{position:relative;flex:1 1 auto;min-width:220px;}
+    .pwd-field .input{padding-right:40px;}
+    .pwd-toggle{
+      position:absolute;
+      right:6px;
+      top:50%;
+      transform:translateY(-50%);
+      width:28px;
+      height:28px;
+      border-radius:8px;
+      border:1px solid rgba(0,0,0,0.12);
+      background:#fff;
+      cursor:pointer;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z'/%3E%3Ccircle cx='12' cy='12' r='3.5'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;
+      background-position:center;
+      background-size:16px 16px;
     }
-    #gear-btn{
-      position:relative;
-      width:34px;height:34px;border-radius:50%;border:1px solid rgba(0,0,0,0.12);
-      background:#fff;box-shadow:0 10px 22px rgba(0,0,0,0.18);cursor:pointer;
-      display:flex;align-items:center;justify-content:center;font-size:17px;
+    .pwd-toggle.is-hidden::after{
+      content:"";
+      position:absolute;
+      left:4px;right:4px;top:50%;
+      height:2px;
+      background:#111827;
+      transform:translateY(-50%) rotate(-20deg);
+      opacity:0.9;
+      pointer-events:none;
     }
-    #gear-panel{
-      position:absolute;top:42px;right:0;z-index:100000;
-      background:#fff;padding:10px 12px;border-radius:10px;
-      box-shadow:0 12px 24px rgba(0,0,0,0.18);width:230px;
-      display:none;gap:8px;flex-direction:column;font-size:12px;
-    }
-    #gear-panel.show{display:flex;}
-    #gear-panel small{color:#6b7280;}
-    .gear-actions{display:flex;gap:8px;flex-wrap:wrap;}
-    .gear-actions .btn{display:flex;align-items:center;gap:6px;}
-    .gear-actions svg{width:14px;height:14px;display:block;}
     /* modal export */
     .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,0.4);backdrop-filter:blur(2px);z-index:1000000;}
     .modal.hidden{display:none;}
@@ -101,7 +133,7 @@
         <select id="lock-email" class="lock-input" name="email" required></select>
         <div class="lock-row">
           <input id="lock-pwd" class="lock-input" type="password" placeholder="Mot de passe" autocomplete="current-password" name="password" required />
-          <button id="lock-pwd-toggle" class="lock-toggle" type="button" title="Afficher / masquer">👁</button>
+          <button id="lock-pwd-toggle" class="lock-toggle is-hidden" type="button" title="Afficher / masquer" aria-label="Afficher / masquer"></button>
         </div>
         <label class="lock-remember">
           <input id="lock-remember" type="checkbox" class="lock-checkbox" />
@@ -136,6 +168,31 @@
       </div>
     </div>
   </div>
+  <!-- Modal export Gantt maître -->
+  <div id="exportMasterGanttModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-title">Export Gantt maître</div>
+      <div class="modal-sub">Choisis la période :</div>
+      <div class="config-users gantt-export-body">
+        <label class="label">Type de période</label>
+        <select class="input" id="ganttExportRangeType">
+          <option value="all">Toutes les dates</option>
+          <option value="custom">Période personnalisée</option>
+          <option value="civil">Année civile</option>
+          <option value="school">Année scolaire</option>
+        </select>
+        <div class="row row-tight gantt-export-row">
+          <select class="input input-xs" id="ganttExportRangeYear"></select>
+          <input class="input input-sm" id="ganttExportRangeStart" type="date" />
+          <input class="input input-sm" id="ganttExportRangeEnd" type="date" />
+        </div>
+      </div>
+      <div class="modal-actions spaced">
+        <button class="btn btn-ghost" id="btnExportMasterGanttCancel">Annuler</button>
+        <button class="btn btn-export-yes" id="btnExportMasterGanttRun">Exporter</button>
+      </div>
+    </div>
+  </div>
   <div id="configModal" class="modal hidden" aria-hidden="true">
     <div class="modal-card config-card">
       <div class="modal-title">Configuration</div>
@@ -159,7 +216,10 @@
           </select>
         </div>
         <div class="config-users-row">
-          <input class="input" id="cfg_user_pass" type="password" placeholder="Mot de passe" />
+          <div class="pwd-field">
+            <input class="input" id="cfg_user_pass" type="password" placeholder="Mot de passe" />
+            <button type="button" class="pwd-toggle" id="cfg_user_pass_toggle" aria-label="Afficher / masquer"></button>
+          </div>
           <button class="btn btn-primary" id="btnUserAdd">Ajouter</button>
         </div>
         <div id="cfg_users_list" class="config-users-list"></div>
@@ -185,26 +245,9 @@
       <button type="button" class="theme-toggle" id="themeToggle">Thème</button>
       <div id="themeGrid" class="theme-grid" role="listbox" aria-label="Palette de thèmes"></div>
     </div>
-    <div class="topbar-lock" id="topbarLock"></div>
     <div class="actions">
       <button class="btn btn-primary" id="btnSave">Sauvegarder</button>
     <button class="btn hidden" id="btnConfig">Configuration</button>
-      <div class="gear-wrap">
-        <button id="gear-btn" title="Options accs"></button>
-        <div id="gear-panel">
-          <small>Autoriser = déverrouiller. Interdire = verrouiller.</small>
-          <div class="gear-actions">
-            <button class="btn btn-success" id="btn_allow_lock">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a5 5 0 0 1 5 5v3h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h9V7a2 2 0 1 0-4 0v2H8V7a4 4 0 0 1 4-5Z"/></svg>
-              Autoriser
-            </button>
-            <button class="btn btn-danger" id="btn_forbid_lock">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5Zm3 8V7a3 3 0 0 0-6 0v3h6Z"/></svg>
-              Interdire
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   </header>
 
@@ -267,6 +310,10 @@
           <span class="filters-indicator" id="filtersBadge">Tri/filtre actif</span>
           <span class="filters-indicator site-indicator hidden" id="siteBadge"></span>
           <button class="btn btn-ghost" id="btnResetSortMaster">Réinitialiser tri</button>
+          <button class="btn master-export-inline" id="btnExportMasterGantt">
+            <span class="pdf-icon" aria-hidden="true"></span>
+            Export Gantt
+          </button>
           <button class="btn master-export-inline" id="btnExportMaster">
             <span class="pdf-icon" aria-hidden="true"></span>
             Export PDF
@@ -305,9 +352,9 @@
               <label class="label label-tight">Filtre</label>
               <select class="input input-sm" id="workloadRangeType">
                 <option value="all">Tout</option>
-                <option value="custom">Priode</option>
-                <option value="school">Anne scolaire</option>
-                <option value="civil">Anne civile</option>
+                <option value="custom">Période</option>
+                <option value="school">Année scolaire</option>
+                <option value="civil">Année civile</option>
               </select>
               <select class="input input-xs" id="workloadRangeYear"></select>
               <input class="input input-sm" id="workloadRangeStart" type="date" />
@@ -357,7 +404,7 @@
             <input class="input" id="p_subproject" placeholder="ex: Phase 1, Bâtiment B, étages 2-3" />
             <label class="label">Site / Zone</label>
             <select class="input" id="p_site"></select>
-              <!-- Dates de contraintes retires -->
+              <!-- Dates de contraintes retirées -->
             <div class="row">
               <button class="btn btn-primary" id="btnSaveProject">Enregistrer projet</button>
               <button class="btn btn-danger" id="btnDeleteProject">Supprimer projet</button>
@@ -374,12 +421,12 @@
             <label class="label">Description</label>
             <div class="desc-wrap">
               <input class="input" id="t_room" placeholder="ex: Chambre 11, Local lec, Couloir A" autocomplete="off" aria-label="Description" />
-              <button type="button" class="btn icon-btn desc-manage-btn" id="btnManageDescriptions" aria-label="Grer les descriptions"></button>
+              <button type="button" class="btn icon-btn desc-manage-btn" id="btnManageDescriptions" aria-label="Gérer les descriptions"></button>
               <div id="descDropdown" class="desc-dropdown" role="listbox" aria-label="Suggestions description"></div>
               <div id="descManagerPanel" class="vendor-panel hidden"></div>
             </div>
 
-            <label class="label">Statuts / Corps d'état (multi-slection)</label>
+            <label class="label">Statuts / Corps d'état (multi-sélection)</label>
             <div class="multiselect" id="t_status_wrap">
               <div class="multiselect-display" id="t_status_display">Sélectionner</div>
               <div class="multiselect-menu hidden" id="t_status_menu"></div>
@@ -396,7 +443,7 @@
             <label class="label">Prestataire externe</label>
             <div class="vendor-wrap">
               <input class="input" id="t_vendor" placeholder="Nom du prestataire (tri AZ)" autocomplete="off" aria-label="Prestataire externe" />
-              <button type="button" class="btn icon-btn vendor-manage-btn" id="btnManageVendors" aria-label="Grer les prestataires"></button>
+              <button type="button" class="btn icon-btn vendor-manage-btn" id="btnManageVendors" aria-label="Gérer les prestataires"></button>
               <div id="vendorDropdown" class="vendor-dropdown" role="listbox" aria-label="Suggestions prestataire"></div>
               <div id="vendorManagerPanel" class="vendor-panel hidden"></div>
             </div>
@@ -460,9 +507,9 @@
               <label class="label label-tight">Filtre</label>
               <select class="input input-sm" id="workloadRangeTypeProject">
                 <option value="all">Tout</option>
-                <option value="custom">Priode</option>
-                <option value="school">Anne scolaire</option>
-                <option value="civil">Anne civile</option>
+                <option value="custom">Période</option>
+                <option value="school">Année scolaire</option>
+                <option value="civil">Année civile</option>
               </select>
               <select class="input input-xs" id="workloadRangeYearProject"></select>
               <input class="input input-sm" id="workloadRangeStartProject" type="date" />
@@ -506,9 +553,12 @@
 <script>
 // Pseudo-login (dissuasif uniquement)
 (function(){
-  const DISABLE_LOGIN = true; // TEMP: désactive le login (à réactiver plus tard)
+  const DISABLE_LOGIN = false; // login actif
   const HASH = "sha256:8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"; // SHA-256 du mot de passe "admin"
   const USERS_KEY = "dashboard_users_v1";
+  const RESET_USERS_ON_START = false; // TEMP: purge des utilisateurs
+  const RESET_USERS_FLAG = "users_reset_once_v1";
+  const SKIP_DEFAULT_ADMIN_FLAG = "skip_default_admin_v1";
   const lock = document.getElementById("lockscreen");
   const userInput = document.getElementById("lock-email");
   const userList = document.getElementById("lock-email");
@@ -517,10 +567,6 @@
   const pwdToggle = document.getElementById("lock-pwd-toggle");
   const remember = document.getElementById("lock-remember");
   const btn  = document.getElementById("lock-submit");
-  const gear = document.getElementById("gear-btn");
-  const panel= document.getElementById("gear-panel");
-  const allowBtn = document.getElementById("btn_allow_lock");
-  const forbidBtn = document.getElementById("btn_forbid_lock");
 
   function hash(str){
     const enc = new TextEncoder().encode(str);
@@ -565,6 +611,7 @@
   function populateUsers(){
     const users = loadUsers();
     if(!userList) return;
+    const current = (userInput?.value || "").trim().toLowerCase();
     const seen = new Set();
     const items = [];
     let changed = false;
@@ -586,21 +633,29 @@
     }
     items.sort((a,b)=>a.label.localeCompare(b.label,"fr"));
     userList.innerHTML = items.map(it=>`<option value="${it.email}">${it.label}</option>`).join("");
-    const last = localStorage.getItem("last_login_email") || "";
-    if(last && userInput){
-      userInput.value = last.toLowerCase();
+    const last = (localStorage.getItem("last_login_email") || "").trim().toLowerCase();
+    let next = current || last;
+    if(next && items.some(it=>it.email===next)){
+      userInput.value = next;
+    }else if(items[0]){
+      userInput.value = items[0].email;
     }
-    // auto-fill mdp si mémorisé pour cet email
+    applyRememberedFor(userInput?.value || "");
+  }
+  window.populateLoginUsers = populateUsers;
+  function applyRememberedFor(email){
     try{
       const remembered = JSON.parse(localStorage.getItem(REMEMBER_KEY) || "null");
-      const mail = (userInput?.value || "").trim().toLowerCase();
+      const mail = (email || "").trim().toLowerCase();
       if(remembered?.byEmail && mail && remembered.byEmail[mail] !== undefined){
         if(pwd) pwd.value = remembered.byEmail[mail] || "";
         if(remember) remember.checked = true;
+      }else{
+        if(pwd) pwd.value = "";
+        if(remember) remember.checked = false;
       }
     }catch(e){}
   }
-  window.populateLoginUsers = populateUsers;
   async function refreshLoginUsers(){
     try{
       const localUsers = loadUsers();
@@ -613,6 +668,7 @@
   }
   window.refreshLoginUsers = refreshLoginUsers;
   function ensureDefaultAdmin(){
+    if(localStorage.getItem(SKIP_DEFAULT_ADMIN_FLAG)==="1") return;
     const users = loadUsers();
     if(users.length===0){
       localStorage.setItem(USERS_KEY, JSON.stringify([{name:"Admin", email:"admin@local", role:"admin", hash:HASH.replace("sha256:","")}]));
@@ -630,18 +686,20 @@
       return email===mail && match;
     });
     if(u){
+      const role = ((u.role || "user").toLowerCase() === "admin") ? "admin" : "user";
       sessionStorage.setItem("unlocked","1");
       sessionStorage.setItem("current_user", u.name||"");
-      sessionStorage.setItem("current_role", u.role||"user");
+      sessionStorage.setItem("current_role", role);
       localStorage.setItem("last_login_email", mail);
       lock.classList.add("hidden");
-      if(window.setLockState) window.setLockState(u.role === "admin" ? false : true);
+      if(window.applyRoleAccess) window.applyRoleAccess();
       if(window.updateRoleUI) window.updateRoleUI();
       return u;
     }
     return null;
   }
   async function tryUnlock(){
+    resetAllUsersOnce();
     ensureDefaultAdmin();
     populateUsers();
     const pass = (pwd.value || "").trim();
@@ -661,44 +719,6 @@
       return false;
     }
   }
-  // gear toggle
-  gear.onclick = (e)=>{ e.stopPropagation(); panel.classList.toggle("show"); };
-  document.addEventListener("click", (e)=>{
-    if(!panel.classList.contains("show")) return;
-    if(panel.contains(e.target) || gear.contains(e.target)) return;
-    panel.classList.remove("show");
-  });
-  allowBtn.onclick = async ()=>{
-    const mail = prompt("Email admin pour autoriser ?");
-    if(!mail) return;
-    const pass = prompt("Mot de passe admin ?");
-    if(!pass) return;
-    const h = await hash(pass);
-    ensureDefaultAdmin();
-    const users = loadUsers();
-    const u = users.find(x=>`sha256:${x.hash}`===h && x.role==="admin" && (x.email||"").toLowerCase()===mail.toLowerCase());
-    if(u){
-      sessionStorage.setItem("unlocked","1");
-      sessionStorage.setItem("current_user", u.name||"");
-      sessionStorage.setItem("current_role", u.role||"admin");
-      lock.classList.add("hidden");
-      if(window.setLockState) window.setLockState(false);
-    }else{
-      alert("Mot de passe incorrect");
-    }
-    panel.classList.remove("show");
-  };
-  forbidBtn.onclick = ()=>{
-    sessionStorage.removeItem("unlocked");
-    sessionStorage.removeItem("current_user");
-    sessionStorage.removeItem("current_role");
-    rememberClear();
-    panel.classList.remove("show");
-    if(pwd) pwd.value = "";
-    lock.classList.remove("hidden"); // raffiche immdiatement
-    if(window.setLockState) window.setLockState(true);
-    if(window.updateRoleUI) window.updateRoleUI();
-  };
   btn.onclick = (e)=>{ e.preventDefault(); tryUnlock(); };
   if(form){
     form.addEventListener("submit", async (e)=>{
@@ -716,17 +736,11 @@
   if(userInput){
     userInput.addEventListener("change", ()=>{
       if(userInput.value) userInput.value = userInput.value.trim().toLowerCase();
-      try{
-        const remembered = JSON.parse(localStorage.getItem(REMEMBER_KEY) || "null");
-        const mail = (userInput?.value || "").trim().toLowerCase();
-        if(remembered?.byEmail && mail && remembered.byEmail[mail] !== undefined){
-          if(pwd) pwd.value = remembered.byEmail[mail] || "";
-          if(remember) remember.checked = true;
-        }else{
-          if(pwd) pwd.value = "";
-          if(remember) remember.checked = false;
-        }
-      }catch(e){}
+      applyRememberedFor(userInput.value);
+    });
+    userInput.addEventListener("input", ()=>{
+      if(userInput.value) userInput.value = userInput.value.trim().toLowerCase();
+      applyRememberedFor(userInput.value);
     });
   }
   if(remember){
@@ -739,29 +753,75 @@
       }
     });
   }
+  if(pwd){
+    pwd.addEventListener("input", ()=>{
+      if(!remember?.checked) return;
+      const mail = (userInput?.value || "").trim().toLowerCase();
+      if(mail){ rememberSave(mail, pwd.value||""); }
+    });
+  }
   if(pwdToggle){
+    pwdToggle.classList.add("is-hidden");
     pwdToggle.addEventListener("click", ()=>{
       if(!pwd) return;
       const isPass = pwd.type === "password";
       pwd.type = isPass ? "text" : "password";
-      pwdToggle.textContent = isPass ? "🙈" : "👁";
+      pwdToggle.classList.toggle("is-hidden", !isPass);
+    });
+  }
+  const cfgPass = document.getElementById("cfg_user_pass");
+  const cfgPassToggle = document.getElementById("cfg_user_pass_toggle");
+  if(cfgPassToggle && cfgPass){
+    cfgPassToggle.classList.add("is-hidden");
+    cfgPassToggle.addEventListener("click", ()=>{
+      const isPass = cfgPass.type === "password";
+      cfgPass.type = isPass ? "text" : "password";
+      cfgPassToggle.classList.toggle("is-hidden", !isPass);
+    });
+  }
+  function resetAllUsersOnce(){
+    try{
+      if(!RESET_USERS_ON_START) return;
+      if(localStorage.getItem(RESET_USERS_FLAG)==="1") return;
+      localStorage.setItem(USERS_KEY, JSON.stringify([]));
+      localStorage.setItem(RESET_USERS_FLAG, "1");
+      localStorage.setItem(SKIP_DEFAULT_ADMIN_FLAG, "1");
+      try{ window.saveUsersToSupabase?.([]); }catch(e){}
+    }catch(e){}
+  }
+  // Fermer la modale login par clic hors carte (reste en lecture seule)
+  if(lock){
+    lock.addEventListener("click", (e)=>{
+      if(e.target !== lock) return;
+      try{
+        sessionStorage.removeItem("unlocked");
+        sessionStorage.removeItem("current_user");
+        sessionStorage.removeItem("current_role");
+      }catch(err){}
+      lock.classList.add("hidden");
+      sessionStorage.setItem("unlocked","1");
+      sessionStorage.setItem("current_user","Invité");
+      sessionStorage.setItem("current_role","user");
+      if(window.applyRoleAccess) window.applyRoleAccess();
+      if(window.updateRoleUI) window.updateRoleUI();
     });
   }
 
   // toujours verrouill au chargement (sauf auto-login volontaire)
+  resetAllUsersOnce();
   ensureDefaultAdmin();
   refreshLoginUsers();
   sessionStorage.removeItem("unlocked");
   sessionStorage.removeItem("current_user");
   sessionStorage.removeItem("current_role");
-  if(window.setLockState) window.setLockState(true);
+  if(window.applyRoleAccess) window.applyRoleAccess();
 
   if(DISABLE_LOGIN){
     sessionStorage.setItem("unlocked","1");
     sessionStorage.setItem("current_user","Sébastien DUC");
     sessionStorage.setItem("current_role","admin");
     lock.classList.add("hidden");
-    if(window.setLockState) window.setLockState(false);
+    if(window.applyRoleAccess) window.applyRoleAccess();
     if(window.updateRoleUI) window.updateRoleUI();
     return;
   }

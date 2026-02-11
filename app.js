@@ -409,7 +409,7 @@ let sortProject = {key:"start", dir:"asc"};
 
 let unsavedChanges = false;
 
-let isLocked = true; // verrou lecture seule par défaut
+let isLocked = true; // verrou logique = droits utilisateur (admin = false)
 
 let workloadRangeType = "all"; // all | custom | school | civil
 
@@ -804,15 +804,12 @@ function initThemePicker(){
   applyThemeForCurrentUser();
 }
 function getCurrentRole(){
-  return sessionStorage.getItem("current_role") || "admin";
+  return sessionStorage.getItem("current_role") || "user";
 }
 function updateRoleUI(){
   const role = getCurrentRole();
   const cfgBtn = el("btnConfig");
-  if(cfgBtn) cfgBtn.style.display = (!isLocked && role==="admin") ? "inline-flex" : "none";
-  const gear = el("gear-btn");
-  const gearWrap = gear ? gear.closest(".gear-wrap") : null;
-  if(gearWrap) gearWrap.style.display = role==="admin" ? "flex" : "none";
+  if(cfgBtn) cfgBtn.style.display = (role==="admin") ? "inline-flex" : "none";
   const topUser = el("topbarUser");
   if(topUser){
     const name = sessionStorage.getItem("current_user") || "Invit";
@@ -821,6 +818,75 @@ function updateRoleUI(){
   }
   applyThemeForCurrentUser();
 }
+function applyRoleAccess(){
+  const role = getCurrentRole();
+  isLocked = role !== "admin";
+  const lockClass = "is-disabled";
+  const ids = [
+    "btnAddProject","btnAddTask",
+    "btnSaveProject","btnDeleteProject",
+    "btnSaveTask","btnNewTask","btnDeleteTask"
+  ];
+  ids.forEach(id=>{
+    const n=el(id);
+    if(!n) return;
+    n.classList.toggle(lockClass, isLocked);
+    if(isLocked) n.setAttribute("disabled","disabled");
+    else n.removeAttribute("disabled");
+  });
+  const cfgBtn = el("btnConfig");
+  if(cfgBtn){
+    cfgBtn.style.display = role==="admin" ? "inline-flex" : "none";
+  }
+  const switchBtn = el("btnSwitchUser");
+  if(switchBtn){
+    switchBtn.style.display = "inline-flex";
+  }
+  const manageBtn = el("btnManageVendors");
+  if(manageBtn){
+    manageBtn.classList.toggle(lockClass, isLocked);
+    if(isLocked) manageBtn.setAttribute("disabled","disabled");
+    else manageBtn.removeAttribute("disabled");
+  }
+  const manageDescBtn = el("btnManageDescriptions");
+  if(manageDescBtn){
+    manageDescBtn.classList.toggle(lockClass, isLocked);
+    if(isLocked) manageDescBtn.setAttribute("disabled","disabled");
+    else manageDescBtn.removeAttribute("disabled");
+  }
+  if(isLocked){
+    showVendorDropdown(false);
+    const panel = el("vendorManagerPanel");
+    if(panel) panel.style.display="none";
+    showDescriptionDropdown(false);
+    const descPanel = el("descManagerPanel");
+    if(descPanel) descPanel.style.display="none";
+    const overlay = el("descOverlay");
+    if(overlay) overlay.classList.remove("show");
+  }
+  const tabCloses = document.querySelectorAll(".tab-close");
+  tabCloses.forEach(n=>{
+    n.classList.toggle(lockClass, isLocked);
+    if(isLocked) n.setAttribute("aria-disabled","true");
+    else n.removeAttribute("aria-disabled");
+  });
+  const dangerBtns = document.querySelectorAll("button.btn-danger");
+  dangerBtns.forEach(btn=>{
+    btn.classList.toggle(lockClass, isLocked);
+    if(isLocked) btn.setAttribute("disabled","disabled");
+    else btn.removeAttribute("disabled");
+  });
+  const live = el("masterLive");
+  if(live){
+    live.classList.toggle("is-disabled", isLocked);
+  }
+  const plive = el("projectLive");
+  if(plive){
+    plive.classList.toggle("is-disabled", isLocked);
+  }
+  updateRoleUI();
+}
+window.applyRoleAccess = applyRoleAccess;
 async function hashPassword(str){
   const enc = new TextEncoder().encode(str || "");
   const buf = await crypto.subtle.digest("SHA-256", enc);
@@ -868,7 +934,7 @@ function renderUsersList(){
       const newName = prompt("Nom d'utilisateur :", users[idx].name) || "";
       if(!newName) return;
       const newEmail = prompt("Email :", users[idx].email||"") || "";
-      const newRole = (prompt("Rle (admin/user) :", users[idx].role||"user") || users[idx].role || "user").toLowerCase();
+      const newRole = (prompt("Rôle (admin/user) :", users[idx].role||"user") || users[idx].role || "user").toLowerCase();
       const role = newRole === "admin" ? "admin" : "user";
       if(users.some((u,i)=> i!==idx && u.name.toLowerCase()===newName.toLowerCase())){
         alert("Nom dj utilis."); return;
@@ -2499,149 +2565,6 @@ function flashSaved(){
 
 
 
-function setLockState(flag){
-
-  isLocked = !!flag;
-
-  const lockClass = "is-disabled";
-
-  const ids = [
-
-    "btnSave","btnAddProject","btnAddTask",
-
-    "btnSaveProject","btnDeleteProject",
-
-    "btnSaveTask","btnNewTask","btnDeleteTask"
-
-  ];
-
-  ids.forEach(id=>{
-    const n=el(id);
-    if(!n) return;
-    n.classList.toggle(lockClass, isLocked);
-    if(isLocked) n.setAttribute("disabled","disabled");
-    else n.removeAttribute("disabled");
-  });
-  const cfgBtn = el("btnConfig");
-  if(cfgBtn){
-    cfgBtn.style.display = (!isLocked && getCurrentRole()==="admin") ? "inline-flex" : "none";
-  }
-  updateRoleUI();
-  if(isLocked){
-    closeConfigModal();
-  }
-  // état du verrou + boutons autoriser/interdire
-  const lockLabel = el("topbarLock");
-  if(lockLabel){
-    lockLabel.textContent = isLocked ? "Verrou : Interdit" : "Verrou : Autorisé";
-    lockLabel.classList.toggle("is-allowed", !isLocked);
-    lockLabel.classList.toggle("is-denied", isLocked);
-  }
-  const switchBtn = el("btnSwitchUser");
-  if(switchBtn){
-    switchBtn.style.display = isLocked ? "none" : "inline-flex";
-  }
-  const allowBtn = el("btn_allow_lock");
-  const forbidBtn = el("btn_forbid_lock");
-  if(allowBtn){
-    allowBtn.disabled = !isLocked;
-    allowBtn.classList.toggle("is-disabled", !isLocked);
-  }
-  if(forbidBtn){
-    forbidBtn.disabled = isLocked;
-    forbidBtn.classList.toggle("is-disabled", isLocked);
-  }
-  // gestion prestataires : dsactiver + masquer panels/dropdown
-
-  const manageBtn = el("btnManageVendors");
-
-  if(manageBtn){
-
-    manageBtn.classList.toggle(lockClass, isLocked);
-
-    if(isLocked) manageBtn.setAttribute("disabled","disabled");
-
-    else manageBtn.removeAttribute("disabled");
-
-  }
-
-  const manageDescBtn = el("btnManageDescriptions");
-
-  if(manageDescBtn){
-
-    manageDescBtn.classList.toggle(lockClass, isLocked);
-
-    if(isLocked) manageDescBtn.setAttribute("disabled","disabled");
-
-    else manageDescBtn.removeAttribute("disabled");
-
-  }
-
-  if(isLocked){
-
-    showVendorDropdown(false);
-
-    const panel = el("vendorManagerPanel");
-
-    if(panel) panel.style.display="none";
-
-    showDescriptionDropdown(false);
-
-    const descPanel = el("descManagerPanel");
-
-    if(descPanel) descPanel.style.display="none";
-
-    const overlay = el("descOverlay");
-
-    if(overlay) overlay.classList.remove("show");
-
-  }
-
-  // tab close (supprimer projet)
-
-  const tabCloses = document.querySelectorAll(".tab-close");
-
-  tabCloses.forEach(n=>{
-
-    n.classList.toggle(lockClass, isLocked);
-
-    if(isLocked) n.setAttribute("aria-disabled","true");
-
-    else n.removeAttribute("aria-disabled");
-
-  });
-
-  // boutons dangereux (supprimer) : forcer disable en mode verrou
-
-  const dangerBtns = document.querySelectorAll("button.btn-danger");
-
-  dangerBtns.forEach(btn=>{
-
-    btn.classList.toggle(lockClass, isLocked);
-
-    if(isLocked) btn.setAttribute("disabled","disabled");
-
-    else btn.removeAttribute("disabled");
-
-  });
-
-  // visuel live
-
-  const live = el("masterLive");
-
-  if(live){
-
-    live.classList.toggle("is-disabled", isLocked);
-
-  }
-
-  const plive = el("projectLive");
-
-  if(plive){
-    plive.classList.toggle("is-disabled", isLocked);
-  }
-}
-window.setLockState = setLockState;
 window.updateRoleUI = updateRoleUI;
 
 
@@ -2731,6 +2654,77 @@ function getWorkloadRange(tasks, boundsTasks=tasks, stateRef=null){
 
   return {start:new Date(year,8,1), end:new Date(year+1,7,31)};
 
+}
+
+function getMasterGanttExportRange(tasksAllOverride=null){
+  const tasks = (tasksAllOverride || filteredTasks()).filter(t=>t.start && t.end);
+  const {min, max} = getTasksDateBounds(tasks);
+  if(!min || !max) return null;
+  const typeNode = el("ganttExportRangeType");
+  const yearNode = el("ganttExportRangeYear");
+  const startNode = el("ganttExportRangeStart");
+  const endNode = el("ganttExportRangeEnd");
+  const type = typeNode ? typeNode.value : "all";
+  if(type === "all") return {start:min, end:max};
+  if(type === "custom"){
+    let s = parseInputDate(startNode?.value) || min;
+    let e = parseInputDate(endNode?.value) || max;
+    if(e < s){ const tmp = s; s = e; e = tmp; }
+    return {start:s, end:e};
+  }
+  let year = parseInt(yearNode?.value || String(min.getFullYear()),10);
+  if(isNaN(year)){
+    year = min.getFullYear();
+  }
+  const endOfDay = (d)=>{ const x=new Date(d.getTime()); x.setHours(23,59,59,999); return x; };
+  if(type === "civil"){
+    return {start:new Date(year,0,1), end:endOfDay(new Date(year,11,31))};
+  }
+  // school year: 1er sept -> 31 aout (annee suivante)
+  const schoolYear = (min.getMonth() >= 8) ? min.getFullYear() : (min.getFullYear() - 1);
+  if(isNaN(year)) year = schoolYear;
+  return {start:new Date(year,8,1), end:endOfDay(new Date(year+1,7,31))};
+}
+
+function initGanttExportRangeUI(tasksAllOverride=null){
+  const tasks = (tasksAllOverride || filteredTasks()).filter(t=>t.start && t.end);
+  const {min, max} = getTasksDateBounds(tasks);
+  const typeNode = el("ganttExportRangeType");
+  const yearNode = el("ganttExportRangeYear");
+  const startNode = el("ganttExportRangeStart");
+  const endNode = el("ganttExportRangeEnd");
+  if(!typeNode || !yearNode || !startNode || !endNode) return;
+  if(!min || !max){
+    startNode.value = "";
+    endNode.value = "";
+    yearNode.innerHTML = "";
+    return;
+  }
+  const minYear = min.getFullYear() - 1;
+  const maxYear = max.getFullYear() + 1;
+  const prevType = yearNode.dataset.rangeType || "";
+  let opts = "";
+  const isSchool = (typeNode.value === "school");
+  for(let y=minYear; y<=maxYear; y++){
+    const label = isSchool ? `${y}-${y+1}` : `${y}`;
+    opts += `<option value="${y}">${label}</option>`;
+  }
+  yearNode.innerHTML = opts;
+  if(!yearNode.value || prevType !== typeNode.value){
+    let defaultYear = min.getFullYear();
+    if(typeNode.value === "school"){
+      defaultYear = (min.getMonth() >= 8) ? min.getFullYear() : (min.getFullYear() - 1);
+    }
+    yearNode.value = String(defaultYear);
+  }
+  yearNode.dataset.rangeType = typeNode.value;
+  if(!startNode.value) startNode.value = toDateInput(min);
+  if(!endNode.value) endNode.value = toDateInput(max);
+  const showDates = (typeNode.value === "custom");
+  const showYear = (typeNode.value === "civil" || typeNode.value === "school");
+  startNode.style.display = showDates ? "inline-block" : "none";
+  endNode.style.display = showDates ? "inline-block" : "none";
+  yearNode.style.display = showYear ? "inline-block" : "none";
 }
 
 function syncWorkloadFilterUI(tasks, boundsTasks=tasks, uiIds=null, stateRef=null){
@@ -3450,6 +3444,101 @@ function renderProjectTasks(projectId){
 
 // Nouvelle version : 1 tâche = 1 ligne dans le gantt maître
 
+function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverride=null){
+  const tasksAll = (tasksOverride || filteredTasks()).filter(t=>t.start && t.end);
+  if(tasksAll.length===0) return "<div class='gantt-empty'>Aucune tâche date.</div>";
+
+  const rs = rangeStart || null;
+  const re = rangeEnd || null;
+  const tasks = (!rs || !re) ? tasksAll : tasksAll.filter(t=>{
+    const s = new Date(t.start+"T00:00:00");
+    const e = new Date(t.end+"T00:00:00");
+    return e >= rs && s <= re;
+  });
+
+  if(tasks.length===0) return "<div class='gantt-empty'>Aucune tâche date.</div>";
+
+  const minStart = rs || tasks.map(t=>new Date(t.start+"T00:00:00")).reduce((a,b)=>a<b?a:b);
+  const maxEnd   = re || tasks.map(t=>new Date(t.end+"T00:00:00")).reduce((a,b)=>a>b?a:b);
+
+  const weeks=[];
+  for(let w=startOfWeek(minStart); w<=addDays(startOfWeek(maxEnd),0); w=addDays(w,7)) weeks.push(new Date(w));
+  const vacWeeks = weeks.map(w=>isVacationWeek(w));
+
+  tasks.sort((a,b)=>{
+    const oa=(taskOrderMap[a.id]||9999)-(taskOrderMap[b.id]||9999);
+    if(oa!==0) return oa;
+    const sa=Date.parse(a.start||"9999-12-31"), sb=Date.parse(b.start||"9999-12-31");
+    if(sa!==sb) return sa-sb;
+    return taskTitle(a).localeCompare(taskTitle(b));
+  });
+
+  const hideVendor = !ganttColVisibility.masterVendor;
+  const hideStatus = !ganttColVisibility.masterStatus;
+  const tableClass = `table${hideVendor ? " hide-vendor" : ""}${hideStatus ? " hide-status" : ""}`;
+
+  let html=`<div class='tablewrap gantt-table'><table class='${tableClass}' style='--gcol1:150px;--gcol2:140px;--gcol3:120px'>`;
+  html+="<thead><tr><th class='gantt-col-task' style='width:150px'>Tâche</th><th class='gantt-col-vendor' style='width:140px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
+
+  weeks.forEach((w,i)=>{
+    const info=isoWeekInfo(w);
+    const wEnd=endOfWorkWeek(w);
+    const range=`${w.toLocaleDateString("fr-FR",{day:"2-digit"})}-${wEnd.toLocaleDateString("fr-FR",{day:"2-digit"})}/${wEnd.toLocaleDateString("fr-FR",{month:"2-digit",year:"2-digit"})}`;
+    const weekLabel = `S${String(info.week).padStart(2,"0")}`;
+    const mondayLabel = formatShortDate(w);
+    const todayClass = isTodayInWeek(w) ? " week-today" : "";
+    const vacClass = vacWeeks[i] ? " vac-week" : "";
+    html+=`<th class="week-cell${todayClass}${vacClass}" data-range="${range}" style='width:72px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
+  });
+
+  html+="</tr></thead><tbody>";
+
+  tasks.forEach(t=>{
+    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
+    const mainStatus = statuses[0] || "";
+    const color = ownerColor(t.owner);
+    const p = state?.projects?.find(x=>x.id===t.projectId);
+    const projectName = (p?.name || "Projet").trim() || "Projet";
+    const vendorBadges = (()=>{
+      const set = new Set();
+      if(t.vendor) set.add(t.vendor);
+      const typ = ownerType(t.owner);
+      if(typ === "interne") set.add("Équipe interne");
+      if(typ === "rsgri") set.add("RSG/RI");
+      if(typ === "externe" && !t.vendor) set.add("Prestataire externe");
+      if(set.size===0) return "<span class='text-muted'></span>";
+      return Array.from(set).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"})).map(v=>vendorBadge(v)).join(" ");
+    })();
+
+    const todayKey = new Date().toISOString().slice(0,10);
+    const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
+    const isLate = !!(t.end && t.end < todayKey);
+    const rowClassWithToday = `gantt-row${isToday ? " today-row" : ""}${isLate ? " late-row" : ""}`;
+    html+=`<tr class="${rowClassWithToday}" data-task="${t.id}">`;
+    html+=`<td class="gantt-col-task"><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="gantt-task-name">${attrEscape(projectName)}</span></td>`;
+    html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
+    html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
+
+    weeks.forEach((w,i)=>{
+      const sDate=new Date(t.start+"T00:00:00");
+      const eDate=new Date(t.end+"T00:00:00");
+      const geo=barGeometry(sDate,eDate,w);
+      if(geo.days>0){
+        const title = t.vendor ? ` title="Prestataire : ${attrEscape(t.vendor)}"` : "";
+        const vacClass = vacWeeks[i] ? " vac-week" : "";
+        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color}"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
+      }else{
+        const vacClass = vacWeeks[i] ? " vac-week" : "";
+        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+      }
+    });
+    html+="</tr>";
+  });
+
+  html+="</tbody></table></div>";
+  return html;
+}
+
 function renderMasterGantt(){
 
   const wrap = el("masterGantt");
@@ -3492,7 +3581,7 @@ function renderMasterGantt(){
 
 
 
-  let html="<div class='tablewrap gantt-table'><table class='table' style='--gcol1:150px;--gcol2:140px;--gcol3:90px'>";
+  let html="<div class='tablewrap gantt-table'><table class='table' style='--gcol1:150px;--gcol2:140px;--gcol3:120px'>";
 
   html+="<thead><tr><th class='gantt-col-task' style='width:150px'>Tâche</th><th class='gantt-col-vendor' style='width:140px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
 
@@ -5159,7 +5248,7 @@ function bind(){
   updateTopbarHeight();
   updateSidebarTop();
   applySidebarTopLock();
-  setLockState(isLocked);
+  applyRoleAccess();
   initThemePicker();
   const switchBtn = el("btnSwitchUser");
   if(switchBtn){
@@ -5171,7 +5260,7 @@ function bind(){
       }catch(e){}
       const lock = document.getElementById("lockscreen");
       if(lock) lock.classList.remove("hidden");
-      setLockState(true);
+      applyRoleAccess();
       try{ window.refreshLoginUsers?.(); }catch(e){}
     });
   }
@@ -5220,7 +5309,6 @@ function bind(){
     if(e.target && e.target.id==="configModal") closeConfigModal();
   });
   el("btnSave")?.addEventListener("click", ()=>{
-    if(isLocked) return;
     saveState();
     try{ saveUsersToSupabase(loadUsers()); }catch(e){}
     // Flux simple : tlchargement d'un JSON  craser manuellement dans le dossier projet.
@@ -5257,6 +5345,16 @@ function bind(){
 
     if(typeof openExportMasterModal === "function") openExportMasterModal();
 
+  });
+  el("btnExportMasterGantt")?.addEventListener("click", (e)=>{
+    e.preventDefault();
+    const modal = el("exportMasterGanttModal");
+    if(modal){
+      initGanttExportRangeUI(state?.tasks || []);
+      modal.classList.remove("hidden");
+      modal.style.display="flex";
+      modal.setAttribute("aria-hidden","false");
+    }
   });
 
   el("workloadRangeType")?.addEventListener("change", ()=>{
@@ -5465,6 +5563,63 @@ function bind(){
 
     });
 
+  }
+
+  const ganttModal = el("exportMasterGanttModal");
+  const btnGanttRun = el("btnExportMasterGanttRun");
+  const btnGanttCancel = el("btnExportMasterGanttCancel");
+  const ganttType = el("ganttExportRangeType");
+  const ganttYear = el("ganttExportRangeYear");
+
+  if(ganttModal && btnGanttRun && btnGanttCancel){
+    const closeGantt = ()=>{
+      ganttModal.classList.add("hidden");
+      ganttModal.style.display="none";
+      ganttModal.setAttribute("aria-hidden","true");
+    };
+    btnGanttCancel.onclick = ()=> closeGantt();
+    btnGanttRun.onclick = ()=>{
+      const allTasks = state?.tasks || [];
+      const range = getMasterGanttExportRange(allTasks);
+      if(!range){ alert("Aucune tâche datée pour l'export."); return; }
+      const tasksAll = allTasks.filter(t=>t.start && t.end);
+      const tasksInRange = tasksAll.filter(t=>{
+        const s = new Date(t.start+"T00:00:00");
+        const e = new Date(t.end+"T00:00:00");
+        return e >= range.start && s <= range.end;
+      });
+      if(tasksInRange.length===0){
+        // fallback automatique pour l'annee scolaire si mauvais choix d'annee
+        const {min, max} = getTasksDateBounds(tasksAll);
+        const schoolYear = min ? ((min.getMonth() >= 8) ? min.getFullYear() : (min.getFullYear() - 1)) : null;
+        if(el("ganttExportRangeType")?.value === "school" && schoolYear !== null){
+          const fallbackRange = {start:new Date(schoolYear,8,1), end:new Date(schoolYear+1,7,31)};
+          const tasksFallback = tasksAll.filter(t=>{
+            const s = new Date(t.start+"T00:00:00");
+            const e = new Date(t.end+"T00:00:00");
+            return e >= fallbackRange.start && s <= fallbackRange.end;
+          });
+          if(tasksFallback.length>0){
+            closeGantt();
+            selectedProjectId = null;
+            prepareMasterGanttPrint(fallbackRange.start, fallbackRange.end);
+            window.print();
+            return;
+          }
+        }
+        alert("Aucune tâche dans cette période.");
+        return;
+      }
+      closeGantt();
+      selectedProjectId = null;
+      prepareMasterGanttPrint(range.start, range.end, tasksAll);
+      window.print();
+    };
+    ganttModal.addEventListener("click",(e)=>{
+      if(e.target===ganttModal) closeGantt();
+    });
+    ganttType?.addEventListener("change", ()=> initGanttExportRangeUI(state?.tasks || []));
+    ganttYear?.addEventListener("change", ()=> initGanttExportRangeUI(state?.tasks || []));
   }
 
   el("btnAddProject")?.addEventListener("click", ()=>{
@@ -6144,6 +6299,60 @@ function preparePrint(opts={}){
 
   }
 
+}
+
+function prepareMasterGanttPrint(rangeStart, rangeEnd, tasksAllOverride=null){
+  document.body.classList.add("print-mode");
+  const tpl = document.getElementById("printTemplate");
+  if(!tpl) return;
+  let container = document.getElementById("printInjection");
+  if(!container){
+    container = document.createElement("div");
+    container.id="printInjection";
+    document.body.prepend(container);
+  }
+  container.innerHTML = tpl.innerHTML;
+
+  const header = container.querySelector("#printHeader");
+  const meta = container.querySelector("#printMeta");
+  const legend = container.querySelector("#printLegend");
+
+  const today = new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});
+  if(header){
+    header.querySelector("h1").textContent = "Tableau maître — Gantt";
+  }
+  const rangeLabel = (rangeStart && rangeEnd)
+    ? `${formatDate(toInputDate(rangeStart))}  ${formatDate(toInputDate(rangeEnd))}`
+    : "-";
+  const tasksAll = (tasksAllOverride || filteredTasks()).filter(t=>t.start && t.end);
+  const tasksInRange = (rangeStart && rangeEnd) ? tasksAll.filter(t=>{
+    const s = new Date(t.start+"T00:00:00");
+    const e = new Date(t.end+"T00:00:00");
+    return e >= rangeStart && s <= rangeEnd;
+  }) : tasksAll;
+  if(meta){
+    const metaRows = [
+      ["Période", rangeLabel],
+      ["Date export", today],
+      ["Nombre de tâches", tasksInRange.length]
+    ];
+    meta.innerHTML = metaRows.map(([k,v])=>`<div><strong>${k}</strong><br>${v}</div>`).join("");
+  }
+  if(legend){
+    legend.innerHTML = STATUSES.map(s=>{
+      const c = STATUS_COLORS[s.v] || "#2563eb";
+      return `<span class="legend-item"><span class="legend-dot" style="background:${c};border-color:${c}"></span><span>${s.label}</span></span>`;
+    }).join("");
+  }
+
+  container.querySelectorAll(".print-dynamic").forEach(n=>n.remove());
+  const wrap = document.createElement("div");
+  wrap.className="print-dynamic";
+  const card = document.createElement("div");
+  card.className="card print-block";
+  card.innerHTML = `<div class="card-title">Gantt global</div>${buildMasterGanttHTMLForRange(rangeStart, rangeEnd, tasksAll)}`;
+  wrap.appendChild(card);
+  container.querySelector(".print-order")?.appendChild(wrap);
 }
 
 
