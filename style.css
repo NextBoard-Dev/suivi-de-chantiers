@@ -989,7 +989,7 @@ body{
 }
 .login-user-row{
   display:grid;
-  grid-template-columns:220px 1fr;
+  grid-template-columns:240px 36px 1fr;
   gap:8px;
   align-items:center;
 }
@@ -1001,6 +1001,25 @@ body{
   font-weight:700;
   color:#0f172a;
   white-space:nowrap;
+}
+.login-user-count{
+  font-size:10px;
+  font-weight:700;
+  color:#64748b;
+  background:rgba(255,255,255,0.7);
+  border:1px solid rgba(0,0,0,0.08);
+  padding:1px 6px;
+  border-radius:999px;
+  line-height:1;
+  text-align:center;
+  min-width:28px;
+  justify-self:center;
+}
+.login-user-grid-wrap{
+  align-self:start;
+}
+.login-col-head-row{
+  margin-bottom:2px;
 }
 .login-user-count{
   margin-left:auto;
@@ -1023,11 +1042,19 @@ body{
 }
 .login-col-head-row{
   display:grid;
+  grid-template-columns:240px 36px 1fr;
+  gap:8px;
+  align-items:end;
+  margin-bottom:4px;
+}
+.login-col-head-grid{
+  grid-column:3;
+}
+.login-col-head-grid{
+  display:grid;
   grid-auto-flow:column;
   grid-auto-columns:14px;
   gap:4px;
-  font-size:9px;
-  color:#64748b;
   height:40px;
   align-items:end;
 }
@@ -1040,8 +1067,11 @@ body{
   display:flex;
   align-items:flex-end;
   justify-content:center;
+  font-size:9px;
+  color:#64748b;
 }
 .login-col-head.out{color:transparent;}
+.login-col-head-spacer{display:block;}
 .login-user-grid{
   display:grid;
   grid-auto-flow:column;

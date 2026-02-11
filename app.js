@@ -2832,12 +2832,23 @@ function buildLoginHeatmap(container, events, rangeStart, rangeEnd){
   const userColors = {};
   userKeys.forEach((u,i)=>{ userColors[u] = palette[i % palette.length]; });
 
+  const headerCells = [];
+  weeks.forEach(w=>{
+    for(let row=0; row<7; row++){
+      const d = addDays(w, row);
+      const key = toLocalISODate(d);
+      const inRange = (key >= startKey && key <= endKey);
+      const short = d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"});
+      const hcls = inRange ? "in" : "out";
+      headerCells.push(`<span class="login-col-head ${hcls}">${short}</span>`);
+    }
+  });
+
   const userRows = userKeys.map(u=>{
     let max = 1;
     Object.values(byUser[u] || {}).forEach(v=>{ if(v>max) max=v; });
     const total = Object.values(byUser[u] || {}).reduce((a,b)=>a+b,0);
     const cells = [];
-    const headers = [];
     weeks.forEach(w=>{
       for(let row=0; row<7; row++){
         const d = addDays(w, row);
@@ -2849,16 +2860,10 @@ function buildLoginHeatmap(container, events, rangeStart, rangeEnd){
         const cls = inRange ? `lv${level}` : "out";
         const label = count > 0 ? count : "";
         cells.push(`<span class="login-cell ${cls}" style="background:${hexToRgba(userColors[u], 0.18 + (0.16*level))};" title="${title}">${label}</span>`);
-        if(u === userKeys[0]){
-          const short = d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"});
-          const hcls = inRange ? "in" : "out";
-          headers.push(`<span class="login-col-head ${hcls}">${short}</span>`);
-        }
       }
     });
     const label = u.includes("@") ? u : u.charAt(0).toUpperCase()+u.slice(1);
-    const headRow = (u === userKeys[0]) ? `<div class="login-col-head-row">${headers.join("")}</div>` : "";
-    return `<div class="login-user-row"><div class="login-user-name"><span class="login-user-dot" style="background:${userColors[u]};"></span>${label}<span class="login-user-count">${total}</span></div><div class="login-user-grid-wrap">${headRow}<div class="login-user-grid">${cells.join("")}</div></div></div>`;
+    return `<div class="login-user-row"><div class="login-user-name"><span class="login-user-dot" style="background:${userColors[u]};"></span>${label}</div><div class="login-user-count">${total}</div><div class="login-user-grid-wrap"><div class="login-user-grid">${cells.join("")}</div></div></div>`;
   }).join("");
 
   const legend = [0, 1, 2, 3, 4];
@@ -2866,6 +2871,9 @@ function buildLoginHeatmap(container, events, rangeStart, rangeEnd){
     <div class="login-heatmap">
       <div class="login-months">
         ${monthLabels.map(m=>`<div>${m}</div>`).join("")}
+      </div>
+      <div class="login-col-head-row login-col-head-row-global">
+        <div class="login-col-head-grid">${headerCells.join("")}</div>
       </div>
       <div class="login-users-stack">
         ${userRows || `<div class="login-empty">Aucune connexion dans la période.</div>`}
