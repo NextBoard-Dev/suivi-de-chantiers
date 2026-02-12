@@ -96,6 +96,7 @@ const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const SUPABASE_TABLE = "app_states";
 const SUPABASE_USERS_TABLE = "dashboard_users";
 const SUPABASE_LOGINS_TABLE = "dashboard_logins";
+const SUPABASE_SESSIONS_TABLE = "dashboard_sessions";
 
 
 // Auto-login (pour ne PAS utiliser la console)
@@ -313,6 +314,67 @@ window.logUserLogin = async function(payload){
     return false;
   }
 };
+
+async function sha256Hex(str){
+  const enc = new TextEncoder().encode(str || "");
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+async function createSessionToken(token, payload, ttlDays=30){
+  const sb = _getSupabaseClient();
+  if(!sb) return false;
+  const tokenHash = await sha256Hex(token);
+  const expires = new Date();
+  expires.setDate(expires.getDate() + (ttlDays || 30));
+  try{
+    const row = {
+      token_hash: tokenHash,
+      email: payload?.email || "",
+      name: payload?.name || "",
+      role: payload?.role || "user",
+      expires_at: expires.toISOString(),
+      created_at: new Date().toISOString()
+    };
+    const { error } = await sb.from(SUPABASE_SESSIONS_TABLE).insert(row);
+    if(error){ console.warn("Supabase sessions insert error", error); return false; }
+    return true;
+  }catch(e){
+    console.warn("createSessionToken failed", e);
+    return false;
+  }
+}
+
+async function validateSessionToken(token, renewDays=30){
+  const sb = _getSupabaseClient();
+  if(!sb) return null;
+  try{
+    const tokenHash = await sha256Hex(token);
+    const { data, error } = await sb
+      .from(SUPABASE_SESSIONS_TABLE)
+      .select("email,name,role,expires_at")
+      .eq("token_hash", tokenHash)
+      .maybeSingle();
+    if(error){ console.warn("Supabase sessions select error", error); return null; }
+    if(!data) return null;
+    const exp = data.expires_at ? new Date(data.expires_at) : null;
+    if(!exp || isNaN(exp) || exp < new Date()) return null;
+    if(renewDays){
+      const next = new Date();
+      next.setDate(next.getDate() + renewDays);
+      await sb.from(SUPABASE_SESSIONS_TABLE)
+        .update({ expires_at: next.toISOString() })
+        .eq("token_hash", tokenHash);
+    }
+    return { email: data.email || "", name: data.name || "", role: data.role || "user" };
+  }catch(e){
+    console.warn("validateSessionToken failed", e);
+    return null;
+  }
+}
+
+window.createSessionToken = createSessionToken;
+window.validateSessionToken = validateSessionToken;
 
 async function loadLoginsFromSupabase(startISO, endISO){
   const sb = _getSupabaseClient();
@@ -2872,7 +2934,7 @@ function buildLoginHeatmap(container, events, rangeStart, rangeEnd){
       <div class="login-months">
         ${monthLabels.map(m=>`<div>${m}</div>`).join("")}
       </div>
-      <div class="login-col-head-row login-col-head-row-global">
+      <div class="login-col-head-row">
         <div class="login-col-head-grid">${headerCells.join("")}</div>
       </div>
       <div class="login-users-stack">
@@ -5563,6 +5625,7 @@ function bind(){
         sessionStorage.removeItem("current_user");
         sessionStorage.removeItem("current_role");
         sessionStorage.removeItem("current_email");
+        localStorage.removeItem("login_session_token_v1");
       }catch(e){}
       const lock = document.getElementById("lockscreen");
       if(lock) lock.classList.remove("hidden");

@@ -604,6 +604,13 @@
     });
   }
   const REMEMBER_KEY = "remember_login_plain_v1";
+  const SESSION_TOKEN_KEY = "login_session_token_v1";
+  const SESSION_TTL_DAYS = 30;
+  function genToken(){
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");
+  }
   function loadUsers(){
     try{
       const raw = localStorage.getItem(USERS_KEY);
@@ -723,6 +730,21 @@
       lock.classList.add("hidden");
       if(window.applyRoleAccess) window.applyRoleAccess();
       if(window.updateRoleUI) window.updateRoleUI();
+      if(remember?.checked && window.createSessionToken){
+        const token = genToken();
+        localStorage.setItem(SESSION_TOKEN_KEY, token);
+        let ok = false;
+        try{
+          ok = await window.createSessionToken(token, {email: mail, name: u.name||"", role}, SESSION_TTL_DAYS);
+        }catch(e){ ok = false; }
+        if(!ok){
+          localStorage.removeItem(SESSION_TOKEN_KEY);
+          const msg = document.querySelector(".lock-msg");
+          if(msg) msg.textContent = "Session non mémorisée (erreur Supabase).";
+        }
+      }else{
+        localStorage.removeItem(SESSION_TOKEN_KEY);
+      }
       try{ window.logUserLogin?.({email: mail, name: u.name||"", role}); }catch(e){}
       return u;
     }
@@ -780,6 +802,7 @@
         if(mail){ rememberSave(mail, pwd.value||""); }
       }else{
         if(mail){ rememberClear(mail); }
+        localStorage.removeItem(SESSION_TOKEN_KEY);
       }
     });
   }
@@ -856,6 +879,23 @@
     if(window.updateRoleUI) window.updateRoleUI();
     return;
   }
+  // Auto-login via token (remember me)
+  (async ()=>{
+    try{
+      const token = localStorage.getItem(SESSION_TOKEN_KEY);
+      if(!token || !window.validateSessionToken) return;
+      const data = await window.validateSessionToken(token, SESSION_TTL_DAYS);
+      if(!data) return;
+      const role = ((data.role || "user").toLowerCase() === "admin") ? "admin" : "user";
+      sessionStorage.setItem("unlocked","1");
+      sessionStorage.setItem("current_user", data.name || "Invité");
+      sessionStorage.setItem("current_role", role);
+      sessionStorage.setItem("current_email", data.email || "");
+      lock.classList.add("hidden");
+      if(window.applyRoleAccess) window.applyRoleAccess();
+      if(window.updateRoleUI) window.updateRoleUI();
+    }catch(e){}
+  })();
   // remember me : pré-remplissage email + mot de passe
   try{
     const remembered = JSON.parse(localStorage.getItem(REMEMBER_KEY) || "null");
