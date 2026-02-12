@@ -1028,17 +1028,26 @@ function applyTheme(themeId){
 }
 function applyThemeForCurrentUser(){
   const u = getCurrentUserRecord();
-  const theme = (u && u.theme) ? u.theme : "sable";
+  const sessionTheme = sessionStorage.getItem("current_theme") || "";
+  const theme = (u && u.theme) ? u.theme : (sessionTheme || "sable");
   applyTheme(theme);
 }
 function setCurrentUserTheme(themeId){
   const name = getCurrentUserName();
+  const email = getCurrentUserEmail();
+  try{ sessionStorage.setItem("current_theme", themeId || "sable"); }catch(e){}
   if(!name){
     applyTheme(themeId);
     return;
   }
   const users = loadUsers();
-  const idx = users.findIndex(u=>u.name===name);
+  let idx = -1;
+  if(email){
+    idx = users.findIndex(u=>(u.email||"").toLowerCase()===email.toLowerCase());
+  }
+  if(idx < 0){
+    idx = users.findIndex(u=>u.name===name);
+  }
   if(idx>=0){
     users[idx].theme = themeId;
     saveUsers(users);
@@ -6180,6 +6189,7 @@ function bind(){
         sessionStorage.removeItem("current_user");
         sessionStorage.removeItem("current_role");
         sessionStorage.removeItem("current_email");
+        sessionStorage.removeItem("current_theme");
         localStorage.removeItem("login_session_token_v1");
       }catch(e){}
       const lock = document.getElementById("lockscreen");
