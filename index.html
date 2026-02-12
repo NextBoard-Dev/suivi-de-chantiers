@@ -222,6 +222,22 @@
               <input class="input input-sm" id="cfg_hours_rsg" type="number" min="0" step="0.5" />
             </div>
           </div>
+          <div id="cfg_status_section" class="config-users">
+            <div class="config-users-title">Statuts / Corps d'état</div>
+            <div class="config-users-row">
+              <input class="input" id="cfg_status_label" placeholder="Nouveau statut" />
+              <button class="btn btn-success" id="btnStatusAdd">Ajouter</button>
+            </div>
+            <div id="cfg_status_list" class="config-users-list status-list"></div>
+          </div>
+          <div id="cfg_vendor_section" class="config-users">
+            <div class="config-users-title">Prestataires externes</div>
+            <div class="config-users-row">
+              <input class="input" id="cfg_vendor_name" placeholder="Nom du prestataire" />
+              <button class="btn btn-success" id="btnVendorAdd">Ajouter</button>
+            </div>
+            <div id="cfg_vendor_list" class="config-users-list status-list"></div>
+          </div>
           <div id="cfg_users_section" class="config-users">
             <div class="config-users-title">Utilisateurs / Administrateurs</div>
             <div class="config-users-row">
@@ -239,7 +255,7 @@
               </div>
           <button class="btn btn-success" id="btnUserAdd">Ajouter</button>
             </div>
-            <div id="cfg_users_list" class="config-users-list"></div>
+            <div id="cfg_users_list" class="config-users-list status-list"></div>
           </div>
         </div>
         <div class="config-col config-col-right">
@@ -306,6 +322,9 @@
 
       <div class="section section-filters">
         <div class="section-title"><span class="section-title-icon"></span> Filtres (tableau maître)</div>
+        <label class="label">Site / Zone</label>
+        <select class="input" id="filterSite"></select>
+
         <label class="label">Projet</label>
         <select class="input" id="filterProject"></select>
 
@@ -326,7 +345,7 @@
           </div>
         </div>
         <div class="row">
-          <button class="btn btn-ghost" onclick="document.getElementById('filterProject').value='';document.getElementById('filterStatus').value='';document.getElementById('filterSearch').value='';document.getElementById('filterStartAfter').value='';document.getElementById('filterEndBefore').value='';renderAll();">Réinitialiser</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('filterSite').value='';document.getElementById('filterProject').value='';document.getElementById('filterStatus').value='';document.getElementById('filterSearch').value='';document.getElementById('filterStartAfter').value='';document.getElementById('filterEndBefore').value='';renderAll();">Réinitialiser</button>
         </div>
       </div>
 
@@ -353,10 +372,6 @@
           <span class="filters-indicator" id="filtersBadge">Tri/filtre actif</span>
           <span class="filters-indicator site-indicator hidden" id="siteBadge"></span>
           <button class="btn btn-ghost" id="btnResetSortMaster">Réinitialiser tri</button>
-          <button class="btn master-export-inline" id="btnExportMasterGantt">
-            <span class="pdf-icon" aria-hidden="true"></span>
-            Export Gantt
-          </button>
           <button class="btn master-export-inline" id="btnExportMaster">
             <span class="pdf-icon" aria-hidden="true"></span>
             Export PDF
@@ -380,7 +395,13 @@
           </table>
         </div>
         <div class="card card-spaced">
-          <div class="card-title">Gantt global (toutes tâches dates)</div>
+          <div class="row row-compact" style="justify-content:space-between;align-items:center;">
+            <div class="card-title">Gantt global</div>
+            <button class="btn master-export-inline" id="btnExportMasterGantt">
+              <span class="pdf-icon" aria-hidden="true"></span>
+              Export Gantt
+            </button>
+          </div>
           <div class="row row-compact">
             <button class="btn btn-ghost" id="btnToggleMasterVendor">Prestataire</button>
             <button class="btn btn-ghost" id="btnToggleMasterStatus">Statut</button>
@@ -535,7 +556,13 @@
         </div>
 
         <div class="card">
-          <div class="card-title"><span class="card-title-icon"></span> Gantt hebdo</div>
+          <div class="row row-compact" style="justify-content:space-between;align-items:center;">
+            <div class="card-title"><span class="card-title-icon"></span> Gantt hebdo</div>
+            <button class="btn master-export-inline" id="btnExportProjectGantt">
+              <span class="pdf-icon" aria-hidden="true"></span>
+              Export Gantt
+            </button>
+          </div>
           <div id="legend" class="legend"></div>
           <div class="gantt-toggle-row">
             <button class="btn btn-ghost" id="btnToggleProjectVendor">Prestataire</button>

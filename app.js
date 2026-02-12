@@ -551,6 +551,7 @@ let sortMaster = {key:"start", dir:"asc"};
 let sortProject = {key:"start", dir:"asc"};
 
 let unsavedChanges = false;
+let lastUndoSnapshot = null;
 
 let isLocked = true; // verrou logique = droits utilisateur (admin = false)
 const isHostedGithubPages = ()=>{
@@ -573,6 +574,7 @@ let workloadRangeTypeProject = "all";
 let workloadRangeStartProject = "";
 let workloadRangeEndProject = "";
 let workloadRangeYearProject = "";
+let ganttExportContext = "master"; // master | project
 const CONFIG_KEY = "dashboard_config_v1";
 const USERS_KEY = "dashboard_users_v1";
 let ganttColVisibility = {
@@ -589,7 +591,7 @@ let ganttColVisibility = {
 
 
 
-const STATUSES = [
+const DEFAULT_STATUSES = [
 
   {v:"CHANTIER_COMPLET", label:"Chantier complet"},
 
@@ -624,6 +626,8 @@ const STATUSES = [
   {v:"ETUDE",        label:"Étude"},
 
 ];
+
+let STATUSES = DEFAULT_STATUSES.map(s=>({ ...s }));
 
 const sortedStatuses = ()=> [...STATUSES].sort((a,b)=> a.label.localeCompare(b.label,"fr",{sensitivity:"base"}));
 
@@ -664,8 +668,19 @@ const STATUS_COLORS = {
   TERRASSEMENT:     "#8b5a2b",
 
   ETUDE:            "#0284c7",
-
 };
+const STATUS_PALETTE = [
+  "#0ea5e9",
+  "#22c55e",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#14b8a6",
+  "#84cc16",
+  "#f97316",
+  "#06b6d4",
+  "#e11d48"
+];
 
 const THEMES = [
   { id:"clair", label:"Clair neutre", swatch:["#f8fafc","#e2e8f0"] },
@@ -692,7 +707,15 @@ const THEMES = [
 
 
 
-const statusColor = (v)=> STATUS_COLORS[(v||"").toUpperCase()] || "#1f2937";
+const statusColor = (v)=>{
+  const key = (v||"").toUpperCase();
+  if(STATUS_COLORS[key]) return STATUS_COLORS[key];
+  if(!key) return "#1f2937";
+  let hash = 0;
+  for(let i=0;i<key.length;i++) hash = ((hash<<5)-hash) + key.charCodeAt(i);
+  const idx = Math.abs(hash) % STATUS_PALETTE.length;
+  return STATUS_PALETTE[idx] || "#1f2937";
+};
 
 const statusDot = (v)=> `<span class="icon-dot" style="background:${statusColor(v)};border-color:${statusColor(v)}"></span>`;
 
@@ -878,6 +901,41 @@ function saveConfig(cfg){
   try{
     localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg||{}));
   }catch(e){}
+}
+function normalizeStatusId(label){
+  const base = (label||"").trim();
+  if(!base) return "";
+  const ascii = base.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  return ascii.toUpperCase().replace(/[^A-Z0-9]+/g,"_").replace(/^_+|_+$/g,"");
+}
+function normalizeStatusList(list){
+  const out=[];
+  const seen=new Set();
+  (list||[]).forEach(item=>{
+    if(!item) return;
+    const label = (item.label || item.name || "").toString().trim();
+    if(!label) return;
+    const vRaw = (item.v || "").toString().trim();
+    const v = (vRaw ? vRaw : normalizeStatusId(label)).toUpperCase();
+    if(!v) return;
+    if(seen.has(v)) return;
+    seen.add(v);
+    out.push({v, label});
+  });
+  return out;
+}
+function loadStatusConfig(){
+  const cfg = loadConfig();
+  if(Array.isArray(cfg.statuses) && cfg.statuses.length){
+    STATUSES = normalizeStatusList(cfg.statuses);
+  }else{
+    STATUSES = deepClone(DEFAULT_STATUSES);
+  }
+}
+function saveStatusConfig(){
+  const cfg = loadConfig();
+  cfg.statuses = STATUSES;
+  saveConfig(cfg);
 }
 function getHoursConfig(){
   const cfg = loadConfig();
@@ -1174,6 +1232,136 @@ function renderUsersList(){
     };
   });
 }
+
+function refreshStatusUi(){
+  buildStatusMenu();
+  updateStatusDisplay();
+  renderFilters();
+  if(selectedProjectId) renderProject();
+  else renderMaster();
+}
+
+function renderConfigStatusList(){
+  const list = el("cfg_status_list");
+  if(!list) return;
+  if(!STATUSES || STATUSES.length===0){
+    list.innerHTML = `<div class="config-user-meta">Aucun statut</div>`;
+    return;
+  }
+  const sorted = [...STATUSES].sort((a,b)=> (a.label||"").localeCompare((b.label||""),"fr",{sensitivity:"base"}));
+  list.innerHTML = sorted.map(s=>`
+    <div class="config-user-item">
+      <div>
+        <div><strong>${attrEscape(s.label||"")}</strong></div>
+        <div class="config-user-meta">${attrEscape(s.v||"")}</div>
+      </div>
+      <div class="config-user-actions">
+        <button class="btn btn-ghost cfg-status-edit" data-v="${attrEscape(s.v||"")}">Renommer</button>
+        <button class="btn btn-danger cfg-status-del" data-v="${attrEscape(s.v||"")}">Supprimer</button>
+      </div>
+    </div>
+  `).join("");
+
+  list.querySelectorAll(".cfg-status-edit").forEach(btn=>{
+    btn.onclick = ()=>{
+      const v = (btn.dataset.v || "").toUpperCase();
+      const s = STATUSES.find(x=>x.v===v);
+      if(!s) return;
+      const next = prompt("Nouveau libellé du statut :", s.label || "") || "";
+      const trimmed = next.trim();
+      if(!trimmed) return;
+      s.label = trimmed;
+      saveStatusConfig();
+      renderConfigStatusList();
+      refreshStatusUi();
+    };
+  });
+
+  list.querySelectorAll(".cfg-status-del").forEach(btn=>{
+    btn.onclick = ()=>{
+      const v = (btn.dataset.v || "").toUpperCase();
+      const s = STATUSES.find(x=>x.v===v);
+      if(!s) return;
+      if(!confirm(`Supprimer le statut "${s.label}" ?`)) return;
+      STATUSES = STATUSES.filter(x=>x.v!==v);
+      // retirer de toutes les tâches
+      (state?.tasks||[]).forEach(t=>{
+        const list = parseStatuses(t.status).filter(x=>x.toUpperCase()!==v);
+        t.status = list.join(",");
+      });
+      saveStatusConfig();
+      renderConfigStatusList();
+      setStatusSelection("");
+      refreshStatusUi();
+    };
+  });
+}
+
+function renderConfigVendorsList(){
+  const list = el("cfg_vendor_list");
+  if(!list) return;
+  const registry = loadVendorsRegistry();
+  const deleted = new Set(loadDeletedVendors().map(x=>x.toLowerCase()));
+  const vendors = dedupVendors(registry).filter(v=>!deleted.has(v.toLowerCase()))
+    .sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+  vendorsCache = vendors.slice();
+  if(vendors.length===0){
+    list.innerHTML = `<div class="config-user-meta">Aucun prestataire</div>`;
+    return;
+  }
+  list.innerHTML = vendors.map(v=>`
+    <div class="config-user-item">
+      <div>
+        <div><strong>${attrEscape(v)}</strong></div>
+        <div class="config-user-meta">Prestataire externe</div>
+      </div>
+      <div class="config-user-actions">
+        <button class="btn btn-ghost cfg-vendor-edit" data-v="${attrEscape(v)}">Renommer</button>
+        <button class="btn btn-danger cfg-vendor-del" data-v="${attrEscape(v)}">Supprimer</button>
+      </div>
+    </div>
+  `).join("");
+
+  list.querySelectorAll(".cfg-vendor-edit").forEach(btn=>{
+    btn.onclick = ()=>{
+      const oldName = btn.dataset.v || "";
+      const next = prompt("Nouveau nom du prestataire :", oldName) || "";
+      const trimmed = next.trim();
+      if(!trimmed) return;
+      let deleted = loadDeletedVendors().filter(x=> x.toLowerCase()!==oldName.toLowerCase());
+      saveDeletedVendors(deleted);
+      vendorsCache = vendorsCache.map(x=> x.toLowerCase()===oldName.toLowerCase() ? trimmed : x);
+      vendorsCache = dedupVendors(vendorsCache).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+      saveVendorsRegistry(vendorsCache);
+      (state?.tasks||[]).forEach(t=>{
+        if((t.vendor||"").toLowerCase()===oldName.toLowerCase()) t.vendor = trimmed;
+      });
+      renderConfigVendorsList();
+      refreshVendorsList();
+      renderAll();
+    };
+  });
+
+  list.querySelectorAll(".cfg-vendor-del").forEach(btn=>{
+    btn.onclick = ()=>{
+      const name = btn.dataset.v || "";
+      if(!name) return;
+      if(!confirm(`Supprimer le prestataire "${name}" ?`)) return;
+      vendorsCache = vendorsCache.filter(x=>x.toLowerCase()!==name.toLowerCase());
+      vendorsCache = dedupVendors(vendorsCache);
+      saveVendorsRegistry(vendorsCache);
+      const deleted = Array.from(new Set([...loadDeletedVendors(), name]));
+      saveDeletedVendors(deleted);
+      (state?.tasks||[]).forEach(t=>{
+        if((t.vendor||"").toLowerCase()===name.toLowerCase()) t.vendor = "";
+      });
+      saveState();
+      renderConfigVendorsList();
+      refreshVendorsList();
+      renderAll();
+    };
+  });
+}
 function openConfigModal(){
   const modal = el("configModal");
   if(!modal) return;
@@ -1190,6 +1378,18 @@ function openConfigModal(){
   const usersSection = el("cfg_users_section");
   if(usersSection) usersSection.style.display = role==="admin" ? "block" : "none";
   if(role==="admin") renderUsersList();
+  const statusSection = el("cfg_status_section");
+  if(statusSection) statusSection.style.display = role==="admin" ? "block" : "none";
+  if(role==="admin"){
+    loadStatusConfig();
+    renderConfigStatusList();
+  }
+  const vendorSection = el("cfg_vendor_section");
+  if(vendorSection) vendorSection.style.display = role==="admin" ? "block" : "none";
+  if(role==="admin"){
+    refreshVendorsList();
+    renderConfigVendorsList();
+  }
   const loginSection = el("cfg_login_section");
   if(loginSection) loginSection.style.display = role==="admin" ? "block" : "none";
   if(role==="admin") initLoginJournalUI();
@@ -2690,6 +2890,45 @@ function updateSaveButton(){
 }
 
 function markDirty(){ unsavedChanges = true; updateSaveButton(); }
+function saveUIState(){
+  try{
+    if(!state) return;
+    state.ui = state.ui || {};
+    state.ui.filters = {
+      site: el("filterSite")?.value || "",
+      project: el("filterProject")?.value || "",
+      status: el("filterStatus")?.value || "",
+      search: el("filterSearch")?.value || "",
+      startAfter: el("filterStartAfter")?.value || "",
+      endBefore: el("filterEndBefore")?.value || ""
+    };
+  }catch(e){}
+}
+
+function saveUndoSnapshot(){
+  try{
+    lastUndoSnapshot = {
+      projects: deepClone(state.projects || []),
+      tasks: deepClone(state.tasks || []),
+      selectedProjectId,
+      selectedTaskId
+    };
+  }catch(e){
+    console.warn("Undo snapshot failed", e);
+  }
+}
+
+function restoreUndoSnapshot(){
+  if(!lastUndoSnapshot) return false;
+  state.projects = deepClone(lastUndoSnapshot.projects || []);
+  state.tasks = deepClone(lastUndoSnapshot.tasks || []);
+  selectedProjectId = lastUndoSnapshot.selectedProjectId || null;
+  selectedTaskId = lastUndoSnapshot.selectedTaskId || null;
+  lastUndoSnapshot = null;
+  markDirty();
+  renderAll();
+  return true;
+}
 
 function clearDirty(){ unsavedChanges = false; updateSaveButton(); }
 
@@ -3938,11 +4177,11 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
     const info=isoWeekInfo(w);
     const wEnd=endOfWorkWeek(w);
     const range=`${w.toLocaleDateString("fr-FR",{day:"2-digit"})}-${wEnd.toLocaleDateString("fr-FR",{day:"2-digit"})}/${wEnd.toLocaleDateString("fr-FR",{month:"2-digit",year:"2-digit"})}`;
-    const weekLabel = `S${String(info.week).padStart(2,"0")}`;
+    const weekLabel = `${info.week}`;
     const mondayLabel = formatShortDate(w);
     const todayClass = isTodayInWeek(w) ? " week-today" : "";
     const vacClass = vacWeeks[i] ? " vac-week" : "";
-    html+=`<th class="week-cell${todayClass}${vacClass}" data-range="${range}" style='width:72px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
+    html+=`<th class="week-cell${todayClass}${vacClass}" data-range="${range}" style='width:32px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
   });
 
   html+="</tr></thead><tbody>";
@@ -3970,6 +4209,103 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
     const rowClassWithToday = `gantt-row${isToday ? " today-row" : ""}${isLate ? " late-row" : ""}`;
     html+=`<tr class="${rowClassWithToday}" data-task="${t.id}">`;
     html+=`<td class="gantt-col-task"><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="gantt-task-name">${attrEscape(projectName)}</span></td>`;
+    html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
+    html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
+
+    weeks.forEach((w,i)=>{
+      const sDate=new Date(t.start+"T00:00:00");
+      const eDate=new Date(t.end+"T00:00:00");
+      const geo=barGeometry(sDate,eDate,w);
+      if(geo.days>0){
+        const title = t.vendor ? ` title="Prestataire : ${attrEscape(t.vendor)}"` : "";
+        const vacClass = vacWeeks[i] ? " vac-week" : "";
+        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color}"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
+      }else{
+        const vacClass = vacWeeks[i] ? " vac-week" : "";
+        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+      }
+    });
+    html+="</tr>";
+  });
+
+  html+="</tbody></table></div>";
+  return html;
+}
+
+function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverride=null){
+  const tasksAll = (tasksOverride || []).filter(t=>t.start && t.end);
+  if(tasksAll.length===0) return "<div class='gantt-empty'>Aucune tâche date.</div>";
+  const rs = rangeStart || null;
+  const re = rangeEnd || null;
+  const tasks = (!rs || !re) ? tasksAll : tasksAll.filter(t=>{
+    const s = new Date(t.start+"T00:00:00");
+    const e = new Date(t.end+"T00:00:00");
+    return e >= rs && s <= re;
+  });
+  if(tasks.length===0) return "<div class='gantt-empty'>Aucune tâche date.</div>";
+
+  const minStart = rs || tasks.map(t=>new Date(t.start+"T00:00:00")).reduce((a,b)=>a<b?a:b);
+  const maxEnd   = re || tasks.map(t=>new Date(t.end+"T00:00:00")).reduce((a,b)=>a>b?a:b);
+  const displayStart = rs ? startOfWeek(rs) : minStart;
+  const displayEnd = re ? endOfWorkWeek(re) : maxEnd;
+
+  const weeks=[];
+  for(let w=startOfWeek(displayStart); w<=addDays(startOfWeek(displayEnd),0); w=addDays(w,7)) weeks.push(new Date(w));
+  const vacWeeks = weeks.map(w=>isVacationWeek(w));
+
+  tasks.sort((a,b)=>{
+    const oa=(taskOrderMap[a.id]||9999)-(taskOrderMap[b.id]||9999);
+    if(oa!==0) return oa;
+    const sa=Date.parse(a.start||"9999-12-31"), sb=Date.parse(b.start||"9999-12-31");
+    if(sa!==sb) return sa-sb;
+    return taskTitle(a).localeCompare(taskTitle(b));
+  });
+
+  const hideVendor = !ganttColVisibility.projectVendor;
+  const hideStatus = !ganttColVisibility.projectStatus;
+  const tableClass = `table${hideVendor ? " hide-vendor" : ""}${hideStatus ? " hide-status" : ""}`;
+
+  let html=`<div class='tablewrap gantt-table'><table class='${tableClass}' style='--gcol1:150px;--gcol2:120px;--gcol3:120px'>`;
+  html+="<thead><tr><th class='gantt-task-col-project gantt-col-task'>Tâche</th><th class='gantt-col-vendor' style='width:120px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
+
+  weeks.forEach((w,i)=>{
+    const info=isoWeekInfo(w);
+    const wEnd=endOfWorkWeek(w);
+    const range=`${w.toLocaleDateString("fr-FR",{day:"2-digit"})}-${wEnd.toLocaleDateString("fr-FR",{day:"2-digit"})}/${wEnd.toLocaleDateString("fr-FR",{month:"2-digit",year:"2-digit"})}`;
+    const weekLabel = `${info.week}`;
+    const mondayLabel = formatShortDate(w);
+    const todayClass = isTodayInWeek(w) ? " week-today" : "";
+    const vacClass = vacWeeks[i] ? " vac-week" : "";
+    html+=`<th class="week-cell${todayClass}${vacClass}" data-range="${range}" style='width:32px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
+  });
+
+  html+="</tr></thead><tbody>";
+
+  tasks.forEach(t=>{
+    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
+    const mainStatus = statuses[0] || "";
+    const color = ownerColor(t.owner);
+    const vendorBadges = (()=> {
+      const set = new Set();
+      if(t.vendor) set.add(t.vendor);
+      const typ = ownerType(t.owner);
+      if(typ === "interne") set.add("Équipe interne");
+      if(typ === "rsgri") set.add("RSG/RI");
+      if(typ === "externe" && !t.vendor) set.add("Prestataire externe");
+      if(set.size===0) return "<span class='text-muted'></span>";
+      return Array.from(set).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"})).map(v=>vendorBadge(v)).join(" ");
+    })();
+
+    const todayKey = new Date().toISOString().slice(0,10);
+    const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
+    const isLate = !!(t.end && t.end < todayKey);
+    const rowClassWithToday = `gantt-row${isToday ? " today-row" : ""}${isLate ? " late-row" : ""}`;
+    html+=`<tr class="${rowClassWithToday}" data-task="${t.id}">`;
+    const p = state?.projects?.find(x=>x.id===t.projectId);
+    const sub = (p?.subproject || "").trim();
+    const taskDesc = (t.roomNumber || "").trim();
+    const label = [sub, taskDesc].filter(Boolean).join("  ");
+    html+=`<td class="gantt-task-col-project gantt-col-task"><b><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></b> <span class="gantt-task-name">${attrEscape(label)}</span></td>`;
     html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
     html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
 
@@ -4838,6 +5174,27 @@ function renderWorkloadChart(tasks){
 
 function renderFilters(){
 
+  const fsSite = el("filterSite");
+  if(fsSite){
+    const baseSites = Object.keys(SITE_PHOTOS || {});
+    const projSites = (state.projects || []).map(p=>String(p?.site||"").trim()).filter(Boolean);
+    const all = [...baseSites, ...projSites];
+    const canonMap = new Map();
+    all.forEach(s=>{
+      const raw = String(s || "").trim();
+      if(!raw) return;
+      const key = raw.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
+      if(!canonMap.has(key)) canonMap.set(key, raw);
+    });
+    const sites = Array.from(canonMap.values())
+      .sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+    const current = fsSite.value || "";
+    let h=`<option value="">Tous</option>`;
+    sites.forEach(s=>{ h+=`<option value="${attrEscape(s)}">${attrEscape(s)}</option>`; });
+    fsSite.innerHTML=h;
+    if(current && sites.includes(current)) fsSite.value = current;
+  }
+
   const sel = el("filterProject");
 
   if(sel){
@@ -5147,6 +5504,7 @@ function renderMasterMetrics(tasks){
 
 function filteredTasks(){
 
+  const fsite = el("filterSite")?.value || "";
   const fp = el("filterProject")?.value || "";
 
   const fs = el("filterStatus")?.value || "";
@@ -5164,6 +5522,8 @@ function filteredTasks(){
     if(fs && !parseStatuses(t.status).includes(fs)) return false;
 
     const p = state.projects.find(x=>x.id===t.projectId);
+    const pSite = String(p?.site || "");
+    if(fsite && pSite !== fsite) return false;
 
     if(q){
 
@@ -5658,7 +6018,7 @@ function renderAll(){
   refreshDescriptionsList();
   // rinitialiser les filtres visibles pour éviter un filtrage bloquant
 
-  ["filterProject","filterStatus","filterSearch","filterStartAfter","filterEndBefore"].forEach(id=>{
+  ["filterSite","filterProject","filterStatus","filterSearch","filterStartAfter","filterEndBefore"].forEach(id=>{
 
     const n=el(id);
 
@@ -5685,6 +6045,7 @@ function renderAll(){
 
 function bind(){
 
+  loadStatusConfig();
   buildStatusMenu();
 
   setStatusSelection("");
@@ -5731,7 +6092,42 @@ function bind(){
     if(isLocked) return;
     openConfigModal();
   });
+  el("btnStatusAdd")?.addEventListener("click", ()=>{
+    if(isLocked) return;
+    const input = el("cfg_status_label");
+    const label = (input?.value || "").trim();
+    if(!label) return;
+    const v = normalizeStatusId(label).toUpperCase();
+    if(!v) return;
+    if(STATUSES.some(s=>s.v===v)){
+      alert("Statut déjà existant.");
+      return;
+    }
+    STATUSES.push({v, label});
+    saveStatusConfig();
+    if(input) input.value = "";
+    renderConfigStatusList();
+    refreshStatusUi();
+  });
+  el("btnVendorAdd")?.addEventListener("click", ()=>{
+    if(isLocked) return;
+    const input = el("cfg_vendor_name");
+    const name = (input?.value || "").trim();
+    if(!name) return;
+    const registry = loadVendorsRegistry();
+    if(registry.some(v=>v.toLowerCase()===name.toLowerCase())){
+      alert("Prestataire déjà existant.");
+      return;
+    }
+    const next = dedupVendors([...registry, name]).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+    saveVendorsRegistry(next);
+    if(input) input.value = "";
+    refreshVendorsList();
+    renderConfigVendorsList();
+    renderAll();
+  });
   el("btnConfigSave")?.addEventListener("click", ()=>{
+    const prev = loadConfig();
     const cfg = {
       name: el("cfg_name")?.value || "",
       http: el("cfg_http")?.value || "",
@@ -5739,7 +6135,8 @@ function bind(){
       back: el("cfg_back")?.value || "",
       hours_internal: el("cfg_hours_internal")?.value || "",
       hours_external: el("cfg_hours_external")?.value || "",
-      hours_rsg: el("cfg_hours_rsg")?.value || ""
+      hours_rsg: el("cfg_hours_rsg")?.value || "",
+      statuses: prev.statuses || STATUSES
     };
     saveConfig(cfg);
     closeConfigModal();
@@ -5841,7 +6238,21 @@ function bind(){
     e.preventDefault();
     const modal = el("exportMasterGanttModal");
     if(modal){
+      ganttExportContext = "master";
       initGanttExportRangeUI(state?.tasks || []);
+      modal.classList.remove("hidden");
+      modal.style.display="flex";
+      modal.setAttribute("aria-hidden","false");
+    }
+  });
+  el("btnExportProjectGantt")?.addEventListener("click", (e)=>{
+    e.preventDefault();
+    if(!selectedProjectId) return;
+    const modal = el("exportMasterGanttModal");
+    if(modal){
+      ganttExportContext = "project";
+      const projectTasks = state.tasks.filter(t=>t.projectId===selectedProjectId);
+      initGanttExportRangeUI(projectTasks);
       modal.classList.remove("hidden");
       modal.style.display="flex";
       modal.setAttribute("aria-hidden","false");
@@ -6070,7 +6481,10 @@ function bind(){
     };
     btnGanttCancel.onclick = ()=> closeGantt();
     btnGanttRun.onclick = ()=>{
-      const allTasks = state?.tasks || [];
+      const isProject = ganttExportContext === "project";
+      const allTasks = isProject && selectedProjectId
+        ? state.tasks.filter(t=>t.projectId===selectedProjectId)
+        : (state?.tasks || []);
       const range = getMasterGanttExportRange(allTasks);
       if(!range){ alert("Aucune tâche datée pour l'export."); return; }
       const tasksAll = allTasks.filter(t=>t.start && t.end);
@@ -6102,20 +6516,36 @@ function bind(){
         return;
       }
       closeGantt();
-      selectedProjectId = null;
-      prepareMasterGanttPrint(range.start, range.end, tasksAll);
+      if(isProject){
+        prepareProjectGanttPrint(range.start, range.end, tasksAll);
+      }else{
+        selectedProjectId = null;
+        prepareMasterGanttPrint(range.start, range.end, tasksAll);
+      }
       window.print();
     };
     ganttModal.addEventListener("click",(e)=>{
       if(e.target===ganttModal) closeGantt();
     });
-    ganttType?.addEventListener("change", ()=> initGanttExportRangeUI(state?.tasks || []));
-    ganttYear?.addEventListener("change", ()=> initGanttExportRangeUI(state?.tasks || []));
+    ganttType?.addEventListener("change", ()=>{
+      const tasks = (ganttExportContext==="project" && selectedProjectId)
+        ? state.tasks.filter(t=>t.projectId===selectedProjectId)
+        : (state?.tasks || []);
+      initGanttExportRangeUI(tasks);
+    });
+    ganttYear?.addEventListener("change", ()=>{
+      const tasks = (ganttExportContext==="project" && selectedProjectId)
+        ? state.tasks.filter(t=>t.projectId===selectedProjectId)
+        : (state?.tasks || []);
+      initGanttExportRangeUI(tasks);
+    });
   }
 
   el("btnAddProject")?.addEventListener("click", ()=>{
 
     if(isLocked) return;
+
+    saveUndoSnapshot();
 
     const id = uid();
 
@@ -6138,6 +6568,8 @@ function bind(){
     if(isLocked) return;
 
     if(!selectedProjectId) return;
+
+    saveUndoSnapshot();
 
     const p = state.projects.find(x=>x.id===selectedProjectId);
 
@@ -6168,6 +6600,8 @@ function bind(){
 
     if(!confirm("Supprimer ce projet et toutes ses tâches ? Cette action est définitive.")) return;
 
+    saveUndoSnapshot();
+
     state.projects = state.projects.filter(p=>p.id!==selectedProjectId);
 
     state.tasks    = state.tasks.filter(t=>t.projectId!==selectedProjectId);
@@ -6187,6 +6621,8 @@ function bind(){
     if(isLocked) return;
 
     if(!selectedProjectId) return;
+
+    saveUndoSnapshot();
 
     const id=uid();
 
@@ -6231,6 +6667,8 @@ function bind(){
 
     if(!confirm("Supprimer cette tâche ?")) return;
 
+    saveUndoSnapshot();
+
     state.tasks = state.tasks.filter(t=> !(t.id===selectedTaskId && t.projectId===selectedProjectId));
 
     selectedTaskId = null;
@@ -6248,6 +6686,8 @@ function bind(){
     if(isLocked) return;
 
     if(!selectedProjectId) return;
+
+    saveUndoSnapshot();
 
     let t = state.tasks.find(x=>x.id===selectedTaskId && x.projectId===selectedProjectId);
 
@@ -6293,12 +6733,22 @@ function bind(){
 
   });
 
-  ["filterProject","filterStatus","filterSearch","filterStartAfter","filterEndBefore"].forEach(id=>{
+  ["filterSite","filterProject","filterStatus","filterSearch","filterStartAfter","filterEndBefore"].forEach(id=>{
 
-    const n=el(id); 
+    const n=el(id);
 
     if(n) n.addEventListener("input", ()=>{ renderMaster(); saveUIState(); markDirty(); });
 
+  });
+
+  document.addEventListener("keydown",(e)=>{
+    if(e.defaultPrevented) return;
+    if(!(e.ctrlKey || e.metaKey) || e.shiftKey) return;
+    if(String(e.key).toLowerCase()!=="z") return;
+    const target = e.target;
+    const tag = (target?.tagName || "").toLowerCase();
+    if(tag==="input" || tag==="textarea" || target?.isContentEditable) return;
+    if(restoreUndoSnapshot()) e.preventDefault();
   });
 
   setupVendorPicker();
@@ -6856,30 +7306,83 @@ function prepareMasterGanttPrint(rangeStart, rangeEnd, tasksAllOverride=null){
   setTimeout(()=> fitMasterGanttPrint(container), 0);
 }
 
+function prepareProjectGanttPrint(rangeStart, rangeEnd, tasksAllOverride=null){
+  document.body.classList.add("print-mode");
+  document.body.classList.add("print-gantt-project");
+  const tpl = document.getElementById("printTemplate");
+  if(!tpl) return;
+  let container = document.getElementById("printInjection");
+  if(!container){
+    container = document.createElement("div");
+    container.id="printInjection";
+    document.body.prepend(container);
+  }
+  container.innerHTML = tpl.innerHTML;
+
+  const header = container.querySelector("#printHeader");
+  const meta = container.querySelector("#printMeta");
+  const legend = container.querySelector("#printLegend");
+
+  const today = new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});
+  const p = state?.projects?.find(x=>x.id===selectedProjectId);
+  const projectName = (p?.name || "Projet").trim() || "Projet";
+  if(header){
+    header.querySelector("h1").textContent = `${projectName} — Gantt`;
+  }
+  const rangeLabel = (rangeStart && rangeEnd)
+    ? `${formatDate(toInputDate(rangeStart))}  ${formatDate(toInputDate(rangeEnd))}`
+    : "-";
+  const tasksAll = (tasksAllOverride || []).filter(t=>t.start && t.end);
+  const tasksInRange = (rangeStart && rangeEnd) ? tasksAll.filter(t=>{
+    const s = new Date(t.start+"T00:00:00");
+    const e = new Date(t.end+"T00:00:00");
+    return e >= rangeStart && s <= rangeEnd;
+  }) : tasksAll;
+  if(meta){
+    const metaRows = [
+      ["Projet", projectName],
+      ["Période", rangeLabel],
+      ["Date export", today],
+      ["Nombre de tâches", tasksInRange.length]
+    ];
+    meta.innerHTML = metaRows.map(([k,v])=>`<div><strong>${k}</strong><br>${v}</div>`).join("");
+  }
+  if(legend){
+    legend.innerHTML = STATUSES.map(s=>{
+      const c = STATUS_COLORS[s.v] || "#2563eb";
+      return `<span class="legend-item"><span class="legend-dot" style="background:${c};border-color:${c}"></span><span>${s.label}</span></span>`;
+    }).join("");
+  }
+
+  container.querySelectorAll(".print-dynamic").forEach(n=>n.remove());
+  const wrap = document.createElement("div");
+  wrap.className="print-dynamic";
+  const card = document.createElement("div");
+  card.className="card print-block";
+  card.innerHTML = `<div class="card-title">Gantt hebdo</div>${buildProjectGanttHTMLForRange(rangeStart, rangeEnd, tasksAll)}`;
+  wrap.appendChild(card);
+  container.querySelector(".print-order")?.appendChild(wrap);
+
+  setTimeout(()=> fitMasterGanttPrint(container), 0);
+}
+
 function fitMasterGanttPrint(container){
   if(!container) return;
-  const tableWrap = container.querySelector(".gantt-table");
-  const table = tableWrap?.querySelector("table");
-  if(!tableWrap || !table) return;
-  tableWrap.style.transform = "scale(1)";
-  tableWrap.style.transformOrigin = "top left";
-  const maxWidth = container.clientWidth || document.documentElement.clientWidth || window.innerWidth;
-  const tableWidth = table.scrollWidth || table.offsetWidth;
-  let scaleW = maxWidth / tableWidth;
+  container.style.transform = "";
+  container.style.transformOrigin = "";
+  const pageW = window.innerWidth || document.documentElement.clientWidth || 1;
+  const pageH = window.innerHeight || document.documentElement.clientHeight || 1;
+  const contentW = container.scrollWidth || container.offsetWidth || 1;
+  const contentH = container.scrollHeight || container.offsetHeight || 1;
+  let scaleW = pageW / contentW;
+  let scaleH = pageH / contentH;
   if(!isFinite(scaleW) || scaleW <= 0) scaleW = 1;
-  const header = container.querySelector(".print-header");
-  const legend = container.querySelector(".legend");
-  const headerH = header ? header.offsetHeight : 0;
-  const legendH = legend ? legend.offsetHeight : 0;
-  const pageH = window.innerHeight || document.documentElement.clientHeight;
-  const availableH = pageH ? Math.max(200, pageH - headerH - legendH - 40) : 0;
-  const tableH = tableWrap.scrollHeight || tableWrap.offsetHeight;
-  let scaleH = availableH && tableH ? (availableH / tableH) : 1;
   if(!isFinite(scaleH) || scaleH <= 0) scaleH = 1;
   const scale = Math.min(1, scaleW, scaleH);
-  tableWrap.style.transform = `scale(${scale})`;
-  tableWrap.style.transformOrigin = "top left";
-  tableWrap.style.width = `${Math.floor(100/scale)}%`;
+  container.style.transform = `scale(${scale})`;
+  container.style.transformOrigin = "top left";
+  container.style.width = `${Math.max(1, Math.floor(contentW))}px`;
+  container.style.height = `${Math.max(1, Math.floor(contentH))}px`;
 }
 
 
@@ -6888,6 +7391,7 @@ function cleanupPrint(){
 
   document.body.classList.remove("print-mode");
   document.body.classList.remove("print-gantt-master");
+  document.body.classList.remove("print-gantt-project");
 
   const container = document.getElementById("printInjection");
 

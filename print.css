@@ -1,6 +1,6 @@
-/* Impression Gantt et tableaux  mode pro A4 paysage */
+/* Impression Gantt et tableaux  mode pro A3 paysage */
 @page {
-  size: A4 landscape;
+  size: A3 landscape;
   margin: 6mm;
 }
 
@@ -32,21 +32,67 @@
 }
 
 @media print {
-  body.print-gantt-master .print-header{
+  body.print-gantt-master .print-header,
+  body.print-gantt-project .print-header{
     padding: 4mm;
     margin-bottom: 4mm;
+    width: 100%;
+    box-sizing: border-box;
   }
-  body.print-gantt-master .print-header h1{ font-size: 18px; }
-  body.print-gantt-master .print-meta{ font-size: 9.5px; gap: 2mm; }
-  body.print-gantt-master .legend{ font-size: 9px; }
-  body.print-gantt-master .legend-item{ padding: 3px 6px; }
+  body.print-gantt-master .print-header h1,
+  body.print-gantt-project .print-header h1{ font-size: 18px; }
+  body.print-gantt-master .print-meta,
+  body.print-gantt-project .print-meta{ font-size: 9.5px; gap: 2mm; }
+  body.print-gantt-master .legend,
+  body.print-gantt-project .legend{ display:none !important; }
   body.print-gantt-master .gantt-table .table th,
-  body.print-gantt-master .gantt-table .table td{
+  body.print-gantt-master .gantt-table .table td,
+  body.print-gantt-project .gantt-table .table th,
+  body.print-gantt-project .gantt-table .table td{
     padding: 2px 4px !important;
     font-size: 9px;
   }
-  body.print-gantt-master .gantt-week-date{ font-size: 8px; }
-  body.print-gantt-master .card{ margin-bottom: 2mm; }
+  body.print-gantt-master .gantt-week-date,
+  body.print-gantt-project .gantt-week-date{ font-size: 8px; }
+  body.print-gantt-master .gantt-days,
+  body.print-gantt-project .gantt-days{ display:none !important; }
+  body.print-gantt-master .gantt-week-date,
+  body.print-gantt-project .gantt-week-date{
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+  }
+  body.print-gantt-master .gantt-table,
+  body.print-gantt-master .print-block,
+  body.print-gantt-project .gantt-table,
+  body.print-gantt-project .print-block{
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  body.print-gantt-master #printInjection,
+  body.print-gantt-master .print-order,
+  body.print-gantt-project #printInjection,
+  body.print-gantt-project .print-order{
+    break-inside: avoid;
+    page-break-inside: avoid;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  body.print-gantt-master .card,
+  body.print-gantt-project .card{ margin-bottom: 2mm; }
+  body.print-gantt-master #printInjection,
+  body.print-gantt-project #printInjection{
+    width: 100%;
+  }
+  body.print-gantt-master .gantt-table,
+  body.print-gantt-project .gantt-table{
+    overflow: visible !important;
+    max-width: 100%;
+  }
+  body.print-gantt-master .gantt-table .table,
+  body.print-gantt-project .gantt-table .table{
+    width: auto;
+  }
 }
 
 /* Cacher les lments d'UI interactifs */

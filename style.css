@@ -1003,8 +1003,8 @@ body{
   gap:6px;
 }
 .config-users{
-  margin-top:10px;
-  padding-top:8px;
+  margin-top:2px;
+  padding-top:2px;
   border-top:1px dashed rgba(0,0,0,0.12);
 }
 .modal-card,
@@ -1016,6 +1016,8 @@ body{
   transform:scale(0.985);
   opacity:0;
   transition:transform .45s cubic-bezier(0.16, 1, 0.3, 1), opacity .45s ease;
+  max-height:85vh;
+  overflow:auto;
 }
 .modal:not(.hidden) .modal-card{
   transform:scale(1);
@@ -1050,6 +1052,9 @@ body{
 .config-col select,
 .config-col textarea{
   max-width:420px;
+  padding:2px 6px;
+  font-size:12px;
+  min-height:22px;
 }
 .config-col .config-users-row{
   max-width:420px;
@@ -1072,16 +1077,62 @@ body{
 }
 .config-users-title{
   font-size:12px;
-  font-weight:800;
-  color:#0b1424;
-  margin-bottom:6px;
+  color:#334155;
+  margin-top:6px;
+  margin-bottom:2px;
+  display:block;
+  font-weight:700;
 }
 .config-users-row{
   display:flex;
-  gap:6px;
+  gap:3px;
   align-items:center;
-  margin-bottom:6px;
+  margin-bottom:1px;
   flex-wrap:wrap;
+}
+.config-user-item{
+  padding:1px 4px;
+  border-radius:6px;
+  min-height:20px;
+  font-size:12px;
+}
+.config-user-item strong{
+  font-size:12px;
+  font-weight:700;
+}
+.config-users-list{
+  gap:2px;
+}
+.config-user-actions{
+  gap:3px;
+}
+.config-user-actions .btn{
+  padding:0 4px;
+  font-size:12px;
+  line-height:20px;
+  min-height:20px;
+  height:20px;
+  border-radius:6px;
+}
+.config-users .btn{
+  min-height:20px;
+  height:20px;
+  padding:0 4px;
+  font-size:12px;
+  line-height:20px;
+  border-radius:6px;
+}
+.config-col .config-users .input,
+.config-col .config-users select,
+.config-col .config-users textarea{
+  min-height:22px;
+  height:22px;
+  padding:2px 6px;
+  font-size:12px;
+  line-height:22px;
+}
+.config-users .config-user-meta{
+  display:none;
 }
 .hours-label{
   min-width:150px;
@@ -1089,7 +1140,12 @@ body{
 .config-users-list{
   display:flex;
   flex-direction:column;
-  gap:6px;
+  gap:2px;
+}
+.config-users-list.status-list{
+  max-height:220px;
+  overflow-y:auto;
+  padding-right:4px;
 }
 .login-heatmap-wrap{
   margin-top:10px;
@@ -1279,7 +1335,7 @@ body{
   display:flex;
   flex-direction:column;
   gap:4px;
-  max-height:220px;
+  max-height:360px;
   overflow:auto;
   padding-right:4px;
 }
