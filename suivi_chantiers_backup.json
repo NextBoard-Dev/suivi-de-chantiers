@@ -41,6 +41,13 @@
       "site": "LGT",
       "subproject": "Peinture",
       "constraints": ""
+    },
+    {
+      "id": "00570a5819c51591bd0",
+      "name": "Fuite EP",
+      "site": "LGT",
+      "subproject": "",
+      "constraints": ""
     }
   ],
   "tasks": [
@@ -64,7 +71,7 @@
       "status": "ETUDE",
       "vendor": "",
       "projectId": "0c644af019c05700845",
-      "roomNumber": "Fin de Chantier"
+      "roomNumber": "Étude"
     },
     {
       "id": "057fbc5519c1df27433",
@@ -325,6 +332,26 @@
       "vendor": "DEGRIGNY",
       "projectId": "49f0b26319c41787918",
       "roomNumber": "Mise en Peinture"
+    },
+    {
+      "id": "b4b9f5d819c515e99ba",
+      "end": "2026-01-06",
+      "owner": "RSG/RI",
+      "start": "2026-01-05",
+      "status": "ETUDE",
+      "vendor": "",
+      "projectId": "00570a5819c51591bd0",
+      "roomNumber": "Étude"
+    },
+    {
+      "id": "56c1d15e19c5160cdc4",
+      "end": "2026-02-17",
+      "owner": "Prestataire externe",
+      "start": "2026-02-16",
+      "status": "TERRASSEMENT",
+      "vendor": "SADORGE",
+      "projectId": "00570a5819c51591bd0",
+      "roomNumber": "Recherche de Fuite sous Dalle"
     }
   ],
   "ui": {

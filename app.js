@@ -620,7 +620,7 @@ const STATUSES = [
   {v:"RESEAUX",      label:"Réseaux"},
 
   {v:"TOITURE",      label:"Toiture / étanchéité"},
-
+  {v:"TERRASSEMENT", label:"Terrassement"},
   {v:"ETUDE",        label:"Étude"},
 
 ];
@@ -661,27 +661,33 @@ const STATUS_COLORS = {
 
   TOITURE:          "#0d9488",
 
+  TERRASSEMENT:     "#8b5a2b",
+
   ETUDE:            "#0284c7",
 
 };
 
 const THEMES = [
+  { id:"clair", label:"Clair neutre", swatch:["#f8fafc","#e2e8f0"] },
   { id:"sable", label:"Sable doux", swatch:["#f2e8d5","#d2b48c"] },
   { id:"ardoise", label:"Ardoise", swatch:["#94a3b8","#475569"] },
-  { id:"clair", label:"Clair neutre", swatch:["#f8fafc","#e2e8f0"] },
-  { id:"industriel", label:"Industriel sombre", swatch:["#6b7280","#111827"] },
   { id:"chantier", label:"Chantier orange", swatch:["#f59e0b","#b45309"] },
-  { id:"nuit", label:"Bleu nuit", swatch:["#0ea5e9","#1e3a8a"] },
-  { id:"carbone", label:"Carbone contrasté", swatch:["#1f2937","#0f172a"] },
-  { id:"noir_or", label:"Noir & Or", swatch:["#111111","#f59e0b"] },
-  { id:"noir", label:"Noir absolu", swatch:["#0b0b0b","#f8fafc"] },
-  { id:"gris", label:"Gris profond", swatch:["#374151","#111827"] },
-  { id:"marine", label:"Bleu marine", swatch:["#0f172a","#2563eb"] },
   { id:"orange_brule", label:"Orange brûlé", swatch:["#9a3412","#f97316"] },
   { id:"petrole", label:"Vert pétrole", swatch:["#0f766e","#14b8a6"] },
-  { id:"obsidienne", label:"Obsidienne", swatch:["#0a0a0a","#1f2937"] },
+  { id:"nuit", label:"Bleu nuit", swatch:["#0ea5e9","#1e3a8a"] },
   { id:"acier_bleu", label:"Acier bleu", swatch:["#0b1b2b","#1e3a8a"] },
-  { id:"vert_nuit", label:"Vert nuit", swatch:["#0b1f18","#14532d"] }
+  { id:"marine", label:"Bleu marine", swatch:["#0f172a","#2563eb"] },
+  { id:"vert_nuit", label:"Vert nuit", swatch:["#0b1f18","#14532d"] },
+  { id:"cobalt_rouge", label:"Cobalt & Rouge", swatch:["#0f3d8a","#c81e1e"] },
+  { id:"olive_or", label:"Olive & Or", swatch:["#2f3e1f","#d4a017"] },
+  { id:"noir_cyan", label:"Noir & Cyan", swatch:["#0b0f1a","#00c2d1"] },
+  { id:"gris", label:"Gris profond", swatch:["#374151","#111827"] },
+  { id:"industriel", label:"Industriel sombre", swatch:["#6b7280","#111827"] },
+  { id:"carbone", label:"Carbone contrasté", swatch:["#1f2937","#0f172a"] },
+  { id:"carbone_nuit", label:"Carbone profond", swatch:["#0a0b0f","#1f2937"] },
+  { id:"obsidienne", label:"Obsidienne", swatch:["#0a0a0a","#1f2937"] },
+  { id:"noir_or", label:"Noir & Or", swatch:["#111111","#f59e0b"] },
+  { id:"noir", label:"Noir absolu", swatch:["#0b0b0b","#f8fafc"] }
 ];
 
 
@@ -954,7 +960,27 @@ function initThemePicker(){
   const picker = el("themePicker");
   const toggle = el("themeToggle");
   if(!grid || !picker || !toggle) return;
-  grid.innerHTML = THEMES.map(t=>{
+  const hexToRgb = (hex)=>{
+    const v = (hex || "").replace("#","").trim();
+    if(v.length !== 6) return {r:0,g:0,b:0};
+    return {
+      r: parseInt(v.slice(0,2),16),
+      g: parseInt(v.slice(2,4),16),
+      b: parseInt(v.slice(4,6),16)
+    };
+  };
+  const luma = (hex)=>{
+    const {r,g,b} = hexToRgb(hex);
+    return 0.2126*r + 0.7152*g + 0.0722*b;
+  };
+  const themesSorted = [...THEMES].sort((a,b)=>{
+    const ac = a.swatch || ["#ffffff","#ffffff"];
+    const bc = b.swatch || ["#ffffff","#ffffff"];
+    const al = (luma(ac[0]) + luma(ac[1])) / 2;
+    const bl = (luma(bc[0]) + luma(bc[1])) / 2;
+    return bl - al; // clair -> foncé
+  });
+  grid.innerHTML = themesSorted.map(t=>{
     const colors = t.swatch || ["#e2e8f0","#94a3b8"];
     const style = `background:linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%);`;
     return `<button type="button" class="theme-swatch" data-theme="${t.id}" title="${t.label}" style="${style}"></button>`;
@@ -1188,6 +1214,12 @@ function navigateTo(projectId=null, taskId=null, push=true){
   }
   closeAllOverlays();
   setTimeout(()=> closeAllOverlays(), 0);
+  const view = document.querySelector(".main");
+  if(view){
+    view.classList.remove("view-fade");
+    void view.offsetWidth;
+    view.classList.add("view-fade");
+  }
   renderAll();
   setTimeout(()=> scrollViewToTop(), 0);
 }
@@ -1375,6 +1407,7 @@ const ownerBadge = (o="")=>{
 };
 
 const SITE_PHOTOS = {
+  "CDM": "assets/sites/CDM.jpg",
   "CDM": "assets/sites/CDM.jpg",
   "LGT": "assets/sites/LGT.jpg",
   "COLLÈGE": "assets/sites/College.jpg",
@@ -2201,7 +2234,7 @@ function toInputDate(val){
 
 
 
-// -------- Multislection Statuts / Corps d'état --------
+// -------- Sélection unique Statuts / Corps d'état --------
 
 function buildStatusMenu(){
 
@@ -2212,15 +2245,9 @@ function buildStatusMenu(){
   let h="";
 
   sortedStatuses().forEach(s=>{
-
     h+=`<div class="ms-item" data-v="${s.v}">
-
-          <span class="ms-checkbox"></span>
-
           <span class="ms-label">${s.label}</span>
-
         </div>`;
-
   });
 
   menu.innerHTML=h;
@@ -2229,15 +2256,19 @@ function buildStatusMenu(){
 
     item.onclick=(e)=>{
 
-      e.stopPropagation(); // garder le menu ouvert pendant la multi-slection
+      e.stopPropagation();
 
       const v=item.dataset.v;
 
-      if(selectedStatusSet.has(v)) selectedStatusSet.delete(v);
+      if(selectedStatusSet.has(v)) selectedStatusSet.clear();
 
-      else selectedStatusSet.add(v);
+      else{
+        selectedStatusSet.clear();
+        selectedStatusSet.add(v);
+      }
 
       updateStatusDisplay();
+      toggleStatusMenu(false);
 
     };
 
@@ -2285,7 +2316,8 @@ function updateStatusDisplay(){
 
 function setStatusSelection(values){
 
-  selectedStatusSet = new Set((values||"").split(",").filter(Boolean));
+  const first = (values||"").split(",").filter(Boolean)[0] || "";
+  selectedStatusSet = new Set(first ? [first] : []);
 
   updateStatusDisplay();
 
@@ -3035,13 +3067,14 @@ async function initLoginJournalUI(){
       if(va > vb) return 1 * dir;
       return 0;
     });
-    const html = rows.slice(0, 200).map(ev=>{
+    const html = rows.slice(0, 200).map((ev, idx)=>{
       const d = ev.ts ? new Date(ev.ts) : null;
       const dateStr = d && !isNaN(d) ? d.toLocaleString("fr-FR") : "";
       const name = ev.name || "";
       const email = ev.email || "";
       const role = (ev.role||"") === "admin" ? "Admin" : "Utilisateur";
-      return `<div class="login-log-row"><span>${dateStr}</span><span>${name}</span><span>${email}</span><span>${role}</span><span>1</span></div>`;
+      const delay = Math.min(idx * 24, 300);
+      return `<div class="login-log-row" style="animation-delay:${delay}ms"><span>${dateStr}</span><span>${name}</span><span>${email}</span><span>${role}</span><span>1</span></div>`;
     }).join("");
     logBox.innerHTML = html || `<div class="login-empty">Aucune connexion dans la période.</div>`;
   }
@@ -4939,11 +4972,11 @@ function renderKPIs(tasks){
 
   tasks.forEach(t=>{ byStatus[t.status]= (byStatus[t.status]||0)+1; });
 
-  let h=`<div class="kpi">Total: <b>${total}</b></div>`;
+  let h=`<div class="kpi">Total:&nbsp;<b>${total}</b></div>`;
 
   STATUSES.forEach(s=>{
 
-    h+=`<div class="kpi">${s.label}: <b>${byStatus[s.v]||0}</b></div>`;
+    h+=`<div class="kpi">${s.label}:&nbsp;<b>${byStatus[s.v]||0}</b></div>`;
 
   });
 
@@ -6609,6 +6642,12 @@ window.addEventListener("popstate",(e)=>{
   selectedTaskId = st.taskId || null;
   closeAllOverlays();
   setTimeout(()=> closeAllOverlays(), 0);
+  const view = document.querySelector(".main");
+  if(view){
+    view.classList.remove("view-fade");
+    void view.offsetWidth;
+    view.classList.add("view-fade");
+  }
   renderAll();
   setTimeout(()=> scrollViewToTop(), 0);
 });
