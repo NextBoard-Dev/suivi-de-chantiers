@@ -376,6 +376,24 @@ async function validateSessionToken(token, renewDays=30){
 window.createSessionToken = createSessionToken;
 window.validateSessionToken = validateSessionToken;
 
+async function cleanupExpiredSessions(){
+  const sb = _getSupabaseClient();
+  if(!sb) return false;
+  try{
+    const nowIso = new Date().toISOString();
+    const { error } = await sb
+      .from(SUPABASE_SESSIONS_TABLE)
+      .delete()
+      .lt("expires_at", nowIso);
+    if(error){ console.warn("Supabase sessions cleanup error", error); return false; }
+    return true;
+  }catch(e){
+    console.warn("cleanupExpiredSessions failed", e);
+    return false;
+  }
+}
+window.cleanupExpiredSessions = cleanupExpiredSessions;
+
 async function loadLoginsFromSupabase(startISO, endISO){
   const sb = _getSupabaseClient();
   if(!sb) return [];
@@ -416,7 +434,13 @@ async function loadUsersFromSupabase(force=false){
       .maybeSingle();
     if(error){ console.warn("Supabase users select error", error); return false; }
     if(!data || !data.users_json) return false;
-    saveUsers(data.users_json);
+    const normalized = (data.users_json || []).map(u=>{
+      if(!u || typeof u !== "object") return u;
+      if(!u.theme) u.theme = "sable";
+      if(!u.id) u.id = uid();
+      return u;
+    });
+    saveUsers(normalized);
     if(typeof window.populateLoginUsers === "function") window.populateLoginUsers();
     return true;
   }catch(e){
@@ -849,6 +873,18 @@ function saveConfig(cfg){
     localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg||{}));
   }catch(e){}
 }
+function getHoursConfig(){
+  const cfg = loadConfig();
+  const toNum = (v, fallback)=>{
+    const n = Number(v);
+    return isNaN(n) ? fallback : n;
+  };
+  return {
+    internal: toNum(cfg.hours_internal, 4),
+    external: toNum(cfg.hours_external, 4),
+    rsg: toNum(cfg.hours_rsg, 2)
+  };
+}
 function loadUsers(){
   try{
     const raw = localStorage.getItem(USERS_KEY);
@@ -1120,6 +1156,10 @@ function openConfigModal(){
   el("cfg_http").value = cfg.http || "";
   el("cfg_front").value = cfg.front || "";
   el("cfg_back").value = cfg.back || "";
+  const hours = getHoursConfig();
+  if(el("cfg_hours_internal")) el("cfg_hours_internal").value = hours.internal;
+  if(el("cfg_hours_external")) el("cfg_hours_external").value = hours.external;
+  if(el("cfg_hours_rsg")) el("cfg_hours_rsg").value = hours.rsg;
   const role = getCurrentRole();
   const usersSection = el("cfg_users_section");
   if(usersSection) usersSection.style.display = role==="admin" ? "block" : "none";
@@ -3211,6 +3251,22 @@ function durationDays(start,end){
 
 }
 
+function hoursPerDayForOwner(owner){
+  const typ = ownerType(owner);
+  const h = getHoursConfig();
+  if(typ === "rsgri") return h.rsg;
+  if(typ === "externe") return h.external;
+  return h.internal;
+}
+
+function durationLabelForTask(task){
+  if(!task) return "";
+  const days = durationDays(task.start, task.end);
+  if(!days && days !== 0) return "";
+  const hpd = hoursPerDayForOwner(task.owner || "");
+  return `${days} j (${days * hpd} h)`;
+}
+
 function taskTitle(t){
 
   const p = state?.projects?.find(x=>x.id===t.projectId);
@@ -3756,9 +3812,7 @@ function renderProjectTasks(projectId){
     const c = ownerColor(t.owner);
 
     const ownerBadgeHtml = t.owner ? ownerBadge(t.owner) : "";
-    const typ = ownerType(t.owner);
-    const durDays = durationDays(t.start,t.end);
-    const durLabel = typ === "rsgri" ? `${durDays} j (${durDays*2} h)` : `${durDays} j`;
+    const durLabel = durationLabelForTask(t);
     const todayKey = new Date().toISOString().slice(0,10);
     const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
     const isLate = !!(t.end && t.end < todayKey);
@@ -5036,16 +5090,17 @@ function renderMasterMetrics(tasks){
 
   const totalDays = allDays.size;
 
-  const internalHours = internalDays.size * 4;
-  const externalHours = externalDays.size * 4;
-  const rsgHours = rsgDays.size * 2;
+  const hoursCfg = getHoursConfig();
+  const internalHours = internalDays.size * hoursCfg.internal;
+  const externalHours = externalDays.size * hoursCfg.external;
+  const rsgHours = rsgDays.size * hoursCfg.rsg;
   const totalHours = internalHours + externalHours + rsgHours;
 
   metrics.innerHTML = `
 
     <span class="panel-chip">Durée totale : <span class="metric-val">${totalDays||0} j</span></span>
 
-    <span class="panel-chip">Éq. heures (Int/Ext 4h/j • RSG/RI 2h/j) : <span class="metric-val">${totalHours||0} h</span></span>
+    <span class="panel-chip">Éq. heures (Int/Ext ${hoursCfg.external}h/j • RSG/RI ${hoursCfg.rsg}h/j) : <span class="metric-val">${totalHours||0} h</span></span>
 
     <span class="panel-chip" style="background:#0f172a;color:#fff;border-color:#0f172a;">Interne : <span class="metric-val">${internalDays.size||0} j</span> <span class="metric-val">${internalHours||0} h</span></span>
 
@@ -5240,7 +5295,7 @@ function renderMaster(){
 
       <td>${t.owner||""}</td>
 
-      <td>${durationDays(t.start,t.end)}</td>
+      <td>${durationLabelForTask(t)}</td>
 
     </tr>`;
 
@@ -5355,9 +5410,10 @@ function renderProject(){
 
   const totalDays = allDays.size;
 
-  const internalHours = internalDays.size * 4;
-  const externalHours = externalDays.size * 4;
-  const rsgHours = rsgDays.size * 2;
+  const hoursCfg = getHoursConfig();
+  const internalHours = internalDays.size * hoursCfg.internal;
+  const externalHours = externalDays.size * hoursCfg.external;
+  const rsgHours = rsgDays.size * hoursCfg.rsg;
   const totalHours = internalHours + externalHours + rsgHours;
 
   const metrics = el("projectMetrics");
@@ -5368,7 +5424,7 @@ function renderProject(){
 
       <span class="panel-chip">Durée totale : <span class="metric-val">${totalDays || 0} j</span></span>
 
-      <span class="panel-chip">Éq. heures (Int/Ext 4h/j • RSG/RI 2h/j) : <span class="metric-val">${totalHours || 0} h</span></span>
+      <span class="panel-chip">Éq. heures (Int/Ext ${hoursCfg.external}h/j • RSG/RI ${hoursCfg.rsg}h/j) : <span class="metric-val">${totalHours || 0} h</span></span>
 
       <span class="panel-chip" style="background:#0f172a;color:#fff;border-color:#0f172a;">Interne : <span class="metric-val">${internalDays.size||0} j</span> <span class="metric-val">${internalHours||0} h</span></span>
 
@@ -5647,7 +5703,10 @@ function bind(){
       name: el("cfg_name")?.value || "",
       http: el("cfg_http")?.value || "",
       front: el("cfg_front")?.value || "",
-      back: el("cfg_back")?.value || ""
+      back: el("cfg_back")?.value || "",
+      hours_internal: el("cfg_hours_internal")?.value || "",
+      hours_external: el("cfg_hours_external")?.value || "",
+      hours_rsg: el("cfg_hours_rsg")?.value || ""
     };
     saveConfig(cfg);
     closeConfigModal();

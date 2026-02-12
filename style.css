@@ -957,6 +957,9 @@ body{
   margin-bottom:6px;
   flex-wrap:wrap;
 }
+.hours-label{
+  min-width:150px;
+}
 .config-users-list{
   display:flex;
   flex-direction:column;
