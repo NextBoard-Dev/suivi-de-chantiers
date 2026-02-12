@@ -552,6 +552,8 @@ let sortProject = {key:"start", dir:"asc"};
 
 let unsavedChanges = false;
 let lastUndoSnapshot = null;
+let _stateVersion = 0;
+let _filteredCache = { key:"", version:-1, tasks:null };
 
 let isLocked = true; // verrou logique = droits utilisateur (admin = false)
 const isHostedGithubPages = ()=>{
@@ -575,6 +577,36 @@ let workloadRangeStartProject = "";
 let workloadRangeEndProject = "";
 let workloadRangeYearProject = "";
 let ganttExportContext = "master"; // master | project
+
+function resetMasterWorkloadFilters(){
+  workloadRangeType = "all";
+  workloadRangeYear = "";
+  workloadRangeStart = "";
+  workloadRangeEnd = "";
+  const typeNode = el("workloadRangeType");
+  const yearNode = el("workloadRangeYear");
+  const startNode = el("workloadRangeStart");
+  const endNode = el("workloadRangeEnd");
+  if(typeNode) typeNode.value = "all";
+  if(yearNode) yearNode.value = "";
+  if(startNode) startNode.value = "";
+  if(endNode) endNode.value = "";
+}
+
+function resetProjectWorkloadFilters(){
+  workloadRangeTypeProject = "all";
+  workloadRangeYearProject = "";
+  workloadRangeStartProject = "";
+  workloadRangeEndProject = "";
+  const typeNode = el("workloadRangeTypeProject");
+  const yearNode = el("workloadRangeYearProject");
+  const startNode = el("workloadRangeStartProject");
+  const endNode = el("workloadRangeEndProject");
+  if(typeNode) typeNode.value = "all";
+  if(yearNode) yearNode.value = "";
+  if(startNode) startNode.value = "";
+  if(endNode) endNode.value = "";
+}
 const CONFIG_KEY = "dashboard_config_v1";
 const USERS_KEY = "dashboard_users_v1";
 let ganttColVisibility = {
@@ -1045,15 +1077,24 @@ function initThemePicker(){
   }).join("");
   grid.querySelectorAll(".theme-swatch").forEach(btn=>{
     btn.addEventListener("click", ()=> setCurrentUserTheme(btn.dataset.theme || "sable"));
+    btn.addEventListener("mouseenter", ()=>{
+      const t = btn.dataset.theme || "sable";
+      applyTheme(t);
+    });
+    btn.addEventListener("mouseleave", ()=>{
+      applyThemeForCurrentUser();
+    });
   });
   toggle.addEventListener("click", (e)=>{
     e.stopPropagation();
     picker.classList.toggle("open");
+    if(!picker.classList.contains("open")) applyThemeForCurrentUser();
   });
   document.addEventListener("click", (e)=>{
     if(!picker.classList.contains("open")) return;
     if(picker.contains(e.target)) return;
     picker.classList.remove("open");
+    applyThemeForCurrentUser();
   });
   applyThemeForCurrentUser();
 }
@@ -1370,28 +1411,62 @@ function openConfigModal(){
   el("cfg_http").value = cfg.http || "";
   el("cfg_front").value = cfg.front || "";
   el("cfg_back").value = cfg.back || "";
+  const linkify = (inputId, linkId)=>{
+    const input = el(inputId);
+    const link = el(linkId);
+    if(!link) return;
+    const val = (input?.value || "").trim();
+    if(val){
+      link.href = val;
+      link.textContent = val;
+      link.classList.remove("hidden");
+    }else{
+      link.removeAttribute("href");
+      link.textContent = "Ouvrir";
+      link.classList.add("hidden");
+    }
+  };
+  linkify("cfg_http","cfg_http_link");
+  linkify("cfg_front","cfg_front_link");
+  linkify("cfg_back","cfg_back_link");
   const hours = getHoursConfig();
   if(el("cfg_hours_internal")) el("cfg_hours_internal").value = hours.internal;
   if(el("cfg_hours_external")) el("cfg_hours_external").value = hours.external;
   if(el("cfg_hours_rsg")) el("cfg_hours_rsg").value = hours.rsg;
   const role = getCurrentRole();
   const usersSection = el("cfg_users_section");
-  if(usersSection) usersSection.style.display = role==="admin" ? "block" : "none";
+  if(usersSection){
+    const wrap = usersSection.closest(".cfg-accordion");
+    if(wrap) wrap.style.display = role==="admin" ? "block" : "none";
+    usersSection.style.display = "";
+  }
   if(role==="admin") renderUsersList();
   const statusSection = el("cfg_status_section");
-  if(statusSection) statusSection.style.display = role==="admin" ? "block" : "none";
+  if(statusSection){
+    const wrap = statusSection.closest(".cfg-accordion");
+    if(wrap) wrap.style.display = role==="admin" ? "block" : "none";
+    statusSection.style.display = "";
+  }
   if(role==="admin"){
     loadStatusConfig();
     renderConfigStatusList();
   }
   const vendorSection = el("cfg_vendor_section");
-  if(vendorSection) vendorSection.style.display = role==="admin" ? "block" : "none";
+  if(vendorSection){
+    const wrap = vendorSection.closest(".cfg-accordion");
+    if(wrap) wrap.style.display = role==="admin" ? "block" : "none";
+    vendorSection.style.display = "";
+  }
   if(role==="admin"){
     refreshVendorsList();
     renderConfigVendorsList();
   }
   const loginSection = el("cfg_login_section");
-  if(loginSection) loginSection.style.display = role==="admin" ? "block" : "none";
+  if(loginSection){
+    const wrap = loginSection.closest(".cfg-accordion");
+    if(wrap) wrap.style.display = role==="admin" ? "block" : "none";
+    loginSection.style.display = "";
+  }
   if(role==="admin") initLoginJournalUI();
   modal.classList.remove("hidden");
   modal.style.display = "flex";
@@ -1607,7 +1682,6 @@ const ownerBadge = (o="")=>{
 };
 
 const SITE_PHOTOS = {
-  "CDM": "assets/sites/CDM.jpg",
   "CDM": "assets/sites/CDM.jpg",
   "LGT": "assets/sites/LGT.jpg",
   "COLLÈGE": "assets/sites/College.jpg",
@@ -2847,7 +2921,26 @@ function load(){
 
 
 
-function saveState(){
+let _suppressSupabaseSave = false;
+let _saveToastTimer = null;
+
+function showSaveToast(type, title, detail){
+  const toast = el("saveToast");
+  if(!toast) return;
+  const icon = el("saveToastIcon");
+  const titleEl = el("saveToastTitle");
+  const detailEl = el("saveToastDetail");
+  toast.classList.remove("is-error");
+  if(type === "error") toast.classList.add("is-error");
+  if(icon) icon.textContent = (type === "error") ? "ERR" : "OK";
+  if(titleEl) titleEl.textContent = title || "Sauvegarde";
+  if(detailEl) detailEl.textContent = detail || "";
+  toast.classList.add("show");
+  if(_saveToastTimer) clearTimeout(_saveToastTimer);
+  _saveToastTimer = setTimeout(()=> toast.classList.remove("show"), 4500);
+}
+
+function saveState(opts={}){
 
   try{
 
@@ -2857,7 +2950,10 @@ function saveState(){
 
     // Supabase greffe : APRES sauvegarde locale
 
-    try{ if(window.saveAppStateToSupabase) window.saveAppStateToSupabase(state); }catch(e){}
+    const skipSupabase = !!opts.skipSupabase || _suppressSupabaseSave;
+    if(!skipSupabase){
+      try{ if(window.saveAppStateToSupabase) window.saveAppStateToSupabase(state); }catch(e){}
+    }
 
   }catch(e){
 
@@ -2889,7 +2985,11 @@ function updateSaveButton(){
 
 }
 
-function markDirty(){ unsavedChanges = true; updateSaveButton(); }
+function markDirty(){
+  unsavedChanges = true;
+  _stateVersion += 1;
+  updateSaveButton();
+}
 function saveUIState(){
   try{
     if(!state) return;
@@ -3432,28 +3532,26 @@ function syncWorkloadFilterUI(tasks, boundsTasks=tasks, uiIds=null, stateRef=nul
   const maxYear = max.getFullYear() + 1;
 
   const st = stateRef || {type:workloadRangeType, year:workloadRangeYear, start:workloadRangeStart, end:workloadRangeEnd};
-
-  if(!st.year) st.year = String(min.getFullYear());
+  const type = st.type || "all";
+  const prevType = yearNode.dataset.rangeType || "";
+  const defaultSchoolYear = (min.getMonth() >= 8) ? min.getFullYear() : (min.getFullYear() - 1);
 
   if(!st.start) st.start = toDateInput(min);
-
   if(!st.end) st.end = toDateInput(max);
-
-  // options anne
-
-  let opts="";
-
-  for(let y=minYear; y<=maxYear; y++){
-
-    opts += `<option value="${y}">${y}</option>`;
-
+  if(!st.year || prevType !== type){
+    st.year = String(type === "school" ? defaultSchoolYear : min.getFullYear());
   }
 
+  // options années
+  let opts="";
+  for(let y=minYear; y<=maxYear; y++){
+    const label = (type === "school") ? `${y}-${y+1}` : `${y}`;
+    opts += `<option value="${y}">${label}</option>`;
+  }
   yearNode.innerHTML = opts;
-
   yearNode.value = st.year;
-
-  typeNode.value = st.type || "all";
+  yearNode.dataset.rangeType = type;
+  typeNode.value = type;
 
   startNode.value = st.start;
 
@@ -5189,21 +5287,23 @@ function renderFilters(){
     const sites = Array.from(canonMap.values())
       .sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
     const current = fsSite.value || "";
-    let h=`<option value="">Tous</option>`;
+    let h=`<option value="" selected>Tous</option>`;
     sites.forEach(s=>{ h+=`<option value="${attrEscape(s)}">${attrEscape(s)}</option>`; });
     fsSite.innerHTML=h;
     if(current && sites.includes(current)) fsSite.value = current;
+    else fsSite.value = "";
   }
 
   const sel = el("filterProject");
 
   if(sel){
 
-    let h=`<option value="">Tous</option>`;
+    let h=`<option value="" selected>Tous</option>`;
 
     state.projects.forEach(p=>{ h+=`<option value="${p.id}">${p.name||"Sans nom"}</option>`; });
 
     sel.innerHTML=h;
+    if(!sel.value) sel.value = "";
 
   }
 
@@ -5211,11 +5311,12 @@ function renderFilters(){
 
   if(ss){
 
-    let h=`<option value="">Tous</option>`;
+    let h=`<option value="" selected>Tous</option>`;
 
     sortedStatuses().forEach(s=>{ h+=`<option value="${s.v}">${s.label}</option>`; });
 
     ss.innerHTML=h;
+    if(!ss.value) ss.value = "";
 
   }
 
@@ -5506,14 +5607,15 @@ function filteredTasks(){
 
   const fsite = el("filterSite")?.value || "";
   const fp = el("filterProject")?.value || "";
-
   const fs = el("filterStatus")?.value || "";
-
   const q  = (el("filterSearch")?.value || "").toLowerCase().trim();
-
   const startAfter = el("filterStartAfter")?.value || "";
-
   const endBefore  = el("filterEndBefore")?.value || "";
+
+  const key = `${_stateVersion}|${fsite}|${fp}|${fs}|${q}|${startAfter}|${endBefore}`;
+  if(_filteredCache.key === key && _filteredCache.tasks){
+    return _filteredCache.tasks;
+  }
 
   const result = state.tasks.filter(t=>{
 
@@ -5543,9 +5645,10 @@ function filteredTasks(){
 
   // Filet de secours : si les filtres vident tout alors qu'on a des donnes, on retourne toutes les tâches
 
-  if(result.length===0 && state.tasks.length>0) return state.tasks;
-
-  return result;
+  let out = result;
+  if(out.length===0 && state.tasks.length>0) out = state.tasks;
+  _filteredCache = { key, version:_stateVersion, tasks: out };
+  return out;
 
 }
 
@@ -5600,7 +5703,7 @@ function renderMaster(){
 
   // Charge de travail
 
-  renderWorkloadChart(filteredTasks());
+  renderWorkloadChart(tasks);
 
   // Bandeau live global (toutes tâches en cours aujourd'hui)
 
@@ -6016,6 +6119,7 @@ function renderAll(){
   closeAllOverlays();
   refreshVendorsList();
   refreshDescriptionsList();
+  resetProjectWorkloadFilters();
   // rinitialiser les filtres visibles pour éviter un filtrage bloquant
 
   ["filterSite","filterProject","filterStatus","filterSearch","filterStartAfter","filterEndBefore"].forEach(id=>{
@@ -6025,6 +6129,7 @@ function renderAll(){
     if(n) n.value="";
 
   });
+  _filteredCache = { key:"", version:-1, tasks:null };
 
   renderFilters();
 
@@ -6141,6 +6246,32 @@ function bind(){
     saveConfig(cfg);
     closeConfigModal();
   });
+  el("btnConfigSaveTop")?.addEventListener("click", ()=>{
+    el("btnConfigSave")?.click();
+  });
+  el("btnConfigCloseTop")?.addEventListener("click", ()=>{
+    el("btnConfigClose")?.click();
+  });
+  ["cfg_http","cfg_front","cfg_back"].forEach((id)=>{
+    const input = el(id);
+    if(!input) return;
+    input.addEventListener("input", ()=>{
+      const map = {cfg_http:"cfg_http_link", cfg_front:"cfg_front_link", cfg_back:"cfg_back_link"};
+      const linkId = map[id];
+      const link = el(linkId);
+      const val = (input.value || "").trim();
+      if(!link) return;
+      if(val){
+        link.href = val;
+        link.textContent = val;
+        link.classList.remove("hidden");
+      }else{
+        link.removeAttribute("href");
+        link.textContent = "Ouvrir";
+        link.classList.add("hidden");
+      }
+    });
+  });
   el("btnUserAdd")?.addEventListener("click", async ()=>{
     const name = (el("cfg_user_name")?.value || "").trim();
     const email = (el("cfg_user_email")?.value || "").trim();
@@ -6196,17 +6327,31 @@ function bind(){
     if(endInput) endInput.value = loginRangeEnd;
     initLoginJournalUI();
   });
-  el("btnSave")?.addEventListener("click", ()=>{
-    saveState();
-    try{ saveUsersToSupabase(loadUsers()); }catch(e){}
-    // Flux simple : tlchargement d'un JSON  craser manuellement dans le dossier projet.
-    downloadBackup();
+  el("btnSave")?.addEventListener("click", async ()=>{
+    _suppressSupabaseSave = true;
+    saveState({skipSupabase:true});
+    _suppressSupabaseSave = false;
+
+    let supabaseOk = false;
+    let usersOk = false;
+    try{ if(window.saveAppStateToSupabase) supabaseOk = await window.saveAppStateToSupabase(state); }catch(e){}
+    try{ usersOk = await saveUsersToSupabase(loadUsers()); }catch(e){}
+
+    // Flux simple : tlchargement d'un JSON (admins uniquement)
+    let backupOk = false;
+    try{
+      if(getCurrentRole() === "admin"){ downloadBackup(); backupOk = true; }
+    }catch(e){}
+
+    const detailParts = [];
+    detailParts.push(`Supabase: ${supabaseOk ? "OK" : "ERREUR"}`);
+    if(usersOk === false) detailParts.push(`Users: ERREUR`);
+    if(getCurrentRole() === "admin") detailParts.push(`Backup: ${backupOk ? "OK" : "ERREUR"}`);
+    showSaveToast(supabaseOk ? "ok" : "error", "Sauvegarde termine", detailParts.join(" | "));
+
     flashSaved();
-
     renderAll();
-
     el("btnNewTask")?.classList.remove("btn-armed");
-
   });
 
   // bouton impression PDF (utilise print.css)
@@ -6290,6 +6435,10 @@ function bind(){
     renderWorkloadChart(filteredTasks());
 
   });
+  el("btnResetWorkload")?.addEventListener("click", ()=>{
+    resetMasterWorkloadFilters();
+    renderWorkloadChart(filteredTasks());
+  });
 
   el("workloadRangeTypeProject")?.addEventListener("change", ()=>{
 
@@ -6321,6 +6470,10 @@ function bind(){
 
     if(selectedProjectId) renderProject();
 
+  });
+  el("btnResetWorkloadProject")?.addEventListener("click", ()=>{
+    resetProjectWorkloadFilters();
+    if(selectedProjectId) renderProject();
   });
 
   el("btnExportWorkload")?.addEventListener("click", ()=>{
@@ -6706,7 +6859,6 @@ function bind(){
     t.vendor     = el("t_vendor").value.trim();
 
     t.start      = unformatDate(el("t_start").value);
-
     t.end        = unformatDate(el("t_end").value);
 
     if(t.end && t.start && t.end < t.start){
@@ -6721,6 +6873,33 @@ function bind(){
 
     updateTaskDatesWarning();
 
+    // Bloquer les dates qui tombent le week-end
+    const sDate = t.start ? new Date(t.start+"T00:00:00") : null;
+    const eDate = t.end ? new Date(t.end+"T00:00:00") : null;
+    if(sDate && !isNaN(sDate) && !isWeekday(sDate)){
+      alert("La date de début tombe un week-end. Choisis un jour ouvré.");
+      return;
+    }
+    if(eDate && !isNaN(eDate) && !isWeekday(eDate)){
+      alert("La date de fin tombe un week-end. Choisis un jour ouvré.");
+      return;
+    }
+
+    // Alerte doublon : même description + mêmes dates dans le même projet
+    if(t.roomNumber && t.start && t.end){
+      const dup = state.tasks.find(x=>
+        x.id!==t.id &&
+        x.projectId===t.projectId &&
+        (x.roomNumber||"").trim().toLowerCase()===t.roomNumber.trim().toLowerCase() &&
+        x.start===t.start &&
+        x.end===t.end
+      );
+      if(dup){
+        const ok = confirm("Attention : une tâche identique (même description + mêmes dates) existe déjà dans ce projet. Continuer quand même ?");
+        if(!ok) return;
+      }
+    }
+
     t.status     = Array.from(selectedStatusSet).join(",");
 
     markDirty();
@@ -6733,13 +6912,22 @@ function bind(){
 
   });
 
-  ["filterSite","filterProject","filterStatus","filterSearch","filterStartAfter","filterEndBefore"].forEach(id=>{
-
+  const debounce = (fn, wait=200)=>{
+    let t;
+    return (...args)=>{
+      clearTimeout(t);
+      t = setTimeout(()=> fn(...args), wait);
+    };
+  };
+  ["filterSite","filterProject","filterStatus","filterStartAfter","filterEndBefore"].forEach(id=>{
     const n=el(id);
-
     if(n) n.addEventListener("input", ()=>{ renderMaster(); saveUIState(); markDirty(); });
-
   });
+  const search = el("filterSearch");
+  if(search){
+    const onSearch = debounce(()=>{ renderMaster(); saveUIState(); markDirty(); }, 250);
+    search.addEventListener("input", onSearch);
+  }
 
   document.addEventListener("keydown",(e)=>{
     if(e.defaultPrevented) return;
@@ -6997,6 +7185,12 @@ function bind(){
 
     sortMaster = {key:"start", dir:"asc"};
 
+    const ids = ["filterSite","filterProject","filterStatus","filterSearch","filterStartAfter","filterEndBefore"];
+    ids.forEach(id=>{
+      const n = el(id);
+      if(n) n.value = "";
+    });
+
     renderMaster();
 
     updateSortIndicators("masterTable", sortMaster);
@@ -7005,8 +7199,23 @@ function bind(){
 
     if(fb) updateBadge(fb, false, "Tri/filtre actif", "Tri par défaut");
 
+    saveUIState();
     markDirty();
 
+  });
+
+  el("btnResetFiltersMaster")?.addEventListener("click", ()=>{
+    const ids = ["filterSite","filterProject","filterStatus","filterSearch","filterStartAfter","filterEndBefore"];
+    ids.forEach(id=>{
+      const n = el(id);
+      if(n) n.value = "";
+    });
+    _filteredCache = { key:"", version:-1, tasks:null };
+    renderMaster();
+    const fb = el("filtersBadge");
+    if(fb) updateBadge(fb, false, "Tri/filtre actif", "Tri par défaut");
+    saveUIState();
+    markDirty();
   });
 
   el("projectTasksTable")?.addEventListener("click",(e)=>{
@@ -7075,6 +7284,22 @@ function bind(){
 
   updateSaveButton();
 
+  document.querySelectorAll("[data-accordion] .cfg-accordion-head").forEach(head=>{
+    head.addEventListener("click", ()=>{
+      const wrap = head.closest("[data-accordion]");
+      if(!wrap) return;
+      wrap.classList.toggle("is-open");
+    });
+  });
+
+  // Ctrl+S / Cmd+S pour sauvegarder
+  document.addEventListener("keydown",(e)=>{
+    if(!(e.ctrlKey || e.metaKey) || e.shiftKey) return;
+    if(String(e.key).toLowerCase()!=="s") return;
+    e.preventDefault();
+    el("btnSave")?.click();
+  });
+
 }
 
 
@@ -7082,6 +7307,12 @@ function bind(){
 load();
 
 bind();
+
+// Auto‑sauvegarde toutes les 5 minutes
+setInterval(()=>{
+  if(!unsavedChanges) return;
+  try{ saveState(); }catch(e){}
+}, 5 * 60 * 1000);
 
 try{
   history.replaceState({projectId:selectedProjectId, taskId:selectedTaskId}, "");
@@ -7370,6 +7601,7 @@ function fitMasterGanttPrint(container){
   if(!container) return;
   container.style.transform = "";
   container.style.transformOrigin = "";
+  container.style.zoom = 1;
   const pageW = window.innerWidth || document.documentElement.clientWidth || 1;
   const pageH = window.innerHeight || document.documentElement.clientHeight || 1;
   const contentW = container.scrollWidth || container.offsetWidth || 1;
@@ -7379,10 +7611,10 @@ function fitMasterGanttPrint(container){
   if(!isFinite(scaleW) || scaleW <= 0) scaleW = 1;
   if(!isFinite(scaleH) || scaleH <= 0) scaleH = 1;
   const scale = Math.min(1, scaleW, scaleH);
-  container.style.transform = `scale(${scale})`;
-  container.style.transformOrigin = "top left";
-  container.style.width = `${Math.max(1, Math.floor(contentW))}px`;
-  container.style.height = `${Math.max(1, Math.floor(contentH))}px`;
+  container.style.zoom = scale;
+  container.style.width = "100%";
+  container.style.height = "100%";
+  container.style.overflow = "hidden";
 }
 
 

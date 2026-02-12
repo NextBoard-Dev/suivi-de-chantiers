@@ -119,6 +119,7 @@
     .modal-title{font-weight:800;margin-bottom:6px;}
     .modal-sub{color:#64748b;font-size:12px;margin-bottom:10px;}
     .modal-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+    .modal-actions-top{margin-top:-4px;margin-bottom:6px;}
     .modal-actions.spaced{margin-top:10px;}
     .btn-export-no{background:linear-gradient(180deg,#ef4444 0%,#dc2626 100%);border-color:#b91c1c;color:#fff;}
     .btn-export-yes{background:linear-gradient(180deg,#22c55e 0%,#16a34a 100%);border-color:#15803d;color:#fff;}
@@ -195,99 +196,154 @@
   </div>
   <div id="configModal" class="modal hidden" aria-hidden="true">
     <div class="modal-card config-card">
-      <div class="modal-title">Configuration</div>
-      <div class="modal-sub">Paramtres du dashboard</div>
+      <div class="config-header">
+        <div>
+          <div class="modal-title">Configuration</div>
+          <div class="modal-sub">Paramtres du dashboard</div>
+        </div>
+        <div class="modal-actions modal-actions-top">
+          <button class="btn btn-ghost" id="btnConfigCloseTop">Fermer</button>
+          <button class="btn btn-success" id="btnConfigSaveTop">Enregistrer</button>
+        </div>
+      </div>
       <div class="config-grid">
         <div class="config-col">
-          <label class="label">Nom du dashboard</label>
-          <input class="input" id="cfg_name" placeholder="Nom du dashboard" />
-          <label class="label">Adresse HTTP</label>
-          <input class="input" id="cfg_http" placeholder="https://..." />
-          <label class="label">URL Front (GitHub)</label>
-          <input class="input" id="cfg_front" placeholder="https://github.com/..." />
-          <label class="label">URL Back (Supabase)</label>
-          <input class="input" id="cfg_back" placeholder="https://..." />
-          <div class="config-users" id="cfg_hours_section">
-            <div class="config-users-title">Paramétrage des heures / jour</div>
-            <div class="config-users-row">
-              <label class="label hours-label">Équipe interne</label>
-              <input class="input input-sm" id="cfg_hours_internal" type="number" min="0" step="0.5" />
-            </div>
-            <div class="config-users-row">
-              <label class="label hours-label">Prestataire externe</label>
-              <input class="input input-sm" id="cfg_hours_external" type="number" min="0" step="0.5" />
-            </div>
-            <div class="config-users-row">
-              <label class="label hours-label">RSG/RI</label>
-              <input class="input input-sm" id="cfg_hours_rsg" type="number" min="0" step="0.5" />
+          <div class="cfg-accordion is-open" data-accordion>
+            <button type="button" class="cfg-accordion-head">
+              <span>Paramètres du dashboard</span>
+              <span class="cfg-accordion-icon"></span>
+            </button>
+            <div class="cfg-accordion-body">
+              <label class="label">Nom du dashboard</label>
+              <input class="input" id="cfg_name" placeholder="Nom du dashboard" />
+              <label class="label">Adresse HTTP</label>
+              <input class="input" id="cfg_http" placeholder="https://..." />
+              <a class="cfg-link" id="cfg_http_link" target="_blank" rel="noopener">Ouvrir</a>
+              <label class="label">URL Front (GitHub)</label>
+              <input class="input" id="cfg_front" placeholder="https://github.com/..." />
+              <a class="cfg-link" id="cfg_front_link" target="_blank" rel="noopener">Ouvrir</a>
+              <label class="label">URL Back (Supabase)</label>
+              <input class="input" id="cfg_back" placeholder="https://..." />
+              <a class="cfg-link" id="cfg_back_link" target="_blank" rel="noopener">Ouvrir</a>
             </div>
           </div>
-          <div id="cfg_status_section" class="config-users">
-            <div class="config-users-title">Statuts / Corps d'état</div>
-            <div class="config-users-row">
-              <input class="input" id="cfg_status_label" placeholder="Nouveau statut" />
-              <button class="btn btn-success" id="btnStatusAdd">Ajouter</button>
-            </div>
-            <div id="cfg_status_list" class="config-users-list status-list"></div>
-          </div>
-          <div id="cfg_vendor_section" class="config-users">
-            <div class="config-users-title">Prestataires externes</div>
-            <div class="config-users-row">
-              <input class="input" id="cfg_vendor_name" placeholder="Nom du prestataire" />
-              <button class="btn btn-success" id="btnVendorAdd">Ajouter</button>
-            </div>
-            <div id="cfg_vendor_list" class="config-users-list status-list"></div>
-          </div>
-          <div id="cfg_users_section" class="config-users">
-            <div class="config-users-title">Utilisateurs / Administrateurs</div>
-            <div class="config-users-row">
-              <input class="input" id="cfg_user_name" placeholder="Nom d'utilisateur" />
-              <input class="input" id="cfg_user_email" placeholder="Email" />
-              <select class="input" id="cfg_user_role">
-                <option value="admin">Admin</option>
-                <option value="user">Utilisateur</option>
-              </select>
-            </div>
-            <div class="config-users-row">
-              <div class="pwd-field">
-                <input class="input" id="cfg_user_pass" type="password" placeholder="Mot de passe" />
-                <button type="button" class="pwd-toggle" id="cfg_user_pass_toggle" aria-label="Afficher / masquer"></button>
+
+          <div class="cfg-accordion is-open" data-accordion>
+            <button type="button" class="cfg-accordion-head">
+              <span>Paramétrage des heures / jour</span>
+              <span class="cfg-accordion-icon"></span>
+            </button>
+            <div class="cfg-accordion-body config-users" id="cfg_hours_section">
+              <div class="config-users-row">
+                <label class="label hours-label">Équipe interne</label>
+                <input class="input input-sm" id="cfg_hours_internal" type="number" min="0" step="0.5" />
               </div>
-          <button class="btn btn-success" id="btnUserAdd">Ajouter</button>
+              <div class="config-users-row">
+                <label class="label hours-label">Prestataire externe</label>
+                <input class="input input-sm" id="cfg_hours_external" type="number" min="0" step="0.5" />
+              </div>
+              <div class="config-users-row">
+                <label class="label hours-label">RSG/RI</label>
+                <input class="input input-sm" id="cfg_hours_rsg" type="number" min="0" step="0.5" />
+              </div>
             </div>
-            <div id="cfg_users_list" class="config-users-list status-list"></div>
+          </div>
+
+          <div class="cfg-accordion is-open" data-accordion>
+            <button type="button" class="cfg-accordion-head">
+              <span>Statuts / Corps d'état</span>
+              <span class="cfg-accordion-icon"></span>
+            </button>
+            <div class="cfg-accordion-body config-users" id="cfg_status_section">
+              <div class="config-users-row">
+                <input class="input" id="cfg_status_label" placeholder="Nouveau statut" />
+                <button class="btn btn-success" id="btnStatusAdd">Ajouter</button>
+              </div>
+              <div id="cfg_status_list" class="config-users-list status-list"></div>
+            </div>
+          </div>
+
+          <div class="cfg-accordion is-open" data-accordion>
+            <button type="button" class="cfg-accordion-head">
+              <span>Prestataires externes</span>
+              <span class="cfg-accordion-icon"></span>
+            </button>
+            <div class="cfg-accordion-body config-users" id="cfg_vendor_section">
+              <div class="config-users-row">
+                <input class="input" id="cfg_vendor_name" placeholder="Nom du prestataire" />
+                <button class="btn btn-success" id="btnVendorAdd">Ajouter</button>
+              </div>
+              <div id="cfg_vendor_list" class="config-users-list status-list"></div>
+            </div>
+          </div>
+
+          <div class="cfg-accordion is-open" data-accordion>
+            <button type="button" class="cfg-accordion-head">
+              <span>Utilisateurs / Administrateurs</span>
+              <span class="cfg-accordion-icon"></span>
+            </button>
+            <div class="cfg-accordion-body config-users" id="cfg_users_section">
+              <div class="config-users-row">
+                <input class="input" id="cfg_user_name" placeholder="Nom d'utilisateur" />
+                <input class="input" id="cfg_user_email" placeholder="Email" />
+                <select class="input" id="cfg_user_role">
+                  <option value="admin">Admin</option>
+                  <option value="user">Utilisateur</option>
+                </select>
+              </div>
+              <div class="config-users-row">
+                <div class="pwd-field">
+                  <input class="input" id="cfg_user_pass" type="password" placeholder="Mot de passe" />
+                  <button type="button" class="pwd-toggle" id="cfg_user_pass_toggle" aria-label="Afficher / masquer"></button>
+                </div>
+                <button class="btn btn-success" id="btnUserAdd">Ajouter</button>
+              </div>
+              <div id="cfg_users_list" class="config-users-list status-list"></div>
+            </div>
           </div>
         </div>
         <div class="config-col config-col-right">
-          <div id="cfg_login_section" class="config-users">
-            <div class="config-users-title">Journal des connexions</div>
-            <div class="config-users-row">
-              <label class="label">Période</label>
-              <input class="input input-sm" id="cfg_login_start" type="date" />
-              <input class="input input-sm" id="cfg_login_end" type="date" />
-              <button class="btn btn-ghost" id="cfg_login_reset">Réinitialiser</button>
+          <div class="cfg-accordion is-open" data-accordion>
+            <button type="button" class="cfg-accordion-head">
+              <span>Journal des connexions</span>
+              <span class="cfg-accordion-icon"></span>
+            </button>
+            <div class="cfg-accordion-body config-users" id="cfg_login_section">
+              <div class="config-users-row">
+                <label class="label">Période</label>
+                <input class="input input-sm" id="cfg_login_start" type="date" />
+                <input class="input input-sm" id="cfg_login_end" type="date" />
+                <button class="btn btn-ghost" id="cfg_login_reset">Réinitialiser</button>
+              </div>
+              <div id="cfg_login_status" class="login-status"></div>
+              <div id="cfg_login_heatmap" class="login-heatmap-wrap"></div>
+              <div class="login-log-wrap">
+                <div class="config-users-title">Détail des connexions</div>
+                <div class="login-log-head">
+                  <button class="login-log-sort" data-sort="ts">Date</button>
+                  <button class="login-log-sort" data-sort="name">Nom</button>
+                  <button class="login-log-sort" data-sort="email">Email</button>
+                  <button class="login-log-sort" data-sort="role">Rôle</button>
+                  <div class="login-log-count-head">Nb</div>
+                </div>
+                <div id="cfg_login_log" class="login-log"></div>
+              </div>
             </div>
-          <div id="cfg_login_status" class="login-status"></div>
-          <div id="cfg_login_heatmap" class="login-heatmap-wrap"></div>
-          <div class="login-log-wrap">
-            <div class="config-users-title">Détail des connexions</div>
-            <div class="login-log-head">
-              <button class="login-log-sort" data-sort="ts">Date</button>
-              <button class="login-log-sort" data-sort="name">Nom</button>
-              <button class="login-log-sort" data-sort="email">Email</button>
-              <button class="login-log-sort" data-sort="role">Rôle</button>
-              <div class="login-log-count-head">Nb</div>
-            </div>
-            <div id="cfg_login_log" class="login-log"></div>
           </div>
         </div>
-      </div>
       </div>
       <div class="modal-actions spaced">
         <button class="btn btn-ghost" id="btnConfigClose">Fermer</button>
         <button class="btn btn-success" id="btnConfigSave">Enregistrer</button>
       </div>
       <div class="config-footer">Concepteur : Sébastien DUC <span class="config-copyright"></span></div>
+    </div>
+  </div>
+  <div id="saveToast" class="save-toast" aria-live="polite" aria-atomic="true">
+    <div class="save-toast-icon" id="saveToastIcon">OK</div>
+    <div class="save-toast-content">
+      <div class="save-toast-title" id="saveToastTitle">Sauvegarde</div>
+      <div class="save-toast-detail" id="saveToastDetail"></div>
     </div>
   </div>
   <header class="topbar">
@@ -371,6 +427,7 @@
         <div class="panel-controls panel-controls-spaced">
           <span class="filters-indicator" id="filtersBadge">Tri/filtre actif</span>
           <span class="filters-indicator site-indicator hidden" id="siteBadge"></span>
+          <button class="btn btn-ghost" id="btnResetFiltersMaster">Réinitialiser filtres</button>
           <button class="btn btn-ghost" id="btnResetSortMaster">Réinitialiser tri</button>
           <button class="btn master-export-inline" id="btnExportMaster">
             <span class="pdf-icon" aria-hidden="true"></span>
@@ -423,6 +480,7 @@
               <select class="input input-xs" id="workloadRangeYear"></select>
               <input class="input input-sm" id="workloadRangeStart" type="date" />
               <input class="input input-sm" id="workloadRangeEnd" type="date" />
+              <button class="btn btn-ghost" id="btnResetWorkload">Réinitialiser</button>
               <button class="btn" id="btnExportWorkload">
                 <span class="pdf-icon" aria-hidden="true"></span>
                 Export PDF
@@ -584,6 +642,7 @@
               <select class="input input-xs" id="workloadRangeYearProject"></select>
               <input class="input input-sm" id="workloadRangeStartProject" type="date" />
               <input class="input input-sm" id="workloadRangeEndProject" type="date" />
+              <button class="btn btn-ghost" id="btnResetWorkloadProject">Réinitialiser</button>
               <button class="btn" id="btnExportWorkloadProject">
                 <span class="pdf-icon" aria-hidden="true"></span>
                 Export PDF

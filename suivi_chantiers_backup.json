@@ -355,7 +355,14 @@
     }
   ],
   "ui": {
-    "filters": {},
+    "filters": {
+      "site": "",
+      "search": "",
+      "status": "",
+      "project": "",
+      "endBefore": "",
+      "startAfter": ""
+    },
     "activeTab": "3e86100919c04fb8456"
   }
 }

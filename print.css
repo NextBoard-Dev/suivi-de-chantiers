@@ -29,6 +29,20 @@
     break-after: avoid;
     page-break-after: avoid;
   }
+  /* mode 1 page stricte */
+  body.print-gantt-master #printInjection,
+  body.print-gantt-project #printInjection{
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    overflow:hidden !important;
+  }
+  @page {
+    size: A3 landscape;
+    margin: 6mm;
+  }
 }
 
 @media print {
@@ -77,6 +91,10 @@
     page-break-inside: avoid;
     break-after: avoid;
     page-break-after: avoid;
+  }
+  body.print-gantt-master #printInjection,
+  body.print-gantt-project #printInjection{
+    overflow: hidden !important;
   }
   body.print-gantt-master .card,
   body.print-gantt-project .card{ margin-bottom: 2mm; }
