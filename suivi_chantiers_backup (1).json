@@ -168,17 +168,17 @@
       "status": "HUIS_SER",
       "vendor": "Turboself",
       "projectId": "fd47202319c27a87d06",
-      "roomNumber": "Pose des 13 Serrures"
+      "roomNumber": "Pose des 2 Serrures"
     },
     {
       "id": "218f59dc19c27a9b7be",
       "end": "2026-02-20",
-      "owner": "Équipe interne",
+      "owner": "",
       "start": "2026-02-09",
       "status": "HUIS_SER",
       "vendor": "",
       "projectId": "fd47202319c27a87d06",
-      "roomNumber": "Pose des 13 Serrures"
+      "roomNumber": "Pose des 11 Serrures"
     },
     {
       "id": "9380be4319c27b0af51",
@@ -374,11 +374,11 @@
   "ui": {
     "filters": {
       "site": "LGT",
-      "project": "",
-      "status": "",
       "search": "",
-      "startAfter": "",
-      "endBefore": ""
+      "status": "",
+      "project": "",
+      "endBefore": "",
+      "startAfter": ""
     },
     "activeTab": "3e86100919c04fb8456"
   }

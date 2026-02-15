@@ -1671,9 +1671,10 @@ const ownerType = (o="")=>{
 
 };
 
-const ownerBadge = (o="")=>{
+const ownerBadge = (o="", labelOverride="")=>{
 
   const k = o.toLowerCase();
+  const label = (labelOverride || o || "").toString();
 
   // Palette aligne avec le graphique de charge
 
@@ -1684,11 +1685,27 @@ const ownerBadge = (o="")=>{
 
   else if(k.includes("externe")) color = "#b45309"; // prestataire externe
 
-  else if(k.includes("interne")) color = "#16a34a"; // Équipe interne
+  else if(k.includes("interne")) color = "#16a34a"; // INTERNE
 
-  return `<span class="badge owner" style="background:${color};border-color:${color};color:#fff;">${o}</span>`;
+  return `<span class="badge owner" style="background:${color};border-color:${color};color:#fff;">${label}</span>`;
 
 };
+
+function ownerBadgeForTask(t){
+  if(!t) return "";
+  const owner = t.owner || "";
+  if(!owner) return "";
+  const typ = ownerType(owner);
+  let label = owner;
+  if(typ === "interne"){
+    label = "INTERNE";
+  }
+  if(typ === "externe"){
+    const v = (t.vendor || "").trim();
+    if(v) label = v;
+  }
+  return ownerBadge(owner, label);
+}
 
 const SITE_PHOTOS = {
   "CDM": "assets/sites/CDM.jpg",
@@ -1741,8 +1758,9 @@ const vendorBadge = (v="")=>{
   }
 
   const isInternal = k.includes("interne");
+  const isExternal = k.includes("externe") || (!isInternal && v);
 
-  const color = isInternal ? "#16a34a" : "#4b5563";
+  const color = isInternal ? "#16a34a" : (isExternal ? "#b45309" : "#4b5563");
 
   return `<span class="badge owner" style="background:${color};border-color:${color};color:#fff;">${v}</span>`;
 
@@ -2106,7 +2124,7 @@ function renderVendorDropdown(filter=""){
 
   });
 
-  showVendorDropdown(list.length>0);
+  showVendorDropdown(list.length>0 && document.activeElement===input);
 
 }
 
@@ -2292,7 +2310,7 @@ function renderDescriptionDropdown(filter=""){
 
   });
 
-  showDescriptionDropdown(list.length>0);
+  showDescriptionDropdown(list.length>0 && document.activeElement===input);
 
 }
 
@@ -2636,11 +2654,11 @@ const EMBEDDED_BACKUP = {
 
   tasks: [
 
-    { id:"c807465d19c05012673", projectId:"3e86100919c04fb8456", roomNumber:"Rénovation", status:"ELECTRICITE,PEINTURE,MOBILIER,AMENAGEMENTS", owner:"Équipe interne", start:"2026-02-02", end:"2026-02-27", notes:"" },
+    { id:"c807465d19c05012673", projectId:"3e86100919c04fb8456", roomNumber:"Rénovation", status:"ELECTRICITE,PEINTURE,MOBILIER,AMENAGEMENTS", owner:"INTERNE", start:"2026-02-02", end:"2026-02-27", notes:"" },
 
-    { id:"f490f0e019c0571bee2", projectId:"0c644af019c05700845", roomNumber:"Rénovation CH 011", status:"PEINTURE,TDV,AMENAGEMENTS", owner:"Équipe interne", start:"2026-02-02", end:"2026-02-14", notes:"" },
+    { id:"f490f0e019c0571bee2", projectId:"0c644af019c05700845", roomNumber:"Rénovation CH 011", status:"PEINTURE,TDV,AMENAGEMENTS", owner:"INTERNE", start:"2026-02-02", end:"2026-02-14", notes:"" },
 
-    { id:"840b3cb519c05732884", projectId:"0c644af019c05700845", roomNumber:"Rénovation CH 010", status:"PEINTURE,AMENAGEMENTS,TDV", owner:"Équipe interne", start:"2026-02-16", end:"2026-02-28", notes:"" }
+    { id:"840b3cb519c05732884", projectId:"0c644af019c05700845", roomNumber:"Rénovation CH 010", status:"PEINTURE,AMENAGEMENTS,TDV", owner:"INTERNE", start:"2026-02-16", end:"2026-02-28", notes:"" }
 
   ],
 
@@ -3748,6 +3766,13 @@ function endOfWorkWeek(d){
 
 }
 
+function endOfWeek(d){
+  const x = startOfWeek(d);
+  x.setDate(x.getDate()+6);
+  x.setHours(23,59,59,999);
+  return x;
+}
+
 function addDays(d,n){ const x=new Date(d.getTime()); x.setDate(x.getDate()+n); return x; }
 
 // --- Vacances scolaires (Zone B) par NUMÉROS de semaines ---
@@ -3760,6 +3785,16 @@ function getSchoolYearKey(d){
   const m = d.getMonth(); // 0=janv
   // année scolaire : septembre -> août
   return (m >= 8) ? `${y}-${y+1}` : `${y-1}-${y}`;
+}
+
+function taskTitleProjectView(t){
+  const p = state?.projects?.find(x=>x.id===t.projectId);
+  const sub = (p?.subproject||"").trim();
+  const desc = (t.roomNumber||"").trim();
+  if(sub && desc) return `${sub} - ${desc}`;
+  if(sub) return sub;
+  if(desc) return desc;
+  return (p?.name||"Projet").trim();
 }
 function isVacationWeek(weekStart){
   const info = isoWeekInfo(weekStart);
@@ -3995,9 +4030,9 @@ function renderGantt(projectId){
 
 
 
-  let html="<div class='tablewrap gantt-table'><table class='table' style='--gcol1:200px;--gcol2:120px;--gcol3:120px'>";
+  let html="<div class='tablewrap gantt-table'><table class='table' style='--gcol0:70px;--gcol1:200px;--gcol2:120px;--gcol3:120px'>";
 
-  html+="<thead><tr><th class='gantt-task-col-project gantt-col-task'>Tâche</th><th class='gantt-col-vendor' style='width:120px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
+  html+="<thead><tr><th class='gantt-col-site' style='width:70px'>Site / Zone</th><th class='gantt-task-col-project gantt-col-task'>Nom</th><th class='gantt-col-vendor' style='width:120px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
 
   weeks.forEach((w,i)=>{
 
@@ -4031,7 +4066,7 @@ function renderGantt(projectId){
 
     const color = ownerColor(t.owner);
 
-    const ownerBadges = t.owner ? ownerBadge(t.owner) : "";
+    const ownerBadges = t.owner ? ownerBadgeForTask(t) : "";
 
     const vendorBadges = (()=> {
 
@@ -4040,7 +4075,7 @@ function renderGantt(projectId){
       if(t.vendor) set.add(t.vendor);
 
       const typ = ownerType(t.owner);
-      if(typ === "interne") set.add("Équipe interne");
+      if(typ === "interne") set.add("INTERNE");
       if(typ === "rsgri") set.add("RSG/RI");
       if(typ === "externe" && !t.vendor) set.add("Prestataire externe");
 
@@ -4068,6 +4103,8 @@ function renderGantt(projectId){
 
     const label = [sub, taskDesc].filter(Boolean).join("  ");
 
+    const siteLabel = (p?.site || "").trim();
+    html+=`<td class="gantt-col-site">${attrEscape(siteLabel || "")}</td>`;
     html+=`<td class="gantt-task-col-project gantt-col-task"><b><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></b> <span class="gantt-task-name">${attrEscape(label)}</span></td>`;
 
     html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
@@ -4190,7 +4227,7 @@ function renderProjectTasks(projectId){
 
     const c = ownerColor(t.owner);
 
-    const ownerBadgeHtml = t.owner ? ownerBadge(t.owner) : "";
+    const ownerBadgeHtml = t.owner ? ownerBadgeForTask(t) : "";
     const durLabel = durationLabelForTask(t);
     const todayKey = new Date().toISOString().slice(0,10);
     const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
@@ -4201,7 +4238,7 @@ function renderProjectTasks(projectId){
 
       <td><span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></td>
 
-      <td><span class="icon-picto"></span> ${taskTitle(t)}</td>
+      <td><span class="icon-picto"></span> ${taskTitleProjectView(t)}</td>
 
       <td class="status-cell"><span class="status-left">${statusDot(statuses[0])}${statusLabels(t.status||"")}</span>${ownerBadgeHtml||""}</td>
 
@@ -4259,7 +4296,7 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
   const maxEnd   = re || tasks.map(t=>new Date(t.end+"T00:00:00")).reduce((a,b)=>a>b?a:b);
   // Afficher la totalité des semaines concernées par la période choisie
   const displayStart = rs ? startOfWeek(rs) : minStart;
-  const displayEnd = re ? endOfWorkWeek(re) : maxEnd;
+  const displayEnd = re ? endOfWeek(re) : endOfWeek(maxEnd);
 
   const weeks=[];
   for(let w=startOfWeek(displayStart); w<=addDays(startOfWeek(displayEnd),0); w=addDays(w,7)) weeks.push(new Date(w));
@@ -4277,8 +4314,8 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
   const hideStatus = !ganttColVisibility.masterStatus;
   const tableClass = `table${hideVendor ? " hide-vendor" : ""}${hideStatus ? " hide-status" : ""}`;
 
-  let html=`<div class='tablewrap gantt-table'><table class='${tableClass}' style='--gcol1:150px;--gcol2:140px;--gcol3:120px'>`;
-  html+="<thead><tr><th class='gantt-col-task' style='width:150px'>Tâche</th><th class='gantt-col-vendor' style='width:140px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
+  let html=`<div class='tablewrap gantt-table'><table class='${tableClass}' style='--gcol1:120px;--gcol2:90px;--gcol3:90px'>`;
+  html+="<thead><tr><th class='gantt-col-task' style='width:120px'>Tâche</th><th class='gantt-col-vendor' style='width:90px'>Prestataire</th><th class='gantt-col-status' style='width:90px'>Statut</th>";
 
   weeks.forEach((w,i)=>{
     const info=isoWeekInfo(w);
@@ -4288,7 +4325,7 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
     const mondayLabel = formatShortDate(w);
     const todayClass = isTodayInWeek(w) ? " week-today" : "";
     const vacClass = vacWeeks[i] ? " vac-week" : "";
-    html+=`<th class="week-cell${todayClass}${vacClass}" data-range="${range}" style='width:32px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
+    html+=`<th class="week-cell${todayClass}${vacClass}" data-range="${range}" style='width:20px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
   });
 
   html+="</tr></thead><tbody>";
@@ -4303,7 +4340,7 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
       const set = new Set();
       if(t.vendor) set.add(t.vendor);
       const typ = ownerType(t.owner);
-      if(typ === "interne") set.add("Équipe interne");
+      if(typ === "interne") set.add("INTERNE");
       if(typ === "rsgri") set.add("RSG/RI");
       if(typ === "externe" && !t.vendor) set.add("Prestataire externe");
       if(set.size===0) return "<span class='text-muted'></span>";
@@ -4354,7 +4391,7 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
   const minStart = rs || tasks.map(t=>new Date(t.start+"T00:00:00")).reduce((a,b)=>a<b?a:b);
   const maxEnd   = re || tasks.map(t=>new Date(t.end+"T00:00:00")).reduce((a,b)=>a>b?a:b);
   const displayStart = rs ? startOfWeek(rs) : minStart;
-  const displayEnd = re ? endOfWorkWeek(re) : maxEnd;
+  const displayEnd = re ? endOfWeek(re) : endOfWeek(maxEnd);
 
   const weeks=[];
   for(let w=startOfWeek(displayStart); w<=addDays(startOfWeek(displayEnd),0); w=addDays(w,7)) weeks.push(new Date(w));
@@ -4372,8 +4409,8 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
   const hideStatus = !ganttColVisibility.projectStatus;
   const tableClass = `table${hideVendor ? " hide-vendor" : ""}${hideStatus ? " hide-status" : ""}`;
 
-  let html=`<div class='tablewrap gantt-table'><table class='${tableClass}' style='--gcol1:150px;--gcol2:120px;--gcol3:120px'>`;
-  html+="<thead><tr><th class='gantt-task-col-project gantt-col-task'>Tâche</th><th class='gantt-col-vendor' style='width:120px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
+  let html=`<div class='tablewrap gantt-table'><table class='${tableClass}' style='--gcol1:120px;--gcol2:90px;--gcol3:90px'>`;
+  html+="<thead><tr><th class='gantt-task-col-project gantt-col-task'>Tâche</th><th class='gantt-col-vendor' style='width:90px'>Prestataire</th><th class='gantt-col-status' style='width:90px'>Statut</th>";
 
   weeks.forEach((w,i)=>{
     const info=isoWeekInfo(w);
@@ -4383,7 +4420,7 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
     const mondayLabel = formatShortDate(w);
     const todayClass = isTodayInWeek(w) ? " week-today" : "";
     const vacClass = vacWeeks[i] ? " vac-week" : "";
-    html+=`<th class="week-cell${todayClass}${vacClass}" data-range="${range}" style='width:32px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
+    html+=`<th class="week-cell${todayClass}${vacClass}" data-range="${range}" style='width:20px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
   });
 
   html+="</tr></thead><tbody>";
@@ -4396,7 +4433,7 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
       const set = new Set();
       if(t.vendor) set.add(t.vendor);
       const typ = ownerType(t.owner);
-      if(typ === "interne") set.add("Équipe interne");
+      if(typ === "interne") set.add("INTERNE");
       if(typ === "rsgri") set.add("RSG/RI");
       if(typ === "externe" && !t.vendor) set.add("Prestataire externe");
       if(set.size===0) return "<span class='text-muted'></span>";
@@ -4478,9 +4515,9 @@ function renderMasterGantt(){
 
 
 
-  let html="<div class='tablewrap gantt-table'><table class='table' style='--gcol1:150px;--gcol2:140px;--gcol3:120px'>";
+  let html="<div class='tablewrap gantt-table'><table class='table' style='--gcol0:70px;--gcol1:150px;--gcol2:140px;--gcol3:120px'>";
 
-  html+="<thead><tr><th class='gantt-col-task' style='width:150px'>Tâche</th><th class='gantt-col-vendor' style='width:140px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
+  html+="<thead><tr><th class='gantt-col-site' style='width:70px'>Site / Zone</th><th class='gantt-col-task' style='width:150px'>Nom</th><th class='gantt-col-vendor' style='width:140px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
 
   weeks.forEach((w,i)=>{
 
@@ -4515,6 +4552,7 @@ function renderMasterGantt(){
     const p = state?.projects?.find(x=>x.id===t.projectId);
 
     const projectName = (p?.name || "Projet").trim() || "Projet";
+    const siteLabel = (p?.site || "").trim();
 
     const vendorBadges = (()=> {
 
@@ -4523,7 +4561,7 @@ function renderMasterGantt(){
       if(t.vendor) set.add(t.vendor);
 
       const typ = ownerType(t.owner);
-      if(typ === "interne") set.add("Équipe interne");
+      if(typ === "interne") set.add("INTERNE");
       if(typ === "rsgri") set.add("RSG/RI");
       if(typ === "externe" && !t.vendor) set.add("Prestataire externe");
 
@@ -4543,6 +4581,7 @@ function renderMasterGantt(){
     const rowClass = t.id===selectedTaskId ? "gantt-row gantt-row-active" : "gantt-row";
     const rowClassWithToday = `${rowClass}${isToday ? " today-row" : ""}${isLate ? " late-row" : ""}`;
     html+=`<tr class="${rowClassWithToday}" data-task="${t.id}" onclick="openTaskFromGantt('${t.id}')">`;
+    html+=`<td class="gantt-col-site">${attrEscape(siteLabel || "")}</td>`;
     html+=`<td class="gantt-col-task"><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="gantt-task-name">${attrEscape(projectName)}</span></td>`;
 
     html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
@@ -4737,7 +4776,7 @@ function exportSvgToPdf(svgId, title="Export", pieId=null, tasksOverride=null){
 
         @page { size: A4 landscape; margin: 10mm; }
 
-        :root{--green:#16a34a;--gray:#4b5563;--ink:#0b1424;}
+        :root{--green:#16a34a;--ext:#b45309;--ink:#0b1424;}
 
         body{margin:0;padding:0;display:flex;flex-direction:column;align-items:center;font-family:"Segoe UI",Arial,sans-serif;background:#fff;color:var(--ink);}
 
@@ -4759,7 +4798,7 @@ function exportSvgToPdf(svgId, title="Export", pieId=null, tasksOverride=null){
 
         .dot.int{background:var(--green);}
 
-        .dot.ext{background:var(--gray);}
+        .dot.ext{background:var(--ext);}
 
         .frame{border:1px solid #e5e7eb;border-radius:10px;padding:6mm;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);}
 
@@ -4791,7 +4830,7 @@ function exportSvgToPdf(svgId, title="Export", pieId=null, tasksOverride=null){
 
         <div class="legend">
 
-          <div class="item"><span class="dot int"></span>Équipe interne ${pInt}%</div>
+          <div class="item"><span class="dot int"></span>INTERNE ${pInt}%</div>
 
           <div class="item"><span class="dot ext"></span>Prestataire externe ${pExt}%</div>
 
@@ -5140,11 +5179,11 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
       <linearGradient id="${gradExtId}" x1="0" x2="0" y1="0" y2="1">
 
-        <stop offset="0%" stop-color="#94a3b8" stop-opacity="0.98"/>
+        <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.98"/>
 
-        <stop offset="55%" stop-color="#64748b" stop-opacity="0.92"/>
+        <stop offset="55%" stop-color="#b45309" stop-opacity="0.92"/>
 
-        <stop offset="100%" stop-color="#475569" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#92400e" stop-opacity="0.9"/>
 
       </linearGradient>
       <linearGradient id="${gradRsgId}" x1="0" x2="0" y1="0" y2="1">
@@ -5677,6 +5716,7 @@ function updateBadge(node, active, textActive="Tri/filtre actif", textInactive="
 
 function filtersActive(){
 
+  const fsite = el("filterSite")?.value || "";
   const fp = el("filterProject")?.value || "";
 
   const fs = el("filterStatus")?.value || "";
@@ -5687,8 +5727,19 @@ function filtersActive(){
 
   const endBefore  = el("filterEndBefore")?.value || "";
 
-  return !!(fp || fs || q || startAfter || endBefore);
+  return !!(fsite || fp || fs || q || startAfter || endBefore);
 
+}
+
+function updateSidebarFilterIndicator(){
+  const icon = el("filtersActiveIcon");
+  const resetBtn = document.querySelector(".filters-reset-row .btn");
+  if(!icon) return;
+  const active = filtersActive();
+  icon.classList.toggle("active", active);
+  if(resetBtn){
+    resetBtn.classList.toggle("btn-danger", active);
+  }
 }
 
 
@@ -5763,7 +5814,7 @@ function renderMaster(){
 
   if(sorted.length===0){
 
-    tbody.innerHTML="<tr><td colspan='8' class='empty-row'>Aucune tâche.</td></tr>";
+    tbody.innerHTML="<tr><td colspan='7' class='empty-row'>Aucune tâche.</td></tr>";
 
     return;
 
@@ -5780,6 +5831,9 @@ function renderMaster(){
     const c = ownerColor(t.owner);
 
     const rowBg = siteColor(p?.site);
+    const sub = (p?.subproject || "").trim();
+    const projLabel = sub ? `${p?.name||"Sans projet"} - ${sub}` : (p?.name||"Sans projet");
+    const taskLabel = (t.roomNumber||"").trim();
 
     const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
     const isLate = !!(t.end && t.end < todayKey);
@@ -5788,17 +5842,15 @@ function renderMaster(){
 
       <td>${p?.site||""}</td>
 
-      <td>${p?.name||"Sans projet"}</td>
+      <td>${projLabel}</td>
 
-      <td><span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskTitle(t)}</td>
+      <td><span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskLabel}</td>
 
-      <td class="status-cell"><span class="status-left">${statusDot(statuses[0])}${statusLabels(t.status||"")}</span>${t.owner?ownerBadge(t.owner):""}</td>
+      <td class="status-cell"><span class="status-left">${statusDot(statuses[0])}${statusLabels(t.status||"")}</span>${t.owner?ownerBadgeForTask(t):""}</td>
 
       <td>${formatDate(t.start)||""}${isToday ? `<span class="today-dot" title="En cours aujourd'hui"></span>` : ""}</td>
 
       <td>${formatDate(t.end)||""}</td>
-
-      <td>${t.owner||""}</td>
 
       <td>${durationLabelForTask(t)}</td>
 
@@ -5825,6 +5877,7 @@ function renderMaster(){
     updateBadge(fb, active, "Tri/filtre actif", "Tri par défaut");
 
   }
+  updateSidebarFilterIndicator();
   const siteBadge = el("siteBadge");
   if(siteBadge){
     const fp = el("filterProject")?.value || "";
@@ -6206,6 +6259,28 @@ function bind(){
   el("btnConfig")?.addEventListener("click", ()=>{
     if(isLocked) return;
     openConfigModal();
+  });
+  el("btnHelp")?.addEventListener("click", ()=>{
+    const modal = el("helpModal");
+    if(!modal) return;
+    modal.classList.remove("hidden");
+    modal.style.display="flex";
+    modal.setAttribute("aria-hidden","false");
+  });
+  el("btnHelpClose")?.addEventListener("click", ()=>{
+    const modal = el("helpModal");
+    if(!modal) return;
+    modal.classList.add("hidden");
+    modal.style.display="none";
+    modal.setAttribute("aria-hidden","true");
+  });
+  el("helpModal")?.addEventListener("click",(e)=>{
+    if(e.target && e.target.id==="helpModal"){
+      const modal = el("helpModal");
+      modal.classList.add("hidden");
+      modal.style.display="none";
+      modal.setAttribute("aria-hidden","true");
+    }
   });
   el("btnStatusAdd")?.addEventListener("click", ()=>{
     if(isLocked) return;
@@ -6647,7 +6722,7 @@ function bind(){
       const isProject = ganttExportContext === "project";
       const allTasks = isProject && selectedProjectId
         ? state.tasks.filter(t=>t.projectId===selectedProjectId)
-        : (state?.tasks || []);
+        : filteredTasks();
       const range = getMasterGanttExportRange(allTasks);
       if(!range){ alert("Aucune tâche datée pour l'export."); return; }
       const tasksAll = allTasks.filter(t=>t.start && t.end);
@@ -6731,6 +6806,12 @@ function bind(){
     if(isLocked) return;
 
     if(!selectedProjectId) return;
+
+    try{
+      toggleStatusMenu(false);
+      document.querySelectorAll(".vendor-dropdown,.desc-dropdown").forEach(n=>n.classList.remove("open"));
+      document.activeElement && document.activeElement.blur && document.activeElement.blur();
+    }catch(e){}
 
     saveUndoSnapshot();
 
@@ -6850,6 +6931,12 @@ function bind(){
 
     if(!selectedProjectId) return;
 
+    try{
+      toggleStatusMenu(false);
+      document.querySelectorAll(".vendor-dropdown,.desc-dropdown").forEach(n=>n.classList.remove("open"));
+      document.activeElement && document.activeElement.blur && document.activeElement.blur();
+    }catch(e){}
+
     saveUndoSnapshot();
 
     let t = state.tasks.find(x=>x.id===selectedTaskId && x.projectId===selectedProjectId);
@@ -6931,7 +7018,12 @@ function bind(){
   };
   ["filterSite","filterProject","filterStatus","filterStartAfter","filterEndBefore"].forEach(id=>{
     const n=el(id);
-    if(n) n.addEventListener("input", ()=>{ renderMaster(); saveUIState(); markDirty(); });
+    if(n) n.addEventListener("input", ()=>{ 
+      if(id==="filterSite") updateSitePhoto(n.value || "");
+      renderMaster(); 
+      saveUIState(); 
+      markDirty(); 
+    });
   });
   const search = el("filterSearch");
   if(search){
@@ -7212,20 +7304,6 @@ function bind(){
     saveUIState();
     markDirty();
 
-  });
-
-  el("btnResetFiltersMaster")?.addEventListener("click", ()=>{
-    const ids = ["filterSite","filterProject","filterStatus","filterSearch","filterStartAfter","filterEndBefore"];
-    ids.forEach(id=>{
-      const n = el(id);
-      if(n) n.value = "";
-    });
-    _filteredCache = { key:"", version:-1, tasks:null };
-    renderMaster();
-    const fb = el("filtersBadge");
-    if(fb) updateBadge(fb, false, "Tri/filtre actif", "Tri par défaut");
-    saveUIState();
-    markDirty();
   });
 
   el("projectTasksTable")?.addEventListener("click",(e)=>{
@@ -7519,9 +7597,11 @@ function prepareMasterGanttPrint(rangeStart, rangeEnd, tasksAllOverride=null){
     const e = new Date(t.end+"T00:00:00");
     return e >= rangeStart && s <= rangeEnd;
   }) : tasksAll;
+  const filtersLabel = buildMasterFiltersLabel();
   if(meta){
     const metaRows = [
       ["Période", rangeLabel],
+      ["Filtres", filtersLabel],
       ["Date export", today],
       ["Nombre de tâches", tasksInRange.length]
     ];
@@ -7579,10 +7659,12 @@ function prepareProjectGanttPrint(rangeStart, rangeEnd, tasksAllOverride=null){
     const e = new Date(t.end+"T00:00:00");
     return e >= rangeStart && s <= rangeEnd;
   }) : tasksAll;
+  const filtersLabel = buildMasterFiltersLabel();
   if(meta){
     const metaRows = [
       ["Projet", projectName],
       ["Période", rangeLabel],
+      ["Filtres", filtersLabel],
       ["Date export", today],
       ["Nombre de tâches", tasksInRange.length]
     ];
@@ -7647,7 +7729,7 @@ if(typeof window !== "undefined"){
 
   window.onafterprint = cleanupPrint;
 
-  function buildExportSummary(tasks){
+function buildExportSummary(tasks){
     const total = tasks.length;
     const dated = tasks.filter(t=>t.start && t.end);
     let range = "Plage: -";
@@ -7684,6 +7766,50 @@ if(typeof window !== "undefined"){
 
   };
 
+}
+
+function buildMasterFiltersLabel(){
+  const labels = [];
+  const site = (el("filterSite")?.value || "").trim();
+  if(site) labels.push(`Site: ${site}`);
+  const projId = el("filterProject")?.value || "";
+  if(projId){
+    const p = state.projects.find(x=>x.id===projId);
+    if(p) labels.push(`Projet: ${p.name || "Sans nom"}`);
+  }
+  const statusId = el("filterStatus")?.value || "";
+  if(statusId){
+    const s = STATUSES.find(x=>x.v===statusId);
+    labels.push(`Statut: ${(s?.label || statusId)}`);
+  }
+  const q = (el("filterSearch")?.value || "").trim();
+  if(q) labels.push(`Recherche: "${q}"`);
+  const startAfter = el("filterStartAfter")?.value || "";
+  if(startAfter) labels.push(`Début après: ${formatDate(startAfter)}`);
+  const endBefore = el("filterEndBefore")?.value || "";
+  if(endBefore) labels.push(`Fin avant: ${formatDate(endBefore)}`);
+
+  const rangeType = el("ganttExportRangeType")?.value || "";
+  const rangeYear = el("ganttExportRangeYear")?.value || "";
+  const rangeStart = el("ganttExportRangeStart")?.value || "";
+  const rangeEnd = el("ganttExportRangeEnd")?.value || "";
+  if(rangeType){
+    if(rangeType === "all") labels.push("Période: Toutes les dates");
+    else if(rangeType === "civil") labels.push(`Période: Année civile ${rangeYear || ""}`.trim());
+    else if(rangeType === "school"){
+      const y = parseInt(rangeYear || "", 10);
+      const label = isNaN(y) ? "" : `${y}-${y+1}`;
+      labels.push(`Période: Année scolaire ${label || rangeYear || ""}`.trim());
+    }
+    else if(rangeType === "custom"){
+      if(rangeStart || rangeEnd){
+        const s = rangeStart ? formatDate(rangeStart) : "—";
+        const e = rangeEnd ? formatDate(rangeEnd) : "—";
+        labels.push(`Période: ${s} → ${e}`);
+      }
+    }
+  }
+  return labels.length ? labels.join(" • ") : "Aucun";
 }
 
 

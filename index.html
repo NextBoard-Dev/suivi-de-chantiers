@@ -235,7 +235,7 @@
             </button>
             <div class="cfg-accordion-body config-users" id="cfg_hours_section">
               <div class="config-users-row">
-                <label class="label hours-label">Équipe interne</label>
+                <label class="label hours-label">INTERNE</label>
                 <input class="input input-sm" id="cfg_hours_internal" type="number" min="0" step="0.5" />
               </div>
               <div class="config-users-row">
@@ -346,6 +346,291 @@
       <div class="save-toast-detail" id="saveToastDetail"></div>
     </div>
   </div>
+  <div id="helpModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card help-card">
+      <div class="help-header">
+        <div>
+          <div class="modal-title">Notice d'utilisation</div>
+          <div class="modal-sub">Suivi de Chantiers — guide complet</div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="btnHelpClose">Fermer</button>
+        </div>
+      </div>
+      <div class="help-body">
+        <div class="help-section">
+          <div class="help-title"><span class="help-step">1</span>Vue générale</div>
+          <div class="help-text">Le dashboard est structuré en 3 zones : barre du haut (actions), colonne gauche (onglets + filtres), zone centrale (tableaux, Gantt, graphiques).</div>
+          <div class="help-grid">
+            <div class="help-mini">
+              <h4>Plan de l'écran</h4>
+              <div class="help-visual">
+                <svg viewBox="0 0 900 260" aria-label="Schéma de l'interface">
+                  <rect x="10" y="10" width="880" height="44" rx="12" fill="#e2e8f0" stroke="#94a3b8"/>
+                  <text x="24" y="38" font-size="14" font-weight="800" fill="#0f172a">Barre du haut : Aide / Sauvegarder / Configuration</text>
+                  <rect x="10" y="70" width="200" height="180" rx="12" fill="#f8fafc" stroke="#94a3b8"/>
+                  <text x="24" y="100" font-size="13" font-weight="800" fill="#0f172a">Colonne gauche</text>
+                  <text x="24" y="122" font-size="12" fill="#334155">Onglets + Filtres + Ajouter</text>
+                  <rect x="220" y="70" width="670" height="180" rx="14" fill="#ffffff" stroke="#94a3b8"/>
+                  <text x="236" y="100" font-size="13" font-weight="800" fill="#0f172a">Zone centrale</text>
+                  <text x="236" y="122" font-size="12" fill="#334155">Tableau maître, Gantt, Graphiques</text>
+                  <rect x="236" y="136" width="420" height="22" rx="8" fill="#e2e8f0"/>
+                  <rect x="236" y="168" width="610" height="58" rx="10" fill="#f1f5f9"/>
+                </svg>
+              </div>
+            </div>
+            <div class="help-mini">
+              <h4>Actions rapides</h4>
+              <div class="help-figure">
+                <div class="help-box"><span class="help-tag">Sauvegarder</span> envoie les données vers Supabase</div>
+                <div class="help-box"><span class="help-tag">Export</span> génère un PDF</div>
+                <div class="help-box"><span class="help-tag">Thème</span> mémorisé par utilisateur</div>
+                <div class="help-box"><span class="help-tag">Raccourci</span> <span class="help-kbd">Ctrl</span> + <span class="help-kbd">S</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-title"><span class="help-step">2</span>Tableau maître</div>
+          <div class="help-text">Le tableau maître liste toutes les tâches. Cliquez sur une ligne pour ouvrir la fiche projet/tâche.</div>
+          <div class="help-grid">
+            <div class="help-mini">
+              <h4>Exemple de ligne</h4>
+              <table class="help-mini-table" aria-label="Exemple tableau maître">
+                <thead>
+                  <tr><th>Site</th><th>Projet</th><th>Tâche</th><th>Statut</th><th>Dates</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>CDM</td>
+                    <td>Bureau Pastorale</td>
+                    <td>Rénovation - Pose</td>
+                    <td><span class="help-dot" style="background:#22c55e"></span>Peinture <span class="help-badge internal">INTERNE</span></td>
+                    <td>02/02 → 14/02</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="help-mini">
+              <h4>Ce qu'on voit</h4>
+              <div class="help-figure">
+                <div class="help-pill">Site / Projet / Tâche</div>
+                <div class="help-pill">Statut + Prestataire</div>
+                <div class="help-pill">Dates + Durée</div>
+              </div>
+            </div>
+          </div>
+          <div class="help-shot" aria-label="Aperçu tableau maître">
+            <div class="help-toolbar">
+              <div class="help-btn">Réinitialiser tri</div>
+              <div class="help-btn primary">Export PDF</div>
+              <div class="help-chip">Tri/filtre actif</div>
+            </div>
+            <div class="help-gridline">
+              <div class="cell"><strong>Site</strong></div>
+              <div class="cell"><strong>Projet</strong></div>
+              <div class="cell"><strong>Tâche</strong></div>
+              <div class="cell"><strong>Statut</strong></div>
+              <div class="cell">CDM</div>
+              <div class="cell">Bureau Pastorale</div>
+              <div class="cell">Rénovation - Pose</div>
+              <div class="cell"><span class="help-badge internal">INTERNE</span> Peinture</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-title"><span class="help-step">3</span>Filtres</div>
+          <div class="help-text">Utilisez Site / Projet / Statut / Recherche / Dates pour filtrer. L'icône d'alerte s'affiche si un filtre est actif.</div>
+          <div class="help-grid">
+            <div class="help-mini">
+              <h4>Filtre actif</h4>
+              <div class="help-visual">
+                <svg viewBox="0 0 520 140" aria-label="Carte filtres">
+                  <rect x="10" y="10" width="180" height="120" rx="12" fill="#f8fafc" stroke="#94a3b8"/>
+                  <rect x="24" y="28" width="140" height="16" rx="6" fill="#e2e8f0"/>
+                  <rect x="24" y="52" width="140" height="16" rx="6" fill="#e2e8f0"/>
+                  <rect x="24" y="76" width="140" height="16" rx="6" fill="#e2e8f0"/>
+                  <rect x="24" y="100" width="90" height="18" rx="8" fill="#fee2e2" stroke="#f87171"/>
+                  <text x="260" y="50" font-size="12" fill="#0f172a">Icône ! = filtre actif</text>
+                  <circle cx="236" cy="44" r="8" fill="#f59e0b"/>
+                </svg>
+              </div>
+            </div>
+            <div class="help-mini">
+              <h4>Réinitialiser</h4>
+              <div class="help-box">Le bouton passe en rouge si un filtre est actif.</div>
+              <div class="help-box">Réinitialiser efface tous les filtres.</div>
+            </div>
+          </div>
+          <div class="help-shot" aria-label="Aperçu filtres">
+            <div class="help-figure">
+              <div class="help-chip">Site / Zone</div>
+              <div class="help-chip">Projet</div>
+              <div class="help-chip">Statut</div>
+              <div class="help-chip">Recherche</div>
+              <div class="help-chip">Dates</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-title"><span class="help-step">4</span>Gantt global</div>
+          <div class="help-text">Le Gantt affiche les tâches par semaine. Utilisez Export Gantt pour générer un PDF A3 paysage avec toutes les semaines du filtre.</div>
+          <div class="help-visual">
+            <svg viewBox="0 0 900 170" aria-label="Schéma Gantt">
+              <rect x="10" y="10" width="880" height="30" rx="8" fill="#e2e8f0" stroke="#94a3b8"/>
+              <text x="22" y="30" font-size="12" font-weight="800" fill="#0f172a">Colonnes fixes : Site/Zone + Projet | Prestataire | Tâche</text>
+              <rect x="10" y="50" width="880" height="100" rx="12" fill="#ffffff" stroke="#94a3b8"/>
+              <rect x="20" y="68" width="140" height="12" rx="4" fill="#22c55e"/>
+              <rect x="180" y="68" width="200" height="12" rx="4" fill="#b45309"/>
+              <rect x="400" y="68" width="140" height="12" rx="4" fill="#2563eb"/>
+              <text x="20" y="135" font-size="11" fill="#334155">Semaines S01, S02, S03…</text>
+            </svg>
+          </div>
+          <div class="help-shot" aria-label="Aperçu Gantt">
+            <div class="help-toolbar">
+              <div class="help-btn">Prestataire</div>
+              <div class="help-btn">Statut</div>
+              <div class="help-btn primary">Export Gantt</div>
+            </div>
+            <div class="help-gridline">
+              <div class="cell"><strong>Nom</strong></div>
+              <div class="cell"><strong>Prestataire</strong></div>
+              <div class="cell"><strong>Tâche</strong></div>
+              <div class="cell"><strong>Semaine</strong></div>
+              <div class="cell">CDM - Bureau Pastorale</div>
+              <div class="cell"><span class="help-badge internal">INTERNE</span></div>
+              <div class="cell">Rénovation - Pose</div>
+              <div class="cell">S06 → S08</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-title"><span class="help-step">5</span>Onglets projets</div>
+          <div class="help-text">Chaque projet possède sa fiche, son tableau de tâches et son Gantt. Le bouton Export projet exporte la fiche complète.</div>
+          <div class="help-grid">
+            <div class="help-mini">
+              <h4>Fiche projet</h4>
+              <div class="help-figure">
+                <div class="help-box">Infos projet (site, contraintes, sous‑projet)</div>
+                <div class="help-box">Édition tâche (description, dates, statut)</div>
+              </div>
+            </div>
+            <div class="help-mini">
+              <h4>Badges</h4>
+              <div class="help-figure">
+                <div class="help-label"><span class="help-dot" style="background:#16a34a"></span><span class="help-badge internal">INTERNE</span></div>
+                <div class="help-label"><span class="help-dot" style="background:#b45309"></span><span class="help-badge external">Prestataire</span></div>
+                <div class="help-label"><span class="help-dot" style="background:#2563eb"></span><span class="help-badge rsg">RSG/RI</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-title"><span class="help-step">6</span>Sauvegarde</div>
+          <div class="help-text">Cliquez sur Sauvegarder pour enregistrer. Un message confirme la réussite/erreur. Les admins peuvent aussi télécharger un JSON.</div>
+          <div class="help-grid">
+            <div class="help-mini">
+              <h4>Confirmation</h4>
+              <div class="help-visual">
+                <svg viewBox="0 0 520 120" aria-label="Toast de sauvegarde">
+                  <rect x="40" y="28" width="440" height="60" rx="12" fill="#0f172a" opacity="0.08"/>
+                  <rect x="20" y="20" width="440" height="60" rx="12" fill="#ffffff" stroke="#94a3b8"/>
+                  <circle cx="45" cy="50" r="10" fill="#22c55e"/>
+                  <text x="64" y="54" font-size="12" font-weight="800" fill="#0f172a">Sauvegarde Supabase réussie</text>
+                </svg>
+              </div>
+            </div>
+            <div class="help-mini">
+              <h4>Droits</h4>
+              <div class="help-box">Admin = configuration + sauvegarde locale (JSON)</div>
+              <div class="help-box">Utilisateur = saisie + consultation</div>
+            </div>
+          </div>
+          <div class="help-shot" aria-label="Aperçu bouton sauvegarde">
+            <div class="help-toolbar">
+              <div class="help-btn primary">Sauvegarder</div>
+              <div class="help-chip">Toast au centre de l'écran</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-title"><span class="help-step">7</span>Comptes & thèmes</div>
+          <div class="help-text">Connexion obligatoire. Les admins gèrent la configuration et les utilisateurs. Les thèmes sont mémorisés par utilisateur.</div>
+          <div class="help-figure">
+            <div class="help-pill">Choix du thème enregistré</div>
+            <div class="help-pill">Historique des connexions</div>
+            <div class="help-pill">Connexion sécurisée</div>
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-title"><span class="help-step">8</span>Exports (PDF & Gantt)</div>
+          <div class="help-text">Les exports PDF respectent le filtre actif. Le Gantt global propose un export dédié (A3 paysage) avec toutes les semaines du filtre.</div>
+          <div class="help-grid">
+            <div class="help-mini">
+              <h4>Export Gantt global</h4>
+              <div class="help-figure">
+                <div class="help-box">Choisir la période (Toutes dates / Année civile / Année scolaire / Personnalisée)</div>
+                <div class="help-box">A3 paysage recommandé pour 52 semaines</div>
+                <div class="help-box">Sans légende pour gagner de la place</div>
+              </div>
+            </div>
+            <div class="help-mini">
+              <h4>Export projet</h4>
+              <div class="help-figure">
+                <div class="help-box">Avec graphiques</div>
+                <div class="help-box">Sans graphiques</div>
+              </div>
+            </div>
+          </div>
+          <div class="help-shot" aria-label="Aperçu export Gantt">
+            <div class="help-toolbar">
+              <div class="help-btn">Exporter</div>
+              <div class="help-chip">Cartouche = filtres actifs</div>
+              <div class="help-chip">A3 paysage</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-title"><span class="help-step">9</span>Gestion des utilisateurs</div>
+          <div class="help-text">Les admins peuvent créer/modifier/supprimer des comptes et gérer les statuts, prestataires et paramètres.</div>
+          <div class="help-grid">
+            <div class="help-mini">
+              <h4>Rôles</h4>
+              <div class="help-figure">
+                <div class="help-box">Admin = configuration + sauvegarde locale (JSON)</div>
+                <div class="help-box">Utilisateur = saisie + consultation</div>
+              </div>
+            </div>
+            <div class="help-mini">
+              <h4>Journal des connexions</h4>
+              <div class="help-figure">
+                <div class="help-box">Filtre par dates</div>
+                <div class="help-box">Histogramme par utilisateur</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-title"><span class="help-step">10</span>Raccourcis & astuces</div>
+          <div class="help-text">Quelques actions rapides pour gagner du temps.</div>
+          <div class="help-figure">
+            <div class="help-pill">Sauvegarder : <span class="help-kbd">Ctrl</span> + <span class="help-kbd">S</span></div>
+            <div class="help-pill">Clic sur une ligne = édition</div>
+            <div class="help-pill">Filtre actif = icône !</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   <header class="topbar">
     <div>
       <div class="brand" id="brandTitle">Suivi de Chantiers</div>
@@ -361,6 +646,13 @@
       <div id="themeGrid" class="theme-grid" role="listbox" aria-label="Palette de thèmes"></div>
     </div>
     <div class="actions">
+      <button class="btn icon-btn" id="btnHelp" title="Aide" aria-label="Aide">
+        <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18" focusable="false">
+          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M9.4 9.2a2.7 2.7 0 0 1 5.2.8c0 1.7-1.3 2.4-2.1 2.8-.7.4-1 .8-1 1.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="12" cy="17.2" r="1" fill="currentColor"/>
+        </svg>
+      </button>
       <button class="btn btn-primary" id="btnSave">Sauvegarder</button>
     <button class="btn hidden" id="btnConfig">Configuration</button>
     </div>
@@ -400,15 +692,18 @@
             <input class="input" id="filterEndBefore" type="date" placeholder="jj/mm/aaaa" />
           </div>
         </div>
-        <div class="row">
+        <div class="row row-tight filters-reset-row">
           <button class="btn btn-ghost" onclick="document.getElementById('filterSite').value='';document.getElementById('filterProject').value='';document.getElementById('filterStatus').value='';document.getElementById('filterSearch').value='';document.getElementById('filterStartAfter').value='';document.getElementById('filterEndBefore').value='';renderAll();">Réinitialiser</button>
+          <span class="filters-active-icon" id="filtersActiveIcon" title="Attention filtre actif" aria-label="Attention filtre actif"></span>
         </div>
       </div>
 
       <div class="section section-add">
         <div class="section-title"><span class="section-title-icon"></span> Ajouter</div>
-        <button class="btn btn-primary" id="btnAddProject">+ Nouveau projet</button>
-        <button class="btn btn-primary" id="btnAddTask">+ Nouvelle tâche</button>
+        <div class="add-row">
+          <button class="btn btn-primary btn-add" id="btnAddProject">+ Projet</button>
+          <button class="btn btn-primary btn-add btn-add-right" id="btnAddTask">+ Tâche</button>
+        </div>
       </div>
     </aside>
 
@@ -427,7 +722,6 @@
         <div class="panel-controls panel-controls-spaced">
           <span class="filters-indicator" id="filtersBadge">Tri/filtre actif</span>
           <span class="filters-indicator site-indicator hidden" id="siteBadge"></span>
-          <button class="btn btn-ghost" id="btnResetFiltersMaster">Réinitialiser filtres</button>
           <button class="btn btn-ghost" id="btnResetSortMaster">Réinitialiser tri</button>
           <button class="btn master-export-inline" id="btnExportMaster">
             <span class="pdf-icon" aria-hidden="true"></span>
@@ -444,7 +738,6 @@
                 <th data-sort="status">Statut</th>
                 <th data-sort="start">Début</th>
                 <th data-sort="end">Fin</th>
-                <th data-sort="owner">Responsable</th>
                 <th data-sort="duration">Durée (jours)</th>
               </tr>
               </thead>
@@ -554,10 +847,10 @@
               <div class="multiselect-menu hidden" id="t_status_menu"></div>
             </div>
 
-            <label class="label">Intervenants (Équipe interne / prestataire externe)</label>
+            <label class="label">Intervenants (INTERNE / prestataire externe)</label>
             <select class="input" id="t_owner">
               <option value=""> Choisir </option>
-              <option value="Équipe interne">Équipe interne</option>
+              <option value="INTERNE">INTERNE</option>
               <option value="RSG/RI">RSG/RI</option>
               <option value="Prestataire externe">Prestataire externe</option>
             </select>
