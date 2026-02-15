@@ -4015,17 +4015,11 @@ function renderGantt(projectId){
   // tri pour garder un ordre stable
 
   tasks.sort((a,b)=>{
-
-    const oa=(taskOrderMap[a.id]||9999)-(taskOrderMap[b.id]||9999);
-
-    if(oa!==0) return oa;
-
     const sa=Date.parse(a.start||"9999-12-31"), sb=Date.parse(b.start||"9999-12-31");
-
     if(sa!==sb) return sa-sb;
-
-    return taskTitle(a).localeCompare(taskTitle(b));
-
+    const ea=Date.parse(a.end||"9999-12-31"), eb=Date.parse(b.end||"9999-12-31");
+    if(ea!==eb) return ea-eb;
+    return taskTitle(a).localeCompare(taskTitle(b),"fr",{sensitivity:"base"});
   });
 
 
@@ -4303,11 +4297,11 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
   const vacWeeks = weeks.map(w=>isVacationWeek(w));
 
   tasks.sort((a,b)=>{
-    const oa=(taskOrderMap[a.id]||9999)-(taskOrderMap[b.id]||9999);
-    if(oa!==0) return oa;
     const sa=Date.parse(a.start||"9999-12-31"), sb=Date.parse(b.start||"9999-12-31");
     if(sa!==sb) return sa-sb;
-    return taskTitle(a).localeCompare(taskTitle(b));
+    const ea=Date.parse(a.end||"9999-12-31"), eb=Date.parse(b.end||"9999-12-31");
+    if(ea!==eb) return ea-eb;
+    return taskTitle(a).localeCompare(taskTitle(b),"fr",{sensitivity:"base"});
   });
 
   const hideVendor = !ganttColVisibility.masterVendor;
@@ -4500,17 +4494,11 @@ function renderMasterGantt(){
 
 
   tasks.sort((a,b)=>{
-
-    const oa=(taskOrderMap[a.id]||9999)-(taskOrderMap[b.id]||9999);
-
-    if(oa!==0) return oa;
-
     const sa=Date.parse(a.start||"9999-12-31"), sb=Date.parse(b.start||"9999-12-31");
-
     if(sa!==sb) return sa-sb;
-
-    return taskTitle(a).localeCompare(taskTitle(b));
-
+    const ea=Date.parse(a.end||"9999-12-31"), eb=Date.parse(b.end||"9999-12-31");
+    if(ea!==eb) return ea-eb;
+    return taskTitle(a).localeCompare(taskTitle(b),"fr",{sensitivity:"base"});
   });
 
 
