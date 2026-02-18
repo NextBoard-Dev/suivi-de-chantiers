@@ -249,6 +249,18 @@ window.saveAppStateToSupabase = async function(stateObj){
   }catch(e){
 
     console.warn("saveAppStateToSupabase failed", e);
+    console.error("[SUPABASE ERROR]", e);
+
+    const statusEl = document.getElementById("saveStatusMessage") || document.getElementById("saveToastDetail");
+    if (statusEl) {
+      statusEl.textContent = "Erreur de sauvegarde cloud.";
+      statusEl.style.color = "red";
+    }
+
+    setTimeout(() => {
+      const toast = document.getElementById("saveToast");
+      if(toast) toast.classList.remove("show");
+    }, 4000);
 
     return false;
 
@@ -2562,6 +2574,11 @@ function normalizeState(raw){
   if(!raw){
     const base = defaultState();
     if(!Array.isArray(base.timeLogs)) base.timeLogs = [];
+    const orphans = detectOrphanTimeLogs(base);
+    base.orphanTimeLogs = orphans;
+    if(orphans.length > 0){
+      console.warn("[INTEGRITY] Orphan timeLogs detected:", orphans.length);
+    }
     return base;
   }
 
@@ -2607,8 +2624,29 @@ function normalizeState(raw){
 
   });
 
-  return {projects:normProjects, tasks:normTasks, ui: raw.ui||{}, timeLogs: normLogs};
+  const state = {projects:normProjects, tasks:normTasks, ui: raw.ui||{}, timeLogs: normLogs};
+  const orphans = detectOrphanTimeLogs(state);
+  state.orphanTimeLogs = orphans;
+  if(orphans.length > 0){
+    console.warn("[INTEGRITY] Orphan timeLogs detected:", orphans.length);
+  }
+  return state;
 
+}
+
+function detectOrphanTimeLogs(state) {
+  const taskIds = new Set((state.tasks || []).map(t => t.id));
+  const projectIds = new Set((state.projects || []).map(p => p.id));
+
+  const orphans = [];
+
+  for (const log of (state.timeLogs || [])) {
+    if (!taskIds.has(log.taskId) || !projectIds.has(log.projectId)) {
+      orphans.push(log);
+    }
+  }
+
+  return orphans;
 }
 
 const formatDate = (s)=>{
@@ -3100,9 +3138,10 @@ function showSaveToast(type, title, detail){
   if(type === "error") toast.classList.add("is-error");
   if(icon) icon.textContent = (type === "error") ? "ERR" : "OK";
   if(titleEl) titleEl.textContent = title || "Sauvegarde";
+  if(detailEl) detailEl.style.color = "";
   if(detailEl) detailEl.textContent = detail || "";
   const bar = el("saveToastProgressBar");
-  const duration = 4500;
+  const duration = (type === "ok") ? 3000 : 4000;
   if(bar){
     bar.style.animation = "none";
     void bar.offsetWidth;
@@ -3235,6 +3274,7 @@ function saveUndoSnapshot(){
     lastUndoSnapshot = {
       projects: deepClone(state.projects || []),
       tasks: deepClone(state.tasks || []),
+      timeLogs: deepClone(state.timeLogs || []),
       selectedProjectId,
       selectedTaskId
     };
@@ -3247,6 +3287,7 @@ function restoreUndoSnapshot(){
   if(!lastUndoSnapshot) return false;
   state.projects = deepClone(lastUndoSnapshot.projects || []);
   state.tasks = deepClone(lastUndoSnapshot.tasks || []);
+  state.timeLogs = deepClone(lastUndoSnapshot.timeLogs || []);
   selectedProjectId = lastUndoSnapshot.selectedProjectId || null;
   selectedTaskId = lastUndoSnapshot.selectedTaskId || null;
   lastUndoSnapshot = null;
@@ -6403,7 +6444,7 @@ function upsertTimeLog(taskId, projectId, minutes, note="", dateKeyOverride=null
     existing.minutes = minutes;
     existing.note = note || existing.note || "";
     existing.updatedAt = now;
-    existing.role = role;
+    existing.role = String(role || "").toUpperCase();
     existing.roleKey = role;
     for(let i=duplicates.length-1;i>=1;i--){
       const idx = logs.indexOf(duplicates[i]);
@@ -6418,7 +6459,7 @@ function upsertTimeLog(taskId, projectId, minutes, note="", dateKeyOverride=null
     userKey,
     userName,
     userEmail,
-    role,
+    role: String(role || "").toUpperCase(),
     roleKey: role,
     date: dateKey,
     minutes,
@@ -7770,8 +7811,10 @@ function bind(){
     if(!confirm("Supprimer cette tâche ?")) return;
 
     saveUndoSnapshot();
+    const taskIdSupprimee = selectedTaskId;
 
     state.tasks = state.tasks.filter(t=> !(t.id===selectedTaskId && t.projectId===selectedProjectId));
+    state.timeLogs = (state.timeLogs || []).filter(log => log.taskId !== taskIdSupprimee);
 
     selectedTaskId = null;
 
@@ -7796,6 +7839,16 @@ function bind(){
     }catch(e){}
 
     saveUndoSnapshot();
+    const end = unformatDate(el("t_end").value);
+    if (!end || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+      alert("La date de fin est obligatoire.");
+      return;
+    }
+    const start = unformatDate(el("t_start").value);
+    if (new Date(end) < new Date(start)) {
+      alert("La date de fin ne peut pas être antérieure à la date de début.");
+      return;
+    }
 
     let t = state.tasks.find(x=>x.id===selectedTaskId && x.projectId===selectedProjectId);
 
@@ -7809,7 +7862,7 @@ function bind(){
 
     t.roomNumber = el("t_room").value.trim();
 
-    t.owner      = el("t_owner").value;
+    t.owner      = String(el("t_owner").value || "").toUpperCase();
 
     t.vendor     = el("t_vendor").value.trim();
     const taskOwnerType = ownerType(t.owner);
@@ -7822,7 +7875,7 @@ function bind(){
     }
 
     t.start      = unformatDate(el("t_start").value);
-    t.end        = unformatDate(el("t_end").value);
+    t.end        = end;
 
     if(t.end && t.start && t.end < t.start){
 

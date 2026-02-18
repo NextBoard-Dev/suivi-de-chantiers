@@ -1,0 +1,103 @@
+C:\Users\sebastien.duc\CLOUD\02_ARCHIVAGE PERSONNEL\DASHBOARDS\SUIVI DE CHANTIERS SUPABASE-GITHUB VSCODE 
+ 
+Structure du dossier pour le volume Windows
+Le numéro de série du volume est AA00-C72C
+C:.
+|   AGENTS.md
+|   app.js
+|   arborescence.txt
+|   database4.ico
+|   favicon.ico
+|   generate_arborescence.bat
+|   index.html
+|   print.css
+|   RULES_FONCTIONNEMENT.md
+|   run_tests.bat
+|   style.css
+|   SUIVI DE CHANTIERS SUPABASE-GITHUB.txt
+|   Suivi de Chantiers.url
+|   suivi_chantiers_backup.json
+|   
++---assets
+|   \---sites
+|           CDM.jpg
+|           College.jpg
+|           Ecole.jpg
+|           LGT.jpg
+|           NDC.jpg
+|           
++---snapshots_ok
+|       AGENTS.md.snapshot_20260217_231815_Avant_maj_rules_et_nettoyage_leger_ok
+|       AGENTS.md.snapshot_20260217_232542_Avant_analyse_heures_reelles_tableau_maitre_ok
+|       AGENTS.md.snapshot_20260217_234756_Avant_norme_prestataire_par_tache_ok
+|       AGENTS.md.snapshot_20260218_115205_Avant_nettoyage_logs_residuels_et_garde_fous_ok
+|       AGENTS.md.snapshot_20260218_115358_Avant_correction_incoherences_heures_reelles
+|       app.js.snapshot_20260217_174358_Avant_deplacement_barre_avancement_projet_ok
+|       app.js.snapshot_20260217_175700_Avant_progression_boutons_onglets_ok
+|       app.js.snapshot_20260217_183150_Avant_fix_export_gantt_missingMap_ok
+|       app.js.snapshot_20260217_191115_Avant_effets_filtres_modales_boutons_ok
+|       app.js.snapshot_20260217_195554_Avant_effets_tableaux_toast_kpi_ok
+|       app.js.snapshot_20260217_215719_Avant_export_affaire_heures_reelles_ok
+|       app.js.snapshot_20260217_231125_Apres_export_affaire_heures_reelles_mise_en_page_ok
+|       app.js.snapshot_20260217_231815_Avant_maj_rules_et_nettoyage_leger_ok
+|       app.js.snapshot_20260217_232542_Avant_analyse_heures_reelles_tableau_maitre_ok
+|       app.js.snapshot_20260217_234756_Avant_norme_prestataire_par_tache_ok
+|       app.js.snapshot_20260218_115205_Avant_nettoyage_logs_residuels_et_garde_fous_ok
+|       app.js.snapshot_20260218_115358_Avant_correction_incoherences_heures_reelles
+|       index.html.snapshot_20260217_174358_Avant_deplacement_barre_avancement_projet_ok
+|       index.html.snapshot_20260217_175700_Avant_progression_boutons_onglets_ok
+|       index.html.snapshot_20260217_183150_Avant_fix_export_gantt_missingMap_ok
+|       index.html.snapshot_20260217_191115_Avant_effets_filtres_modales_boutons_ok
+|       index.html.snapshot_20260217_195554_Avant_effets_tableaux_toast_kpi_ok
+|       index.html.snapshot_20260217_215719_Avant_export_affaire_heures_reelles_ok
+|       index.html.snapshot_20260217_231125_Apres_export_affaire_heures_reelles_mise_en_page_ok
+|       index.html.snapshot_20260217_231815_Avant_maj_rules_et_nettoyage_leger_ok
+|       index.html.snapshot_20260217_232542_Avant_analyse_heures_reelles_tableau_maitre_ok
+|       index.html.snapshot_20260217_234756_Avant_norme_prestataire_par_tache_ok
+|       index.html.snapshot_20260218_115205_Avant_nettoyage_logs_residuels_et_garde_fous_ok
+|       index.html.snapshot_20260218_115358_Avant_correction_incoherences_heures_reelles
+|       print.css.snapshot_20260216_152102_Avant_temps_passes_reels
+|       print.css.snapshot_20260217_183150_Avant_fix_export_gantt_missingMap_ok
+|       print.css.snapshot_20260217_191115_Avant_effets_filtres_modales_boutons_ok
+|       print.css.snapshot_20260217_195554_Avant_effets_tableaux_toast_kpi_ok
+|       print.css.snapshot_20260217_215719_Avant_export_affaire_heures_reelles_ok
+|       print.css.snapshot_20260217_231125_Apres_export_affaire_heures_reelles_mise_en_page_ok
+|       print.css.snapshot_20260217_231815_Avant_maj_rules_et_nettoyage_leger_ok
+|       print.css.snapshot_20260217_232542_Avant_analyse_heures_reelles_tableau_maitre_ok
+|       print.css.snapshot_20260217_234756_Avant_norme_prestataire_par_tache_ok
+|       print.css.snapshot_20260218_115205_Avant_nettoyage_logs_residuels_et_garde_fous_ok
+|       print.css.snapshot_20260218_115358_Avant_correction_incoherences_heures_reelles
+|       RULES_FONCTIONNEMENT.md.snapshot_20260217_231815_Avant_maj_rules_et_nettoyage_leger_ok
+|       RULES_FONCTIONNEMENT.md.snapshot_20260217_232542_Avant_analyse_heures_reelles_tableau_maitre_ok
+|       RULES_FONCTIONNEMENT.md.snapshot_20260217_234756_Avant_norme_prestataire_par_tache_ok
+|       RULES_FONCTIONNEMENT.md.snapshot_20260218_115205_Avant_nettoyage_logs_residuels_et_garde_fous_ok
+|       RULES_FONCTIONNEMENT.md.snapshot_20260218_115358_Avant_correction_incoherences_heures_reelles
+|       style.css.snapshot_20260217_174358_Avant_deplacement_barre_avancement_projet_ok
+|       style.css.snapshot_20260217_175700_Avant_progression_boutons_onglets_ok
+|       style.css.snapshot_20260217_183150_Avant_fix_export_gantt_missingMap_ok
+|       style.css.snapshot_20260217_191115_Avant_effets_filtres_modales_boutons_ok
+|       style.css.snapshot_20260217_195554_Avant_effets_tableaux_toast_kpi_ok
+|       style.css.snapshot_20260217_215719_Avant_export_affaire_heures_reelles_ok
+|       style.css.snapshot_20260217_231125_Apres_export_affaire_heures_reelles_mise_en_page_ok
+|       style.css.snapshot_20260217_231815_Avant_maj_rules_et_nettoyage_leger_ok
+|       style.css.snapshot_20260217_232542_Avant_analyse_heures_reelles_tableau_maitre_ok
+|       style.css.snapshot_20260217_234756_Avant_norme_prestataire_par_tache_ok
+|       style.css.snapshot_20260218_115205_Avant_nettoyage_logs_residuels_et_garde_fous_ok
+|       style.css.snapshot_20260218_115358_Avant_correction_incoherences_heures_reelles
+|       suivi_chantiers_backup.json.snapshot_20260217_174358_Avant_deplacement_barre_avancement_projet_ok
+|       suivi_chantiers_backup.json.snapshot_20260217_175700_Avant_progression_boutons_onglets_ok
+|       suivi_chantiers_backup.json.snapshot_20260217_183150_Avant_fix_export_gantt_missingMap_ok
+|       suivi_chantiers_backup.json.snapshot_20260217_191115_Avant_effets_filtres_modales_boutons_ok
+|       suivi_chantiers_backup.json.snapshot_20260217_195554_Avant_effets_tableaux_toast_kpi_ok
+|       suivi_chantiers_backup.json.snapshot_20260217_215719_Avant_export_affaire_heures_reelles_ok
+|       suivi_chantiers_backup.json.snapshot_20260217_231125_Apres_export_affaire_heures_reelles_mise_en_page_ok
+|       suivi_chantiers_backup.json.snapshot_20260217_231815_Avant_maj_rules_et_nettoyage_leger_ok
+|       suivi_chantiers_backup.json.snapshot_20260217_232542_Avant_analyse_heures_reelles_tableau_maitre_ok
+|       suivi_chantiers_backup.json.snapshot_20260217_234756_Avant_norme_prestataire_par_tache_ok
+|       suivi_chantiers_backup.json.snapshot_20260218_115205_Avant_nettoyage_logs_residuels_et_garde_fous_ok
+|       suivi_chantiers_backup.json.snapshot_20260218_115358_Avant_correction_incoherences_heures_reelles
+|       
+\---tests
+        run-tests.mjs
+        _debug-core-under-test.js
+        

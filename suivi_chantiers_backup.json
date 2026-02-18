@@ -364,16 +364,6 @@
       "roomNumber": "Conception"
     },
     {
-      "id": "83d23bcd19c6c39b06e",
-      "end": "2026-02-09",
-      "owner": "Prestataire externe",
-      "start": "2026-02-09",
-      "status": "HUIS_SER",
-      "vendor": "TURBOSELF",
-      "projectId": "fd47202319c27a87d06",
-      "roomNumber": "Pose des 2 Serrures"
-    },
-    {
       "id": "4063c5d319c6c3bbd70",
       "end": "2026-01-26",
       "notes": "",
@@ -427,13 +417,13 @@
     },
     {
       "id": "07dc407419c703fa8ba",
-      "projectId": "08ae089819c56801361",
-      "roomNumber": "Mide en oeuvre",
-      "owner": "Prestataire externe",
-      "vendor": "",
-      "start": "2026-04-13",
       "end": "2026-04-24",
-      "status": "AMENAGEMENTS"
+      "owner": "Prestataire externe",
+      "start": "2026-04-13",
+      "status": "AMENAGEMENTS",
+      "vendor": "",
+      "projectId": "08ae089819c56801361",
+      "roomNumber": "Mise en oeuvre"
     }
   ],
   "ui": {
@@ -448,20 +438,6 @@
     "activeTab": "3e86100919c04fb8456"
   },
   "timeLogs": [
-    {
-      "id": "5698a5a819c66ed81eb",
-      "taskId": "218f59dc19c27a9b7be",
-      "projectId": "fd47202319c27a87d06",
-      "userKey": "sebastien.duc@scse.fr",
-      "userName": "Sébastien DUC",
-      "userEmail": "sebastien.duc@scse.fr",
-      "role": "admin",
-      "date": "2026-02-15",
-      "minutes": 60,
-      "note": "",
-      "createdAt": "2026-02-16T14:49:27.275Z",
-      "updatedAt": "2026-02-16T14:49:27.275Z"
-    },
     {
       "id": "be7499c719c67005bd9",
       "taskId": "b5c1e70219c37f2502f",
@@ -561,6 +537,20 @@
       "updatedAt": "2026-02-16T16:52:03.285Z"
     },
     {
+      "id": "77a49cec19c67496d5a",
+      "taskId": "3068784419c27a966e0",
+      "projectId": "fd47202319c27a87d06",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "rsgri",
+      "date": "2026-02-09",
+      "minutes": 240,
+      "note": "",
+      "createdAt": "2026-02-16T16:29:51.322Z",
+      "updatedAt": "2026-02-16T16:29:51.322Z"
+    },
+    {
       "id": "7c37577619c674c5f5e",
       "taskId": "b5c1e70219c37f2502f",
       "projectId": "fd47202319c27a87d06",
@@ -573,6 +563,20 @@
       "note": "",
       "createdAt": "2026-02-16T16:33:04.350Z",
       "updatedAt": "2026-02-16T17:31:18.261Z"
+    },
+    {
+      "id": "00be0aad19c67518bd7",
+      "taskId": "ab36b4d119c284ee0b9",
+      "projectId": "c152982019c284c5446",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "rsgri",
+      "date": "2026-02-16",
+      "minutes": 420,
+      "note": "",
+      "createdAt": "2026-02-16T16:38:43.415Z",
+      "updatedAt": "2026-02-16T16:38:43.415Z"
     },
     {
       "id": "fc600a4b19c6759027b",
@@ -911,6 +915,76 @@
       "updatedAt": "2026-02-18T06:51:13.752Z"
     },
     {
+      "id": "c9f35fde19c6a5e343f",
+      "taskId": "b0fc5a2f19c1e8067ab",
+      "projectId": "3e86100919c04fb8456",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "externe",
+      "date": "2026-02-11",
+      "minutes": 60,
+      "note": "",
+      "createdAt": "2026-02-17T06:51:24.607Z",
+      "updatedAt": "2026-02-17T06:51:24.607Z"
+    },
+    {
+      "id": "e219e3e319c6a5e55fa",
+      "taskId": "b0fc5a2f19c1e8067ab",
+      "projectId": "3e86100919c04fb8456",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "externe",
+      "date": "2026-02-12",
+      "minutes": 75,
+      "note": "",
+      "createdAt": "2026-02-17T06:51:33.242Z",
+      "updatedAt": "2026-02-17T06:51:33.242Z"
+    },
+    {
+      "id": "3bd9a13819c6a5e87e7",
+      "taskId": "b0fc5a2f19c1e8067ab",
+      "projectId": "3e86100919c04fb8456",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "externe",
+      "date": "2026-02-13",
+      "minutes": 90,
+      "note": "",
+      "createdAt": "2026-02-17T06:51:46.022Z",
+      "updatedAt": "2026-02-17T06:51:46.022Z"
+    },
+    {
+      "id": "a757ab5619c6acbac64",
+      "taskId": "b0fc5a2f19c1e8067ab",
+      "projectId": "3e86100919c04fb8456",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "externe",
+      "date": "2026-02-16",
+      "minutes": 60,
+      "note": "",
+      "createdAt": "2026-02-17T08:50:58.788Z",
+      "updatedAt": "2026-02-17T08:50:58.788Z"
+    },
+    {
+      "id": "7e73c02c19c6acbf639",
+      "taskId": "b0fc5a2f19c1e8067ab",
+      "projectId": "3e86100919c04fb8456",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "externe",
+      "date": "2026-02-17",
+      "minutes": 240,
+      "note": "",
+      "createdAt": "2026-02-17T08:51:17.689Z",
+      "updatedAt": "2026-02-17T08:51:17.689Z"
+    },
+    {
       "id": "ad6cbb3719c6ad395aa",
       "taskId": "ab36b4d119c284ee0b9",
       "projectId": "c152982019c284c5446",
@@ -936,7 +1010,7 @@
       "minutes": 60,
       "note": "",
       "createdAt": "2026-02-17T09:00:02.166Z",
-      "updatedAt": "2026-02-18T06:28:32.106Z"
+      "updatedAt": "2026-02-18T14:23:34.038Z"
     },
     {
       "id": "ee1c03e419c6ae5ef33",
@@ -1049,20 +1123,6 @@
       "note": "",
       "createdAt": "2026-02-17T15:29:02.266Z",
       "updatedAt": "2026-02-17T15:29:02.266Z"
-    },
-    {
-      "id": "360b414c19c6c39f462",
-      "taskId": "83d23bcd19c6c39b06e",
-      "projectId": "fd47202319c27a87d06",
-      "userKey": "rsg@scse.fr",
-      "userName": "Laurent DUPUIS",
-      "userEmail": "rsg@scse.fr",
-      "role": "externe",
-      "date": "2026-02-09",
-      "minutes": 120,
-      "note": "",
-      "createdAt": "2026-02-17T15:31:03.394Z",
-      "updatedAt": "2026-02-17T15:31:03.394Z"
     },
     {
       "id": "9fc08f4c19c6c3a9998",
@@ -1203,6 +1263,190 @@
       "note": "",
       "createdAt": "2026-02-18T06:32:21.398Z",
       "updatedAt": "2026-02-18T06:51:42.807Z"
+    }
+  ],
+  "orphanTimeLogs": [
+    {
+      "id": "be7499c719c67005bd9",
+      "taskId": "b5c1e70219c37f2502f",
+      "projectId": "fd47202319c27a87d06",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "admin",
+      "date": "2026-01-13",
+      "minutes": 60,
+      "note": "",
+      "createdAt": "2026-02-16T15:10:02.713Z",
+      "updatedAt": "2026-02-16T15:10:02.713Z"
+    },
+    {
+      "id": "8976c50919c6700bb4f",
+      "taskId": "b5c1e70219c37f2502f",
+      "projectId": "fd47202319c27a87d06",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "admin",
+      "date": "2026-01-14",
+      "minutes": 60,
+      "note": "",
+      "createdAt": "2026-02-16T15:10:27.151Z",
+      "updatedAt": "2026-02-16T15:10:27.151Z"
+    },
+    {
+      "id": "000c157619c6700d24e",
+      "taskId": "b5c1e70219c37f2502f",
+      "projectId": "fd47202319c27a87d06",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "admin",
+      "date": "2026-01-15",
+      "minutes": 60,
+      "note": "",
+      "createdAt": "2026-02-16T15:10:33.038Z",
+      "updatedAt": "2026-02-16T15:10:33.038Z"
+    },
+    {
+      "id": "af55f18e19c6700dff7",
+      "taskId": "b5c1e70219c37f2502f",
+      "projectId": "fd47202319c27a87d06",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "admin",
+      "date": "2026-01-16",
+      "minutes": 60,
+      "note": "",
+      "createdAt": "2026-02-16T15:10:36.535Z",
+      "updatedAt": "2026-02-16T15:10:36.535Z"
+    },
+    {
+      "id": "fe69a4a019c67012342",
+      "taskId": "b5c1e70219c37f2502f",
+      "projectId": "fd47202319c27a87d06",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "admin",
+      "date": "2026-01-19",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-02-16T15:10:53.762Z",
+      "updatedAt": "2026-02-16T15:12:31.166Z"
+    },
+    {
+      "id": "8fce6d8119c67014811",
+      "taskId": "b5c1e70219c37f2502f",
+      "projectId": "fd47202319c27a87d06",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "admin",
+      "date": "2026-01-20",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-02-16T15:11:03.185Z",
+      "updatedAt": "2026-02-16T15:11:49.279Z"
+    },
+    {
+      "id": "ed75f20819c6741315d",
+      "taskId": "56c1d15e19c5160cdc4",
+      "projectId": "00570a5819c51591bd0",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "rsgri",
+      "date": "2026-02-16",
+      "minutes": 240,
+      "note": "",
+      "createdAt": "2026-02-16T16:20:51.677Z",
+      "updatedAt": "2026-02-16T16:52:03.285Z"
+    },
+    {
+      "id": "7c37577619c674c5f5e",
+      "taskId": "b5c1e70219c37f2502f",
+      "projectId": "fd47202319c27a87d06",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "rsgri",
+      "date": "2026-01-12",
+      "minutes": 120,
+      "note": "",
+      "createdAt": "2026-02-16T16:33:04.350Z",
+      "updatedAt": "2026-02-16T17:31:18.261Z"
+    },
+    {
+      "id": "fc600a4b19c6759027b",
+      "taskId": "b4b9f5d819c515e99ba",
+      "projectId": "00570a5819c51591bd0",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "rsgri",
+      "date": "2026-01-05",
+      "minutes": 120,
+      "note": "",
+      "createdAt": "2026-02-16T16:46:52.539Z",
+      "updatedAt": "2026-02-16T16:46:52.539Z"
+    },
+    {
+      "id": "f73e9d4f19c6790785a",
+      "taskId": "56c1d15e19c5160cdc4",
+      "projectId": "00570a5819c51591bd0",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "externe",
+      "date": "2026-02-16",
+      "minutes": 270,
+      "note": "",
+      "createdAt": "2026-02-16T17:47:27.194Z",
+      "updatedAt": "2026-02-16T17:47:27.194Z"
+    },
+    {
+      "id": "ee1c03e419c6ae5ef33",
+      "taskId": "b4b9f5d819c515e99ba",
+      "projectId": "00570a5819c51591bd0",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "ri",
+      "date": "2026-01-05",
+      "minutes": 120,
+      "note": "",
+      "createdAt": "2026-02-17T09:19:39.827Z",
+      "updatedAt": "2026-02-17T09:19:39.827Z"
+    },
+    {
+      "id": "514fbcac19c6c242e81",
+      "taskId": "b5c1e70219c37f2502f",
+      "projectId": "fd47202319c27a87d06",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "ri",
+      "date": "2026-01-12",
+      "minutes": 120,
+      "note": "",
+      "createdAt": "2026-02-17T15:07:16.481Z",
+      "updatedAt": "2026-02-17T15:07:16.481Z"
+    },
+    {
+      "id": "9fc08f4c19c6c3a9998",
+      "taskId": "b5c1e70219c37f2502f",
+      "projectId": "fd47202319c27a87d06",
+      "userKey": "rsg@scse.fr",
+      "userName": "Laurent DUPUIS",
+      "userEmail": "rsg@scse.fr",
+      "role": "ri",
+      "date": "2026-01-09",
+      "minutes": 120,
+      "note": "",
+      "createdAt": "2026-02-17T15:31:45.688Z",
+      "updatedAt": "2026-02-17T15:31:45.688Z"
     }
   ]
 }
