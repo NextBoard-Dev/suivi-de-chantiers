@@ -1,7 +1,7 @@
 /* Impression Gantt et tableaux  mode pro A3 paysage */
 @page {
   size: A3 landscape;
-  margin: 6mm;
+  margin: 2mm;
 }
 
 /* Ne garder que le contenu inject pour l'impression */
@@ -13,10 +13,13 @@
   .card,
   .gantt-table,
   .legend,
-  .print-block,
-  .print-order > * {
+  .print-block {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+  .print-order > * {
+    break-inside: auto;
+    page-break-inside: auto;
   }
   /* Permettre aux tableaux longs de s'etendre sur plusieurs pages */
   .tablewrap{
@@ -41,7 +44,7 @@
   }
   @page {
     size: A3 landscape;
-    margin: 6mm;
+    margin: 2mm;
   }
 }
 
@@ -65,6 +68,12 @@
   body.print-gantt-project .gantt-table .table td{
     padding: 2px 4px !important;
     font-size: 9px;
+  }
+  body.print-gantt-master .gantt-table .table th.gantt-col-site,
+  body.print-gantt-master .gantt-table .table td.gantt-col-site,
+  body.print-gantt-project .gantt-table .table th.gantt-col-site,
+  body.print-gantt-project .gantt-table .table td.gantt-col-site{
+    position: static !important;
   }
   body.print-gantt-master .gantt-week-date,
   body.print-gantt-project .gantt-week-date{ font-size: 8px; }
@@ -202,14 +211,14 @@ body {
 
 /* Cartouche chantier */
 .print-header {
-  margin-bottom: 6mm;
+  margin-bottom: 3mm;
   border: 1px solid #bbb;
-  padding: 5mm;
+  padding: 3mm;
   background: #fff;
 }
 .print-header h1 {
-  margin: 0 0 3mm 0;
-  font-size: 20px;
+  margin: 0 0 2mm 0;
+  font-size: 18px;
 }
 .print-copyright{
   margin-top: 2mm;
@@ -220,8 +229,8 @@ body {
 .print-meta {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 3mm;
-  font-size: 10.5px;
+  gap: 2mm;
+  font-size: 9.5px;
 }
 .print-meta div { line-height: 1.35; }
 
@@ -243,11 +252,65 @@ body {
 .print-order {
   display: flex;
   flex-direction: column;
-  gap: 4mm;
+  gap: 2mm;
 }
 .print-block {
   page-break-inside: avoid;
 }
+.print-mode .card{
+  margin:0 0 2mm 0 !important;
+}
 .print-gantt {
   page-break-after: always;
+}
+
+/* Rapport heures réelles (export projet) */
+.report-hours-card{padding:4mm 5mm !important;}
+.report-grid-two{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:3mm;
+  margin-bottom:2.5mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.report-subtitle{
+  font-size:11px;
+  font-weight:700;
+  margin:0 0 1.2mm 0;
+}
+.report-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:9px;
+  background:#fff;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.report-table th,
+.report-table td{
+  border:1px solid rgba(0,0,0,0.18);
+  padding:1.2mm 1.4mm;
+  vertical-align:top;
+}
+.report-table th{
+  background:#f1efe8;
+  text-align:left;
+  font-weight:700;
+}
+.report-table tfoot th{
+  background:#ece9df;
+}
+.report-table .report-internal-priority td{
+  color:#b91c1c !important;
+  font-weight:700;
+}
+.report-table-summary thead th,
+.report-table-summary tfoot th{
+  color:#b91c1c !important;
+  font-weight:800;
+}
+.report-hours-card{
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
 }

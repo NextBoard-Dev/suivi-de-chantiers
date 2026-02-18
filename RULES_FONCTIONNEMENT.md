@@ -47,6 +47,7 @@ Ce document est la référence à suivre pour toute modification du dashboard.
 
 7) Règles métier (tâches)
 - Dans Édition tâche, le bouton “Nouvelle” doit vider tous les champs et pré‑remplir uniquement la Date début avec la date du jour.
+- Temps réel : les heures réelles sont stockées dans state.timeLogs et synchronisées dans state_json (Supabase).
 
 8) UI - Concepteur
 - Le logo copyright “©” doit toujours être visible à côté du texte “Concepteur : Sébastien DUC”.
@@ -61,3 +62,29 @@ Ce document est la référence à suivre pour toute modification du dashboard.
 
 11) Monitoring
 - Pas d'erreur silencieuse: toute erreur runtime ou promesse rejetee doit etre visible via un bandeau utilisateur lisible.
+
+12) Snapshots (obligatoire)
+- Avant toute modification sensible, créer un snapshot.
+- Nommage snapshot: `YYYYMMDD_HHMMSS_Contexte`.
+- Lors de la création d’un nouveau snapshot, renommer le précédent en ajoutant `_ok`.
+- Inclure systématiquement: `app.js`, `index.html`, `style.css`, `print.css`, `suivi_chantiers_backup.json`.
+- Stockage: déplacer les snapshots `_ok` dans `snapshots_ok/`.
+- Garder à la racine seulement les snapshots non `_ok` (versions de travail).
+- Si les règles changent, inclure aussi `RULES_FONCTIONNEMENT.md` et `AGENTS.md`.
+
+13) Exports projet (métier)
+- Export projet structuré pour usage comptable (immobilisation):
+  - Cartouche
+  - Gantt
+  - Analyse heures réelles
+  - Tableaux de synthèse et détails
+  - Graphiques
+- Calcul des heures réelles: uniquement dans la période de chaque tâche (`Début` à `Fin`).
+- Synthèse intervenants: `INTERNE`, `RSG`, `RI` (hors ligne `EXTERNE`).
+- Détail externe: par nom de prestataire.
+- Détail tâche: `tâche + intervenant` avec ligne de total.
+
+14) Impression / PDF
+- Export projet: `A4 paysage` avec marges étroites.
+- Exports Gantt dédiés: `A3 paysage` conservé.
+- Optimiser l’occupation de page (espaces réduits, blocs utiles, pas de pages vides).

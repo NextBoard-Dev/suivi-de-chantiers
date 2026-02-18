@@ -1,4 +1,4 @@
-﻿// SUiVI DE CHANTIERS - état embarqu forc (pas de localStorage)
+// SUiVI DE CHANTIERS - état embarqu forc (pas de localStorage)
 
 // Projet : Rénovation Bureau Pastorale + 1 tâche date
 
@@ -798,6 +798,13 @@ function setTaskProgressUI(val){
   if(fill) fill.style.width = `${v}%`;
   if(label) label.textContent = `${v}%`;
 }
+function setProjectProgressUI(val){
+  const v = Math.max(0, Math.min(100, Math.round(val || 0)));
+  const fill = el("projectProgressFill");
+  const label = el("projectProgressLabel");
+  if(fill) fill.style.width = `${v}%`;
+  if(label) label.textContent = `${v}%`;
+}
 
 function calcProgressFromInputs(){
   const s = unformatDate(el("t_start")?.value || "");
@@ -1022,16 +1029,7 @@ function saveStatusConfig(){
   saveConfig(cfg);
 }
 function getHoursConfig(){
-  const cfg = loadConfig();
-  const toNum = (v, fallback)=>{
-    const n = Number(v);
-    return isNaN(n) ? fallback : n;
-  };
-  return {
-    internal: toNum(cfg.hours_internal, 4),
-    external: toNum(cfg.hours_external, 4),
-    rsg: toNum(cfg.hours_rsg, 2)
-  };
+  return { internal: 4, external: 4, rsg: 2 };
 }
 function loadUsers(){
   try{
@@ -1179,19 +1177,19 @@ function updateRoleUI(){
 }
 function applyRoleAccess(){
   const role = getCurrentRole();
-  isLocked = role !== "admin";
+  // UI métier accessible à tous; "Configuration" reste réservé aux admins.
+  isLocked = false;
   const lockClass = "is-disabled";
   const ids = [
     "btnAddProject","btnAddTask",
     "btnSaveProject","btnDeleteProject",
-    "btnSaveTask","btnNewTask","btnDeleteTask"
+    "btnSaveTask","btnNewTask","btnDuplicateTask","btnDeleteTask"
   ];
   ids.forEach(id=>{
     const n=el(id);
     if(!n) return;
-    n.classList.toggle(lockClass, isLocked);
-    if(isLocked) n.setAttribute("disabled","disabled");
-    else n.removeAttribute("disabled");
+    n.classList.toggle(lockClass, false);
+    n.removeAttribute("disabled");
   });
   const cfgBtn = el("btnConfig");
   if(cfgBtn){
@@ -1201,47 +1199,37 @@ function applyRoleAccess(){
   if(switchBtn){
     switchBtn.style.display = "inline-flex";
   }
+  const logoutBtn = el("btnLogout");
+  if(logoutBtn){
+    logoutBtn.style.display = "inline-flex";
+  }
   const manageBtn = el("btnManageVendors");
   if(manageBtn){
-    manageBtn.classList.toggle(lockClass, isLocked);
-    if(isLocked) manageBtn.setAttribute("disabled","disabled");
-    else manageBtn.removeAttribute("disabled");
+    manageBtn.classList.toggle(lockClass, false);
+    manageBtn.removeAttribute("disabled");
   }
   const manageDescBtn = el("btnManageDescriptions");
   if(manageDescBtn){
-    manageDescBtn.classList.toggle(lockClass, isLocked);
-    if(isLocked) manageDescBtn.setAttribute("disabled","disabled");
-    else manageDescBtn.removeAttribute("disabled");
-  }
-  if(isLocked){
-    showVendorDropdown(false);
-    const panel = el("vendorManagerPanel");
-    if(panel) panel.style.display="none";
-    showDescriptionDropdown(false);
-    const descPanel = el("descManagerPanel");
-    if(descPanel) descPanel.style.display="none";
-    const overlay = el("descOverlay");
-    if(overlay) overlay.classList.remove("show");
+    manageDescBtn.classList.toggle(lockClass, false);
+    manageDescBtn.removeAttribute("disabled");
   }
   const tabCloses = document.querySelectorAll(".tab-close");
   tabCloses.forEach(n=>{
-    n.classList.toggle(lockClass, isLocked);
-    if(isLocked) n.setAttribute("aria-disabled","true");
-    else n.removeAttribute("aria-disabled");
+    n.classList.toggle(lockClass, false);
+    n.removeAttribute("aria-disabled");
   });
   const dangerBtns = document.querySelectorAll("button.btn-danger");
   dangerBtns.forEach(btn=>{
-    btn.classList.toggle(lockClass, isLocked);
-    if(isLocked) btn.setAttribute("disabled","disabled");
-    else btn.removeAttribute("disabled");
+    btn.classList.toggle(lockClass, false);
+    btn.removeAttribute("disabled");
   });
   const live = el("masterLive");
   if(live){
-    live.classList.toggle("is-disabled", isLocked);
+    live.classList.toggle("is-disabled", false);
   }
   const plive = el("projectLive");
   if(plive){
-    plive.classList.toggle("is-disabled", isLocked);
+    plive.classList.toggle("is-disabled", false);
   }
   updateRoleUI();
 }
@@ -1466,6 +1454,7 @@ function renderConfigVendorsList(){
   });
 }
 function openConfigModal(){
+  if(getCurrentRole()!=="admin") return;
   const modal = el("configModal");
   if(!modal) return;
   const cfg = loadConfig();
@@ -1491,10 +1480,15 @@ function openConfigModal(){
   linkify("cfg_http","cfg_http_link");
   linkify("cfg_front","cfg_front_link");
   linkify("cfg_back","cfg_back_link");
-  const hours = getHoursConfig();
-  if(el("cfg_hours_internal")) el("cfg_hours_internal").value = hours.internal;
-  if(el("cfg_hours_external")) el("cfg_hours_external").value = hours.external;
-  if(el("cfg_hours_rsg")) el("cfg_hours_rsg").value = hours.rsg;
+  const timeDateInput = el("t_time_date_input");
+  timeDateInput?.addEventListener("change", ()=>{
+    const t = state?.tasks?.find(x=>x.id===selectedTaskId && x.projectId===selectedProjectId);
+    updateTimeLogUI(t || null, true);
+  });
+  timeDateInput?.addEventListener("input", ()=>{
+    const t = state?.tasks?.find(x=>x.id===selectedTaskId && x.projectId===selectedProjectId);
+    updateTimeLogUI(t || null, true);
+  });
   const role = getCurrentRole();
   const usersSection = el("cfg_users_section");
   if(usersSection){
@@ -1530,6 +1524,7 @@ function openConfigModal(){
     loginSection.style.display = "";
   }
   if(role==="admin") initLoginJournalUI();
+  initVacationConfigUI();
   modal.classList.remove("hidden");
   modal.style.display = "flex";
   modal.setAttribute("aria-hidden","false");
@@ -1537,9 +1532,49 @@ function openConfigModal(){
 function closeConfigModal(){
   const modal = el("configModal");
   if(!modal) return;
+  hideModalSafely(modal);
+}
+function hideModalSafely(modal, focusFallbackSelector=""){
+  if(!modal) return;
+  try{
+    const active = document.activeElement;
+    if(active && modal.contains(active) && typeof active.blur === "function"){
+      active.blur();
+    }
+  }catch(e){}
+  try{
+    if(focusFallbackSelector){
+      const target = document.querySelector(focusFallbackSelector);
+      if(target && typeof target.focus === "function") target.focus();
+    }
+  }catch(e){}
   modal.classList.add("hidden");
   modal.style.display = "none";
   modal.setAttribute("aria-hidden","true");
+}
+
+function initVacationConfigUI(){
+  const yearInput = el("cfg_vac_year");
+  const schoolInput = el("cfg_vac_school");
+  const internalInput = el("cfg_vac_internal");
+  const list = el("cfg_vac_years");
+  if(!yearInput || !schoolInput || !internalInput) return;
+  const years = getVacationYears();
+  if(list){
+    list.innerHTML = years.map(y=>`<option value="${y}"></option>`).join("");
+  }
+  const setYear = (y)=>{
+    if(!y) return;
+    yearInput.value = y;
+    schoolInput.value = (VACANCES_ZONE_B_WEEKS[y] || []).join(",");
+    internalInput.value = (VACANCES_INTERNE_WEEKS[y] || []).join(",");
+  };
+  if(!yearInput.value){
+    const defYear = getSchoolYearKey(new Date());
+    setYear(years.includes(defYear) ? defYear : (years[0] || defYear));
+  }else{
+    setYear(yearInput.value.trim());
+  }
 }
 function navigateTo(projectId=null, taskId=null, push=true){
   selectedProjectId = projectId || null;
@@ -1708,7 +1743,9 @@ const ownerType = (o="")=>{
 
   const k=o.toLowerCase();
 
-  if(k.includes("rsg/ri") || k.includes("rsg") || k.includes("ri")) return "rsgri";
+  if(k.includes("rsg/ri")) return "rsg";
+  if(k.includes("rsg")) return "rsg";
+  if(k.includes("ri")) return "ri";
 
   const hasInt = k.includes("interne");
 
@@ -1733,7 +1770,8 @@ const ownerBadge = (o="", labelOverride="")=>{
 
   let color = "#16a34a"; // interne par défaut
 
-  if(k.includes("rsg/ri") || k.includes("rsg") || k.includes("ri")) color = "#2563eb"; // RSG/RI
+  if(k.includes("rsg/ri") || k.includes("rsg")) color = "#2563eb"; // RSG
+  if(k.includes("ri")) color = "#7c3aed"; // RI
   if(k.includes("interne") && k.includes("externe")) color = "#b45309"; // mix -> externe
 
   else if(k.includes("externe")) color = "#b45309"; // prestataire externe
@@ -1753,9 +1791,15 @@ function ownerBadgeForTask(t){
   if(typ === "interne"){
     label = "INTERNE";
   }
+  if(typ === "rsg"){
+    label = "RSG";
+  }
+  if(typ === "ri"){
+    label = "RI";
+  }
   if(typ === "externe"){
     const v = (t.vendor || "").trim();
-    if(v) label = v;
+    label = v || "Prestataire non renseigné";
   }
   return ownerBadge(owner, label);
 }
@@ -1796,7 +1840,8 @@ const ownerColor = (o="")=>{
   const typ = ownerType(o);
   if(typ === "interne") return "#16a34a";
   if(typ === "externe") return "#b45309";
-  if(typ === "rsgri") return "#2563eb";
+  if(typ === "rsg") return "#2563eb";
+  if(typ === "ri") return "#7c3aed";
   return "#4b5563";
 };
 
@@ -1806,8 +1851,11 @@ const vendorBadge = (v="")=>{
 
   const k = v.toLowerCase();
 
-  if(k.includes("rsg/ri") || k.includes("rsg") || k.includes("ri")){
+  if(k.includes("rsg/ri") || k.includes("rsg")){
     return `<span class="badge owner" style="background:#2563eb;border-color:#2563eb;color:#fff;">${v}</span>`;
+  }
+  if(k.includes("ri")){
+    return `<span class="badge owner" style="background:#7c3aed;border-color:#7c3aed;color:#fff;">${v}</span>`;
   }
 
   const isInternal = k.includes("interne");
@@ -2511,7 +2559,11 @@ function renderDescriptionManager(){
 
 function normalizeState(raw){
 
-  if(!raw) return defaultState();
+  if(!raw){
+    const base = defaultState();
+    if(!Array.isArray(base.timeLogs)) base.timeLogs = [];
+    return base;
+  }
 
   const normalizeStatus = (s)=> (s||"").split(",").filter(Boolean).map(v=>{
 
@@ -2526,8 +2578,24 @@ function normalizeState(raw){
   const normTasks = (raw.tasks||[]).map(t=>({
     ...t,
     projectId:normId(t.projectId),
-    status: normalizeStatus(t.status)
+    status: normalizeStatus(t.status),
+    owner: (String(t.owner||"").toUpperCase()==="RSG/RI") ? "RSG" : (t.owner||"")
   }));
+
+  const normLogs = (raw.timeLogs||[]).map(l=>({
+    id: l.id || uid(),
+    taskId: normId(l.taskId),
+    projectId: normId(l.projectId),
+    userKey: (l.userKey || "").toString(),
+    userName: (l.userName || "").toString(),
+    userEmail: (l.userEmail || "").toString(),
+    role: (l.role || "").toString(),
+    date: (l.date || "").toString().slice(0,10),
+    minutes: Number.isFinite(+l.minutes) ? Math.max(0, Math.round(+l.minutes)) : 0,
+    note: (l.note || "").toString(),
+    createdAt: l.createdAt || "",
+    updatedAt: l.updatedAt || ""
+  })).filter(l=>l.taskId && l.date);
 
   // filtrer les prestataires supprims
 
@@ -2539,7 +2607,7 @@ function normalizeState(raw){
 
   });
 
-  return {projects:normProjects, tasks:normTasks, ui: raw.ui||{}};
+  return {projects:normProjects, tasks:normTasks, ui: raw.ui||{}, timeLogs: normLogs};
 
 }
 
@@ -2580,6 +2648,28 @@ function toInputDate(val){
   const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if(m) return `${m[3]}-${m[2]}-${m[1]}`;
   return s;
+}
+
+function toLocalDateKey(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+function getYesterdayKey(){
+  const d = new Date();
+  d.setDate(d.getDate()-1);
+  return toLocalDateKey(d);
+}
+function getSelectedLogDate(){
+  const input = el("t_time_date_input");
+  const raw = (input?.value || "").trim();
+  if(raw) return raw;
+  return getYesterdayKey();
+}
+function isTaskActiveOn(t, dateKey){
+  if(!t || !t.start || !t.end || !dateKey) return false;
+  return t.start <= dateKey && t.end >= dateKey;
 }
 
 
@@ -3011,9 +3101,68 @@ function showSaveToast(type, title, detail){
   if(icon) icon.textContent = (type === "error") ? "ERR" : "OK";
   if(titleEl) titleEl.textContent = title || "Sauvegarde";
   if(detailEl) detailEl.textContent = detail || "";
+  const bar = el("saveToastProgressBar");
+  const duration = 4500;
+  if(bar){
+    bar.style.animation = "none";
+    void bar.offsetWidth;
+    bar.style.animation = `saveToastCountdown ${duration}ms linear forwards`;
+  }
   toast.classList.add("show");
   if(_saveToastTimer) clearTimeout(_saveToastTimer);
-  _saveToastTimer = setTimeout(()=> toast.classList.remove("show"), 4500);
+  _saveToastTimer = setTimeout(()=> toast.classList.remove("show"), duration);
+}
+
+function animateMetricCounters(root){
+  if(!root) return;
+  const vals = root.querySelectorAll(".metric-val");
+  vals.forEach(node=>{
+    const raw = (node.textContent || "").trim();
+    const m = raw.match(/^(\d+)(\s*[^\d].*)?$/);
+    if(!m) return;
+    const end = Number(m[1] || 0);
+    const suffix = m[2] || "";
+    const start = 0;
+    const duration = 520;
+    const t0 = performance.now();
+    const step = (now)=>{
+      const p = Math.min(1, (now - t0) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      const val = Math.round(start + (end - start) * eased);
+      node.textContent = `${val}${suffix}`;
+      if(p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+}
+
+const _badgeChangeSignatures = new Map();
+function animateBadgeChanges(root){
+  if(!root) return;
+  const nodes = root.querySelectorAll(".num-badge, .badge.owner, .panel-chip .metric-val");
+  nodes.forEach((node, idx)=>{
+    const key = `${root.id || "root"}:${idx}:${node.className}`;
+    const sig = `${(node.textContent || "").trim()}|${node.getAttribute("style") || ""}`;
+    const prev = _badgeChangeSignatures.get(key);
+    if(prev !== undefined && prev !== sig){
+      node.classList.remove("badge-change-pulse");
+      void node.offsetWidth;
+      node.classList.add("badge-change-pulse");
+    }
+    _badgeChangeSignatures.set(key, sig);
+  });
+}
+
+function animateCardsInView(viewId){
+  const view = el(viewId);
+  if(!view) return;
+  const cards = view.querySelectorAll(".card, .tablewrap");
+  cards.forEach((node, idx)=>{
+    node.style.setProperty("--card-fade-delay", `${Math.min(idx * 0.025, 0.18)}s`);
+    node.classList.remove("card-fade-in");
+    void node.offsetWidth;
+    node.classList.add("card-fade-in");
+  });
 }
 
 function saveState(opts={}){
@@ -3229,7 +3378,7 @@ function getTasksDateBounds(tasks){
 
   let min=null, max=null;
 
-  tasks.forEach(t=>{
+  tasks.forEach((t,rowIdx)=>{
 
     if(!t.start || !t.end) return;
 
@@ -3577,6 +3726,7 @@ function initGanttExportRangeUI(tasksAllOverride=null){
   startNode.style.display = showDates ? "inline-block" : "none";
   endNode.style.display = showDates ? "inline-block" : "none";
   yearNode.style.display = showYear ? "inline-block" : "none";
+  renderGanttExportSites();
 }
 
 function syncWorkloadFilterUI(tasks, boundsTasks=tasks, uiIds=null, stateRef=null){
@@ -3700,7 +3850,8 @@ function durationDays(start,end){
 function hoursPerDayForOwner(owner){
   const typ = ownerType(owner);
   const h = getHoursConfig();
-  if(typ === "rsgri") return h.rsg;
+  if(typ === "rsg") return h.rsg;
+  if(typ === "ri") return (h.ri !== undefined ? h.ri : h.rsg);
   if(typ === "externe") return h.external;
   return h.internal;
 }
@@ -3709,8 +3860,9 @@ function durationLabelForTask(task){
   if(!task) return "";
   const days = durationDays(task.start, task.end);
   if(!days && days !== 0) return "";
-  const hpd = hoursPerDayForOwner(task.owner || "");
-  return `${days} j (${days * hpd} h)`;
+  const totals = getTaskTimeTotals(task);
+  const realLabel = `réel ${formatHoursMinutes(totals.totalMinutes || 0)}`;
+  return `${days} j (${realLabel})`;
 }
 
 function taskTitle(t){
@@ -3826,9 +3978,16 @@ function addDays(d,n){ const x=new Date(d.getTime()); x.setDate(x.getDate()+n); 
 
 // --- Vacances scolaires (Zone B) par NUMÉROS de semaines ---
 // Format : { "2025-2026": [8,9,16,17,28,29,30,31,32,33,34,35,43,44,52] }
-const VACANCES_ZONE_B_WEEKS = {
+const DEFAULT_VACANCES_ZONE_B_WEEKS = {
   "2025-2026": [8,9,16,17,28,29,30,31,32,33,34,35,43,44,52]
 };
+// --- Vacances internes (entreprise) par NUMÉROS de semaines ---
+// Format : { "2025-2026": [9,17,30,31,32,33] }
+const DEFAULT_VACANCES_INTERNE_WEEKS = {
+  "2025-2026": [9,17,30,31,32,33]
+};
+let VACANCES_ZONE_B_WEEKS = deepClone(DEFAULT_VACANCES_ZONE_B_WEEKS);
+let VACANCES_INTERNE_WEEKS = deepClone(DEFAULT_VACANCES_INTERNE_WEEKS);
 function getSchoolYearKey(d){
   const y = d.getFullYear();
   const m = d.getMonth(); // 0=janv
@@ -3850,6 +4009,43 @@ function isVacationWeek(weekStart){
   const schoolYear = getSchoolYearKey(weekStart);
   const list = VACANCES_ZONE_B_WEEKS[schoolYear] || [];
   return list.includes(info.week);
+}
+function isInternalVacationWeek(weekStart){
+  const info = isoWeekInfo(weekStart);
+  const schoolYear = getSchoolYearKey(weekStart);
+  const list = VACANCES_INTERNE_WEEKS[schoolYear] || [];
+  return list.includes(info.week);
+}
+
+function normalizeWeekList(raw){
+  if(!raw) return [];
+  const nums = (Array.isArray(raw) ? raw : raw.toString().split(/[,; \n]+/g))
+    .map(v=>parseInt(v,10))
+    .filter(v=>Number.isFinite(v) && v>=1 && v<=53);
+  return Array.from(new Set(nums)).sort((a,b)=>a-b);
+}
+function normalizeVacationMap(map){
+  const out = {};
+  if(!map || typeof map!=="object") return out;
+  Object.keys(map).forEach(k=>{
+    const weeks = normalizeWeekList(map[k]);
+    if(weeks.length) out[k]=weeks;
+  });
+  return out;
+}
+function applyVacationConfig(){
+  const cfg = loadConfig();
+  const school = normalizeVacationMap(cfg.vacances_school || {});
+  const internal = normalizeVacationMap(cfg.vacances_internal || {});
+  VACANCES_ZONE_B_WEEKS = Object.assign({}, deepClone(DEFAULT_VACANCES_ZONE_B_WEEKS), school);
+  VACANCES_INTERNE_WEEKS = Object.assign({}, deepClone(DEFAULT_VACANCES_INTERNE_WEEKS), internal);
+}
+function getVacationYears(){
+  const years = new Set([
+    ...Object.keys(VACANCES_ZONE_B_WEEKS||{}),
+    ...Object.keys(VACANCES_INTERNE_WEEKS||{})
+  ]);
+  return Array.from(years).sort();
 }
 
 function overlapDays(aStart,aEnd,bStart,bEnd){
@@ -3954,49 +4150,43 @@ function keyToLabel(key, mode){
 
 function computeWorkloadData(tasks, mode="week", rangeStart=null, rangeEnd=null){
 
-  const map = new Map(); // key -> {internal, external, rsgri, total, anchor}
+  const map = new Map(); // key -> {internal, external, rsg, ri, total, anchor}
 
-  tasks.filter(t=>t.start && t.end).forEach(t=>{
+  const ids = new Set((tasks || []).map(t=>t.id));
+  const roleByTask = new Map((tasks || []).map(t=>[t.id, getTaskRoleKey(t)]));
+  const rangeByTask = new Map((tasks || []).map(t=>[t.id, {start:t.start||"", end:t.end||""}]));
+  if(ids.size === 0) return [];
 
-    const start=new Date(t.start+"T00:00:00");
+  getCanonicalTimeLogs().forEach(l=>{
+    if(!ids.has(l.taskId)) return;
+    if(!l.date) return;
+    const d = new Date(l.date+"T00:00:00");
+    if(isNaN(d)) return;
+    const range = rangeByTask.get(l.taskId);
+    if(range?.start && l.date < range.start) return;
+    if(range?.end && l.date > range.end) return;
+    if(rangeStart && d < rangeStart) return;
+    if(rangeEnd && d > rangeEnd) return;
 
-    const end=new Date(t.end+"T00:00:00");
+    const key = mode==="day" ? l.date : weekKey(d);
+    const anchor = mode==="day" ? d.getTime() : startOfWeek(d).getTime();
+    if(!map.has(key)) map.set(key,{internal:0,external:0,rsg:0,ri:0,total:0,anchor});
+    const slot = map.get(key);
 
-    if(isNaN(start)||isNaN(end)|| end<start) return;
-
-    const typ = ownerType(t.owner);
-
-    for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
-
-      if(!isWeekday(d)) continue;
-
-      if(rangeStart && d < rangeStart) continue;
-
-      if(rangeEnd && d > rangeEnd) continue;
-
-      const key = mode==="day" ? d.toISOString().slice(0,10) : weekKey(d);
-
-      const anchor = mode==="day" ? d.getTime() : startOfWeek(d).getTime();
-
-      if(!map.has(key)) map.set(key,{internal:0,external:0,rsgri:0,total:0,anchor});
-
-      const slot = map.get(key);
-
-      if(typ==="rsgri") slot.rsgri+=1;
-      else if(typ==="interne") slot.internal+=1;
-
-      else slot.external+=1; // "externe" + inconnus
-
-      slot.total = slot.internal + slot.external + slot.rsgri;
-
-    }
-
+    const roleExpected = roleByTask.get(l.taskId);
+    const role = normalizeTimeLogRole(l);
+    if(roleExpected && role !== roleExpected) return;
+    const hours = (Number(l.minutes||0) / 60);
+    if(!hours) return;
+    if(role==="rsg") slot.rsg+=hours;
+    else if(role==="ri") slot.ri+=hours;
+    else if(role==="interne") slot.internal+=hours;
+    else slot.external+=hours;
+    slot.total = slot.internal + slot.external + slot.rsg + slot.ri;
   });
 
   const arr = Array.from(map.entries()).map(([key,val])=>({...val,key}));
-
   arr.sort((a,b)=> a.anchor - b.anchor);
-
   return arr;
 
 }
@@ -4042,6 +4232,7 @@ function renderGantt(projectId){
   if(!wrap) return;
 
   const tasks = state.tasks.filter(t=>t.projectId===projectId && t.start && t.end);
+  const missingMap = buildMissingDaysMap(tasks);
 
   if(tasks.length===0){
 
@@ -4058,6 +4249,7 @@ function renderGantt(projectId){
   const weeks=[];
   for(let w=startOfWeek(minStart); w<=addDays(startOfWeek(maxEnd),0); w=addDays(w,7)) weeks.push(new Date(w));
   const vacWeeks = weeks.map(w=>isVacationWeek(w));
+  const internalVacWeeks = weeks.map(w=>isInternalVacationWeek(w));
 
 
 
@@ -4091,7 +4283,8 @@ function renderGantt(projectId){
 
     const todayClass = isTodayInWeek(w) ? " week-today" : "";
     const vacClass = vacWeeks[i] ? " vac-week" : "";
-    html+=`<th class="week-cell${todayClass}${vacClass}" data-range="${range}" style='width:72px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
+    const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
+    html+=`<th class="week-cell${todayClass}${vacClass}${internalVacClass}" data-range="${range}" style='width:72px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
 
   });
 
@@ -4101,7 +4294,7 @@ function renderGantt(projectId){
 
   // 1 ligne par tâche (plus de regroupement)
 
-  tasks.forEach(t=>{
+  tasks.forEach((t,rowIdx)=>{
 
     const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
 
@@ -4119,8 +4312,9 @@ function renderGantt(projectId){
 
       const typ = ownerType(t.owner);
       if(typ === "interne") set.add("INTERNE");
-      if(typ === "rsgri") set.add("RSG/RI");
-      if(typ === "externe" && !t.vendor) set.add("Prestataire externe");
+      if(typ === "rsg") set.add("RSG");
+      if(typ === "ri") set.add("RI");
+      if(typ === "externe" && !t.vendor) set.add("Prestataire non renseigné");
 
       if(set.size===0) return "<span class='text-muted'></span>";
 
@@ -4148,7 +4342,9 @@ function renderGantt(projectId){
 
     const siteLabel = (p?.site || "").trim();
     html+=`<td class="gantt-col-site">${attrEscape(siteLabel || "")}</td>`;
-    html+=`<td class="gantt-task-col-project gantt-col-task"><b><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></b> <span class="gantt-task-name">${attrEscape(label)}</span></td>`;
+    const miss = missingMap.get(t.id) || 0;
+    const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
+    html+=`<td class="gantt-task-col-project gantt-col-task">${missDot}<b><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></b> <span class="gantt-task-name">${attrEscape(label)}</span></td>`;
 
     html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
 
@@ -4169,12 +4365,15 @@ function renderGantt(projectId){
         const title = t.vendor ? ` title="Prestataire : ${attrEscape(t.vendor)}"` : "";
 
         const vacClass = vacWeeks[i] ? " vac-week" : "";
-        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color}"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
+        const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
+        const barDelay = (rowIdx * 0.03 + i * 0.015).toFixed(3);
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
 
       }else{
 
         const vacClass = vacWeeks[i] ? " vac-week" : "";
-        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+        const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
 
       }
 
@@ -4263,6 +4462,7 @@ function renderProjectTasks(projectId){
   }
 
   let h="";
+  const missingMap = buildMissingDaysMap(sorted);
 
   sorted.forEach(t=>{
 
@@ -4275,11 +4475,14 @@ function renderProjectTasks(projectId){
     const todayKey = new Date().toISOString().slice(0,10);
     const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
     const isLate = !!(t.end && t.end < todayKey);
-    const rowClass = `${isToday ? "today-row " : ""}${isLate ? "late-row" : ""}`.trim();
+    const isSelected = t.id===selectedTaskId;
+    const rowClass = `${isSelected ? "row-selected " : ""}${isToday ? "today-row " : ""}${isLate ? "late-row" : ""}`.trim();
 
+    const miss = missingMap.get(t.id) || 0;
+    const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
     h+=`<tr class="${rowClass}" data-task="${t.id}">
 
-      <td><span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></td>
+      <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></td>
 
       <td><span class="icon-picto"></span> ${taskTitleProjectView(t)}</td>
 
@@ -4335,6 +4538,7 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
   });
 
   if(tasks.length===0) return "<div class='gantt-empty'>Aucune tâche date.</div>";
+  const missingMap = buildMissingDaysMap(tasks);
 
   const minStart = rs || tasks.map(t=>new Date(t.start+"T00:00:00")).reduce((a,b)=>a<b?a:b);
   const maxEnd   = re || tasks.map(t=>new Date(t.end+"T00:00:00")).reduce((a,b)=>a>b?a:b);
@@ -4345,6 +4549,7 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
   const weeks=[];
   for(let w=startOfWeek(displayStart); w<=addDays(startOfWeek(displayEnd),0); w=addDays(w,7)) weeks.push(new Date(w));
   const vacWeeks = weeks.map(w=>isVacationWeek(w));
+  const internalVacWeeks = weeks.map(w=>isInternalVacationWeek(w));
 
   tasks.sort((a,b)=>{
     const sa=Date.parse(a.start||"9999-12-31"), sb=Date.parse(b.start||"9999-12-31");
@@ -4358,8 +4563,8 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
   const hideStatus = !ganttColVisibility.masterStatus;
   const tableClass = `table${hideVendor ? " hide-vendor" : ""}${hideStatus ? " hide-status" : ""}`;
 
-  let html=`<div class='tablewrap gantt-table'><table class='${tableClass}' style='--gcol1:120px;--gcol2:90px;--gcol3:90px'>`;
-  html+="<thead><tr><th class='gantt-col-task' style='width:120px'>Tâche</th><th class='gantt-col-vendor' style='width:90px'>Prestataire</th><th class='gantt-col-status' style='width:90px'>Statut</th>";
+  let html=`<div class='tablewrap gantt-table'><table class='${tableClass}' style='--gcol0:70px;--gcol1:120px;--gcol2:90px;--gcol3:90px'>`;
+  html+="<thead><tr><th class='gantt-col-site' style='width:70px'>Site / Zone</th><th class='gantt-col-task' style='width:120px'>Tâche</th><th class='gantt-col-vendor' style='width:90px'>Prestataire</th><th class='gantt-col-status' style='width:90px'>Statut</th>";
 
   weeks.forEach((w,i)=>{
     const info=isoWeekInfo(w);
@@ -4369,12 +4574,13 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
     const mondayLabel = formatShortDate(w);
     const todayClass = isTodayInWeek(w) ? " week-today" : "";
     const vacClass = vacWeeks[i] ? " vac-week" : "";
-    html+=`<th class="week-cell${todayClass}${vacClass}" data-range="${range}" style='width:20px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
+    const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
+    html+=`<th class="week-cell${todayClass}${vacClass}${internalVacClass}" data-range="${range}" style='width:20px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
   });
 
   html+="</tr></thead><tbody>";
 
-  tasks.forEach(t=>{
+  tasks.forEach((t,rowIdx)=>{
     const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
     const mainStatus = statuses[0] || "";
     const color = ownerColor(t.owner);
@@ -4385,8 +4591,9 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
       if(t.vendor) set.add(t.vendor);
       const typ = ownerType(t.owner);
       if(typ === "interne") set.add("INTERNE");
-      if(typ === "rsgri") set.add("RSG/RI");
-      if(typ === "externe" && !t.vendor) set.add("Prestataire externe");
+      if(typ === "rsg") set.add("RSG");
+      if(typ === "ri") set.add("RI");
+      if(typ === "externe" && !t.vendor) set.add("Prestataire non renseigné");
       if(set.size===0) return "<span class='text-muted'></span>";
       return Array.from(set).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"})).map(v=>vendorBadge(v)).join(" ");
     })();
@@ -4396,7 +4603,10 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
     const isLate = !!(t.end && t.end < todayKey);
     const rowClassWithToday = `gantt-row${isToday ? " today-row" : ""}${isLate ? " late-row" : ""}`;
     html+=`<tr class="${rowClassWithToday}" data-task="${t.id}">`;
-    html+=`<td class="gantt-col-task"><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="gantt-task-name">${attrEscape(projectName)}</span></td>`;
+    html+=`<td class="gantt-col-site">${attrEscape((p?.site || "").trim())}</td>`;
+    const miss = missingMap.get(t.id) || 0;
+    const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
+    html+=`<td class="gantt-col-task">${missDot}<span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="gantt-task-name">${attrEscape(projectName)}</span></td>`;
     html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
     html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
 
@@ -4407,10 +4617,13 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
       if(geo.days>0){
         const title = t.vendor ? ` title="Prestataire : ${attrEscape(t.vendor)}"` : "";
         const vacClass = vacWeeks[i] ? " vac-week" : "";
-        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color}"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
+        const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
+        const barDelay = (rowIdx * 0.03 + i * 0.015).toFixed(3);
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
       }else{
         const vacClass = vacWeeks[i] ? " vac-week" : "";
-        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+        const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
       }
     });
     html+="</tr>";
@@ -4431,6 +4644,7 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
     return e >= rs && s <= re;
   });
   if(tasks.length===0) return "<div class='gantt-empty'>Aucune tâche date.</div>";
+  const missingMap = buildMissingDaysMap(tasks);
 
   const minStart = rs || tasks.map(t=>new Date(t.start+"T00:00:00")).reduce((a,b)=>a<b?a:b);
   const maxEnd   = re || tasks.map(t=>new Date(t.end+"T00:00:00")).reduce((a,b)=>a>b?a:b);
@@ -4440,6 +4654,7 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
   const weeks=[];
   for(let w=startOfWeek(displayStart); w<=addDays(startOfWeek(displayEnd),0); w=addDays(w,7)) weeks.push(new Date(w));
   const vacWeeks = weeks.map(w=>isVacationWeek(w));
+  const internalVacWeeks = weeks.map(w=>isInternalVacationWeek(w));
 
   tasks.sort((a,b)=>{
     const oa=(taskOrderMap[a.id]||9999)-(taskOrderMap[b.id]||9999);
@@ -4464,12 +4679,13 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
     const mondayLabel = formatShortDate(w);
     const todayClass = isTodayInWeek(w) ? " week-today" : "";
     const vacClass = vacWeeks[i] ? " vac-week" : "";
-    html+=`<th class="week-cell${todayClass}${vacClass}" data-range="${range}" style='width:20px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
+    const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
+    html+=`<th class="week-cell${todayClass}${vacClass}${internalVacClass}" data-range="${range}" style='width:20px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
   });
 
   html+="</tr></thead><tbody>";
 
-  tasks.forEach(t=>{
+  tasks.forEach((t,rowIdx)=>{
     const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
     const mainStatus = statuses[0] || "";
     const color = ownerColor(t.owner);
@@ -4478,8 +4694,9 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
       if(t.vendor) set.add(t.vendor);
       const typ = ownerType(t.owner);
       if(typ === "interne") set.add("INTERNE");
-      if(typ === "rsgri") set.add("RSG/RI");
-      if(typ === "externe" && !t.vendor) set.add("Prestataire externe");
+      if(typ === "rsg") set.add("RSG");
+      if(typ === "ri") set.add("RI");
+      if(typ === "externe" && !t.vendor) set.add("Prestataire non renseigné");
       if(set.size===0) return "<span class='text-muted'></span>";
       return Array.from(set).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"})).map(v=>vendorBadge(v)).join(" ");
     })();
@@ -4493,7 +4710,9 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
     const sub = (p?.subproject || "").trim();
     const taskDesc = (t.roomNumber || "").trim();
     const label = [sub, taskDesc].filter(Boolean).join("  ");
-    html+=`<td class="gantt-task-col-project gantt-col-task"><b><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></b> <span class="gantt-task-name">${attrEscape(label)}</span></td>`;
+    const miss = missingMap.get(t.id) || 0;
+    const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
+    html+=`<td class="gantt-task-col-project gantt-col-task">${missDot}<b><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></b> <span class="gantt-task-name">${attrEscape(label)}</span></td>`;
     html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
     html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
 
@@ -4504,10 +4723,13 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
       if(geo.days>0){
         const title = t.vendor ? ` title="Prestataire : ${attrEscape(t.vendor)}"` : "";
         const vacClass = vacWeeks[i] ? " vac-week" : "";
-        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color}"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
+        const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
+        const barDelay = (rowIdx * 0.03 + i * 0.015).toFixed(3);
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
       }else{
         const vacClass = vacWeeks[i] ? " vac-week" : "";
-        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+        const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
       }
     });
     html+="</tr>";
@@ -4540,6 +4762,7 @@ function renderMasterGantt(){
   const weeks=[];
   for(let w=startOfWeek(minStart); w<=addDays(startOfWeek(maxEnd),0); w=addDays(w,7)) weeks.push(new Date(w));
   const vacWeeks = weeks.map(w=>isVacationWeek(w));
+  const internalVacWeeks = weeks.map(w=>isInternalVacationWeek(w));
 
 
 
@@ -4571,7 +4794,8 @@ function renderMasterGantt(){
 
     const todayClass = isTodayInWeek(w) ? " week-today" : "";
     const vacClass = vacWeeks[i] ? " vac-week" : "";
-    html+=`<th class="week-cell${todayClass}${vacClass}" data-range="${range}" style='width:72px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
+    const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
+    html+=`<th class="week-cell${todayClass}${vacClass}${internalVacClass}" data-range="${range}" style='width:72px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
 
   });
 
@@ -4579,7 +4803,7 @@ function renderMasterGantt(){
 
 
 
-  tasks.forEach(t=>{
+  tasks.forEach((t,rowIdx)=>{
 
     const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
 
@@ -4600,8 +4824,9 @@ function renderMasterGantt(){
 
       const typ = ownerType(t.owner);
       if(typ === "interne") set.add("INTERNE");
-      if(typ === "rsgri") set.add("RSG/RI");
-      if(typ === "externe" && !t.vendor) set.add("Prestataire externe");
+      if(typ === "rsg") set.add("RSG");
+      if(typ === "ri") set.add("RI");
+      if(typ === "externe" && !t.vendor) set.add("Prestataire non renseigné");
 
       if(set.size===0) return "<span class='text-muted'></span>";
 
@@ -4641,12 +4866,15 @@ function renderMasterGantt(){
         const title = t.vendor ? ` title="Prestataire : ${attrEscape(t.vendor)}"` : "";
 
         const vacClass = vacWeeks[i] ? " vac-week" : "";
-        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color}"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
+        const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
+        const barDelay = (rowIdx * 0.03 + i * 0.015).toFixed(3);
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
 
       }else{
 
         const vacClass = vacWeeks[i] ? " vac-week" : "";
-        html+=`<td class="gantt-cell${vacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+        const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
 
       }
 
@@ -5004,6 +5232,8 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
   const gradExtId = `${idPrefix}-grad-ext`;
   const gradRsgId = `${idPrefix}-grad-rsg`;
+  const gradRiId = `${idPrefix}-grad-ri`;
+  const pieShadowId = `${idPrefix}-pieShadow`;
 
   const brushedId = `${idPrefix}-brushed`;
 
@@ -5055,7 +5285,7 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
   const groupW = Math.max(26, Math.min(90, (chartW / data.length) - groupGap));
 
-  const barW = Math.max(8, (groupW - innerGap*2) / 3);
+  const barW = Math.max(7, (groupW - innerGap*3) / 4);
 
   const labelEvery = 1;
 
@@ -5064,16 +5294,21 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
   let grid="";
 
   const ticks=4;
+  const fmtHours = (v)=>{
+    if(!isFinite(v)) return "0";
+    const r = Math.round(v * 10) / 10;
+    return Number.isInteger(r) ? String(r) : r.toFixed(1);
+  };
 
   for(let i=0;i<=ticks;i++){
 
     const y = m.t + chartH - (i/ticks)*chartH;
 
-    const val = Math.round((i/ticks)*maxVal);
+    const val = (i/ticks)*maxVal;
 
     grid+=`<line class="wl-grid" x1="${m.l}" y1="${y}" x2="${w-m.r}" y2="${y}"></line>`;
 
-    grid+=`<text class="wl-axis" x="${m.l-10}" y="${y+4}" text-anchor="end">${val} j</text>`;
+    grid+=`<text class="wl-axis" x="${m.l-10}" y="${y+4}" text-anchor="end">${fmtHours(val)} h</text>`;
 
   }
 
@@ -5098,24 +5333,33 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
     const xInt = gx;
     const xExt = gx + barW + innerGap;
     const xRsg = gx + (barW + innerGap) * 2;
+    const xRi  = gx + (barW + innerGap) * 3;
 
     let hInt = (d.internal/maxVal)*chartH;
     let hExt = (d.external/maxVal)*chartH;
-    let hRsg = (d.rsgri/maxVal)*chartH;
+    let hRsg = (d.rsg/maxVal)*chartH;
+    let hRi  = (d.ri/maxVal)*chartH;
 
     if(d.internal > 0 && hInt < 6) hInt = 6;
     if(d.external > 0 && hExt < 6) hExt = 6;
-    if(d.rsgri > 0 && hRsg < 6) hRsg = 6;
+    if(d.rsg > 0 && hRsg < 6) hRsg = 6;
+    if(d.ri > 0 && hRi < 6) hRi = 6;
 
     const yBase = m.t + chartH;
 
     const yInt = yBase - hInt;
     const yExt = yBase - hExt;
     const yRsg = yBase - hRsg;
+    const yRi = yBase - hRi;
 
-    bars+=`<rect class="wl-bar-internal" fill="url(#${gradIntId})" filter="url(#${barShadowId})" x="${xInt}" y="${yInt}" width="${barW}" height="${hInt}" rx="3" ry="3"></rect>`;
-    bars+=`<rect class="wl-bar-external" fill="url(#${gradExtId})" filter="url(#${barShadowId})" x="${xExt}" y="${yExt}" width="${barW}" height="${hExt}" rx="3" ry="3"></rect>`;
-    bars+=`<rect class="wl-bar-rsgri" fill="url(#${gradRsgId})" filter="url(#${barShadowId})" x="${xRsg}" y="${yRsg}" width="${barW}" height="${hRsg}" rx="3" ry="3"></rect>`;
+    const dInt = (idx * 0.06 + 0.00).toFixed(2);
+    const dExt = (idx * 0.06 + 0.02).toFixed(2);
+    const dRsg = (idx * 0.06 + 0.04).toFixed(2);
+    const dRi  = (idx * 0.06 + 0.06).toFixed(2);
+    bars+=`<rect class="wl-bar-internal wl-anim-bar" style="--wl-delay:${dInt}s" fill="url(#${gradIntId})" filter="url(#${barShadowId})" x="${xInt}" y="${yInt}" width="${barW}" height="${hInt}" rx="3" ry="3"></rect>`;
+    bars+=`<rect class="wl-bar-external wl-anim-bar" style="--wl-delay:${dExt}s" fill="url(#${gradExtId})" filter="url(#${barShadowId})" x="${xExt}" y="${yExt}" width="${barW}" height="${hExt}" rx="3" ry="3"></rect>`;
+    bars+=`<rect class="wl-bar-rsg wl-anim-bar" style="--wl-delay:${dRsg}s" fill="url(#${gradRsgId})" filter="url(#${barShadowId})" x="${xRsg}" y="${yRsg}" width="${barW}" height="${hRsg}" rx="3" ry="3"></rect>`;
+    bars+=`<rect class="wl-bar-ri wl-anim-bar" style="--wl-delay:${dRi}s" fill="url(#${gradRiId})" filter="url(#${barShadowId})" x="${xRi}" y="${yRi}" width="${barW}" height="${hRi}" rx="3" ry="3"></rect>`;
 
     const lbl = keyToLabel(d.key, mode);
 
@@ -5128,24 +5372,28 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
     const valueYInt = Math.max(m.t + 12, yBase - Math.max(hInt, 0) - 8);
     const valueYExt = Math.max(m.t + 12, yBase - Math.max(hExt, 0) - 8);
     const valueYRsg = Math.max(m.t + 12, yBase - Math.max(hRsg, 0) - 8);
+    const valueYRi = Math.max(m.t + 12, yBase - Math.max(hRi, 0) - 8);
 
-    bars+=`<text class="wl-value" x="${xInt + barW/2}" y="${valueYInt}" text-anchor="middle">${d.internal} j</text>`;
-    bars+=`<text class="wl-value" x="${xExt + barW/2}" y="${valueYExt}" text-anchor="middle">${d.external} j</text>`;
-    bars+=`<text class="wl-value" x="${xRsg + barW/2}" y="${valueYRsg}" text-anchor="middle">${d.rsgri} j</text>`;
+    bars+=`<text class="wl-value" x="${xInt + barW/2}" y="${valueYInt}" text-anchor="middle">${fmtHours(d.internal)} h</text>`;
+    bars+=`<text class="wl-value" x="${xExt + barW/2}" y="${valueYExt}" text-anchor="middle">${fmtHours(d.external)} h</text>`;
+    bars+=`<text class="wl-value" x="${xRsg + barW/2}" y="${valueYRsg}" text-anchor="middle">${fmtHours(d.rsg)} h</text>`;
+    bars+=`<text class="wl-value" x="${xRi + barW/2}" y="${valueYRi}" text-anchor="middle">${fmtHours(d.ri)} h</text>`;
 
   });
 
   const totalInt = data.reduce((s,d)=>s+d.internal,0);
   const totalExt = data.reduce((s,d)=>s+d.external,0);
-  const totalRsg = data.reduce((s,d)=>s+d.rsgri,0);
+  const totalRsg = data.reduce((s,d)=>s+d.rsg,0);
+  const totalRi  = data.reduce((s,d)=>s+d.ri,0);
 
-  const totalAll = Math.max(1, totalInt + totalExt + totalRsg);
+  const totalAll = Math.max(1, totalInt + totalExt + totalRsg + totalRi);
 
   const pctInt = Math.round((totalInt/totalAll)*100);
   const pctExt = Math.round((totalExt/totalAll)*100);
-  const pctRsg = Math.max(0, 100 - pctInt - pctExt);
+  const pctRsg = Math.round((totalRsg/totalAll)*100);
+  const pctRi  = Math.max(0, 100 - pctInt - pctExt - pctRsg);
 
-  const legend=`<g transform="translate(${w-240},12)">
+  const legend=`<g transform="translate(${w-280},12)">
 
     <rect x="0" y="0" width="12" height="12" rx="3" fill="url(#${gradIntId})"></rect>
 
@@ -5157,15 +5405,19 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
     <rect x="0" y="40" width="12" height="12" rx="3" fill="url(#${gradRsgId})"></rect>
 
-    <text class="wl-axis" x="18" y="51">RSG/RI ${pctRsg}%</text>
+    <text class="wl-axis" x="18" y="51">RSG ${pctRsg}%</text>
+
+    <rect x="0" y="60" width="12" height="12" rx="3" fill="url(#${gradRiId})"></rect>
+
+    <text class="wl-axis" x="18" y="71">RI ${pctRi}%</text>
 
   </g>`;
 
   const legendOverlay = `
 
-    <g transform="translate(${w-390},12)">
+    <g transform="translate(${w-470},12)">
 
-      <rect x="-6" y="-6" width="350" height="26" rx="8" ry="8" fill="rgba(255,255,255,0.92)" stroke="#e5e7eb"/>
+      <rect x="-6" y="-6" width="430" height="26" rx="8" ry="8" fill="rgba(255,255,255,0.92)" stroke="#e5e7eb"/>
 
       <rect x="0" y="0" width="12" height="12" rx="3" fill="url(#${gradIntId})"></rect>
 
@@ -5177,7 +5429,11 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
       <rect x="240" y="0" width="12" height="12" rx="3" fill="url(#${gradRsgId})"></rect>
 
-      <text class="wl-axis" x="258" y="11">RSG/RI ${pctRsg}%</text>
+      <text class="wl-axis" x="258" y="11">RSG ${pctRsg}%</text>
+
+      <rect x="320" y="0" width="12" height="12" rx="3" fill="url(#${gradRiId})"></rect>
+
+      <text class="wl-axis" x="338" y="11">RI ${pctRi}%</text>
 
     </g>`;
 
@@ -5229,11 +5485,19 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
         <stop offset="55%" stop-color="#3b82f6" stop-opacity="0.92"/>
         <stop offset="100%" stop-color="#2563eb" stop-opacity="0.9"/>
       </linearGradient>
+      <linearGradient id="${gradRiId}" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.98"/>
+        <stop offset="55%" stop-color="#7c3aed" stop-opacity="0.92"/>
+        <stop offset="100%" stop-color="#5b21b6" stop-opacity="0.9"/>
+      </linearGradient>
 
       <filter id="${barShadowId}" x="-20%" y="-20%" width="140%" height="160%">
 
         <feDropShadow dx="0" dy="2" stdDeviation="1.6" flood-color="#0b1424" flood-opacity="0.18"/>
 
+      </filter>
+      <filter id="${pieShadowId}" x="-30%" y="-30%" width="180%" height="190%">
+        <feDropShadow dx="0" dy="2.5" stdDeviation="2.1" flood-color="#0b1424" flood-opacity="0.22"/>
       </filter>
 
     </defs>
@@ -5254,7 +5518,7 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
     pieSvg.setAttribute("font-family", fontFamily);
 
-    const pieTotal = Math.max(1, totalInt + totalExt + totalRsg);
+    const pieTotal = Math.max(1, totalInt + totalExt + totalRsg + totalRi);
 
     const cx = pw/2;
     const cy = 148;
@@ -5286,27 +5550,28 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
     let pieMarkup = `<rect class="wl-bg" x="0" y="0" width="${pw}" height="${ph}" fill="url(#${brushedId})"></rect>`;
 
-    if(totalInt + totalExt + totalRsg > 0){
+    if(totalInt + totalExt + totalRsg + totalRi > 0){
 
       const gap = 8;
       const segments = [
         { key:"interne", label:"Interne", value: totalInt, pct: pctInt, grad: gradIntId },
         { key:"externe", label:"Externe", value: totalExt, pct: pctExt, grad: gradExtId },
-        { key:"rsgri", label:"RSG/RI", value: totalRsg, pct: pctRsg, grad: gradRsgId },
+        { key:"rsg", label:"RSG", value: totalRsg, pct: pctRsg, grad: gradRsgId },
+        { key:"ri", label:"RI", value: totalRi, pct: pctRi, grad: gradRiId },
       ].filter(s=>s.value>0);
 
       if(segments.length === 1){
         const s = segments[0];
           const labelPos = polar(cx, cy, r * 1.14, 90);
         pieMarkup += `
-          <circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${s.grad})"></circle>
+          <circle class="wl-anim-pie-seg" style="--pie-delay:0.02s" cx="${cx}" cy="${cy}" r="${r}" fill="url(#${s.grad})" filter="url(#${pieShadowId})"></circle>
           <line x1="${cx}" y1="${cy - r * 0.95}" x2="${cx}" y2="${cy - r * 1.06}" stroke="#94a3b8" stroke-width="1" />
-          <text class="wl-axis" x="${labelPos.x}" y="${labelPos.y}" text-anchor="middle">${s.pct}%</text>
-          <text class="wl-value" x="${labelPos.x}" y="${labelPos.y + 14}" text-anchor="middle">${s.value} j</text>
+          <text class="wl-axis wl-anim-pie-label" style="--pie-delay:0.12s" x="${labelPos.x}" y="${labelPos.y}" text-anchor="middle">${s.pct}%</text>
+          <text class="wl-value wl-anim-pie-label" style="--pie-delay:0.18s" x="${labelPos.x}" y="${labelPos.y + 14}" text-anchor="middle">${s.value} j</text>
         `;
       }else{
         let cursor = 0;
-        segments.forEach(seg=>{
+        segments.forEach((seg,segIdx)=>{
           const angle = (seg.value / pieTotal) * 360;
           const startA = cursor;
           const endA = cursor + angle;
@@ -5317,25 +5582,29 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
           const outerPos = polar(cx+off.x, cy+off.y, r*1.14, midA);
           const labelY = Math.max(minLabelY, Math.min(maxLabelY, outerPos.y));
           const anchor = outerPos.x < cx ? "end" : "start";
+          const segDelay = (segIdx * 0.12 + 0.02).toFixed(2);
+          const labDelay = (segIdx * 0.12 + 0.14).toFixed(2);
           pieMarkup += `
-            <path d="${path}" fill="url(#${seg.grad})"></path>
+            <path class="wl-anim-pie-seg" style="--pie-delay:${segDelay}s" d="${path}" fill="url(#${seg.grad})" filter="url(#${pieShadowId})"></path>
             <line x1="${innerPos.x}" y1="${innerPos.y}" x2="${outerPos.x}" y2="${outerPos.y}" stroke="#94a3b8" stroke-width="1" />
-            <text class="wl-axis" x="${outerPos.x}" y="${labelY}" text-anchor="${anchor}">${seg.pct}%</text>
-            <text class="wl-value" x="${outerPos.x}" y="${labelY + 14}" text-anchor="${anchor}">${seg.value} j</text>
+            <text class="wl-axis wl-anim-pie-label" style="--pie-delay:${labDelay}s" x="${outerPos.x}" y="${labelY}" text-anchor="${anchor}">${seg.pct}%</text>
+            <text class="wl-value wl-anim-pie-label" style="--pie-delay:${(Number(labDelay)+0.04).toFixed(2)}s" x="${outerPos.x}" y="${labelY + 14}" text-anchor="${anchor}">${fmtHours(seg.value)} h</text>
           `;
           cursor = endA;
         });
       }
 
       pieMarkup += `
-        <text class="wl-axis" x="${cx}" y="${titleY}" text-anchor="middle">Répartition Interne / Externe / RSG/RI</text>
-        <g transform="translate(${cx-210},${legendY})">
+        <text class="wl-axis" x="${cx}" y="${titleY}" text-anchor="middle">Répartition Interne / Externe / RSG / RI</text>
+        <g transform="translate(${cx-250},${legendY})">
           <rect x="0" y="0" width="12" height="12" rx="3" fill="url(#${gradIntId})"></rect>
-          <text class="wl-axis" x="18" y="11">Interne ${pctInt}%  ${totalInt} j</text>
+          <text class="wl-axis" x="18" y="11">Interne ${pctInt}%  ${fmtHours(totalInt)} h</text>
           <rect x="150" y="0" width="12" height="12" rx="3" fill="url(#${gradExtId})"></rect>
-          <text class="wl-axis" x="168" y="11">Externe ${pctExt}%  ${totalExt} j</text>
+          <text class="wl-axis" x="168" y="11">Externe ${pctExt}%  ${fmtHours(totalExt)} h</text>
           <rect x="300" y="0" width="12" height="12" rx="3" fill="url(#${gradRsgId})"></rect>
-          <text class="wl-axis" x="318" y="11">RSG/RI ${pctRsg}%  ${totalRsg} j</text>
+          <text class="wl-axis" x="318" y="11">RSG ${pctRsg}%  ${fmtHours(totalRsg)} h</text>
+          <rect x="420" y="0" width="12" height="12" rx="3" fill="url(#${gradRiId})"></rect>
+          <text class="wl-axis" x="438" y="11">RI ${pctRi}%  ${fmtHours(totalRi)} h</text>
         </g>
       `;
     }
@@ -5350,7 +5619,21 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
 function renderWorkloadChart(tasks){
 
-  renderWorkloadChartFor(tasks, "workloadChart", "workloadPie", null, null, state.tasks || tasks, false);
+  const allTasks = state?.tasks || tasks || [];
+  const masterRange = {type:workloadRangeType, year:workloadRangeYear, start:workloadRangeStart, end:workloadRangeEnd};
+  renderWorkloadChartFor(
+    allTasks,
+    "workloadChart",
+    "workloadPie",
+    null,
+    masterRange,
+    allTasks,
+    true
+  );
+  workloadRangeType = masterRange.type;
+  workloadRangeYear = masterRange.year;
+  workloadRangeStart = masterRange.start;
+  workloadRangeEnd = masterRange.end;
 
 }
 
@@ -5451,7 +5734,11 @@ function renderTabs(){
   const total = projectsSorted.length || 1;
   projectsSorted.forEach((p,idx)=>{
     const hue = 0 + (120 * (idx/(total-1 || 1))); // rouge -> vert
-    h+=`<button class="tab ${selectedProjectId===p.id?"active":""}" data-tab="${p.id}" style="--tab-hue:${hue};"><span>${p.name||"Projet"}</span><span class="tab-close" data-close="${p.id}" aria-label="Supprimer le projet"></span></button>`;
+    const tasksDated = state.tasks.filter(t=>t.projectId===p.id && t.start && t.end);
+    const minStart = tasksDated.length ? tasksDated.map(t=>t.start).sort()[0] : "";
+    const maxEnd = tasksDated.length ? tasksDated.map(t=>t.end).sort().slice(-1)[0] : "";
+    const progress = (minStart && maxEnd) ? taskProgress({start:minStart, end:maxEnd}) : 0;
+    h+=`<button class="tab ${selectedProjectId===p.id?"active":""}" data-tab="${p.id}" style="--tab-hue:${hue};--tab-progress:${progress}%;--tab-progress-color:hsl(${hue} 72% 45%);"><span>${p.name||"Projet"}</span><span class="tab-close" data-close="${p.id}" aria-label="Supprimer le projet"></span></button>`;
   });
 
   if(tabsMaster){ tabsMaster.innerHTML = masterBtn; }
@@ -5638,6 +5925,7 @@ function renderMasterMetrics(tasks){
   const internalDays = new Set();
   const externalDays = new Set();
   const rsgDays = new Set();
+  const riDays = new Set();
 
   dated.forEach(t=>{
 
@@ -5650,7 +5938,8 @@ function renderMasterMetrics(tasks){
     const typ = ownerType(t.owner);
     const ownsInternal = typ === "interne";
     const ownsExternal = typ === "externe" || typ === "inconnu";
-    const ownsRsg = typ === "rsgri";
+    const ownsRsg = typ === "rsg";
+    const ownsRi = typ === "ri";
 
     for(let d=new Date(s); d<=e; d.setDate(d.getDate()+1)){
 
@@ -5661,6 +5950,7 @@ function renderMasterMetrics(tasks){
       if(ownsInternal) internalDays.add(key);
       if(ownsExternal) externalDays.add(key);
       if(ownsRsg) rsgDays.add(key);
+      if(ownsRi) riDays.add(key);
 
     }
 
@@ -5668,11 +5958,7 @@ function renderMasterMetrics(tasks){
 
   const totalDays = allDays.size;
 
-  const hoursCfg = getHoursConfig();
-  const internalHours = internalDays.size * hoursCfg.internal;
-  const externalHours = externalDays.size * hoursCfg.external;
-  const rsgHours = rsgDays.size * hoursCfg.rsg;
-  const totalHours = internalHours + externalHours + rsgHours;
+  const real = getRealMinutesForTasks(dated);
   let progSumMaster = 0;
   let progWeightMaster = 0;
   dated.forEach(t=>{
@@ -5687,14 +5973,87 @@ function renderMasterMetrics(tasks){
     <span class="panel-chip">Durée totale : <span class="metric-val">${totalDays||0} j</span></span>
     <span class="panel-chip">Avancement : <span class="metric-val">${avgProgressMaster}%</span></span>
 
-    <span class="panel-chip">Éq. heures (Int/Ext ${hoursCfg.external}h/j • RSG/RI ${hoursCfg.rsg}h/j) : <span class="metric-val">${totalHours||0} h</span></span>
+    <span class="panel-chip">Heures réelles : <span class="metric-val">${formatHoursMinutes(real.totalMinutes||0)}</span></span>
 
-    <span class="panel-chip" style="background:#0f172a;color:#fff;border-color:#0f172a;">Interne : <span class="metric-val">${internalDays.size||0} j</span> <span class="metric-val">${internalHours||0} h</span></span>
+    <span class="panel-chip" style="background:#0f172a;color:#fff;border-color:#0f172a;">Interne : <span class="metric-val">${internalDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.internalMinutes||0)}</span></span>
 
-    <span class="panel-chip" style="background:#b45309;color:#fff;border-color:#b45309;">Externe : <span class="metric-val">${externalDays.size||0} j</span> <span class="metric-val">${externalHours||0} h</span></span>
-    <span class="panel-chip" style="background:#2563eb;color:#fff;border-color:#2563eb;">RSG/RI : <span class="metric-val">${rsgDays.size||0} j</span> <span class="metric-val">${rsgHours||0} h</span></span>
+    <span class="panel-chip" style="background:#b45309;color:#fff;border-color:#b45309;">Externe : <span class="metric-val">${externalDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.externalMinutes||0)}</span></span>
+    <span class="panel-chip" style="background:#2563eb;color:#fff;border-color:#2563eb;">RSG : <span class="metric-val">${rsgDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.rsgMinutes||0)}</span></span>
+    <span class="panel-chip" style="background:#7c3aed;color:#fff;border-color:#7c3aed;">RI : <span class="metric-val">${riDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.riMinutes||0)}</span></span>
   `;
+  animateMetricCounters(metrics);
 
+}
+
+function canonSiteKey(raw){
+  return String(raw || "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .toUpperCase();
+}
+function getAllSitesList(){
+  const baseSites = Object.keys(SITE_PHOTOS || {});
+  const projSites = (state.projects || []).map(p=>String(p?.site||"").trim()).filter(Boolean);
+  const all = [...baseSites, ...projSites];
+  const canonMap = new Map();
+  all.forEach(s=>{
+    const raw = String(s || "").trim();
+    if(!raw) return;
+    const key = canonSiteKey(raw);
+    if(!canonMap.has(key)) canonMap.set(key, raw);
+  });
+  return Array.from(canonMap.values())
+    .sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+}
+function getSelectedExportSites(){
+  const wrap = el("ganttExportSites");
+  if(!wrap) return [];
+  return Array.from(wrap.querySelectorAll("input[data-site]"))
+    .filter(cb=>cb.checked)
+    .map(cb=>cb.dataset.site);
+}
+function renderGanttExportSites(){
+  const wrap = el("ganttExportSites");
+  const label = el("ganttExportSitesLabel");
+  if(!wrap) return;
+  const isProject = ganttExportContext === "project";
+  if(label) label.style.display = isProject ? "none" : "";
+  wrap.style.display = isProject ? "none" : "flex";
+  if(isProject) return;
+
+  const sites = getAllSitesList();
+  const prev = new Set();
+  wrap.querySelectorAll("input[data-site]").forEach(cb=>{ if(cb.checked) prev.add(cb.dataset.site); });
+  const usePrev = prev.size > 0;
+  let h = `<label><input type="checkbox" id="ganttExportSitesAll" checked> Tous</label>`;
+  sites.forEach(s=>{
+    const checked = !usePrev || prev.has(s);
+    h += `<label><input type="checkbox" data-site="${attrEscape(s)}" ${checked ? "checked" : ""}> ${attrEscape(s)}</label>`;
+  });
+  wrap.innerHTML = h;
+
+  const allBox = el("ganttExportSitesAll");
+  const siteBoxes = ()=>Array.from(wrap.querySelectorAll("input[data-site]"));
+  const updateAll = ()=>{
+    const boxes = siteBoxes();
+    const checked = boxes.filter(b=>b.checked).length;
+    if(allBox){
+      allBox.checked = checked === boxes.length;
+      allBox.indeterminate = checked > 0 && checked < boxes.length;
+    }
+  };
+  updateAll();
+  if(allBox){
+    allBox.onchange = ()=>{
+      const checked = allBox.checked;
+      siteBoxes().forEach(b=>{ b.checked = checked; });
+      updateAll();
+    };
+  }
+  siteBoxes().forEach(b=>{
+    b.onchange = ()=> updateAll();
+  });
 }
 
 
@@ -5858,6 +6217,7 @@ function renderMaster(){
   }
 
   const sorted = sortTasks(tasks, sortMaster);
+  const missingMap = buildMissingDaysMap(sorted);
   const todayKey = new Date().toISOString().slice(0,10);
 
   if(sorted.length===0){
@@ -5886,13 +6246,15 @@ function renderMaster(){
     const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
     const isLate = !!(t.end && t.end < todayKey);
     const rowClass = `${isToday ? "today-row " : ""}${isLate ? "late-row" : ""}`.trim();
+    const miss = missingMap.get(t.id) || 0;
+    const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
     h+=`<tr class="${rowClass}" data-project="${t.projectId}" data-task="${t.id}" style="--site-bg:${rowBg};background:var(--site-bg);">
 
       <td>${p?.site||""}</td>
 
       <td>${projLabel}</td>
 
-      <td><span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskLabel}</td>
+      <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskLabel}</td>
 
       <td class="status-cell"><span class="status-left">${statusDot(statuses[0])}${statusLabels(t.status||"")}</span>${t.owner?ownerBadgeForTask(t):""}</td>
 
@@ -5942,7 +6304,341 @@ function renderMaster(){
       siteBadge.style.display = "none";
     }
   }
+  const masterHoursReport = el("masterHoursReport");
+  if(masterHoursReport){
+    masterHoursReport.innerHTML = buildMasterRealHoursReportInnerHTML();
+  }
 
+  animateBadgeChanges(el("viewMaster"));
+  animateCardsInView("viewMaster");
+
+}
+
+function getTimeLogs(){
+  if(!state) return [];
+  if(!Array.isArray(state.timeLogs)) state.timeLogs = [];
+  return state.timeLogs;
+}
+function getCurrentUserKey(){
+  const email = getCurrentUserEmail();
+  const name = getCurrentUserName();
+  return (email || name || "").trim();
+}
+function resolveTimeLogRole(name, email){
+  const n = (name || "").toLowerCase();
+  const e = (email || "").toLowerCase();
+  if(n.includes("sébastien duc") || n.includes("sebastien duc")) return "rsg";
+  if(e === "sebastien_duc@outlook.fr" || e === "sebastien.duc@scse.fr") return "rsg";
+  return "interne";
+}
+function normalizeTimeLogRole(log){
+  const raw = String(log?.role || log?.roleKey || "").toLowerCase();
+  if(raw.includes("rsg/ri")) return "rsg";
+  if(raw.includes("rsg")) return "rsg";
+  if(raw.includes("ri")) return "ri";
+  if(raw.includes("externe")) return "externe";
+  if(raw.includes("interne")) return "interne";
+  return resolveTimeLogRole(log?.userName || "", log?.userEmail || "");
+}
+function getTaskRoleKey(t){
+  const hasVendor = (t?.vendor || "").trim();
+  if(hasVendor) return "externe";
+  const typ = ownerType(t?.owner);
+  if(typ === "rsg") return "rsg";
+  if(typ === "ri") return "ri";
+  if(typ === "externe" || typ === "inconnu") return "externe";
+  return "interne";
+}
+function roleLabel(roleKey){
+  if(roleKey==="rsg") return "RSG";
+  if(roleKey==="ri") return "RI";
+  if(roleKey==="externe") return "EXTERNE";
+  return "INTERNE";
+}
+function getCanonicalTimeLogs(){
+  const logs = getTimeLogs();
+  const map = new Map(); // taskId|date|roleKey -> log
+  logs.forEach(l=>{
+    if(!l || !l.taskId || !l.date) return;
+    const roleKey = normalizeTimeLogRole(l);
+    const key = `${l.taskId}|${l.date}|${roleKey}`;
+    const existing = map.get(key);
+    if(!existing){
+      map.set(key, l);
+      return;
+    }
+    const prevTs = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+    const curTs = new Date(l.updatedAt || l.createdAt || 0).getTime();
+    if(curTs >= prevTs) map.set(key, l);
+  });
+  return Array.from(map.values());
+}
+function findTimeLog(taskId, dateKey, userKey, userEmail="", userName=""){
+  return getTimeLogs().find(l=>
+    l.taskId===taskId &&
+    l.date===dateKey &&
+    (
+      (userKey && l.userKey===userKey) ||
+      (userEmail && l.userEmail===userEmail) ||
+      (userName && l.userName===userName)
+    )
+  ) || null;
+}
+function findTimeLogByRole(taskId, dateKey, roleKey){
+  const logs = getCanonicalTimeLogs();
+  return logs.find(l=>l.taskId===taskId && l.date===dateKey && normalizeTimeLogRole(l)===roleKey) || null;
+}
+function upsertTimeLog(taskId, projectId, minutes, note="", dateKeyOverride=null, roleKeyOverride=""){
+  const userKey = getCurrentUserKey();
+  const userName = getCurrentUserName();
+  const userEmail = getCurrentUserEmail();
+  const role = roleKeyOverride || resolveTimeLogRole(userName, userEmail);
+  const dateKey = dateKeyOverride || getSelectedLogDate();
+  if(!userKey) return null;
+  const logs = getTimeLogs();
+  const duplicates = logs.filter(l=>l.taskId===taskId && l.date===dateKey && normalizeTimeLogRole(l)===role);
+  const existing = duplicates[0] || null;
+  const now = new Date().toISOString();
+  if(existing){
+    existing.minutes = minutes;
+    existing.note = note || existing.note || "";
+    existing.updatedAt = now;
+    existing.role = role;
+    existing.roleKey = role;
+    for(let i=duplicates.length-1;i>=1;i--){
+      const idx = logs.indexOf(duplicates[i]);
+      if(idx>=0) logs.splice(idx,1);
+    }
+    return existing;
+  }
+  const entry = {
+    id: uid(),
+    taskId,
+    projectId,
+    userKey,
+    userName,
+    userEmail,
+    role,
+    roleKey: role,
+    date: dateKey,
+    minutes,
+    note: note || "",
+    createdAt: now,
+    updatedAt: now
+  };
+  logs.push(entry);
+  return entry;
+}
+function purgeTaskLogsByAssignedRole(task){
+  if(!task || !task.id) return 0;
+  const roleKey = getTaskRoleKey(task);
+  const logs = getTimeLogs();
+  const before = logs.length;
+  state.timeLogs = logs.filter(l=>{
+    if(!l || l.taskId !== task.id) return true;
+    return normalizeTimeLogRole(l) === roleKey;
+  });
+  return before - state.timeLogs.length;
+}
+function formatHoursMinutes(totalMinutes){
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if(m === 0) return `${h} h`;
+  return `${h} h ${m} min`;
+}
+function getTaskTimeTotals(taskRef){
+  const taskId = (typeof taskRef === "string") ? taskRef : taskRef?.id;
+  const roleKey = (typeof taskRef === "object" && taskRef) ? getTaskRoleKey(taskRef) : "";
+  const rangeStart = (typeof taskRef === "object" && taskRef && taskRef.start) ? taskRef.start : "";
+  const rangeEnd = (typeof taskRef === "object" && taskRef && taskRef.end) ? taskRef.end : "";
+  const totals = new Map();
+  getCanonicalTimeLogs().filter(l=>{
+    if(l.taskId!==taskId) return false;
+    if(!roleKey) return true;
+    return normalizeTimeLogRole(l)===roleKey;
+  }).forEach(l=>{
+    if(rangeStart && l.date < rangeStart) return;
+    if(rangeEnd && l.date > rangeEnd) return;
+    const key = roleLabel(normalizeTimeLogRole(l));
+    totals.set(key, (totals.get(key)||0) + (l.minutes||0));
+  });
+  const items = Array.from(totals.entries()).map(([name, minutes])=>({name, minutes}));
+  items.sort((a,b)=>b.minutes - a.minutes);
+  const totalMinutes = items.reduce((acc,it)=>acc+it.minutes,0);
+  return {items, totalMinutes};
+}
+function getRealMinutesForTasks(tasks){
+  const ids = new Set((tasks || []).map(t=>t.id));
+  const roleByTask = new Map((tasks || []).map(t=>[t.id, getTaskRoleKey(t)]));
+  const rangeByTask = new Map((tasks || []).map(t=>[t.id, {start:t.start||"", end:t.end||""}]));
+  let totalMinutes = 0;
+  let internalMinutes = 0;
+  let externalMinutes = 0;
+  let rsgMinutes = 0;
+  let riMinutes = 0;
+  getCanonicalTimeLogs().forEach(l=>{
+    if(!ids.has(l.taskId)) return;
+    const range = rangeByTask.get(l.taskId);
+    if(range?.start && l.date < range.start) return;
+    if(range?.end && l.date > range.end) return;
+    const roleExpected = roleByTask.get(l.taskId);
+    const m = Number(l.minutes || 0);
+    if(!m) return;
+    const role = normalizeTimeLogRole(l);
+    if(roleExpected && role !== roleExpected) return;
+    totalMinutes += m;
+    if(role === "externe") externalMinutes += m;
+    else if(role === "rsg") rsgMinutes += m;
+    else if(role === "ri") riMinutes += m;
+    else internalMinutes += m;
+  });
+  return { totalMinutes, internalMinutes, externalMinutes, rsgMinutes, riMinutes };
+}
+function countMissingDaysForUser(t, userKey){
+  if(!t || !t.start || !t.end || !userKey) return 0;
+  const roleKey = getTaskRoleKey(t);
+  const start = new Date(t.start+"T00:00:00");
+  const end = new Date(t.end+"T00:00:00");
+  if(isNaN(start) || isNaN(end) || end < start) return 0;
+  const yKey = getYesterdayKey();
+  const limit = new Date(yKey+"T00:00:00");
+  let missing = 0;
+  for(let d=new Date(start); d<=end && d<=limit; d.setDate(d.getDate()+1)){
+    if(!isWeekday(d)) continue;
+    const key = toLocalDateKey(d);
+    if(!findTimeLogByRole(t.id, key, roleKey)) missing++;
+  }
+  return missing;
+}
+function countMissingDaysForTask(t){
+  return getMissingDaysList(t).length;
+}
+function getMissingDaysList(t){
+  if(!t || !t.start || !t.end) return [];
+  const roleKey = getTaskRoleKey(t);
+  const start = new Date(t.start+"T00:00:00");
+  const end = new Date(t.end+"T00:00:00");
+  if(isNaN(start) || isNaN(end) || end < start) return [];
+  const todayKey = toLocalDateKey(new Date());
+  const out = [];
+  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    if(!isWeekday(d)) continue;
+    const key = toLocalDateKey(d);
+    if(key >= todayKey) continue;
+    if(!findTimeLogByRole(t.id, key, roleKey)) out.push(key);
+  }
+  return out;
+}
+function buildMissingDaysMap(tasks){
+  const map = new Map();
+  (tasks || []).forEach(t=>{
+    map.set(t.id, countMissingDaysForTask(t));
+  });
+  return map;
+}
+function updateTimeLogUI(t, forceAlert=false){
+  const dateInput = el("t_time_date_input");
+  const input = el("t_time_hours");
+  const statusEl = el("t_time_status");
+  const btn = el("btnSaveTimeLog");
+  const summaryEl = el("t_time_summary");
+  const yKey = getYesterdayKey();
+  if(dateInput && !dateInput.value) dateInput.value = yKey;
+  if(!t || !input || !statusEl || !btn){
+    if(input) input.value = "";
+    if(statusEl) statusEl.textContent = "";
+    if(summaryEl) summaryEl.textContent = "";
+    if(btn) btn.disabled = true;
+    return;
+  }
+  const active = isTaskActiveOn(t, yKey);
+  const userKey = getCurrentUserKey();
+  const userEmail = getCurrentUserEmail();
+  const userName = getCurrentUserName();
+  if(!userKey){
+    input.value = "";
+    input.disabled = true;
+    btn.disabled = true;
+    statusEl.textContent = "Utilisateur non défini";
+    if(summaryEl) summaryEl.textContent = "";
+    return;
+  }
+  if(dateInput){
+    const lastTask = dateInput.dataset.taskId || "";
+    if(!dateInput.value || lastTask !== t.id){
+      dateInput.value = t.start || yKey;
+      dateInput.dataset.taskId = t.id;
+    }
+  }
+  const selectedDate = dateInput?.value || yKey;
+  if(dateInput){
+    dateInput.min = t.start || "";
+    dateInput.max = t.end || "";
+  }
+  input.disabled = false;
+  const selectedDateObj = new Date(selectedDate+"T00:00:00");
+  const inRange = isTaskActiveOn(t, selectedDate);
+  const isWeek = isWeekday(selectedDateObj);
+  btn.disabled = !(inRange && isWeek);
+  const roleKey = getTaskRoleKey(t);
+  const log = findTimeLogByRole(t.id, selectedDate, roleKey);
+  statusEl.classList.remove("missing");
+  if(log){
+    const hours = (log.minutes/60);
+    input.value = (Math.round(hours*100)/100).toString();
+    statusEl.textContent = "Déjà renseigné";
+  }else{
+    input.value = "";
+    if(inRange && isWeek){
+      statusEl.classList.add("missing");
+      statusEl.innerHTML = `<span class="time-icon missing"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 7v5l3 2"></path></svg></span>Heures réelles manquantes`;
+    }else{
+      statusEl.textContent = "Hors période";
+    }
+  }
+  if(inRange && !isWeek){
+    statusEl.textContent = "Week-end";
+  }
+  const missing = countMissingDaysForUser(t, userKey);
+  if(summaryEl){
+    const dayLogs = getCanonicalTimeLogs().filter(l=>l.taskId===t.id && l.date===selectedDate && normalizeTimeLogRole(l)===roleKey);
+    const totalsDay = new Map();
+    dayLogs.forEach(l=>{
+      const role = normalizeTimeLogRole(l);
+      const label = roleLabel(role);
+      totalsDay.set(label, (totalsDay.get(label)||0) + (l.minutes||0));
+    });
+    const partsDay = Array.from(totalsDay.entries()).map(([name, minutes])=>`${name}: ${formatHoursMinutes(minutes)}`);
+    const totalDayMinutes = Array.from(totalsDay.values()).reduce((a,b)=>a+b,0);
+    const totalTask = getTaskTimeTotals(t);
+    const missingList = getMissingDaysList(t).map(d=>{
+      const dt = new Date(d+"T00:00:00");
+      return formatShortDate(dt);
+    });
+    const missLabel = missingList.length ? ` | Jours manquants : ${missingList.join(", ")} (${missingList.length})` : "";
+    if(partsDay.length){
+      summaryEl.textContent = `${partsDay.join(" | ")} | Total jour: ${formatHoursMinutes(totalDayMinutes)} | Total tâche: ${formatHoursMinutes(totalTask.totalMinutes)}${missLabel}`;
+    }else{
+      summaryEl.textContent = `Aucun temps renseigné | Total tâche: ${formatHoursMinutes(totalTask.totalMinutes)}${missLabel}`;
+    }
+  }
+}
+function checkTimeLogReminders(){
+  const userKey = getCurrentUserKey();
+  if(!userKey) return;
+  const yKey = getYesterdayKey();
+  const flag = `timeLogReminder_${yKey}_${userKey}`;
+  if(sessionStorage.getItem(flag)) return;
+  const tasks = (state?.tasks || []).filter(t=>t.start && t.end && isTaskActiveOn(t, yKey));
+  if(!tasks.length) return;
+  let missing = 0;
+  tasks.forEach(t=>{
+    if(!findTimeLog(t.id, yKey, userKey)) missing++;
+  });
+  if(missing > 0){
+    showSaveToast("ok", "Rappel temps (veille)", `${missing} tâche(s) à renseigner`);
+  }
+  sessionStorage.setItem(flag, "1");
 }
 
 
@@ -5964,6 +6660,7 @@ function renderProject(){
   updateSitePhoto(p.site || "");
 
   const projectSummary = el("projectSummary");
+  let projectProgress = 0;
   if(projectSummary){
     const tasksAll = state.tasks.filter(t=>t.projectId===p.id);
     const tasksDated = tasksAll.filter(t=>t.start && t.end);
@@ -5974,8 +6671,12 @@ function renderProject(){
     const endLabel = maxEnd ? formatDate(maxEnd) : "—";
     const isFinished = !!(maxEnd && maxEnd < todayKey);
     const finishedLabel = isFinished ? " • Projet terminé" : "";
+    if(minStart && maxEnd){
+      projectProgress = taskProgress({start:minStart, end:maxEnd});
+    }
     projectSummary.textContent = `Résumé : ${tasksAll.length} tâches • ${inProgress} en cours • Fin prévue : ${endLabel}${finishedLabel}`;
   }
+  setProjectProgressUI(projectProgress);
 
   // métriques projet : durée totale + équivalent heures (6h/j)
 
@@ -5986,6 +6687,7 @@ function renderProject(){
   const internalDays = new Set();
   const externalDays = new Set();
   const rsgDays = new Set();
+  const riDays = new Set();
 
   projTasks.forEach(t=>{
 
@@ -5998,7 +6700,8 @@ function renderProject(){
     const typ = ownerType(t.owner);
     const ownsInternal = typ === "interne";
     const ownsExternal = typ === "externe" || typ === "inconnu";
-    const ownsRsg = typ === "rsgri";
+    const ownsRsg = typ === "rsg";
+    const ownsRi = typ === "ri";
 
     for(let d=new Date(s); d<=e; d.setDate(d.getDate()+1)){
 
@@ -6009,6 +6712,7 @@ function renderProject(){
       if(ownsInternal) internalDays.add(key);
       if(ownsExternal) externalDays.add(key);
       if(ownsRsg) rsgDays.add(key);
+      if(ownsRi) riDays.add(key);
 
     }
 
@@ -6016,11 +6720,7 @@ function renderProject(){
 
   const totalDays = allDays.size;
 
-  const hoursCfg = getHoursConfig();
-  const internalHours = internalDays.size * hoursCfg.internal;
-  const externalHours = externalDays.size * hoursCfg.external;
-  const rsgHours = rsgDays.size * hoursCfg.rsg;
-  const totalHours = internalHours + externalHours + rsgHours;
+  const real = getRealMinutesForTasks(projTasks);
   let progSumProj = 0;
   let progWeightProj = 0;
   projTasks.forEach(t=>{
@@ -6040,12 +6740,13 @@ function renderProject(){
 
       <span class="panel-chip">Avancement : <span class="metric-val">${avgProgressProj}%</span></span>
 
-      <span class="panel-chip">Éq. heures (Int/Ext ${hoursCfg.external}h/j • RSG/RI ${hoursCfg.rsg}h/j) : <span class="metric-val">${totalHours || 0} h</span></span>
+      <span class="panel-chip">Heures réelles : <span class="metric-val">${formatHoursMinutes(real.totalMinutes||0)}</span></span>
 
-      <span class="panel-chip" style="background:#0f172a;color:#fff;border-color:#0f172a;">Interne : <span class="metric-val">${internalDays.size||0} j</span> <span class="metric-val">${internalHours||0} h</span></span>
+      <span class="panel-chip" style="background:#0f172a;color:#fff;border-color:#0f172a;">Interne : <span class="metric-val">${internalDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.internalMinutes||0)}</span></span>
 
-      <span class="panel-chip" style="background:#b45309;color:#fff;border-color:#b45309;">Externe : <span class="metric-val">${externalDays.size||0} j</span> <span class="metric-val">${externalHours||0} h</span></span>
-      <span class="panel-chip" style="background:#2563eb;color:#fff;border-color:#2563eb;">RSG/RI : <span class="metric-val">${rsgDays.size||0} j</span> <span class="metric-val">${rsgHours||0} h</span></span>
+      <span class="panel-chip" style="background:#b45309;color:#fff;border-color:#b45309;">Externe : <span class="metric-val">${externalDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.externalMinutes||0)}</span></span>
+      <span class="panel-chip" style="background:#2563eb;color:#fff;border-color:#2563eb;">RSG : <span class="metric-val">${rsgDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.rsgMinutes||0)}</span></span>
+      <span class="panel-chip" style="background:#7c3aed;color:#fff;border-color:#7c3aed;">RI : <span class="metric-val">${riDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.riMinutes||0)}</span></span>
 
     `;
 
@@ -6060,6 +6761,9 @@ function renderProject(){
   if(live){
 
     const todayKey = new Date().toISOString().slice(0,10);
+    const datedProjectTasks = state.tasks.filter(t=>t.projectId===p.id && t.start && t.end);
+    const hasStarted = datedProjectTasks.some(t=>t.start<=todayKey);
+    const allFinished = datedProjectTasks.length>0 && datedProjectTasks.every(t=>t.end<todayKey || taskProgress(t)>=100);
 
     const inProgress = state.tasks
 
@@ -6068,8 +6772,13 @@ function renderProject(){
       .sort((a,b)=> (taskOrderMap[a.id]||999)-(taskOrderMap[b.id]||999));
 
     if(inProgress.length===0){
-
-      live.innerHTML = `<span class="live-title">Projet non démarré</span>`;
+      if(allFinished){
+        live.innerHTML = `<span class="live-title">Projet terminé</span>`;
+      }else if(!hasStarted){
+        live.innerHTML = `<span class="live-title">Projet non démarré</span>`;
+      }else{
+        live.innerHTML = `<span class="live-title">Projet en attente</span>`;
+      }
 
     }else{
 
@@ -6163,7 +6872,8 @@ function renderProject(){
 
     el("t_room").value=desc;
 
-    el("t_owner").value=t.owner||"";
+    const ownerVal = (t.owner || "");
+    el("t_owner").value = ownerVal.toUpperCase()==="RSG/RI" ? "RSG" : ownerVal;
 
     el("t_vendor").value=t.vendor||"";
 
@@ -6173,6 +6883,7 @@ function renderProject(){
 
     el("t_end").value=endVal;
     setTaskProgressUI(taskProgress(t));
+    updateTimeLogUI(t, true);
     if(window.__fpStart){ try{ window.__fpStart.setDate(startVal || null, true, "Y-m-d"); }catch(e){} }
     if(window.__fpEnd){ try{ window.__fpEnd.setDate(endVal || null, true, "Y-m-d"); }catch(e){} }
 
@@ -6182,6 +6893,7 @@ function renderProject(){
 
     el("t_room").value=""; el("t_owner").value=""; el("t_vendor").value=""; el("t_start").value=""; el("t_end").value="";
     setTaskProgressUI(0);
+    updateTimeLogUI(null);
     if(window.__fpStart){ try{ window.__fpStart.setDate(null); }catch(e){} }
     if(window.__fpEnd){ try{ window.__fpEnd.setDate(null); }catch(e){} }
 
@@ -6228,6 +6940,12 @@ function renderProject(){
   refreshVendorsList();
 
   refreshDescriptionsList();
+  const projectHoursReport = el("projectHoursReport");
+  if(projectHoursReport){
+    projectHoursReport.innerHTML = buildProjectRealHoursReportInnerHTML(p.id);
+  }
+  animateBadgeChanges(el("viewProject"));
+  animateCardsInView("viewProject");
 
 }
 
@@ -6265,6 +6983,7 @@ function renderAll(){
   updateSidebarScrollState();
 
   applySidebarTopLock();
+  checkTimeLogReminders();
 
 }
 
@@ -6273,6 +6992,7 @@ function renderAll(){
 function bind(){
 
   loadStatusConfig();
+  applyVacationConfig();
   buildStatusMenu();
 
   setStatusSelection("");
@@ -6294,22 +7014,27 @@ function bind(){
   applySidebarTopLock();
   applyRoleAccess();
   initThemePicker();
+  const performLogout = ()=>{
+    try{
+      sessionStorage.removeItem("unlocked");
+      sessionStorage.removeItem("current_user");
+      sessionStorage.removeItem("current_role");
+      sessionStorage.removeItem("current_email");
+      sessionStorage.removeItem("current_theme");
+      localStorage.removeItem("login_session_token_v1");
+    }catch(e){}
+    const lock = document.getElementById("lockscreen");
+    if(lock) lock.classList.remove("hidden");
+    applyRoleAccess();
+    try{ window.refreshLoginUsers?.(); }catch(e){}
+  };
   const switchBtn = el("btnSwitchUser");
   if(switchBtn){
-    switchBtn.addEventListener("click", ()=>{
-      try{
-        sessionStorage.removeItem("unlocked");
-        sessionStorage.removeItem("current_user");
-        sessionStorage.removeItem("current_role");
-        sessionStorage.removeItem("current_email");
-        sessionStorage.removeItem("current_theme");
-        localStorage.removeItem("login_session_token_v1");
-      }catch(e){}
-      const lock = document.getElementById("lockscreen");
-      if(lock) lock.classList.remove("hidden");
-      applyRoleAccess();
-      try{ window.refreshLoginUsers?.(); }catch(e){}
-    });
+    switchBtn.addEventListener("click", performLogout);
+  }
+  const logoutBtn = el("btnLogout");
+  if(logoutBtn){
+    logoutBtn.addEventListener("click", performLogout);
   }
   window.addEventListener("resize", ()=>{
     updateTopbarHeight();
@@ -6317,7 +7042,7 @@ function bind(){
     applySidebarTopLock();
   });
   el("btnConfig")?.addEventListener("click", ()=>{
-    if(isLocked) return;
+    if(getCurrentRole()!=="admin") return;
     openConfigModal();
   });
   el("btnHelp")?.addEventListener("click", ()=>{
@@ -6330,20 +7055,16 @@ function bind(){
   el("btnHelpClose")?.addEventListener("click", ()=>{
     const modal = el("helpModal");
     if(!modal) return;
-    modal.classList.add("hidden");
-    modal.style.display="none";
-    modal.setAttribute("aria-hidden","true");
+    hideModalSafely(modal, "#btnHelp");
   });
   el("helpModal")?.addEventListener("click",(e)=>{
     if(e.target && e.target.id==="helpModal"){
       const modal = el("helpModal");
-      modal.classList.add("hidden");
-      modal.style.display="none";
-      modal.setAttribute("aria-hidden","true");
+      hideModalSafely(modal, "#btnHelp");
     }
   });
   el("btnStatusAdd")?.addEventListener("click", ()=>{
-    if(isLocked) return;
+    if(getCurrentRole()!=="admin") return;
     const input = el("cfg_status_label");
     const label = (input?.value || "").trim();
     if(!label) return;
@@ -6360,7 +7081,7 @@ function bind(){
     refreshStatusUi();
   });
   el("btnVendorAdd")?.addEventListener("click", ()=>{
-    if(isLocked) return;
+    if(getCurrentRole()!=="admin") return;
     const input = el("cfg_vendor_name");
     const name = (input?.value || "").trim();
     if(!name) return;
@@ -6376,19 +7097,58 @@ function bind(){
     renderConfigVendorsList();
     renderAll();
   });
+  el("cfg_vac_year")?.addEventListener("change", ()=>{
+    initVacationConfigUI();
+  });
+  el("btnVacSave")?.addEventListener("click", ()=>{
+    if(getCurrentRole()!=="admin") return;
+    const year = (el("cfg_vac_year")?.value || "").trim();
+    if(!year) return;
+    const schoolWeeks = normalizeWeekList(el("cfg_vac_school")?.value || "");
+    const internalWeeks = normalizeWeekList(el("cfg_vac_internal")?.value || "");
+    const cfg = loadConfig();
+    const school = normalizeVacationMap(cfg.vacances_school || {});
+    const internal = normalizeVacationMap(cfg.vacances_internal || {});
+    if(schoolWeeks.length) school[year] = schoolWeeks; else delete school[year];
+    if(internalWeeks.length) internal[year] = internalWeeks; else delete internal[year];
+    cfg.vacances_school = school;
+    cfg.vacances_internal = internal;
+    saveConfig(cfg);
+    applyVacationConfig();
+    initVacationConfigUI();
+    renderAll();
+  });
+  el("btnVacDelete")?.addEventListener("click", ()=>{
+    if(getCurrentRole()!=="admin") return;
+    const year = (el("cfg_vac_year")?.value || "").trim();
+    if(!year) return;
+    if(!confirm(`Supprimer les semaines pour ${year} ?`)) return;
+    const cfg = loadConfig();
+    const school = normalizeVacationMap(cfg.vacances_school || {});
+    const internal = normalizeVacationMap(cfg.vacances_internal || {});
+    delete school[year];
+    delete internal[year];
+    cfg.vacances_school = school;
+    cfg.vacances_internal = internal;
+    saveConfig(cfg);
+    applyVacationConfig();
+    initVacationConfigUI();
+    renderAll();
+  });
   el("btnConfigSave")?.addEventListener("click", ()=>{
+    if(getCurrentRole()!=="admin") return;
     const prev = loadConfig();
     const cfg = {
       name: el("cfg_name")?.value || "",
       http: el("cfg_http")?.value || "",
       front: el("cfg_front")?.value || "",
       back: el("cfg_back")?.value || "",
-      hours_internal: el("cfg_hours_internal")?.value || "",
-      hours_external: el("cfg_hours_external")?.value || "",
-      hours_rsg: el("cfg_hours_rsg")?.value || "",
-      statuses: prev.statuses || STATUSES
+      statuses: prev.statuses || STATUSES,
+      vacances_school: prev.vacances_school || {},
+      vacances_internal: prev.vacances_internal || {}
     };
     saveConfig(cfg);
+    applyVacationConfig();
     closeConfigModal();
   });
   el("btnConfigSaveTop")?.addEventListener("click", ()=>{
@@ -6418,6 +7178,7 @@ function bind(){
     });
   });
   el("btnUserAdd")?.addEventListener("click", async ()=>{
+    if(getCurrentRole()!=="admin") return;
     const name = (el("cfg_user_name")?.value || "").trim();
     const email = (el("cfg_user_email")?.value || "").trim();
     const role = el("cfg_user_role")?.value || "user";
@@ -6680,13 +7441,7 @@ function bind(){
   if(modal && btnNo && btnYes){
 
     const closeModal = ()=>{
-
-      modal.classList.add("hidden");
-
-      modal.style.display="none";
-
-      modal.setAttribute("aria-hidden","true");
-
+      hideModalSafely(modal, "#btnProjectExport");
     };
 
     btnNo.onclick = ()=>{
@@ -6726,13 +7481,7 @@ function bind(){
   if(masterModal && btnMNo && btnMYes){
 
     const closeMaster = ()=>{
-
-      masterModal.classList.add("hidden");
-
-      masterModal.style.display="none";
-
-      masterModal.setAttribute("aria-hidden","true");
-
+      hideModalSafely(masterModal, "#btnExportMaster");
     };
 
     btnMNo.onclick = ()=>{
@@ -6775,16 +7524,31 @@ function bind(){
 
   if(ganttModal && btnGanttRun && btnGanttCancel){
     const closeGantt = ()=>{
-      ganttModal.classList.add("hidden");
-      ganttModal.style.display="none";
-      ganttModal.setAttribute("aria-hidden","true");
+      const focusBack = ganttExportContext === "project" ? "#btnExportProjectGantt" : "#btnExportMasterGantt";
+      hideModalSafely(ganttModal, focusBack);
     };
     btnGanttCancel.onclick = ()=> closeGantt();
     btnGanttRun.onclick = ()=>{
       const isProject = ganttExportContext === "project";
-      const allTasks = isProject && selectedProjectId
+      let allTasks = isProject && selectedProjectId
         ? state.tasks.filter(t=>t.projectId===selectedProjectId)
         : filteredTasks();
+      if(!isProject){
+        const allSites = getAllSitesList();
+        const selectedSites = getSelectedExportSites();
+        if(allSites.length && selectedSites.length === 0){
+          alert("Sélectionne au moins un site.");
+          return;
+        }
+        if(selectedSites.length && selectedSites.length < allSites.length){
+          const selKeys = new Set(selectedSites.map(canonSiteKey));
+          allTasks = allTasks.filter(t=>{
+            const p = state.projects.find(x=>x.id===t.projectId);
+            const site = canonSiteKey(p?.site || "");
+            return selKeys.has(site);
+          });
+        }
+      }
       const range = getMasterGanttExportRange(allTasks);
       if(!range){ alert("Aucune tâche datée pour l'export."); return; }
       const tasksAll = allTasks.filter(t=>t.start && t.end);
@@ -6965,6 +7729,38 @@ function bind(){
 
   });
 
+  el("btnDuplicateTask")?.addEventListener("click", ()=>{
+
+    if(isLocked) return;
+
+    if(!selectedProjectId || !selectedTaskId) return;
+
+    const source = state.tasks.find(x=>x.id===selectedTaskId && x.projectId===selectedProjectId);
+
+    if(!source) return;
+
+    saveUndoSnapshot();
+
+    const id = uid();
+
+    const clone = {
+      ...source,
+      id,
+      projectId: selectedProjectId
+    };
+
+    state.tasks.push(clone);
+
+    selectedTaskId = id;
+
+    markDirty();
+
+    renderProject();
+
+    el("btnNewTask")?.classList.remove("btn-armed");
+
+  });
+
   el("btnDeleteTask")?.addEventListener("click", ()=>{
 
     if(isLocked) return;
@@ -7016,6 +7812,14 @@ function bind(){
     t.owner      = el("t_owner").value;
 
     t.vendor     = el("t_vendor").value.trim();
+    const taskOwnerType = ownerType(t.owner);
+    if(taskOwnerType === "externe" && !t.vendor){
+      alert("Prestataire externe requis : renseigne le nom du prestataire.");
+      return;
+    }
+    if(taskOwnerType !== "externe"){
+      t.vendor = "";
+    }
 
     t.start      = unformatDate(el("t_start").value);
     t.end        = unformatDate(el("t_end").value);
@@ -7060,6 +7864,7 @@ function bind(){
     }
 
     t.status     = Array.from(selectedStatusSet).join(",");
+    purgeTaskLogsByAssignedRole(t);
 
     markDirty();
 
@@ -7086,6 +7891,52 @@ function bind(){
       saveUIState(); 
       markDirty(); 
     });
+  });
+
+  el("btnSaveTimeLog")?.addEventListener("click", ()=>{
+    if(isLocked) return;
+    if(!selectedProjectId || !selectedTaskId){
+      alert("Sélectionne une tâche.");
+      return;
+    }
+    const input = el("t_time_hours");
+    const dateInput = el("t_time_date_input");
+    if(!input){
+      return;
+    }
+    const raw = (input.value || "").toString().replace(",",".").trim();
+    if(!raw){
+      alert("Saisis le temps passé (heures).");
+      return;
+    }
+    const hours = parseFloat(raw);
+    if(!isFinite(hours) || hours < 0){
+      alert("Temps invalide.");
+      return;
+    }
+    const minutes = Math.round(hours * 60);
+    const t = state.tasks.find(x=>x.id===selectedTaskId && x.projectId===selectedProjectId);
+    if(!t){
+      return;
+    }
+    const selectedDate = (dateInput?.value || getSelectedLogDate()).trim();
+    if(!selectedDate || !isTaskActiveOn(t, selectedDate)){
+      alert("La date est hors période de la tâche.");
+      return;
+    }
+    const dateObj = new Date(selectedDate+"T00:00:00");
+    if(!isWeekday(dateObj)){
+      alert("La date tombe un week-end.");
+      return;
+    }
+    saveUndoSnapshot();
+    const roleKey = getTaskRoleKey(t);
+    upsertTimeLog(t.id, t.projectId, minutes, "", selectedDate, roleKey);
+    markDirty();
+    updateTimeLogUI(t, true);
+    renderMaster();
+    renderProject();
+    saveState();
   });
   const search = el("filterSearch");
   if(search){
@@ -7487,9 +8338,212 @@ renderAll();
 
 // Préparation impression : cartouche + lgende
 
+function setPrintPageFormat(size, margin="6mm"){
+  let n = document.getElementById("printPageFormatOverride");
+  if(!n){
+    n = document.createElement("style");
+    n.id = "printPageFormatOverride";
+    document.head.appendChild(n);
+  }
+  n.textContent = `@page { size: ${size}; margin: ${margin}; }`;
+}
+
+function maximizePrintContainer(container){
+  if(!container) return;
+  container.style.zoom = 1;
+  container.style.width = "100%";
+  const pageW = window.innerWidth || document.documentElement.clientWidth || 1;
+  const contentW = container.scrollWidth || container.offsetWidth || 1;
+  let scale = pageW / contentW;
+  if(!isFinite(scale) || scale <= 0) scale = 1;
+  scale = Math.min(1.18, Math.max(1, scale));
+  container.style.zoom = scale;
+}
+
+function buildRealHoursReportForTasks(tasksInput){
+  const tasks = (tasksInput || []).filter(t=>t && t.start && t.end);
+  const logs = getCanonicalTimeLogs().filter(l=>l && l.taskId && l.date && (l.minutes||0) > 0);
+  const roleOrder = ["interne","rsg","ri"];
+  const roleTotals = {interne:0, externe:0, rsg:0, ri:0};
+  const vendorTotals = new Map();
+  const internalByName = new Map();
+  const externalByName = new Map();
+  const detailRows = [];
+
+  tasks.sort((a,b)=>{
+    const oa=(taskOrderMap[a.id]||9999)-(taskOrderMap[b.id]||9999);
+    if(oa!==0) return oa;
+    return taskTitleProjectView(a).localeCompare(taskTitleProjectView(b), "fr", {sensitivity:"base"});
+  });
+
+  tasks.forEach(t=>{
+    const isExternalTask = !!String(t.vendor || "").trim() || ownerType(t.owner) === "externe";
+    const extName = (t.vendor || "Prestataire non renseigné").trim() || "Prestataire non renseigné";
+    const taskLogs = logs.filter(l=>
+      l.taskId===t.id &&
+      l.date >= t.start &&
+      l.date <= t.end
+    );
+    const perRole = new Map();
+    taskLogs.forEach(l=>{
+      const logRole = normalizeTimeLogRole(l);
+      if(isExternalTask && logRole !== "externe") return;
+      if(!isExternalTask && logRole === "externe") return;
+      const rk = isExternalTask ? "externe" : logRole;
+      const mins = Number(l.minutes)||0;
+      if(!mins) return;
+      const prev = perRole.get(rk) || 0;
+      perRole.set(rk, prev + mins);
+
+      if(isExternalTask || rk==="externe"){
+        externalByName.set(extName, (externalByName.get(extName) || 0) + mins);
+        vendorTotals.set(extName, (vendorTotals.get(extName) || 0) + mins);
+      }else{
+        const intName = roleLabel(rk);
+        internalByName.set(intName, (internalByName.get(intName) || 0) + mins);
+      }
+    });
+    perRole.forEach((mins, rk)=>{
+      if(!mins) return;
+      if(roleTotals[rk] !== undefined) roleTotals[rk] += mins;
+      detailRows.push({
+        num: taskOrderMap[t.id] || "",
+        task: taskTitleProjectView(t),
+        role: rk,
+        interv: rk==="externe" ? extName : roleLabel(rk),
+        mins
+      });
+    });
+  });
+
+  const totalMinutes = Object.values(roleTotals).reduce((s,v)=>s+v,0);
+  const summaryRows = roleOrder.map(rk=>({
+    label: roleLabel(rk),
+    mins: roleTotals[rk] || 0
+  }));
+  const externalVendors = Array.from(vendorTotals.entries())
+    .sort((a,b)=>a[0].localeCompare(b[0], "fr", {sensitivity:"base"}));
+  const internalByNameRows = Array.from(internalByName.entries())
+    .sort((a,b)=>a[0].localeCompare(b[0], "fr", {sensitivity:"base"}));
+  const externalByNameRows = Array.from(externalByName.entries())
+    .sort((a,b)=>a[0].localeCompare(b[0], "fr", {sensitivity:"base"}));
+  const internalTotalMinutes = roleTotals.interne + roleTotals.rsg + roleTotals.ri;
+  const externalTotalMinutes = roleTotals.externe;
+
+  return {
+    summaryRows,
+    externalVendors,
+    detailRows,
+    totalMinutes,
+    internalByNameRows,
+    externalByNameRows,
+    internalTotalMinutes,
+    externalTotalMinutes
+  };
+}
+
+function buildProjectRealHoursReport(projectId){
+  const tasks = (state.tasks || []).filter(t=>t.projectId===projectId && t.start && t.end);
+  return buildRealHoursReportForTasks(tasks);
+}
+
+function buildMasterRealHoursReport(){
+  const tasks = (filteredTasks() || []).filter(t=>t.start && t.end);
+  return buildRealHoursReportForTasks(tasks);
+}
+
+function buildRealHoursReportInnerHTML(rep, title){
+  const summary = rep.summaryRows.map(r=>
+    `<tr class="report-internal-priority"><td>${r.label}</td><td style="text-align:right">${formatHoursMinutes(r.mins)}</td></tr>`
+  ).join("");
+  const vendors = rep.externalVendors.length
+    ? rep.externalVendors.map(([name, mins])=>
+        `<tr><td>${attrEscape(name)}</td><td style="text-align:right">${formatHoursMinutes(mins)}</td></tr>`
+      ).join("")
+    : `<tr><td colspan="2" class="text-muted">Aucun détail externe.</td></tr>`;
+  const details = rep.detailRows.length
+    ? rep.detailRows.map(r=>
+        `<tr><td>${r.num}</td><td>${attrEscape(r.task)}</td><td>${attrEscape(r.interv)}</td><td style="text-align:right">${formatHoursMinutes(r.mins)}</td></tr>`
+      ).join("")
+    : `<tr><td colspan="4" class="text-muted">Aucune heure réelle saisie.</td></tr>`;
+  const detailTotalMinutes = rep.detailRows.reduce((s, r)=> s + (Number(r.mins) || 0), 0);
+  const totalsByNameRows = [
+    ...rep.internalByNameRows.map(([name, mins])=>({
+      kind:"Interne",
+      name,
+      mins
+    })),
+    ...rep.externalByNameRows.map(([name, mins])=>({
+      kind:"Externe",
+      name,
+      mins
+    }))
+  ];
+  const totalsByNameHtml = totalsByNameRows.length
+    ? totalsByNameRows.map(r=>
+      `<tr><td>${r.kind}</td><td>${attrEscape(r.name)}</td><td style="text-align:right">${formatHoursMinutes(r.mins)}</td></tr>`
+    ).join("")
+    : `<tr><td colspan="3" class="text-muted">Aucune donnée.</td></tr>`;
+
+  return `
+    <div class="card-title">${attrEscape(title || "Analyse heures réelles")}</div>
+    <div class="report-grid-two">
+      <div>
+        <div class="report-subtitle">Synthèse par intervenant</div>
+        <table class="report-table report-table-summary">
+          <thead><tr><th>Intervenant</th><th>Heures</th></tr></thead>
+          <tbody>${summary}</tbody>
+          <tfoot><tr><th>Total</th><th style="text-align:right">${formatHoursMinutes(rep.internalTotalMinutes)}</th></tr></tfoot>
+        </table>
+      </div>
+      <div>
+        <div class="report-subtitle">Détail Externe (prestataires)</div>
+        <table class="report-table">
+          <thead><tr><th>Prestataire</th><th>Heures</th></tr></thead>
+          <tbody>${vendors}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="report-subtitle">Détail tâche + intervenant</div>
+    <table class="report-table">
+      <thead><tr><th>N</th><th>Tâche</th><th>Intervenant</th><th>Heures</th></tr></thead>
+      <tbody>${details}</tbody>
+      <tfoot><tr><th colspan="3">Total</th><th style="text-align:right">${formatHoursMinutes(detailTotalMinutes)}</th></tr></tfoot>
+    </table>
+    <div class="report-subtitle" style="margin-top:8px">Totaux internes / externes par intervenant (nom)</div>
+    <table class="report-table">
+      <thead><tr><th>Catégorie</th><th>Nom intervenant</th><th>Heures</th></tr></thead>
+      <tbody>${totalsByNameHtml}</tbody>
+      <tfoot>
+        <tr><th colspan="2">Total interne</th><th style="text-align:right">${formatHoursMinutes(rep.internalTotalMinutes)}</th></tr>
+        <tr><th colspan="2">Total externe</th><th style="text-align:right">${formatHoursMinutes(rep.externalTotalMinutes)}</th></tr>
+        <tr><th colspan="2">Total heures réelles</th><th style="text-align:right">${formatHoursMinutes(rep.totalMinutes)}</th></tr>
+      </tfoot>
+    </table>
+  `;
+}
+
+function buildProjectRealHoursReportInnerHTML(projectId){
+  const rep = buildProjectRealHoursReport(projectId);
+  return buildRealHoursReportInnerHTML(rep, "Analyse heures réelles (projet)");
+}
+
+function buildMasterRealHoursReportInnerHTML(){
+  const rep = buildMasterRealHoursReport();
+  return buildRealHoursReportInnerHTML(rep, "Analyse heures réelles (tableau maître)");
+}
+
+function buildProjectRealHoursReportHTML(projectId){
+  return `<div class="card print-block report-hours-card">${buildProjectRealHoursReportInnerHTML(projectId)}</div>`;
+}
+function buildMasterRealHoursReportHTML(){
+  return `<div class="card print-block report-hours-card">${buildMasterRealHoursReportInnerHTML()}</div>`;
+}
+
 function preparePrint(opts={}){
 
   const includeGraphs = opts.includeGraphs !== false;
+  setPrintPageFormat("A4 landscape", "2mm");
 
   document.body.classList.add("print-mode");
 
@@ -7522,6 +8576,9 @@ function preparePrint(opts={}){
   const today = new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});
 
   const currentProject = selectedProjectId ? state.projects.find(p=>p.id===selectedProjectId) : null;
+  const realTotal = currentProject
+    ? buildProjectRealHoursReport(currentProject.id).totalMinutes
+    : getRealMinutesForTasks(state.tasks || []).totalMinutes || 0;
 
 
 
@@ -7535,7 +8592,8 @@ function preparePrint(opts={}){
 
     ["Date export", today],
 
-    ["Nombre de tâches", currentProject ? state.tasks.filter(t=>t.projectId===currentProject.id).length : state.tasks.length]
+    ["Nombre de tâches", currentProject ? state.tasks.filter(t=>t.projectId===currentProject.id).length : state.tasks.length],
+    ["Heures réelles", formatHoursMinutes(realTotal)]
 
   ];
 
@@ -7585,6 +8643,11 @@ function preparePrint(opts={}){
 
     }
 
+    const hoursReportWrap = document.createElement("div");
+    hoursReportWrap.innerHTML = buildMasterRealHoursReportHTML();
+    const reportCard = hoursReportWrap.firstElementChild;
+    if(reportCard) wrap.appendChild(reportCard);
+
     container.querySelector(".print-order")?.appendChild(wrap);
 
   }else{
@@ -7611,6 +8674,11 @@ function preparePrint(opts={}){
 
     }
 
+    const hoursReportWrap = document.createElement("div");
+    hoursReportWrap.innerHTML = buildProjectRealHoursReportHTML(selectedProjectId);
+    const reportCard = hoursReportWrap.firstElementChild;
+    if(reportCard) wrap.appendChild(reportCard);
+
     if(includeGraphs){
 
       const projWorkload = document.querySelector("#workloadChartProject")?.closest(".card");
@@ -7627,9 +8695,12 @@ function preparePrint(opts={}){
 
   }
 
+  setTimeout(()=> maximizePrintContainer(container), 0);
+
 }
 
 function prepareMasterGanttPrint(rangeStart, rangeEnd, tasksAllOverride=null){
+  setPrintPageFormat("A3 landscape", "2mm");
   document.body.classList.add("print-mode");
   document.body.classList.add("print-gantt-master");
   const tpl = document.getElementById("printTemplate");
@@ -7690,6 +8761,7 @@ function prepareMasterGanttPrint(rangeStart, rangeEnd, tasksAllOverride=null){
 }
 
 function prepareProjectGanttPrint(rangeStart, rangeEnd, tasksAllOverride=null){
+  setPrintPageFormat("A3 landscape", "2mm");
   document.body.classList.add("print-mode");
   document.body.classList.add("print-gantt-project");
   const tpl = document.getElementById("printTemplate");
@@ -7832,8 +8904,18 @@ function buildExportSummary(tasks){
 
 function buildMasterFiltersLabel(){
   const labels = [];
-  const site = (el("filterSite")?.value || "").trim();
-  if(site) labels.push(`Site: ${site}`);
+  const exportSites = (ganttExportContext==="project") ? [] : getSelectedExportSites();
+  const allSites = (ganttExportContext==="project") ? [] : getAllSitesList();
+  if(allSites.length){
+    if(exportSites.length === 0 || exportSites.length === allSites.length){
+      labels.push("Sites: Tous");
+    }else{
+      labels.push(`Sites: ${exportSites.join(", ")}`);
+    }
+  }else{
+    const site = (el("filterSite")?.value || "").trim();
+    if(site) labels.push(`Site: ${site}`);
+  }
   const projId = el("filterProject")?.value || "";
   if(projId){
     const p = state.projects.find(x=>x.id===projId);
@@ -7873,6 +8955,8 @@ function buildMasterFiltersLabel(){
   }
   return labels.length ? labels.join(" • ") : "Aucun";
 }
+
+
 
 
 
