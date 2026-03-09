@@ -7440,6 +7440,56 @@ function bind(){
     exportSvgToPdf("workloadChartProject","Charge de travail (projet)", "workloadPieProject", projectTasks);
 
   });
+  let pendingHoursReportExportMode = "master";
+
+  document.addEventListener("click", (e)=>{
+
+    const btn = e.target?.closest?.("[data-report-export]");
+
+    if(!btn) return;
+
+    e.preventDefault();
+
+    const mode = btn.getAttribute("data-report-export") || "master";
+
+    if(mode === "project" && !selectedProjectId) return;
+
+    pendingHoursReportExportMode = mode;
+    const hoursModal = el("exportHoursReportModal");
+    if(hoursModal){
+      hoursModal.classList.remove("hidden");
+      hoursModal.style.display = "flex";
+      hoursModal.setAttribute("aria-hidden","false");
+    }
+
+  });
+
+  const exportHoursModal = el("exportHoursReportModal");
+  const btnHoursWithExternal = el("btnExportHoursWithExternal");
+  const btnHoursWithoutExternal = el("btnExportHoursWithoutExternal");
+  const btnHoursCancel = el("btnExportHoursCancel");
+
+  if(exportHoursModal && btnHoursWithExternal && btnHoursWithoutExternal){
+    const closeHoursModal = ()=> hideModalSafely(exportHoursModal);
+
+    btnHoursWithExternal.onclick = ()=>{
+      closeHoursModal();
+      exportRealHoursReportPdf(pendingHoursReportExportMode, true);
+    };
+
+    btnHoursWithoutExternal.onclick = ()=>{
+      closeHoursModal();
+      exportRealHoursReportPdf(pendingHoursReportExportMode, false);
+    };
+
+    if(btnHoursCancel){
+      btnHoursCancel.onclick = ()=> closeHoursModal();
+    }
+
+    exportHoursModal.addEventListener("click", (e)=>{
+      if(e.target===exportHoursModal) closeHoursModal();
+    });
+  }
 
   el("btnToggleMasterVendor")?.addEventListener("click", ()=>{
 
@@ -8505,28 +8555,51 @@ function buildMasterRealHoursReport(){
   return buildRealHoursReportForTasks(tasks);
 }
 
-function buildRealHoursReportInnerHTML(rep, title){
-  const summary = rep.summaryRows.map(r=>
+function filterRealHoursReportExternal(rep, includeExternal=true){
+  if(includeExternal) return rep;
+  const internalKinds = new Set(["INTERNE","RSG","RI"]);
+  const detailRows = (rep.detailRows || []).filter(r=> internalKinds.has(String(r.interv || "").toUpperCase()));
+  const internalByNameRows = Array.isArray(rep.internalByNameRows) ? rep.internalByNameRows : [];
+  const internalTotalMinutes = internalByNameRows.reduce((s, row)=> s + (Number(row?.[1]) || 0), 0);
+  return {
+    summaryRows: (rep.summaryRows || []).map(r=>{
+      const label = String(r?.label || "");
+      if(label.toUpperCase() === "EXTERNE") return {...r, mins: 0};
+      return r;
+    }),
+    externalVendors: [],
+    detailRows,
+    totalMinutes: internalTotalMinutes,
+    internalByNameRows,
+    externalByNameRows: [],
+    internalTotalMinutes,
+    externalTotalMinutes: 0
+  };
+}
+
+function buildRealHoursReportInnerHTML(rep, title, reportMode="master", includeExternal=true){
+  const report = filterRealHoursReportExternal(rep, includeExternal);
+  const summary = report.summaryRows.map(r=>
     `<tr class="report-internal-priority"><td>${r.label}</td><td style="text-align:right">${formatHoursMinutes(r.mins)}</td></tr>`
   ).join("");
-  const vendors = rep.externalVendors.length
-    ? rep.externalVendors.map(([name, mins])=>
+  const vendors = report.externalVendors.length
+    ? report.externalVendors.map(([name, mins])=>
         `<tr><td>${attrEscape(name)}</td><td style="text-align:right">${formatHoursMinutes(mins)}</td></tr>`
       ).join("")
     : `<tr><td colspan="2" class="text-muted">Aucun détail externe.</td></tr>`;
-  const details = rep.detailRows.length
-    ? rep.detailRows.map(r=>
+  const details = report.detailRows.length
+    ? report.detailRows.map(r=>
         `<tr><td>${r.num}</td><td>${attrEscape(r.task)}</td><td>${attrEscape(r.interv)}</td><td style="text-align:right">${formatHoursMinutes(r.mins)}</td></tr>`
       ).join("")
     : `<tr><td colspan="4" class="text-muted">Aucune heure réelle saisie.</td></tr>`;
-  const detailTotalMinutes = rep.detailRows.reduce((s, r)=> s + (Number(r.mins) || 0), 0);
+  const detailTotalMinutes = report.detailRows.reduce((s, r)=> s + (Number(r.mins) || 0), 0);
   const totalsByNameRows = [
-    ...rep.internalByNameRows.map(([name, mins])=>({
+    ...report.internalByNameRows.map(([name, mins])=>({
       kind:"Interne",
       name,
       mins
     })),
-    ...rep.externalByNameRows.map(([name, mins])=>({
+    ...report.externalByNameRows.map(([name, mins])=>({
       kind:"Externe",
       name,
       mins
@@ -8539,14 +8612,14 @@ function buildRealHoursReportInnerHTML(rep, title){
     : `<tr><td colspan="3" class="text-muted">Aucune donnée.</td></tr>`;
 
   return `
-    <div class="card-title">${attrEscape(title || "Analyse heures réelles")}</div>
+    <div class="row row-compact" style="justify-content:space-between;align-items:center;margin-bottom:6px;">\n      <div class="card-title">${attrEscape(title || "Analyse heures réelles")}</div>\n      <button class="btn report-export-btn" type="button" data-report-export="${reportMode}">\n        <span class="pdf-icon" aria-hidden="true"></span>\n        Export PDF\n      </button>\n    </div>
     <div class="report-grid-two">
       <div>
         <div class="report-subtitle">Synthèse par intervenant</div>
         <table class="report-table report-table-summary">
           <thead><tr><th>Intervenant</th><th>Heures</th></tr></thead>
           <tbody>${summary}</tbody>
-          <tfoot><tr><th>Total</th><th style="text-align:right">${formatHoursMinutes(rep.internalTotalMinutes)}</th></tr></tfoot>
+          <tfoot><tr><th>Total</th><th style="text-align:right">${formatHoursMinutes(report.internalTotalMinutes)}</th></tr></tfoot>
         </table>
       </div>
       <div>
@@ -8568,29 +8641,94 @@ function buildRealHoursReportInnerHTML(rep, title){
       <thead><tr><th>Catégorie</th><th>Nom intervenant</th><th>Heures</th></tr></thead>
       <tbody>${totalsByNameHtml}</tbody>
       <tfoot>
-        <tr><th colspan="2">Total interne</th><th style="text-align:right">${formatHoursMinutes(rep.internalTotalMinutes)}</th></tr>
-        <tr><th colspan="2">Total externe</th><th style="text-align:right">${formatHoursMinutes(rep.externalTotalMinutes)}</th></tr>
-        <tr><th colspan="2">Total heures réelles</th><th style="text-align:right">${formatHoursMinutes(rep.totalMinutes)}</th></tr>
+        <tr><th colspan="2">Total interne</th><th style="text-align:right">${formatHoursMinutes(report.internalTotalMinutes)}</th></tr>
+        <tr><th colspan="2">Total externe</th><th style="text-align:right">${formatHoursMinutes(report.externalTotalMinutes)}</th></tr>
+        <tr><th colspan="2">Total heures réelles</th><th style="text-align:right">${formatHoursMinutes(report.totalMinutes)}</th></tr>
       </tfoot>
     </table>
   `;
 }
 
-function buildProjectRealHoursReportInnerHTML(projectId){
+function buildProjectRealHoursReportInnerHTML(projectId, includeExternal=true){
   const rep = buildProjectRealHoursReport(projectId);
-  return buildRealHoursReportInnerHTML(rep, "Analyse heures réelles (projet)");
+  return buildRealHoursReportInnerHTML(rep, "Analyse heures réelles (projet)", "project", includeExternal);
 }
 
-function buildMasterRealHoursReportInnerHTML(){
+function buildMasterRealHoursReportInnerHTML(includeExternal=true){
   const rep = buildMasterRealHoursReport();
-  return buildRealHoursReportInnerHTML(rep, "Analyse heures réelles (tableau maître)");
+  return buildRealHoursReportInnerHTML(rep, "Analyse heures réelles (tableau maître)", "master", includeExternal);
 }
 
-function buildProjectRealHoursReportHTML(projectId){
-  return `<div class="card print-block report-hours-card">${buildProjectRealHoursReportInnerHTML(projectId)}</div>`;
+function buildProjectRealHoursReportHTML(projectId, includeExternal=true){
+  return `<div class="card print-block report-hours-card">${buildProjectRealHoursReportInnerHTML(projectId, includeExternal)}</div>`;
 }
-function buildMasterRealHoursReportHTML(){
-  return `<div class="card print-block report-hours-card">${buildMasterRealHoursReportInnerHTML()}</div>`;
+function buildMasterRealHoursReportHTML(includeExternal=true){
+  return `<div class="card print-block report-hours-card">${buildMasterRealHoursReportInnerHTML(includeExternal)}</div>`;
+}
+
+function exportRealHoursReportPdf(mode="master", includeExternal=true){
+  const isProjectMode = mode === "project" && !!selectedProjectId;
+  const project = isProjectMode ? state.projects.find(p=>p.id===selectedProjectId) : null;
+  const reportHtml = isProjectMode
+    ? buildProjectRealHoursReportHTML(selectedProjectId, includeExternal)
+    : buildMasterRealHoursReportHTML(includeExternal);
+
+  setPrintPageFormat("A4 landscape", "2mm");
+  document.body.classList.add("print-mode");
+  document.body.classList.add("print-hours-report");
+
+  const tpl = document.getElementById("printTemplate");
+  if(!tpl) return;
+
+  let container = document.getElementById("printInjection");
+  if(!container){
+    container = document.createElement("div");
+    container.id = "printInjection";
+    document.body.prepend(container);
+  }
+
+  container.innerHTML = tpl.innerHTML;
+
+  const header = container.querySelector("#printHeader");
+  const meta = container.querySelector("#printMeta");
+  const legend = container.querySelector("#printLegend");
+  const today = new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});
+
+  if(header){
+    header.querySelector("h1").textContent = isProjectMode
+      ? `Analyse heures réelles - ${project?.name || "Projet"}`
+      : "Analyse heures réelles - Tableau maître";
+  }
+
+  if(meta){
+    const reportRaw = isProjectMode
+      ? buildProjectRealHoursReport(selectedProjectId)
+      : buildMasterRealHoursReport();
+    const report = filterRealHoursReportExternal(reportRaw, includeExternal);
+    const metaRows = [
+      ["Date export", today],
+      ["Contexte", isProjectMode ? "Projet" : "Tableau maître"],
+      ["Version", includeExternal ? "Avec prestataires externes" : "Sans prestataires externes"],
+      ["Heures réelles", formatHoursMinutes(report?.totalMinutes || 0)]
+    ];
+    meta.innerHTML = metaRows.map(([k,v])=>`<div><strong>${k}</strong><br>${v}</div>`).join("");
+  }
+
+  if(legend) legend.innerHTML = "";
+  container.querySelectorAll(".print-dynamic").forEach(n=>n.remove());
+
+  const wrap = document.createElement("div");
+  wrap.className = "print-dynamic";
+  const reportWrap = document.createElement("div");
+  reportWrap.innerHTML = reportHtml;
+  const reportCard = reportWrap.firstElementChild;
+  if(reportCard) wrap.appendChild(reportCard);
+  container.querySelector(".print-order")?.appendChild(wrap);
+
+  setTimeout(()=>{
+    maximizePrintContainer(container);
+    window.print();
+  }, 0);
 }
 
 function preparePrint(opts={}){
@@ -8903,6 +9041,7 @@ function cleanupPrint(){
   document.body.classList.remove("print-mode");
   document.body.classList.remove("print-gantt-master");
   document.body.classList.remove("print-gantt-project");
+  document.body.classList.remove("print-hours-report");
 
   const container = document.getElementById("printInjection");
 
@@ -9008,6 +9147,16 @@ function buildMasterFiltersLabel(){
   }
   return labels.length ? labels.join(" • ") : "Aucun";
 }
+
+
+
+
+
+
+
+
+
+
 
 
 

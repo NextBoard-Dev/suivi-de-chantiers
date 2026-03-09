@@ -314,3 +314,33 @@ body {
   break-inside: avoid !important;
   page-break-inside: avoid !important;
 }
+
+
+
+@media print {
+  .report-export-btn{display:none !important;}
+
+  body.print-hours-report .report-hours-card,
+  body.print-hours-report .report-grid-two,
+  body.print-hours-report .report-table,
+  body.print-hours-report .print-block{
+    break-inside:auto !important;
+    page-break-inside:auto !important;
+  }
+
+  body.print-hours-report .report-table thead,
+  body.print-hours-report .report-table tfoot{
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+
+  body.print-hours-report .report-table tbody{
+    break-inside:auto !important;
+    page-break-inside:auto !important;
+  }
+
+  body.print-hours-report .report-table tr{
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+}
