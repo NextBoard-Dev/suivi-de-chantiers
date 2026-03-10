@@ -698,6 +698,10 @@
 
         <button class="btn btn-ghost" id="btnConfigClose">Fermer</button>
 
+        <button class="btn btn-ghost" id="btnQualityClean">Nettoyer les incohérences</button>
+
+        <button class="btn btn-ghost" id="btnQualityExportPdf">Export rapport qualité</button>
+
         <button class="btn btn-success" id="btnConfigSave">Enregistrer</button>
 
       </div>
@@ -1358,9 +1362,17 @@
 
     <aside class="sidebar">
 
+      <div class="sidebar-logo-wrap">
+        <img src="assets/logo/logo_sidebar_transparent_arrondi.png" alt="Logo" class="sidebar-logo-img" />
+      </div>
+
       <div class="section">
 
         <div class="section-title"><span class="section-title-icon"></span> Onglets</div>
+        <div class="tabs-sort-tools">
+          <button class="btn" id="btnTabsSortProgress" type="button">Tri avancement 0%→100%</button>
+          <button class="btn" id="btnTabsSortReset" type="button">Réinitialiser</button>
+        </div>
 
         <div id="tabsMaster" class="tabs-master"></div>
 
@@ -2736,6 +2748,15 @@
 </body>
 
 </html>
+
+
+
+
+
+
+
+
+
 
 
 

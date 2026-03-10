@@ -48,6 +48,14 @@ function reportAppError(errLike, context="runtime"){
   showAppErrorBanner(`Une erreur est survenue (${context}). ${msg}`);
 }
 
+function softCatch(errLike, context="soft"){
+  try{
+    const msg = _formatErrorMessage(errLike);
+    console.warn(`[soft-error] ${context}: ${msg}`);
+  }catch(_e){
+    // no-op volontaire: ne jamais casser l'UI pour une remontée d'erreur
+  }
+}
 window.reportAppError = reportAppError;
 window.addEventListener("error", (ev)=>{
   reportAppError(ev?.error || ev?.message || "Erreur JavaScript", "window.error");
@@ -308,10 +316,10 @@ async function logLoginToSupabase(payload){
     const { error } = await sb.from(SUPABASE_LOGINS_TABLE).insert(row);
     if(error){
       console.warn("Supabase logins insert error", error);
-      try{ localStorage.setItem("login_log_last_error", error.message || "insert_failed"); }catch(e){}
+      try{ localStorage.setItem("login_log_last_error", error.message || "insert_failed"); }catch(e){ softCatch(e); }
       return false;
     }
-    try{ localStorage.removeItem("login_log_last_error"); }catch(e){}
+    try{ localStorage.removeItem("login_log_last_error"); }catch(e){ softCatch(e); }
     return true;
   }catch(e){
     console.warn("logLoginToSupabase failed", e);
@@ -537,7 +545,7 @@ function _scheduleSupabaseAutoLoad(){
     try{
       window.loadAppStateFromSupabase();
       loadUsersFromSupabase();
-    }catch(e){}
+    }catch(e){ softCatch(e); }
   }, 120);
 }
 
@@ -561,6 +569,8 @@ let selectedStatusSet = new Set();
 let sortMaster = {key:"start", dir:"asc"};
 
 let sortProject = {key:"start", dir:"asc"};
+
+let tabsSortMode = "default"; // default | progress_asc | progress_desc
 
 let unsavedChanges = false;
 let lastUndoSnapshot = null;
@@ -661,7 +671,7 @@ const DEFAULT_STATUSES = [
 
   {v:"MACONNERIE",   label:"Maçonnerie"},
 
-  {v:"HUIS_SER",     label:"Huisseries"},
+  {v:"HUISSERIES", label:"Huisseries"},
 
   {v:"RESEAUX",      label:"Réseaux"},
 
@@ -703,7 +713,8 @@ const STATUS_COLORS = {
 
   MACONNERIE:       "#a16207",
 
-  HUIS_SER:         "#6b7280",
+  HUISSERIES:      "#6b7280",
+
 
   RESEAUX:          "#0ea5b0",
 
@@ -855,7 +866,7 @@ function updateSidebarScrollState(){
 }
 
 function scrollViewToTop(){
-  try{ window.scrollTo(0,0); }catch(e){}
+  try{ window.scrollTo(0,0); }catch(e){ softCatch(e); }
   document.querySelectorAll(".tablewrap").forEach(el=>{
     el.scrollTop = 0;
     el.scrollLeft = 0;
@@ -972,9 +983,9 @@ function openTaskFromGantt(taskId){
   navigateTo(task.projectId, taskId, true);
 }
 function closeAllOverlays(){
-  try{ showVendorDropdown(false); }catch(e){}
-  try{ showDescriptionDropdown(false); }catch(e){}
-  try{ toggleStatusMenu(false); }catch(e){}
+  try{ showVendorDropdown(false); }catch(e){ softCatch(e); }
+  try{ showDescriptionDropdown(false); }catch(e){ softCatch(e); }
+  try{ toggleStatusMenu(false); }catch(e){ softCatch(e); }
   const vBox = el("vendorDropdown");
   if(vBox){ vBox.style.display="none"; vBox.classList.remove("open"); }
   const dBox = el("descDropdown");
@@ -1003,7 +1014,7 @@ function loadConfig(){
 function saveConfig(cfg){
   try{
     localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg||{}));
-  }catch(e){}
+  }catch(e){ softCatch(e); }
 }
 function normalizeStatusId(label){
   const base = (label||"").trim();
@@ -1056,9 +1067,9 @@ function saveUsers(list){
     localStorage.setItem(USERS_KEY, JSON.stringify(list||[]));
     try{
       if(typeof window.populateLoginUsers === "function") window.populateLoginUsers();
-    }catch(e){}
-    try{ saveUsersToSupabase(list||[]); }catch(e){}
-  }catch(e){}
+    }catch(e){ softCatch(e); }
+    try{ saveUsersToSupabase(list||[]); }catch(e){ softCatch(e); }
+  }catch(e){ softCatch(e); }
 }
 
 function getCurrentUserName(){
@@ -1097,7 +1108,7 @@ function applyThemeForCurrentUser(){
 function setCurrentUserTheme(themeId){
   const name = getCurrentUserName();
   const email = getCurrentUserEmail();
-  try{ sessionStorage.setItem("current_theme", themeId || "sable"); }catch(e){}
+  try{ sessionStorage.setItem("current_theme", themeId || "sable"); }catch(e){ softCatch(e); }
   if(!name){
     applyTheme(themeId);
     return;
@@ -1553,13 +1564,13 @@ function hideModalSafely(modal, focusFallbackSelector=""){
     if(active && modal.contains(active) && typeof active.blur === "function"){
       active.blur();
     }
-  }catch(e){}
+  }catch(e){ softCatch(e); }
   try{
     if(focusFallbackSelector){
       const target = document.querySelector(focusFallbackSelector);
       if(target && typeof target.focus === "function") target.focus();
     }
-  }catch(e){}
+  }catch(e){ softCatch(e); }
   modal.classList.add("hidden");
   modal.style.display = "none";
   modal.setAttribute("aria-hidden","true");
@@ -1594,7 +1605,7 @@ function navigateTo(projectId=null, taskId=null, push=true){
   if(push){
     try{
       history.pushState({projectId:selectedProjectId, taskId:selectedTaskId}, "");
-    }catch(e){}
+    }catch(e){ softCatch(e); }
   }
   closeAllOverlays();
   setTimeout(()=> closeAllOverlays(), 0);
@@ -2583,21 +2594,28 @@ function normalizeState(raw){
   }
 
   const normalizeStatus = (s)=> (s||"").split(",").filter(Boolean).map(v=>{
-
-    if(v==="PREPA") return "PREPARATION";
-
-    return v;
-
+    const up = String(v || "").toUpperCase();
+    if(up==="PREPA") return "PREPARATION";
+    if(up==="HUIS_SER") return "HUISSERIES";
+    return up;
   }).join(",");
 
   const normProjects = (raw.projects||[]).map(p=>({...p, id:normId(p.id)}));
 
-  const normTasks = (raw.tasks||[]).map(t=>({
-    ...t,
-    projectId:normId(t.projectId),
-    status: normalizeStatus(t.status),
-    owner: (String(t.owner||"").toUpperCase()==="RSG/RI") ? "RSG" : (t.owner||"")
-  }));
+  const normTasks = (raw.tasks||[]).map(t=>{
+    const ownerNorm = (String(t.owner||"").toUpperCase()==="RSG/RI") ? "RSG" : (t.owner||"");
+    let vendorNorm = (t.vendor||"").toString().trim();
+    if(String(ownerNorm).toLowerCase().includes("prestataire externe") && !vendorNorm){
+      vendorNorm = "PRESTATAIRE NON RENSEIGNE";
+    }
+    return {
+      ...t,
+      projectId:normId(t.projectId),
+      status: normalizeStatus(t.status),
+      owner: ownerNorm,
+      vendor: vendorNorm
+    };
+  });
 
   const normLogs = (raw.timeLogs||[]).map(l=>({
     id: l.id || uid(),
@@ -2614,26 +2632,64 @@ function normalizeState(raw){
     updatedAt: l.updatedAt || ""
   })).filter(l=>l.taskId && l.date);
 
-  // filtrer les prestataires supprims
-
   const deleted = new Set(loadDeletedVendors().map(x=>x.toLowerCase()));
-
   normTasks.forEach(t=>{
-
     if(t.vendor && deleted.has(t.vendor.toLowerCase())) t.vendor = "";
-
   });
 
-  const state = {projects:normProjects, tasks:normTasks, ui: raw.ui||{}, timeLogs: normLogs};
-  const orphans = detectOrphanTimeLogs(state);
+  const tasksById = new Map(normTasks.map(t=>[t.id, t]));
+  const keptLogs = [];
+  const orphanBuffer = [];
+  normLogs.forEach(l=>{
+    const task = tasksById.get(l.taskId);
+    if(!task){
+      orphanBuffer.push(l);
+      return;
+    }
+    const fixed = {...l};
+    if(task.projectId) fixed.projectId = task.projectId;
+    if(task.start && fixed.date < task.start){
+      orphanBuffer.push(fixed);
+      return;
+    }
+    if(task.end && fixed.date > task.end){
+      orphanBuffer.push(fixed);
+      return;
+    }
+    const expectedRole = getTaskRoleKey(task);
+    const actualRole = normalizeTimeLogRole(fixed);
+    if(expectedRole && actualRole !== expectedRole){
+      fixed.roleKey = expectedRole;
+      fixed.role = String(expectedRole).toUpperCase();
+    }
+    keptLogs.push(fixed);
+  });
+
+  const dedupMap = new Map();
+  keptLogs.forEach(l=>{
+    const rk = normalizeTimeLogRole(l);
+    const key = `${l.taskId}|${l.date}|${rk}`;
+    const prev = dedupMap.get(key);
+    if(!prev){
+      dedupMap.set(key, l);
+      return;
+    }
+    const prevTs = new Date(prev.updatedAt || prev.createdAt || 0).getTime();
+    const curTs = new Date(l.updatedAt || l.createdAt || 0).getTime();
+    if(curTs >= prevTs) dedupMap.set(key, l);
+  });
+
+  const state = {projects:normProjects, tasks:normTasks, ui: raw.ui||{}, timeLogs: Array.from(dedupMap.values())};
+  const detectedOrphans = detectOrphanTimeLogs(state);
+  const archivedOrphans = Array.isArray(raw.orphanTimeLogs) ? raw.orphanTimeLogs : [];
+  const orphans = [...archivedOrphans, ...orphanBuffer, ...detectedOrphans];
   state.orphanTimeLogs = orphans;
-  if(orphans.length > 0){
-    console.warn("[INTEGRITY] Orphan timeLogs detected:", orphans.length);
+  if(detectedOrphans.length > 0){
+    console.warn("[INTEGRITY] Orphan timeLogs detected:", detectedOrphans.length);
   }
   return state;
 
 }
-
 function detectOrphanTimeLogs(state) {
   const taskIds = new Set((state.tasks || []).map(t => t.id));
   const projectIds = new Set((state.projects || []).map(p => p.id));
@@ -3073,7 +3129,7 @@ function load(){
 
         }
 
-      }catch(e){}
+      }catch(e){ softCatch(e); }
 
       // 3) fallback état embarqu
 
@@ -3109,7 +3165,7 @@ function load(){
 
         }
 
-      }catch(e){}
+      }catch(e){ softCatch(e); }
 
       state = normalizeState(defaultState());
 
@@ -3152,6 +3208,173 @@ function showSaveToast(type, title, detail){
   _saveToastTimer = setTimeout(()=> toast.classList.remove("show"), duration);
 }
 
+let _lastDataQualityReport = null;
+
+function collectDataQualityIssues(currentState=state){
+  const s = currentState || {};
+  const tasks = Array.isArray(s.tasks) ? s.tasks : [];
+  const logs = Array.isArray(s.timeLogs) ? s.timeLogs : [];
+  const taskById = new Map(tasks.map(t=>[t.id, t]));
+
+  let invalidDates = 0;
+  let externalWithoutVendor = 0;
+  let legacyStatus = 0;
+  let orphanLogs = 0;
+  let logsOutsideTaskRange = 0;
+
+  tasks.forEach(t=>{
+    const start = (t?.start || "").toString();
+    const end = (t?.end || "").toString();
+    if(!start || !end || end < start) invalidDates += 1;
+
+    const owner = (t?.owner || "").toString().toLowerCase();
+    const vendor = (t?.vendor || "").toString().trim();
+    if(owner.includes("prestataire externe") && !vendor) externalWithoutVendor += 1;
+
+    const statuses = String(t?.status || "").split(",").map(x=>x.trim().toUpperCase()).filter(Boolean);
+    if(statuses.includes("HUIS_SER")) legacyStatus += 1;
+  });
+
+  logs.forEach(l=>{
+    const task = taskById.get(l?.taskId);
+    if(!task){ orphanLogs += 1; return; }
+    const d = (l?.date || "").toString().slice(0,10);
+    if(!d) return;
+    const ts = (task?.start || "").toString();
+    const te = (task?.end || "").toString();
+    if(ts && d < ts) logsOutsideTaskRange += 1;
+    else if(te && d > te) logsOutsideTaskRange += 1;
+  });
+
+  const issues = [];
+  if(invalidDates > 0) issues.push(`${invalidDates} tâche(s) avec dates invalides`);
+  if(externalWithoutVendor > 0) issues.push(`${externalWithoutVendor} tâche(s) externes sans prestataire`);
+  if(legacyStatus > 0) issues.push(`${legacyStatus} tâche(s) en statut legacy HUIS_SER`);
+  if(orphanLogs > 0) issues.push(`${orphanLogs} log(s) orphelins`);
+  if(logsOutsideTaskRange > 0) issues.push(`${logsOutsideTaskRange} log(s) hors période de tâche`);
+
+  return {
+    ok: issues.length === 0,
+    issues,
+    counts: { invalidDates, externalWithoutVendor, legacyStatus, orphanLogs, logsOutsideTaskRange }
+  };
+}
+
+function formatQualityIssuesForToast(report){
+  if(!report || report.ok) return "Aucune incohérence métier détectée";
+  const base = report.issues.slice(0,3).join(" | ");
+  if(report.issues.length <= 3) return base;
+  return `${base} | +${report.issues.length - 3} autre(s)`;
+}
+
+function updateDataQualityBanner(notify=false){
+  const brandSub = el("brandSub");
+  if(!brandSub) return;
+
+  const today = new Date();
+  const fmt = today.toLocaleDateString("fr-FR",{weekday:"long", day:"2-digit", month:"long", year:"numeric"});
+  const report = collectDataQualityIssues(state);
+  _lastDataQualityReport = report;
+
+  const badgeLabel = report.ok ? "Qualité données: OK" : `Qualité données: ${report.issues.length} incohérence(s)`;
+  const badgeStyle = report.ok
+    ? "color:#16a34a;border:1px solid #16a34a33;background:#16a34a14;padding:2px 8px;border-radius:10px;cursor:pointer;"
+    : "color:#b91c1c;border:1px solid #b91c1c33;background:#b91c1c14;padding:2px 8px;border-radius:10px;cursor:pointer;";
+
+  brandSub.innerHTML = `Tableau maître  Projets  Gantt  Exports locaux  <span class="brand-date">${fmt}</span>  <span id="dataQualityBadge" style="${badgeStyle}">${badgeLabel}</span>`;
+  const badge = el("dataQualityBadge");
+  if(badge){
+    badge.onclick = ()=>{
+      const r = _lastDataQualityReport || collectDataQualityIssues(state);
+      showSaveToast(r.ok ? "ok" : "error", "Contrôle qualité", formatQualityIssuesForToast(r));
+    };
+  }
+
+  if(notify && !report.ok){
+    showSaveToast("error", "Contrôle qualité", formatQualityIssuesForToast(report));
+  }
+}
+function applyDataQualityCleanup(){
+  const before = collectDataQualityIssues(state);
+  const cleaned = normalizeState(deepClone(state));
+  const removedFromLogs = Math.max(0, (state?.timeLogs?.length || 0) - (cleaned?.timeLogs?.length || 0));
+  state.projects = cleaned.projects || [];
+  state.tasks = cleaned.tasks || [];
+  state.timeLogs = cleaned.timeLogs || [];
+  state.ui = cleaned.ui || state.ui || {};
+  state.orphanTimeLogs = cleaned.orphanTimeLogs || [];
+
+  const after = collectDataQualityIssues(state);
+  markDirty();
+  renderAll();
+
+  const detail = `Avant: ${before.issues.length} | Après: ${after.issues.length} | Logs retirés: ${removedFromLogs}`;
+  showSaveToast(after.ok ? "ok" : "error", "Nettoyage terminé", detail);
+  return { before, after, removedFromLogs };
+}
+
+function exportDataQualityReportPdf(){
+  const report = collectDataQualityIssues(state);
+  const today = new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});
+
+  setPrintPageFormat("A4 portrait", "6mm");
+  document.body.classList.add("print-mode");
+
+  const tpl = document.getElementById("printTemplate");
+  if(!tpl) return;
+
+  let container = document.getElementById("printInjection");
+  if(!container){
+    container = document.createElement("div");
+    container.id = "printInjection";
+    document.body.prepend(container);
+  }
+
+  container.innerHTML = tpl.innerHTML;
+  const header = container.querySelector("#printHeader");
+  const meta = container.querySelector("#printMeta");
+  const legend = container.querySelector("#printLegend");
+
+  if(header){
+    header.querySelector("h1").textContent = "Rapport qualité des données";
+  }
+  if(meta){
+    const rows = [
+      ["Date export", today],
+      ["État", report.ok ? "OK" : "Incohérences détectées"],
+      ["Nombre d'anomalies", String(report.issues.length)],
+      ["Tâches", String((state?.tasks || []).length)],
+      ["Logs temps", String((state?.timeLogs || []).length)]
+    ];
+    meta.innerHTML = rows.map(([k,v])=>`<div><strong>${k}</strong><br>${attrEscape(v)}</div>`).join("");
+  }
+  if(legend) legend.innerHTML = "";
+
+  container.querySelectorAll(".print-dynamic").forEach(n=>n.remove());
+  const wrap = document.createElement("div");
+  wrap.className = "print-dynamic";
+  const card = document.createElement("div");
+  card.className = "card print-block";
+
+  const lines = report.ok
+    ? ["Aucune incohérence métier détectée."]
+    : report.issues;
+
+  const listHtml = lines.map((x,i)=>`<li>${attrEscape(String(i+1))}. ${attrEscape(x)}</li>`).join("");
+  card.innerHTML = `
+    <div class="card-title">Contrôle qualité</div>
+    <div style="padding:10px 14px;">
+      <ul style="margin:0;padding-left:18px;line-height:1.5;">${listHtml}</ul>
+    </div>
+  `;
+  wrap.appendChild(card);
+  container.querySelector(".print-order")?.appendChild(wrap);
+
+  setTimeout(()=>{
+    maximizePrintContainer(container);
+    window.print();
+  }, 0);
+}
 function animateMetricCounters(root){
   if(!root) return;
   const vals = root.querySelectorAll(".metric-val");
@@ -3216,7 +3439,7 @@ function saveState(opts={}){
 
     const skipSupabase = !!opts.skipSupabase || _suppressSupabaseSave;
     if(!skipSupabase){
-      try{ if(window.saveAppStateToSupabase) window.saveAppStateToSupabase(state); }catch(e){}
+      try{ if(window.saveAppStateToSupabase) window.saveAppStateToSupabase(state); }catch(e){ softCatch(e); }
     }
 
   }catch(e){
@@ -3266,7 +3489,7 @@ function saveUIState(){
       startAfter: el("filterStartAfter")?.value || "",
       endBefore: el("filterEndBefore")?.value || ""
     };
-  }catch(e){}
+  }catch(e){ softCatch(e); }
 }
 
 function saveUndoSnapshot(){
@@ -5189,7 +5412,7 @@ function exportSvgToPdf(svgId, title="Export", pieId=null, tasksOverride=null){
 
       // refermer la fentre d'export aprs l'impression (ou aprs un court dlai si pas de callback)
 
-      setTimeout(()=>{ try{ w.close(); }catch(e){} }, 800);
+      setTimeout(()=>{ try{ w.close(); }catch(e){ softCatch(e); } }, 800);
 
     };
 
@@ -5738,8 +5961,17 @@ function renderTabs(){
 
   const tabs = el("tabs");
   const tabsMaster = el("tabsMaster");
+  const tabsSortBtn = el("btnTabsSortProgress");
+  const tabsSortResetBtn = el("btnTabsSortReset");
 
   if(!tabs) return;
+
+  if(tabsSortBtn){
+    tabsSortBtn.textContent = (tabsSortMode === "progress_desc") ? "Tri avancement 100%→0%" : "Tri avancement 0%→100%";
+  }
+  if(tabsSortResetBtn){
+    tabsSortResetBtn.disabled = (tabsSortMode === "default");
+  }
 
   const projectIcon = (name="")=>{
 
@@ -5753,22 +5985,36 @@ function renderTabs(){
 
   const masterBtn = `<button class="tab tab-master ${selectedProjectId?"":"active"}" data-tab="MASTER"><span class="tab-icon"></span> Tableau maître</button>`;
 
+  const getProjectCompletion = (projectId)=>{
+    const tasks = state.tasks.filter(t=>t.projectId===projectId && t.start && t.end);
+    if(!tasks.length) return 0;
+    let sum = 0;
+    let weight = 0;
+    tasks.forEach(t=>{
+      const w = Math.max(1, durationDays(t.start, t.end));
+      sum += taskProgress(t) * w;
+      weight += w;
+    });
+    return weight ? Math.round(sum / weight) : 0;
+  };
+
   const projectsSorted = [...state.projects].sort((a,b)=>{
+    if(tabsSortMode === "progress_asc" || tabsSortMode === "progress_desc"){
+      const aProg = getProjectCompletion(a.id);
+      const bProg = getProjectCompletion(b.id);
+      if(aProg !== bProg){
+        return tabsSortMode === "progress_asc" ? (aProg - bProg) : (bProg - aProg);
+      }
+    }
 
     // date de début minimale des tâches de chaque projet
-
     const aDates = state.tasks.filter(t=>t.projectId===a.id && t.start).map(t=>Date.parse(t.start));
-
     const bDates = state.tasks.filter(t=>t.projectId===b.id && t.start).map(t=>Date.parse(t.start));
-
     const aMin = aDates.length ? Math.min(...aDates) : Infinity;
-
     const bMin = bDates.length ? Math.min(...bDates) : Infinity;
 
-    if(aMin!==bMin) return aMin - bMin; // plus rcent (valeur numrique plus petite) en haut
-
+    if(aMin!==bMin) return aMin - bMin;
     return (a.name||"").localeCompare(b.name||"");
-
   });
 
   let h="";
@@ -6925,8 +7171,8 @@ function renderProject(){
     el("t_end").value=endVal;
     setTaskProgressUI(taskProgress(t));
     updateTimeLogUI(t, true);
-    if(window.__fpStart){ try{ window.__fpStart.setDate(startVal || null, true, "Y-m-d"); }catch(e){} }
-    if(window.__fpEnd){ try{ window.__fpEnd.setDate(endVal || null, true, "Y-m-d"); }catch(e){} }
+    if(window.__fpStart){ try{ window.__fpStart.setDate(startVal || null, true, "Y-m-d"); }catch(e){ softCatch(e); } }
+    if(window.__fpEnd){ try{ window.__fpEnd.setDate(endVal || null, true, "Y-m-d"); }catch(e){ softCatch(e); } }
 
     setStatusSelection(t.status||"");
 
@@ -6935,8 +7181,8 @@ function renderProject(){
     el("t_room").value=""; el("t_owner").value=""; el("t_vendor").value=""; el("t_start").value=""; el("t_end").value="";
     setTaskProgressUI(0);
     updateTimeLogUI(null);
-    if(window.__fpStart){ try{ window.__fpStart.setDate(null); }catch(e){} }
-    if(window.__fpEnd){ try{ window.__fpEnd.setDate(null); }catch(e){} }
+    if(window.__fpStart){ try{ window.__fpStart.setDate(null); }catch(e){ softCatch(e); } }
+    if(window.__fpEnd){ try{ window.__fpEnd.setDate(null); }catch(e){ softCatch(e); } }
 
     setStatusSelection("");
 
@@ -7025,6 +7271,7 @@ function renderAll(){
 
   applySidebarTopLock();
   checkTimeLogReminders();
+  updateDataQualityBanner(false);
 
 }
 
@@ -7063,11 +7310,11 @@ function bind(){
       sessionStorage.removeItem("current_email");
       sessionStorage.removeItem("current_theme");
       localStorage.removeItem("login_session_token_v1");
-    }catch(e){}
+    }catch(e){ softCatch(e); }
     const lock = document.getElementById("lockscreen");
     if(lock) lock.classList.remove("hidden");
     applyRoleAccess();
-    try{ window.refreshLoginUsers?.(); }catch(e){}
+    try{ window.refreshLoginUsers?.(); }catch(e){ softCatch(e); }
   };
   const switchBtn = el("btnSwitchUser");
   if(switchBtn){
@@ -7195,6 +7442,29 @@ function bind(){
   el("btnConfigSaveTop")?.addEventListener("click", ()=>{
     el("btnConfigSave")?.click();
   });
+  el("btnQualityClean")?.addEventListener("click", ()=>{
+    if(getCurrentRole()!=="admin") return;
+    const report = collectDataQualityIssues(state);
+    if(report.ok){
+      showSaveToast("ok", "Nettoyage", "Aucune incohérence à corriger");
+      return;
+    }
+    if(!confirm(`Nettoyer les incohérences détectées (${report.issues.length}) ?`)) return;
+    applyDataQualityCleanup();
+  });
+
+  el("btnQualityExportPdf")?.addEventListener("click", ()=>{
+    if(getCurrentRole()!=="admin") return;
+    exportDataQualityReportPdf();
+  });
+  el("btnTabsSortProgress")?.addEventListener("click", ()=>{
+    tabsSortMode = (tabsSortMode === "progress_asc") ? "progress_desc" : "progress_asc";
+    renderTabs();
+  });
+  el("btnTabsSortReset")?.addEventListener("click", ()=>{
+    tabsSortMode = "default";
+    renderTabs();
+  });
   el("btnConfigCloseTop")?.addEventListener("click", ()=>{
     el("btnConfigClose")?.click();
   });
@@ -7275,20 +7545,28 @@ function bind(){
     initLoginJournalUI();
   });
   el("btnSave")?.addEventListener("click", async ()=>{
+    const quality = collectDataQualityIssues(state);
+    if(!quality.ok){
+      showSaveToast("error", "Sauvegarde bloquée", formatQualityIssuesForToast(quality));
+      updateDataQualityBanner(false);
+      markDirty();
+      return;
+    }
+
     _suppressSupabaseSave = true;
     saveState({skipSupabase:true});
     _suppressSupabaseSave = false;
 
     let supabaseOk = false;
     let usersOk = false;
-    try{ if(window.saveAppStateToSupabase) supabaseOk = await window.saveAppStateToSupabase(state); }catch(e){}
-    try{ usersOk = await saveUsersToSupabase(loadUsers()); }catch(e){}
+    try{ if(window.saveAppStateToSupabase) supabaseOk = await window.saveAppStateToSupabase(state); }catch(e){ softCatch(e); }
+    try{ usersOk = await saveUsersToSupabase(loadUsers()); }catch(e){ softCatch(e); }
 
     // Flux simple : tlchargement d'un JSON (admins uniquement)
     let backupOk = false;
     try{
       if(getCurrentRole() === "admin"){ downloadBackup(); backupOk = true; }
-    }catch(e){}
+    }catch(e){ softCatch(e); }
 
     const detailParts = [];
     detailParts.push(`Supabase: ${supabaseOk ? "OK" : "ERREUR"}`);
@@ -7728,7 +8006,7 @@ function bind(){
       toggleStatusMenu(false);
       document.querySelectorAll(".vendor-dropdown,.desc-dropdown").forEach(n=>n.classList.remove("open"));
       document.activeElement && document.activeElement.blur && document.activeElement.blur();
-    }catch(e){}
+    }catch(e){ softCatch(e); }
 
     saveUndoSnapshot();
 
@@ -7813,8 +8091,8 @@ function bind(){
     const tVendor = el("t_vendor"); if(tVendor) tVendor.value = "";
     const tStart = el("t_start"); if(tStart) tStart.value = todayVal;
     const tEnd = el("t_end"); if(tEnd) tEnd.value = "";
-    if(window.__fpStart){ try{ window.__fpStart.setDate(todayVal || null, true, "Y-m-d"); }catch(e){} }
-    if(window.__fpEnd){ try{ window.__fpEnd.setDate(null, true, "Y-m-d"); }catch(e){} }
+    if(window.__fpStart){ try{ window.__fpStart.setDate(todayVal || null, true, "Y-m-d"); }catch(e){ softCatch(e); } }
+    if(window.__fpEnd){ try{ window.__fpEnd.setDate(null, true, "Y-m-d"); }catch(e){ softCatch(e); } }
 
     setStatusSelection("");
 
@@ -7886,7 +8164,7 @@ function bind(){
       toggleStatusMenu(false);
       document.querySelectorAll(".vendor-dropdown,.desc-dropdown").forEach(n=>n.classList.remove("open"));
       document.activeElement && document.activeElement.blur && document.activeElement.blur();
-    }catch(e){}
+    }catch(e){ softCatch(e); }
 
     saveUndoSnapshot();
     const end = unformatDate(el("t_end").value);
@@ -8415,12 +8693,12 @@ bind();
 // Auto‑sauvegarde toutes les 5 minutes
 setInterval(()=>{
   if(!unsavedChanges) return;
-  try{ saveState(); }catch(e){}
+  try{ saveState(); }catch(e){ softCatch(e); }
 }, 5 * 60 * 1000);
 
 try{
   history.replaceState({projectId:selectedProjectId, taskId:selectedTaskId}, "");
-}catch(e){}
+}catch(e){ softCatch(e); }
 window.addEventListener("popstate",(e)=>{
   const st = e.state || {};
   selectedProjectId = st.projectId || null;
@@ -9147,6 +9425,29 @@ function buildMasterFiltersLabel(){
   }
   return labels.length ? labels.join(" • ") : "Aucun";
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
