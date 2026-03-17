@@ -64,8 +64,6 @@
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" />
 
-  <link rel="stylesheet" href="print.css" media="print" />
-
   <style>
 
     /* --- Pseudo-login overlay (reversible) --- */
@@ -294,118 +292,6 @@
 
   </div>
 
-  <!-- Modal export projet -->
-
-  <div id="exportProjectModal" class="modal hidden" aria-hidden="true">
-
-    <div class="modal-card">
-
-      <div class="modal-title">Export PDF du projet</div>
-
-      <div class="modal-sub">Choisis le mode dexport :</div>
-
-      <div id="exportProjectSummary" class="modal-sub"></div>
-
-      <div class="modal-actions">
-
-        <button class="btn btn-export-no" id="btnExportNoCharts">Export sans graphiques</button>
-
-        <button class="btn btn-export-yes" id="btnExportWithCharts">Export avec graphiques</button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-  <div id="exportMasterModal" class="modal hidden" aria-hidden="true">
-
-    <div class="modal-card">
-
-      <div class="modal-title">Export PDF du tableau maître</div>
-
-      <div class="modal-sub">Choisis le mode dexport :</div>
-
-      <div id="exportMasterSummary" class="modal-sub"></div>
-
-      <div class="modal-actions">
-
-        <button class="btn btn-export-no" id="btnExportMasterNoCharts">Export sans graphiques</button>
-
-        <button class="btn btn-export-yes" id="btnExportMasterWithCharts">Export avec graphiques</button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-  <div id="exportHoursReportModal" class="modal hidden" aria-hidden="true">
-    <div class="modal-card">
-      <div class="modal-title">Export PDF des heures réelles</div>
-      <div class="modal-sub">Choisis la version :</div>
-      <div class="modal-actions">
-        <button class="btn btn-export-yes" id="btnExportHoursWithExternal">Avec Prestataires Externes</button>
-        <button class="btn btn-export-no" id="btnExportHoursWithoutExternal">Sans Prestataires Externes</button>
-        <button class="btn" id="btnExportHoursCancel">Annuler</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal export Gantt maître -->
-
-  <div id="exportMasterGanttModal" class="modal hidden" aria-hidden="true">
-
-    <div class="modal-card">
-
-      <div class="modal-title">Export Gantt maître</div>
-
-      <div class="modal-sub">Choisis la période :</div>
-
-      <div class="config-users gantt-export-body">
-
-        <label class="label">Type de période</label>
-
-        <select class="input" id="ganttExportRangeType">
-
-          <option value="all">Toutes les dates</option>
-
-          <option value="custom">Période personnalisée</option>
-
-          <option value="civil">Année civile</option>
-
-          <option value="school">Année scolaire</option>
-
-        </select>
-
-        <div class="row row-tight gantt-export-row">
-
-          <select class="input input-xs" id="ganttExportRangeYear"></select>
-
-          <input class="input input-sm" id="ganttExportRangeStart" type="date" />
-
-          <input class="input input-sm" id="ganttExportRangeEnd" type="date" />
-
-</div>
-
-        <label class="label" id="ganttExportSitesLabel">Sites / Zones</label>
-
-        <div id="ganttExportSites" class="site-checklist"></div>
-
-      </div>
-
-      <div class="modal-actions spaced">
-
-        <button class="btn btn-ghost" id="btnExportMasterGanttCancel">Annuler</button>
-
-        <button class="btn btn-export-yes" id="btnExportMasterGanttRun">Exporter</button>
-
-      </div>
-
-    </div>
-
-  </div>
-
   <div id="configModal" class="modal hidden" aria-hidden="true">
 
     <div class="modal-card config-card">
@@ -416,7 +302,7 @@
 
           <div class="modal-title">Configuration</div>
 
-          <div class="modal-sub">Paramtres du dashboard</div>
+          <div class="modal-sub">Paramètres du dashboard</div>
 
         </div>
 
@@ -700,8 +586,6 @@
 
         <button class="btn btn-ghost" id="btnQualityClean">Nettoyer les incohérences</button>
 
-        <button class="btn btn-ghost" id="btnQualityExportPdf">Export rapport qualité</button>
-
         <button class="btn btn-success" id="btnConfigSave">Enregistrer</button>
 
       </div>
@@ -883,7 +767,7 @@
 
               <div class="help-btn">Réinitialiser tri</div>
 
-              <div class="help-btn primary">Export PDF</div>
+              <div class="help-btn primary">Fonction PDF désactivée</div>
 
               <div class="help-chip">Tri/filtre actif</div>
 
@@ -989,7 +873,7 @@
 
           <div class="help-title"><span class="help-step">4</span>Gantt global</div>
 
-          <div class="help-text">Le Gantt affiche les tâches par semaine. Utilisez Export Gantt pour générer un PDF A3 paysage avec toutes les semaines du filtre.</div>
+          <div class="help-text">Le Gantt affiche les tâches par semaine. Utilisez Gantt pour générer un PDF A3 paysage avec toutes les semaines du filtre.</div>
 
           <div class="help-visual">
 
@@ -1021,7 +905,7 @@
 
               <div class="help-btn">Statut</div>
 
-              <div class="help-btn primary">Export Gantt</div>
+              <div class="help-btn primary">Gantt</div>
 
             </div>
 
@@ -1055,7 +939,7 @@
 
           <div class="help-title"><span class="help-step">5</span>Onglets projets</div>
 
-          <div class="help-text">Chaque projet possède sa fiche, son tableau de tâches et son Gantt. Le bouton Export projet exporte la fiche complète.</div>
+          <div class="help-text">Chaque projet possède sa fiche, son tableau de tâches et son Gantt. Le bouton Fiche projet exporte la fiche complète.</div>
 
           <div class="help-grid">
 
@@ -1184,7 +1068,7 @@
 
             <div class="help-mini">
 
-              <h4>Export Gantt global</h4>
+              <h4>Gantt global</h4>
 
               <div class="help-figure">
 
@@ -1200,7 +1084,7 @@
 
             <div class="help-mini">
 
-              <h4>Export projet</h4>
+              <h4>Fiche projet</h4>
 
               <div class="help-figure">
 
@@ -1304,7 +1188,7 @@
 
       <div class="brand" id="brandTitle">Suivi de Chantiers</div>
 
-      <div class="subtitle" id="brandSub">Tableau maître  Projets  Gantt  Exports locaux</div>
+      <div class="subtitle" id="brandSub">Tableau maître  Projets  Gantt</div>
 
     </div>
 
@@ -1349,8 +1233,8 @@
       </button>
 
       <button class="btn btn-primary" id="btnSave">Sauvegarder</button>
-
-    <button class="btn hidden" id="btnConfig">Configuration</button>
+      <button class="btn btn-ghost" id="btnExportPdfUnified">Exporter PDF</button>
+      <button class="btn hidden" id="btnConfig">Configuration</button>
 
     </div>
 
@@ -1496,14 +1380,6 @@
 
           <button class="btn btn-ghost" id="btnResetSortMaster">Réinitialiser tri</button>
 
-          <button class="btn master-export-inline" id="btnExportMaster">
-
-            <span class="pdf-icon" aria-hidden="true"></span>
-
-            Export PDF
-
-          </button>
-
         </div>
 
         <div class="tablewrap">
@@ -1545,14 +1421,6 @@
           <div class="row row-compact" style="justify-content:space-between;align-items:center;">
 
             <div class="card-title">Gantt global</div>
-
-            <button class="btn master-export-inline" id="btnExportMasterGantt">
-
-              <span class="pdf-icon" aria-hidden="true"></span>
-
-              Export Gantt
-
-            </button>
 
           </div>
 
@@ -1600,14 +1468,6 @@
 
               <button class="btn btn-ghost" id="btnResetWorkload">Réinitialiser</button>
 
-              <button class="btn" id="btnExportWorkload">
-
-                <span class="pdf-icon" aria-hidden="true"></span>
-
-                Export PDF
-
-              </button>
-
             </div>
 
           </div>
@@ -1622,7 +1482,7 @@
 
         <div class="card card-spaced">
 
-          <div class="card-title">Répartition Interne / Externe</div>
+          <div class="card-title">Répartition Interne / Externe / RSG / RI</div>
 
           <div id="workloadPieWrap" class="overflow-auto">
 
@@ -1670,14 +1530,6 @@
           <div class="row">
 
             <button class="btn btn-ghost" id="btnBack"> Retour</button>
-
-            <button class="btn master-export-inline" id="btnProjectExport">
-
-              <span class="pdf-icon" aria-hidden="true"></span>
-
-              Export projet
-
-            </button>
 
           </div>
 
@@ -1829,27 +1681,25 @@
 
             </div>
 
-            <label class="label">Temps passé (journalier)</label>
+            <div class="legacy-time-inline hidden" aria-hidden="true">
+              <label class="label">Temps passé (journalier)</label>
 
-            <div class="time-log-row">
+              <div class="time-log-row">
 
-              <div class="time-log-date">Date</div>
+                <div class="time-log-date">Date</div>
 
-              <input class="input input-sm" id="t_time_date_input" type="date" />
+                <input class="input input-sm" id="t_time_date_input" type="date" />
 
-              <input class="input input-sm" id="t_time_hours" type="number" min="0" step="0.25" placeholder="Heures" />
+                <input class="input input-sm" id="t_time_hours" type="number" min="0" step="0.25" placeholder="Heures" />
 
-              <button class="btn btn-primary" id="btnSaveTimeLog">Valider</button>
+                <button class="btn btn-primary" id="btnSaveTimeLog">Valider</button>
 
-              <div class="time-log-status" id="t_time_status"></div>
+                <div class="time-log-status" id="t_time_status"></div>
 
+              </div>
+
+              <div class="time-log-summary" id="t_time_summary"></div>
             </div>
-
-            <div class="time-log-summary" id="t_time_summary"></div>
-
-
-
-
 
             <div class="row">
 
@@ -1860,6 +1710,8 @@
               <button class="btn btn-ghost" id="btnDuplicateTask">Dupliquer</button>
 
               <button class="btn btn-danger" id="btnDeleteTask">Supprimer</button>
+
+              <button class="btn btn-primary" id="btnOpenHoursModal">Heures réelles</button>
 
             </div>
 
@@ -1923,14 +1775,6 @@
 
             <div class="card-title"><span class="card-title-icon"></span> Gantt hebdo</div>
 
-            <button class="btn master-export-inline" id="btnExportProjectGantt">
-
-              <span class="pdf-icon" aria-hidden="true"></span>
-
-              Export Gantt
-
-            </button>
-
           </div>
 
           <div id="legend" class="legend"></div>
@@ -1977,14 +1821,6 @@
 
               <button class="btn btn-ghost" id="btnResetWorkloadProject">Réinitialiser</button>
 
-              <button class="btn" id="btnExportWorkloadProject">
-
-                <span class="pdf-icon" aria-hidden="true"></span>
-
-                Export PDF
-
-              </button>
-
             </div>
 
           </div>
@@ -1999,7 +1835,7 @@
 
         <div class="card card-spaced">
 
-          <div class="card-title">Répartition Interne / Externe (projet)</div>
+          <div class="card-title">Répartition Interne / Externe / RSG / RI (projet)</div>
 
           <div id="workloadPieProjectWrap" class="overflow-auto">
 
@@ -2021,6 +1857,44 @@
 
 
 
+    <div id="hoursTaskModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card config-card hours-modal-compact" style="min-width:640px;max-width:860px;width:calc(100vw - 32px)">
+      <div class="modal-title">Saisie heures tâche</div>
+      <div class="modal-sub">Tâche sélectionnée dans Édition tâche</div>
+
+      <div class="grid2" style="margin-bottom:10px">
+        <div><label class="label">Chantier</label><input class="input" id="hm_project" readonly /></div>
+        <div><label class="label">Tâche</label><input class="input" id="hm_task" readonly /></div>
+      </div>
+      <div class="grid2" style="margin-bottom:10px">
+        <div><label class="label">Intervenant</label><input class="input" id="hm_owner" readonly /></div>
+        <div><label class="label">Période</label><input class="input" id="hm_period" readonly /></div>
+      </div>
+
+      <input id="hm_date" type="hidden" />
+      <input id="hm_hours" type="hidden" />
+      <div class="modal-actions spaced" style="margin-top:4px">
+        <div class="time-log-status" id="hm_status"></div>
+        <button class="btn btn-primary" id="btnSaveHoursModal">Valider</button>
+      </div>
+      <div class="time-log-summary" id="hm_summary"></div>
+
+      <div class="modal-actions spaced">
+        <button class="btn" id="btnCloseHoursModal">Fermer</button>
+      </div>
+    </div>
+  </div>
+<div id="exportPdfModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-title">Export PDF</div>
+      <div class="modal-sub">Sélectionnez les modules à exporter</div>
+      <div id="exportPdfModulesList" class="export-modules-list"></div>
+      <div class="modal-actions spaced">
+        <button class="btn btn-ghost" id="btnExportPdfCancel" type="button">Annuler</button>
+        <button class="btn btn-success" id="btnExportPdfRun" type="button" onclick="window.runUnifiedPdfExport && window.runUnifiedPdfExport()">Générer le PDF</button>
+      </div>
+    </div>
+  </div>
   <div id="appErrorBanner" class="app-error-banner hidden" role="alert" aria-live="assertive">
 
     <div class="app-error-title">Erreur detectee</div>
@@ -2051,7 +1925,7 @@
 
 <!-- TON APP -->
 
-<script src="app.js?v=20260217_30"></script>
+<script src="app.js?v=20260311_04"></script>
 
 <script>
 
@@ -2305,12 +2179,37 @@
 
     if(localStorage.getItem(SKIP_DEFAULT_ADMIN_FLAG)==="1") return;
 
-    const users = loadUsers();
+    const users = Array.isArray(loadUsers()) ? loadUsers() : [];
+    const defaultHash = HASH.replace("sha256:","");
+    let changed = false;
 
     if(users.length===0){
+      localStorage.setItem(USERS_KEY, JSON.stringify([{name:"Admin", email:"admin@local", role:"admin", hash:defaultHash}]));
+      return;
+    }
 
-      localStorage.setItem(USERS_KEY, JSON.stringify([{name:"Admin", email:"admin@local", role:"admin", hash:HASH.replace("sha256:","")}]));
+    const adminIdx = users.findIndex(u => ((u?.email||"").trim().toLowerCase()==="admin@local"));
+    if(adminIdx < 0){
+      users.unshift({name:"Admin", email:"admin@local", role:"admin", hash:defaultHash});
+      changed = true;
+    }else{
+      const u = users[adminIdx] || {};
+      if((u.role||"").toLowerCase()!=="admin"){
+        u.role = "admin";
+        changed = true;
+      }
+      const h1 = (u.hash||"").toLowerCase().replace(/^sha256:/,"");
+      const h2 = (u.remember_hash||"").toLowerCase().replace(/^sha256:/,"");
+      if(h1!==defaultHash && h2!==defaultHash){
+        // Garde le hash existant si présent; ajoute juste un fallback local admin.
+        u.remember_hash = defaultHash;
+        changed = true;
+      }
+      users[adminIdx] = u;
+    }
 
+    if(changed){
+      try{ localStorage.setItem(USERS_KEY, JSON.stringify(users)); }catch(e){}
     }
 
   }
@@ -2619,7 +2518,7 @@
 
 
 
-  // toujours verrouill au chargement (sauf auto-login volontaire)
+  // toujours verrouillé au chargement (sauf auto-login volontaire)
 
   resetAllUsersOnce();
 
@@ -2725,29 +2624,24 @@
 
   <!-- Bloc imprimable (cartouche + lgende) inject en JS -->
 
-  <template id="printTemplate">
-
-    <div class="print-order">
-
-      <div class="print-header print-block" id="printHeader">
-
-        <h1>Suivi de Chantiers</h1>
-
-        <div class="print-meta" id="printMeta"></div>
-
-        <div class="print-copyright">Concepteur : Sébastien DUC ©</div>
-
-      </div>
-
-      <div class="legend print-block" id="printLegend"></div>
-
-    </div>
-
-  </template>
-
 </body>
 
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
