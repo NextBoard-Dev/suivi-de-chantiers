@@ -110,14 +110,22 @@ function loadCoreForTests() {
     extractFunction(appJs, "addDays"),
     extractFunction(appJs, "isoWeekInfo"),
     extractFunction(appJs, "barGeometry"),
+    extractFunction(appJs, "getTaskRoleKey"),
+    extractFunction(appJs, "roleLabel"),
+    extractFunction(appJs, "roleHoursMultiplier"),
+    extractFunction(appJs, "normalizeTimeLogRole"),
+    extractFunction(appJs, "getTaskTimeTotals"),
     extractFunction(appJs, "computeWorkloadData"),
   ];
   const code = `${parts.join("\n\n")}
+let __testLogs = [];
+function getCanonicalTimeLogs(){ return __testLogs; }
+function setTestLogs(logs){ __testLogs = Array.isArray(logs) ? logs : []; }
 function weekKey(d){
   const info=isoWeekInfo(d);
   return \`\${info.year}-S\${String(info.week).padStart(2,"0")}\`;
 }
-module.exports={ownerType,isWeekday,countWeekdays,durationDays,startOfWeek,addDays,isoWeekInfo,weekKey,barGeometry,computeWorkloadData};`;
+module.exports={ownerType,isWeekday,countWeekdays,durationDays,startOfWeek,addDays,isoWeekInfo,weekKey,barGeometry,getTaskRoleKey,roleLabel,roleHoursMultiplier,normalizeTimeLogRole,getTaskTimeTotals,computeWorkloadData,setTestLogs};`;
   const sandbox = { module: { exports: {} }, exports: {}, console, Date, Math, Set, Map };
   fs.writeFileSync(path.join(root, "tests", "_debug-core-under-test.js"), code, "utf8");
   vm.runInNewContext(code, sandbox, { timeout: 2000, filename: "core-under-test.js" });
@@ -160,27 +168,56 @@ test("Geometrie Gantt: semaine complete", () => {
   assert.equal(g.width, 100);
 });
 
-test("Metriques workload: interne/externe/rsgri", () => {
+test("Metriques workload: interne/externe/rsg/ri", () => {
   const tasks = [
-    { start: "2026-02-16", end: "2026-02-20", owner: "Équipe interne" }, // 5
-    { start: "2026-02-16", end: "2026-02-17", owner: "Prestataire externe" }, // 2
-    { start: "2026-02-18", end: "2026-02-19", owner: "RSG/RI" }, // 2
+    { id: "t1", start: "2026-02-16", end: "2026-02-20", owner: "Équipe interne", vendor: "" },
+    { id: "t2", start: "2026-02-16", end: "2026-02-17", owner: "Prestataire externe", vendor: "MARION" },
+    { id: "t3", start: "2026-02-18", end: "2026-02-19", owner: "RSG", vendor: "" },
+    { id: "t4", start: "2026-02-18", end: "2026-02-19", owner: "RI", vendor: "" },
   ];
+  core.setTestLogs([
+    { taskId: "t1", date: "2026-02-16", minutes: 120, role: "INTERNE" },
+    { taskId: "t2", date: "2026-02-16", minutes: 180, role: "EXTERNE" },
+    { taskId: "t3", date: "2026-02-18", minutes: 60, role: "RSG" },
+    { taskId: "t4", date: "2026-02-19", minutes: 30, role: "RI" },
+  ]);
   const rows = core.computeWorkloadData(tasks, "week");
   assert.equal(rows.length, 1);
-  assert.equal(rows[0].internal, 5);
-  assert.equal(rows[0].external, 2);
-  assert.equal(rows[0].rsgri, 2);
-  assert.equal(rows[0].total, 9);
+  assert.equal(rows[0].internal, 4);
+  assert.equal(rows[0].external, 3);
+  assert.equal(rows[0].rsg, 1);
+  assert.equal(rows[0].ri, 0.5);
+  assert.equal(rows[0].total, 8.5);
 });
 
-test("Export PDF: fonction presente", () => {
-  assert.match(appJs, /function\s+exportSvgToPdf\s*\(/);
+test("Totaux tâche: interne compte double", () => {
+  const task = { id: "ti", start: "2026-02-16", end: "2026-02-20", owner: "Équipe interne", vendor: "" };
+  core.setTestLogs([
+    { taskId: "ti", date: "2026-02-16", minutes: 60, role: "INTERNE" },
+    { taskId: "ti", date: "2026-02-17", minutes: 30, role: "INTERNE" },
+  ]);
+  const totals = core.getTaskTimeTotals(task);
+  assert.equal(totals.totalMinutes, 180);
+});
+
+test("Totaux tâche: externe reste unitaire", () => {
+  const task = { id: "te", start: "2026-02-16", end: "2026-02-20", owner: "Prestataire externe", vendor: "X" };
+  core.setTestLogs([
+    { taskId: "te", date: "2026-02-16", minutes: 60, role: "EXTERNE" },
+    { taskId: "te", date: "2026-02-17", minutes: 90, role: "EXTERNE" },
+  ]);
+  const totals = core.getTaskTimeTotals(task);
+  assert.equal(totals.totalMinutes, 150);
+});
+
+test("Export PDF: fonction unifiée presente", () => {
+  assert.match(appJs, /function\s+runUnifiedPdfExport\s*\(/);
+  assert.match(appJs, /function\s+ensurePrintTemplate\s*\(/);
 });
 
 test("Export PDF: template impression contient concepteur", () => {
-  assert.match(indexHtml, /id="printTemplate"/);
-  assert.match(indexHtml, /Concepteur\s*:\s*Sébastien DUC\s*©/);
+  assert.match(indexHtml, /Concepteur\s*:\s*Sébastien DUC/);
+  assert.match(indexHtml, /config-copyright/);
 });
 
 let failed = 0;
@@ -201,3 +238,4 @@ if (failed > 0) {
 }
 
 console.log(`\nOK ${tests.length} tests passes.`);
+

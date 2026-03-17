@@ -2179,37 +2179,12 @@
 
     if(localStorage.getItem(SKIP_DEFAULT_ADMIN_FLAG)==="1") return;
 
-    const users = Array.isArray(loadUsers()) ? loadUsers() : [];
-    const defaultHash = HASH.replace("sha256:","");
-    let changed = false;
+    const users = loadUsers();
 
     if(users.length===0){
-      localStorage.setItem(USERS_KEY, JSON.stringify([{name:"Admin", email:"admin@local", role:"admin", hash:defaultHash}]));
-      return;
-    }
 
-    const adminIdx = users.findIndex(u => ((u?.email||"").trim().toLowerCase()==="admin@local"));
-    if(adminIdx < 0){
-      users.unshift({name:"Admin", email:"admin@local", role:"admin", hash:defaultHash});
-      changed = true;
-    }else{
-      const u = users[adminIdx] || {};
-      if((u.role||"").toLowerCase()!=="admin"){
-        u.role = "admin";
-        changed = true;
-      }
-      const h1 = (u.hash||"").toLowerCase().replace(/^sha256:/,"");
-      const h2 = (u.remember_hash||"").toLowerCase().replace(/^sha256:/,"");
-      if(h1!==defaultHash && h2!==defaultHash){
-        // Garde le hash existant si présent; ajoute juste un fallback local admin.
-        u.remember_hash = defaultHash;
-        changed = true;
-      }
-      users[adminIdx] = u;
-    }
+      localStorage.setItem(USERS_KEY, JSON.stringify([{name:"Admin", email:"admin@local", role:"admin", hash:HASH.replace("sha256:","")}]));
 
-    if(changed){
-      try{ localStorage.setItem(USERS_KEY, JSON.stringify(users)); }catch(e){}
     }
 
   }

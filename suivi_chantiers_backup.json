@@ -48,6 +48,13 @@
       "site": "CDM",
       "subproject": "Restructuration",
       "constraints": ""
+    },
+    {
+      "id": "1fcf067919cfa921816",
+      "name": "Cloison E info",
+      "site": "CDM",
+      "subproject": "Ouverture",
+      "constraints": ""
     }
   ],
   "tasks": [
@@ -122,16 +129,6 @@
       "vendor": "",
       "projectId": "0c644af019c05700845",
       "roomNumber": "Fin de Chantier"
-    },
-    {
-      "id": "92d410e719c23d422cc",
-      "end": "2026-04-24",
-      "owner": "Prestataire externe",
-      "start": "2026-04-13",
-      "status": "HUISSERIES",
-      "vendor": "JAL LIMOUSIN CHRISTOPHE",
-      "projectId": "83fac1eb19c15d95804",
-      "roomNumber": "Remplacement Porte Ogive"
     },
     {
       "id": "75f862d619c241bfe17",
@@ -325,13 +322,13 @@
     },
     {
       "id": "4af99b7b19c65314652",
-      "end": "2026-03-17",
+      "end": "2026-04-03",
       "owner": "INTERNE",
       "start": "2026-03-16",
       "status": "AMENAGEMENTS",
       "vendor": "",
       "projectId": "83fac1eb19c15d95804",
-      "roomNumber": "Déplacement casiers"
+      "roomNumber": "Vidage casiers"
     },
     {
       "id": "0d75a73619c65336477",
@@ -477,6 +474,76 @@
       "vendor": "",
       "projectId": "3e86100919c04fb8456",
       "roomNumber": "Pose aménagements"
+    },
+    {
+      "id": "61bd985519cd6d3cfb8",
+      "end": "2026-08-28",
+      "owner": "RSG",
+      "start": "2026-02-09",
+      "status": "ETUDE",
+      "vendor": "",
+      "projectId": "83fac1eb19c15d95804",
+      "roomNumber": "Étude"
+    },
+    {
+      "id": "116d314719cdd2329f2",
+      "end": "2026-04-10",
+      "owner": "INTERNE",
+      "start": "2026-04-06",
+      "status": "AMENAGEMENTS",
+      "vendor": "",
+      "projectId": "83fac1eb19c15d95804",
+      "roomNumber": "Déplacement casiers"
+    },
+    {
+      "id": "a0b3d02319cfa9e0005",
+      "end": "2026-04-09",
+      "owner": "INTERNE",
+      "start": "2026-04-06",
+      "status": "ELECTRICITE",
+      "vendor": "",
+      "projectId": "1fcf067919cfa921816",
+      "roomNumber": "Dépose CF/Cf"
+    },
+    {
+      "id": "c9b2beb819cfa9f87f4",
+      "end": "2026-04-17",
+      "owner": "RSG",
+      "start": "2026-04-03",
+      "status": "ETUDE",
+      "vendor": "",
+      "projectId": "1fcf067919cfa921816",
+      "roomNumber": "Étude"
+    },
+    {
+      "id": "433b941219cfa9fadb4",
+      "end": "2026-04-17",
+      "owner": "RI",
+      "start": "2026-04-03",
+      "status": "ETUDE",
+      "vendor": "",
+      "projectId": "1fcf067919cfa921816",
+      "roomNumber": "Étude"
+    },
+    {
+      "id": "7695660219cfaa1e02e",
+      "end": "2026-04-17",
+      "owner": "PRESTATAIRE EXTERNE",
+      "start": "2026-04-13",
+      "status": "PLACO",
+      "vendor": "ADS 45",
+      "projectId": "1fcf067919cfa921816",
+      "roomNumber": "Dépose Cloison"
+    },
+    {
+      "id": "7057bf8219cfaa2ce4d",
+      "end": "2026-04-24",
+      "owner": "PRESTATAIRE EXTERNE",
+      "start": "2026-04-20",
+      "status": "PEINTURE",
+      "vendor": "DEGRIGNY",
+      "projectId": "1fcf067919cfa921816",
+      "roomNumber": "Mise en Peinture"
     }
   ],
   "ui": {
@@ -778,12 +845,12 @@
       "userKey": "sebastien.duc@scse.fr",
       "userName": "Sébastien DUC",
       "userEmail": "sebastien.duc@scse.fr",
-      "role": "interne",
+      "role": "INTERNE",
       "date": "2026-02-16",
-      "minutes": 60,
+      "minutes": 120,
       "note": "",
       "createdAt": "2026-02-17T09:00:02.166Z",
-      "updatedAt": "2026-02-18T14:23:34.038Z"
+      "updatedAt": "2026-03-10T09:23:59.650Z"
     },
     {
       "id": "e2780d1719c6bd89771",
@@ -808,10 +875,10 @@
       "userEmail": "rsg@scse.fr",
       "role": "RI",
       "date": "2026-02-02",
-      "minutes": 60,
+      "minutes": 30,
       "note": "",
       "createdAt": "2026-02-17T15:28:27.136Z",
-      "updatedAt": "2026-03-02T09:19:15.108Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "b49a940a19c6c37c1bc",
@@ -822,10 +889,10 @@
       "userEmail": "rsg@scse.fr",
       "role": "RI",
       "date": "2026-02-03",
-      "minutes": 90,
+      "minutes": 60,
       "note": "",
       "createdAt": "2026-02-17T15:28:39.356Z",
-      "updatedAt": "2026-03-04T06:41:43.467Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "4856feed19c6c37d2b5",
@@ -839,7 +906,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-02-17T15:28:43.701Z",
-      "updatedAt": "2026-03-06T16:14:24.852Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "f4d7e04219c6c3807e2",
@@ -853,7 +920,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-02-17T15:28:57.314Z",
-      "updatedAt": "2026-03-06T16:14:29.429Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "9fa44a2819c6c381b3a",
@@ -864,10 +931,10 @@
       "userEmail": "rsg@scse.fr",
       "role": "RI",
       "date": "2026-02-06",
-      "minutes": 120,
+      "minutes": 60,
       "note": "",
       "createdAt": "2026-02-17T15:29:02.266Z",
-      "updatedAt": "2026-02-23T10:04:13.688Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "33e1649919c6c6d4c57",
@@ -946,12 +1013,12 @@
       "userKey": "sebastien.duc@scse.fr",
       "userName": "Sébastien DUC",
       "userEmail": "sebastien.duc@scse.fr",
-      "role": "interne",
+      "role": "INTERNE",
       "date": "2026-02-17",
-      "minutes": 0,
+      "minutes": 120,
       "note": "",
       "createdAt": "2026-02-18T06:28:51.927Z",
-      "updatedAt": "2026-02-18T06:28:51.927Z"
+      "updatedAt": "2026-03-10T09:24:04.937Z"
     },
     {
       "id": "6849ee3119c7498443c",
@@ -976,10 +1043,10 @@
       "userEmail": "sebastien.duc@scse.fr",
       "role": "INTERNE",
       "date": "2026-02-18",
-      "minutes": 0,
+      "minutes": 60,
       "note": "",
       "createdAt": "2026-02-19T06:31:47.987Z",
-      "updatedAt": "2026-02-19T06:31:47.987Z"
+      "updatedAt": "2026-03-10T09:24:12.548Z"
     },
     {
       "id": "2284125619c74993a61",
@@ -1021,7 +1088,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-02-20T10:07:13.296Z",
-      "updatedAt": "2026-02-20T10:07:13.296Z"
+      "updatedAt": "2026-03-10T09:24:18.975Z"
     },
     {
       "id": "85abe04119c84ff2adf",
@@ -1049,7 +1116,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-02-22T10:58:14.284Z",
-      "updatedAt": "2026-02-22T10:58:14.284Z"
+      "updatedAt": "2026-03-10T09:24:23.443Z"
     },
     {
       "id": "eac336f419c89f33893",
@@ -1301,7 +1368,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-02T09:19:26.313Z",
-      "updatedAt": "2026-03-02T09:19:26.313Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "99ebc45a19cadd8c690",
@@ -1312,10 +1379,10 @@
       "userEmail": "sebastien.duc@scse.fr",
       "role": "RI",
       "date": "2026-02-10",
-      "minutes": 0,
+      "minutes": 30,
       "note": "",
       "createdAt": "2026-03-02T09:19:50.928Z",
-      "updatedAt": "2026-03-02T09:19:50.928Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "e5db2a8919cadd8dcba",
@@ -1329,7 +1396,7 @@
       "minutes": 60,
       "note": "",
       "createdAt": "2026-03-02T09:19:56.602Z",
-      "updatedAt": "2026-03-02T09:19:56.602Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "ab1d85c219cadd8f5be",
@@ -1343,7 +1410,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-02T09:20:03.006Z",
-      "updatedAt": "2026-03-02T09:20:03.006Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "0d9de06f19cadd90941",
@@ -1357,7 +1424,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-02T09:20:08.001Z",
-      "updatedAt": "2026-03-02T09:20:08.001Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "246bc08419cadd920e0",
@@ -1371,7 +1438,7 @@
       "minutes": 60,
       "note": "",
       "createdAt": "2026-03-02T09:20:14.048Z",
-      "updatedAt": "2026-03-02T09:20:14.048Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "81df051a19cadd92dfb",
@@ -1385,7 +1452,7 @@
       "minutes": 60,
       "note": "",
       "createdAt": "2026-03-02T09:20:17.403Z",
-      "updatedAt": "2026-03-02T09:20:17.403Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "342eb05119cadd9450e",
@@ -1399,7 +1466,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-02T09:20:23.310Z",
-      "updatedAt": "2026-03-02T09:20:23.310Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "f891328c19cadd958fa",
@@ -1413,7 +1480,7 @@
       "minutes": 60,
       "note": "",
       "createdAt": "2026-03-02T09:20:28.410Z",
-      "updatedAt": "2026-03-02T09:20:28.410Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "8a340a9b19cadd96ea9",
@@ -1427,7 +1494,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-02T09:20:33.961Z",
-      "updatedAt": "2026-03-02T09:20:33.961Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "665c787d19cadd98d45",
@@ -1441,7 +1508,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-02T09:20:41.797Z",
-      "updatedAt": "2026-03-02T09:20:41.797Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "369c2ef519cadd9992b",
@@ -1455,7 +1522,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-02T09:20:44.843Z",
-      "updatedAt": "2026-03-02T09:20:44.843Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "f886b9d119cadd9a5d7",
@@ -1469,7 +1536,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-02T09:20:48.087Z",
-      "updatedAt": "2026-03-02T09:20:48.087Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "f7cb1f7419cadd9b217",
@@ -1483,7 +1550,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-02T09:20:51.223Z",
-      "updatedAt": "2026-03-02T09:20:51.223Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "757964f419cadd9c029",
@@ -1497,7 +1564,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-02T09:20:54.825Z",
-      "updatedAt": "2026-03-02T09:20:54.825Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "2d784c6019cadd9f5c8",
@@ -1511,7 +1578,7 @@
       "minutes": 60,
       "note": "",
       "createdAt": "2026-03-02T09:21:08.552Z",
-      "updatedAt": "2026-03-02T09:21:08.552Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "92911e1019caddc9b43",
@@ -1553,7 +1620,7 @@
       "minutes": 240,
       "note": "",
       "createdAt": "2026-03-03T14:37:13.552Z",
-      "updatedAt": "2026-03-03T14:37:13.552Z"
+      "updatedAt": "2026-03-15T17:08:20.020Z"
     },
     {
       "id": "c096aafc19cb4222861",
@@ -1609,7 +1676,7 @@
       "minutes": 240,
       "note": "",
       "createdAt": "2026-03-04T06:39:45.597Z",
-      "updatedAt": "2026-03-04T06:39:45.597Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "4ad4070419cb7934a1f",
@@ -1623,7 +1690,7 @@
       "minutes": 120,
       "note": "",
       "createdAt": "2026-03-04T06:40:09.247Z",
-      "updatedAt": "2026-03-04T06:40:09.247Z"
+      "updatedAt": "2026-03-15T17:08:20.020Z"
     },
     {
       "id": "0325a6cd19cb7937af9",
@@ -1679,7 +1746,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-06T16:14:43.527Z",
-      "updatedAt": "2026-03-06T16:14:43.527Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "c66c176419cc3ee3428",
@@ -1693,7 +1760,7 @@
       "minutes": 30,
       "note": "",
       "createdAt": "2026-03-06T16:14:53.991Z",
-      "updatedAt": "2026-03-06T16:14:53.991Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "862dd9dd19cc3ee88ad",
@@ -1707,7 +1774,7 @@
       "minutes": 60,
       "note": "",
       "createdAt": "2026-03-06T16:15:15.629Z",
-      "updatedAt": "2026-03-06T16:15:15.629Z"
+      "updatedAt": "2026-03-15T17:08:20.020Z"
     },
     {
       "id": "35a612eb19cc3eeaa92",
@@ -1721,7 +1788,7 @@
       "minutes": 30,
       "note": "",
       "createdAt": "2026-03-06T16:15:24.306Z",
-      "updatedAt": "2026-03-06T16:15:24.306Z"
+      "updatedAt": "2026-03-15T17:08:20.020Z"
     },
     {
       "id": "9235100919cc3eedd7a",
@@ -1833,7 +1900,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-09T07:54:19.748Z",
-      "updatedAt": "2026-03-09T07:54:19.748Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "6d153e2419cd1977b03",
@@ -1847,7 +1914,7 @@
       "minutes": 240,
       "note": "",
       "createdAt": "2026-03-09T07:54:51.523Z",
-      "updatedAt": "2026-03-09T07:54:51.523Z"
+      "updatedAt": "2026-03-15T17:08:20.020Z"
     },
     {
       "id": "576a623419cd197ac24",
@@ -1959,7 +2026,7 @@
       "minutes": 60,
       "note": "",
       "createdAt": "2026-03-09T13:13:24.054Z",
-      "updatedAt": "2026-03-09T13:13:24.054Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "7bbde0c719cd2bb35b0",
@@ -1973,7 +2040,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-09T13:13:30.288Z",
-      "updatedAt": "2026-03-09T13:13:30.288Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "e58c042419cd2bb4593",
@@ -1987,7 +2054,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-09T13:13:34.355Z",
-      "updatedAt": "2026-03-09T13:13:34.355Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "89ae9e4019cd2bb5677",
@@ -2001,7 +2068,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-09T13:13:38.679Z",
-      "updatedAt": "2026-03-09T13:13:38.679Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "8b2d117d19cd668092d",
@@ -2015,7 +2082,7 @@
       "minutes": 30,
       "note": "",
       "createdAt": "2026-03-10T06:21:08.269Z",
-      "updatedAt": "2026-03-10T06:21:08.269Z"
+      "updatedAt": "2026-03-15T16:39:08.533Z"
     },
     {
       "id": "6fb0c5b519cd6684fec",
@@ -2043,7 +2110,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-10T07:39:34.548Z",
-      "updatedAt": "2026-03-10T07:39:34.548Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "52063fd219cd6b00260",
@@ -2057,7 +2124,7 @@
       "minutes": 60,
       "note": "",
       "createdAt": "2026-03-10T07:39:45.120Z",
-      "updatedAt": "2026-03-10T07:41:43.747Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "f523e1b119cd6b0238a",
@@ -2071,7 +2138,7 @@
       "minutes": 30,
       "note": "",
       "createdAt": "2026-03-10T07:39:53.610Z",
-      "updatedAt": "2026-03-10T07:39:53.610Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "9289d2e019cd6b03bc8",
@@ -2085,7 +2152,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-10T07:39:59.816Z",
-      "updatedAt": "2026-03-10T07:39:59.816Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "3211851819cd6b04d4a",
@@ -2099,7 +2166,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-10T07:40:04.298Z",
-      "updatedAt": "2026-03-10T07:40:04.298Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "4b2bf86819cd6b06bee",
@@ -2113,7 +2180,7 @@
       "minutes": 30,
       "note": "",
       "createdAt": "2026-03-10T07:40:12.142Z",
-      "updatedAt": "2026-03-10T07:40:12.142Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "766df65519cd6b09593",
@@ -2127,7 +2194,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-10T07:40:22.803Z",
-      "updatedAt": "2026-03-10T07:40:22.803Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "92922b4e19cd6b0ad5a",
@@ -2141,7 +2208,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-10T07:40:28.890Z",
-      "updatedAt": "2026-03-10T07:40:28.890Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "1a004e0419cd6b0bbaa",
@@ -2155,7 +2222,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-10T07:40:32.554Z",
-      "updatedAt": "2026-03-10T07:40:32.554Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "3b4e686819cd6b0c7d4",
@@ -2169,7 +2236,7 @@
       "minutes": 0,
       "note": "",
       "createdAt": "2026-03-10T07:40:35.668Z",
-      "updatedAt": "2026-03-10T07:40:35.668Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "f39fc12419cd6b0dc78",
@@ -2183,7 +2250,7 @@
       "minutes": 60,
       "note": "",
       "createdAt": "2026-03-10T07:40:40.952Z",
-      "updatedAt": "2026-03-10T07:41:16.088Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "8bab5c2719cd6b48635",
@@ -2197,7 +2264,7 @@
       "minutes": 60,
       "note": "",
       "createdAt": "2026-03-10T07:44:41.013Z",
-      "updatedAt": "2026-03-10T07:44:41.013Z"
+      "updatedAt": "2026-03-15T17:04:35.069Z"
     },
     {
       "id": "2a206e2419cd6b54820",
@@ -2211,7 +2278,581 @@
       "minutes": 120,
       "note": "",
       "createdAt": "2026-03-10T07:45:30.656Z",
-      "updatedAt": "2026-03-10T07:45:30.656Z"
+      "updatedAt": "2026-03-15T17:08:20.020Z"
+    },
+    {
+      "id": "9a66ae7b19cd6d47419",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-02-09",
+      "minutes": 60,
+      "note": "",
+      "createdAt": "2026-03-10T08:19:33.529Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "ce2e7f2319cd6d49340",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-02-10",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-10T08:19:41.504Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "72c83b7e19cd6d4a350",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-02-11",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-10T08:19:45.616Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "8fde7a5919cd6d4b362",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-02-12",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-10T08:19:49.730Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "7b6b9d4219cd6d4bfc1",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-02-13",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-10T08:19:52.897Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "7b6d7f1f19cd6d4de2d",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-02-16",
+      "minutes": 60,
+      "note": "",
+      "createdAt": "2026-03-10T08:20:00.685Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "8259d0f919cd6d51007",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-02-17",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-10T08:20:13.447Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "32ebe1a819cd6d528fe",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-02-18",
+      "minutes": 60,
+      "note": "",
+      "createdAt": "2026-03-10T08:20:19.838Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "4e22c10c19cd6d549a2",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-02-19",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-10T08:20:28.194Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "8260e50a19cd6d55ad6",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-02-20",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-10T08:20:32.598Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "c21854eb19cd6d5710f",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-02-23",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-10T08:20:38.287Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "10a5016619cd6d57f3a",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-02-24",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-10T08:20:41.914Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "38c987f319cd6d59c6a",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-02-25",
+      "minutes": 60,
+      "note": "",
+      "createdAt": "2026-03-10T08:20:49.386Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "4f5a31ce19cd6d5afad",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-02-26",
+      "minutes": 60,
+      "note": "",
+      "createdAt": "2026-03-10T08:20:54.316Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "df1625ad19cd6d5c8ed",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-02-27",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-10T08:21:00.781Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "f712252e19cd6d5deea",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-03-02",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-10T08:21:06.410Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "78e8233d19cd6d5eb69",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-03-03",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-10T08:21:09.609Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "ed3eed0919cd6d5f922",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-03-04",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-10T08:21:13.122Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "469173ae19cd6d60b48",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-03-05",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-10T08:21:17.768Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "0ef42eda19cd6d629d8",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-03-06",
+      "minutes": 60,
+      "note": "",
+      "createdAt": "2026-03-10T08:21:25.592Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "a7c10c4119cd6d64377",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien_duc@outlook.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien_duc@outlook.fr",
+      "role": "RSG",
+      "date": "2026-03-09",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-10T08:21:32.151Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "231cc04219cdba7a31a",
+      "taskId": "279129df19c6c3671b8",
+      "projectId": "3e86100919c04fb8456",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "RI",
+      "date": "2026-03-10",
+      "minutes": 30,
+      "note": "",
+      "createdAt": "2026-03-11T06:48:42.522Z",
+      "updatedAt": "2026-03-15T16:39:08.533Z"
+    },
+    {
+      "id": "8e57c17519cdba7d3b8",
+      "taskId": "a54d93e119cd19899dc",
+      "projectId": "3e86100919c04fb8456",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "INTERNE",
+      "date": "2026-03-10",
+      "minutes": 240,
+      "note": "",
+      "createdAt": "2026-03-11T06:48:54.968Z",
+      "updatedAt": "2026-03-11T06:48:54.968Z"
+    },
+    {
+      "id": "1bae155e19cdba85de6",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "RSG",
+      "date": "2026-03-10",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-11T06:49:30.342Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "f0cd75d619cdba8a093",
+      "taskId": "4063c5d319c6c3bbd70",
+      "projectId": "0c644af019c05700845",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "RI",
+      "date": "2026-03-10",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-11T06:49:47.411Z",
+      "updatedAt": "2026-03-15T17:04:35.069Z"
+    },
+    {
+      "id": "005c886d19cdba90e11",
+      "taskId": "32dc025b19c2215340b",
+      "projectId": "0c644af019c05700845",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "INTERNE",
+      "date": "2026-03-10",
+      "minutes": 180,
+      "note": "",
+      "createdAt": "2026-03-11T06:50:15.441Z",
+      "updatedAt": "2026-03-15T17:08:20.020Z"
+    },
+    {
+      "id": "ea43c16519ce22c001e",
+      "taskId": "279129df19c6c3671b8",
+      "projectId": "3e86100919c04fb8456",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "RI",
+      "date": "2026-03-11",
+      "minutes": 30,
+      "note": "",
+      "createdAt": "2026-03-12T13:11:00.382Z",
+      "updatedAt": "2026-03-15T16:39:08.533Z"
+    },
+    {
+      "id": "359f0ea519ce23f3d94",
+      "taskId": "4063c5d319c6c3bbd70",
+      "projectId": "0c644af019c05700845",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "RI",
+      "date": "2026-03-11",
+      "minutes": 60,
+      "note": "",
+      "createdAt": "2026-03-12T13:32:01.300Z",
+      "updatedAt": "2026-03-15T17:04:35.069Z"
+    },
+    {
+      "id": "43f8883a19ce312598f",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "RSG",
+      "date": "2026-03-11",
+      "minutes": 60,
+      "note": "",
+      "createdAt": "2026-03-12T17:22:36.559Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "e72f0f9e19ce39974b7",
+      "taskId": "32dc025b19c2215340b",
+      "projectId": "0c644af019c05700845",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "INTERNE",
+      "date": "2026-03-11",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-12T19:50:10.871Z",
+      "updatedAt": "2026-03-15T17:08:20.020Z"
+    },
+    {
+      "id": "1db1972c19ce39a18eb",
+      "taskId": "e0bf02b519cd1e47d7b",
+      "projectId": "3e86100919c04fb8456",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "INTERNE",
+      "date": "2026-03-11",
+      "minutes": 180,
+      "note": "",
+      "createdAt": "2026-03-12T19:50:52.907Z",
+      "updatedAt": "2026-03-15T17:07:35.690Z"
+    },
+    {
+      "id": "c95c78e419cf2574987",
+      "taskId": "279129df19c6c3671b8",
+      "projectId": "3e86100919c04fb8456",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "RI",
+      "date": "2026-03-12",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-15T16:32:12.679Z",
+      "updatedAt": "2026-03-15T16:39:08.533Z"
+    },
+    {
+      "id": "927a374319cf2574987",
+      "taskId": "279129df19c6c3671b8",
+      "projectId": "3e86100919c04fb8456",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "RI",
+      "date": "2026-03-13",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-15T16:32:12.679Z",
+      "updatedAt": "2026-03-15T16:39:08.533Z"
+    },
+    {
+      "id": "aeba309919cf273f814",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "RSG",
+      "date": "2026-03-12",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-15T17:03:32.372Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "1ef3b2ea19cf273f814",
+      "taskId": "61bd985519cd6d3cfb8",
+      "projectId": "83fac1eb19c15d95804",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "RSG",
+      "date": "2026-03-13",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-15T17:03:32.372Z",
+      "updatedAt": "2026-03-15T17:03:32.372Z"
+    },
+    {
+      "id": "6bc8fe0919cf274bcc1",
+      "taskId": "4063c5d319c6c3bbd70",
+      "projectId": "0c644af019c05700845",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "RI",
+      "date": "2026-03-12",
+      "minutes": 120,
+      "note": "",
+      "createdAt": "2026-03-15T17:04:22.721Z",
+      "updatedAt": "2026-03-15T17:04:35.069Z"
+    },
+    {
+      "id": "1584f48e19cf274ecfd",
+      "taskId": "4063c5d319c6c3bbd70",
+      "projectId": "0c644af019c05700845",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "RI",
+      "date": "2026-03-13",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-15T17:04:35.069Z",
+      "updatedAt": "2026-03-15T17:04:35.069Z"
+    },
+    {
+      "id": "9ed17c0e19cf2755edd",
+      "taskId": "e0bf02b519cd1e47d7b",
+      "projectId": "3e86100919c04fb8456",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "INTERNE",
+      "date": "2026-03-12",
+      "minutes": 120,
+      "note": "",
+      "createdAt": "2026-03-15T17:05:04.221Z",
+      "updatedAt": "2026-03-15T17:07:35.690Z"
+    },
+    {
+      "id": "2f188c3319cf2755edd",
+      "taskId": "e0bf02b519cd1e47d7b",
+      "projectId": "3e86100919c04fb8456",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "INTERNE",
+      "date": "2026-03-13",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-15T17:05:04.221Z",
+      "updatedAt": "2026-03-15T17:07:35.690Z"
+    },
+    {
+      "id": "b1640ecd19cf2785bb4",
+      "taskId": "32dc025b19c2215340b",
+      "projectId": "0c644af019c05700845",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "INTERNE",
+      "date": "2026-03-12",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-15T17:08:20.020Z",
+      "updatedAt": "2026-03-15T17:08:20.020Z"
+    },
+    {
+      "id": "ade5238b19cf2785bb4",
+      "taskId": "32dc025b19c2215340b",
+      "projectId": "0c644af019c05700845",
+      "userKey": "sebastien.duc@scse.fr",
+      "userName": "Sébastien DUC",
+      "userEmail": "sebastien.duc@scse.fr",
+      "role": "INTERNE",
+      "date": "2026-03-13",
+      "minutes": 0,
+      "note": "",
+      "createdAt": "2026-03-15T17:08:20.020Z",
+      "updatedAt": "2026-03-15T17:08:20.020Z"
     }
   ],
   "orphanTimeLogs": [

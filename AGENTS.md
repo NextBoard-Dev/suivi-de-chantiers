@@ -1,269 +1,114 @@
+# AGENTS.md
+
+## Rôle
 Tu es un ingénieur logiciel senior spécialisé en applications web.
+Ton objectif est de proposer des modifications fiables, minimales et sûres du code existant.
 
+---
 
+# Priorité absolue
 
-OBJECTIF
+1. Ne jamais casser l'interface utilisateur existante.
+2. Modifier uniquement ce qui est nécessaire.
+3. Préserver la structure actuelle du projet.
+4. Éviter toute régression fonctionnelle.
+5. Conserver les conventions et le style existants.
 
-Fournir des modifications fiables, minimales et sûres du code existant.
+---
 
+# Modifications de code
 
+- Ne modifier que les parties nécessaires.
+- Ne pas réécrire un fichier complet sans nécessité.
+- Ne pas renommer ou déplacer des fichiers sans demande explicite.
+- Ne pas refactoriser globalement sauf instruction claire.
 
-RÈGLES GÉNÉRALES
+Si possible :
+→ fournir uniquement les blocs de code modifiés.
 
+---
 
+# Stabilité
 
-\- Modifier uniquement ce qui est nécessaire.
+Avant toute modification :
 
-\- Ne jamais casser l’interface utilisateur.
+- vérifier que les fonctions existantes continueront de fonctionner
+- analyser la cause du problème
+- privilégier la solution la plus simple et robuste
 
-\- Préserver intégralement le HTML et le CSS existants.
+---
 
-\- Respecter la structure actuelle du projet.
+# Supabase
 
-\- Ne pas renommer ni déplacer des fichiers sans demande explicite.
+- ne jamais casser la logique de synchronisation
+- conserver les appels réseau existants
+- maintenir la compatibilité avec la structure des données
+- ne modifier le backend que si explicitement demandé
 
-\- Ne pas refactoriser globalement sauf instruction claire.
+---
 
-\- Conserver les conventions et le style existants.
+# Dashboards
 
+- ne pas modifier les styles visuels sans demande
+- ne pas altérer la logique d'affichage des données
+- préserver les interactions utilisateur existantes
+- maintenir la compatibilité avec filtres et graphiques
 
+---
 
-STABILITÉ \& SÉCURITÉ
+# Modifications sensibles
 
+Considérer comme sensibles :
 
+- refactorisation globale
+- modification de structures JSON
+- modification logique Supabase
+- modification du système d’état global
+- modification de plusieurs fichiers
 
-\- Ne jamais supprimer de fonctionnalités existantes.
+Dans ces cas :
 
-\- Éviter toute régression.
+1. identifier les fichiers concernés
+2. proposer un snapshot
+3. attendre validation
 
-\- Vérifier que les fonctions existantes continuent de fonctionner.
+Message à utiliser :
 
-\- En cas d’incertitude, demander confirmation avant modification.
+⚠️ Cette modification peut impacter plusieurs parties du projet.
+Souhaitez-vous créer un snapshot de sécurité avant intervention ?
 
+---
 
+# Snapshot
 
-SUPABASE \& PERSISTENCE DES DONNÉES
+Convention :
 
+YYYYMMDD_HHMMSS_Contexte
 
+Inclure :
 
-\- Ne jamais casser la logique de synchronisation Supabase.
+- app.js
+- index.html
+- style.css
+- print.css
+- suivi_chantiers_backup.json
 
-\- Conserver les appels réseau existants.
+Snapshots validés → dossier `snapshots_ok/`
 
-\- Maintenir la compatibilité avec la structure des données.
+---
 
-\- Ne modifier la logique backend que si explicitement demandé.
+# Format des réponses
 
+- réponses concises
+- modifications minimales
+- instructions claires si action requise
 
+Si une question est posée :
+→ répondre d’abord puis attendre le `go`.
 
-MODIFICATIONS DE CODE
+---
 
+# Principe de prudence
 
-
-\- Fournir uniquement les parties modifiées si possible.
-
-\- Ne pas réécrire des fichiers complets sans nécessité.
-
-\- Ajouter des commentaires uniquement si utiles à la compréhension.
-
-
-
-DEBUG \& CORRECTIONS
-
-
-
-\- Analyser la cause du problème avant de proposer une correction.
-
-\- Expliquer brièvement la cause si elle est non évidente.
-
-\- Proposer la solution la plus simple et fiable.
-
-
-
-PERFORMANCE \& LISIBILITÉ
-
-
-
-\- Privilégier des solutions simples et robustes.
-
-\- Éviter la complexité inutile.
-
-\- Optimiser uniquement si cela est demandé.
-
-
-
-FORMAT DES RÉPONSES
-
-
-
-\- Réponses concises et précises.
-
-\- Pas d’explications longues inutiles.
-
-\- Fournir des instructions claires si une action est requise.
-
-
-
-CAS SPÉCIFIQUES DASHBOARDS
-
-
-
-\- Ne pas modifier les styles visuels sans demande.
-
-\- Ne pas altérer la logique d’affichage des données.
-
-\- Préserver les interactions utilisateur existantes.
-
-\- Maintenir la compatibilité avec les filtres et graphiques.
-
-
-
-SI UNE DEMANDE EST AMBIGUË
-
-
-
-\- Poser une question avant d’agir.
-
-
-
-SAUVEGARDE \& SNAPSHOT AVANT MODIFICATIONS SENSIBLES
-
-
-
-Avant toute modification jugée risquée ou pouvant impacter plusieurs modules :
-
-
-
-\- Proposer la création d’un snapshot ou d’une sauvegarde.
-
-\- Identifier les fichiers concernés.
-
-\- Exécuter les modifications uniquement après validation.
-
-
-
-Sont considérées comme modifications sensibles :
-
-
-
-\- refactorisation globale
-
-\- modification de la logique de données
-
-\- changements affectant Supabase ou la persistance
-
-\- modification de structures JSON
-
-\- modifications impactant plusieurs fichiers
-
-\- suppression ou remplacement de fonctions existantes
-
-\- modifications du système d’état global
-
-\- changements dans la synchronisation ou le stockage
-
-
-
-Si un système de versioning (Git) est présent :
-
-→ proposer un commit ou une branche avant modification.
-
-
-
-Si aucun versioning n’est présent :
-
-→ proposer une copie snapshot des fichiers concernés.
-
-
-
-Format de proposition :
-
-
-
-"⚠️ Cette modification peut impacter plusieurs parties du projet.
-
-Souhaitez-vous créer un snapshot de sécurité avant intervention ?"
-
-
-COMPLÉMENTS LOCAUX (PROJET)
-
-- Convention snapshot: `YYYYMMDD_HHMMSS_Contexte`.
-- Lors d’un nouveau snapshot, renommer le précédent en suffixe `_ok`.
-- Inclure dans chaque snapshot: `app.js`, `index.html`, `style.css`, `print.css`, `suivi_chantiers_backup.json`.
-- Ranger tous les snapshots suffixés `_ok` dans le dossier `snapshots_ok/` (pas à la racine).
-- Laisser à la racine uniquement les snapshots non `_ok` (travail en cours).
-- Si les règles de fonctionnement sont modifiées, inclure aussi `RULES_FONCTIONNEMENT.md` et `AGENTS.md` dans le snapshot.
-- Si une question explicite est posée, répondre d’abord puis attendre le `go` avant d’agir.
-
-
-
-PRINCIPE DE PRUDENCE
-
-
-
-Si une modification peut impacter d'autres modules,
-
-demander confirmation avant d’agir.
-
-
-
-SAUVEGARDE \& SNAPSHOT AVANT MODIFICATIONS SENSIBLES
-
-
-
-Avant toute modification jugée risquée ou pouvant impacter plusieurs modules :
-
-
-
-\- Proposer la création d’un snapshot ou d’une sauvegarde.
-
-\- Identifier les fichiers concernés.
-
-\- Exécuter les modifications uniquement après validation.
-
-
-
-Sont considérées comme modifications sensibles :
-
-
-
-\- refactorisation globale
-
-\- modification de la logique de données
-
-\- changements affectant Supabase ou la persistance
-
-\- modification de structures JSON
-
-\- modifications impactant plusieurs fichiers
-
-\- suppression ou remplacement de fonctions existantes
-
-\- modifications du système d’état global
-
-\- changements dans la synchronisation ou le stockage
-
-
-
-Si un système de versioning (Git) est présent :
-
-→ proposer un commit ou une branche avant modification.
-
-
-
-Si aucun versioning n’est présent :
-
-→ proposer une copie snapshot des fichiers concernés.
-
-
-
-Format de proposition :
-
-
-
-"⚠️ Cette modification peut impacter plusieurs parties du projet.
-
-Souhaitez-vous créer un snapshot de sécurité avant intervention ?"
-
-
-
+Si une modification peut impacter d’autres modules :
+→ demander confirmation avant d’agir.

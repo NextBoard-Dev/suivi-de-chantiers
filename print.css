@@ -1,3 +1,20 @@
+/* Masquer le conteneur d'impression à l'écran */
+#printInjection{
+  display:none !important;
+}
+@media screen {
+  body.print-mode #printInjection{
+    display:block !important;
+    position:fixed !important;
+    left:-100000px !important;
+    top:0 !important;
+    width:1px !important;
+    height:1px !important;
+    overflow:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+  }
+}
 /* Impression Gantt et tableaux  mode pro A3 paysage */
 @page {
   size: A3 landscape;
@@ -23,6 +40,8 @@
   }
   /* Permettre aux tableaux longs de s'etendre sur plusieurs pages */
   .tablewrap{
+    overflow: visible !important;
+    max-height: none !important;
     break-inside: auto;
     page-break-inside: auto;
   }
@@ -32,15 +51,21 @@
     break-after: avoid;
     page-break-after: avoid;
   }
-  /* mode 1 page stricte */
-  body.print-gantt-master #printInjection,
-  body.print-gantt-project #printInjection{
+  /* mode 1 page stricte (maître uniquement) */
+  body.print-gantt-master #printInjection{
     position:absolute;
     top:0;
     left:0;
     width:100%;
     height:100%;
     overflow:hidden !important;
+  }
+  /* projet : autoriser toutes les lignes */
+  body.print-gantt-project #printInjection{
+    position:static !important;
+    width:100% !important;
+    height:auto !important;
+    overflow:visible !important;
   }
   @page {
     size: A3 landscape;
@@ -62,6 +87,18 @@
   body.print-gantt-project .print-meta{ font-size: 9.5px; gap: 2mm; }
   body.print-gantt-master .legend,
   body.print-gantt-project .legend{ display:none !important; }
+  body.print-gantt-master .gantt-bar,
+  body.print-gantt-project .gantt-bar{
+    animation:none !important;
+    opacity:1 !important;
+    transform:none !important;
+    filter:none !important;
+    box-shadow:0 0 0 1px rgba(0,0,0,0.28) !important;
+  }
+  body.print-gantt-master .gantt-bar .gantt-days,
+  body.print-gantt-project .gantt-bar .gantt-days{
+    opacity:1 !important;
+  }
   body.print-gantt-master .gantt-table .table th,
   body.print-gantt-master .gantt-table .table td,
   body.print-gantt-project .gantt-table .table th,
@@ -74,6 +111,22 @@
   body.print-gantt-project .gantt-table .table th.gantt-col-site,
   body.print-gantt-project .gantt-table .table td.gantt-col-site{
     position: static !important;
+  }
+  body.print-gantt-master .gantt-table .table th.gantt-col-task,
+  body.print-gantt-master .gantt-table .table td.gantt-col-task,
+  body.print-gantt-master .gantt-table .table th.gantt-col-vendor,
+  body.print-gantt-master .gantt-table .table td.gantt-col-vendor,
+  body.print-gantt-master .gantt-table .table th.gantt-col-status,
+  body.print-gantt-master .gantt-table .table td.gantt-col-status,
+  body.print-gantt-project .gantt-table .table th.gantt-col-task,
+  body.print-gantt-project .gantt-table .table td.gantt-col-task,
+  body.print-gantt-project .gantt-table .table th.gantt-col-vendor,
+  body.print-gantt-project .gantt-table .table td.gantt-col-vendor,
+  body.print-gantt-project .gantt-table .table th.gantt-col-status,
+  body.print-gantt-project .gantt-table .table td.gantt-col-status{
+    position: static !important;
+    left: auto !important;
+    z-index: auto !important;
   }
   body.print-gantt-master .gantt-week-date,
   body.print-gantt-project .gantt-week-date{ font-size: 8px; }
@@ -89,21 +142,12 @@
   body.print-gantt-master .print-block,
   body.print-gantt-project .gantt-table,
   body.print-gantt-project .print-block{
-    break-inside: avoid;
-    page-break-inside: avoid;
+    break-inside: auto;
+    page-break-inside: auto;
   }
-  body.print-gantt-master #printInjection,
   body.print-gantt-master .print-order,
-  body.print-gantt-project #printInjection,
-  body.print-gantt-project .print-order{
-    break-inside: avoid;
-    page-break-inside: avoid;
-    break-after: avoid;
-    page-break-after: avoid;
-  }
-  body.print-gantt-master #printInjection,
   body.print-gantt-project #printInjection{
-    overflow: hidden !important;
+    overflow: visible !important;
   }
   body.print-gantt-master .card,
   body.print-gantt-project .card{ margin-bottom: 2mm; }
@@ -119,6 +163,15 @@
   body.print-gantt-master .gantt-table .table,
   body.print-gantt-project .gantt-table .table{
     width: auto;
+  }
+  body.print-gantt-master .gantt-table .table tr{
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  body.print-gantt-project .gantt-table .table tbody,
+  body.print-gantt-project .gantt-table .table tr{
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
 }
 
@@ -188,33 +241,36 @@ body {
 }
 .card {
   box-shadow: none !important;
-  border: 1px solid #ccc !important;
-  background: #fafafa !important;
+  border: 1px solid #d1d5db !important;
+  background: #f8fafc !important;
 }
 .tablewrap {
   box-shadow: none !important;
-  border: 1px solid #ccc !important;
+  border: 1px solid #d1d5db !important;
   background: #fff !important;
 }
 .table th {
-  background: #f3f4f6 !important;
-  border-bottom: 1px solid #ccc !important;
+  background: #f1f5f9 !important;
+  border-bottom: 1px solid #d1d5db !important;
+  color:#0f172a !important;
 }
 .table td {
-  background: #fff !important;
-  border-bottom: 1px solid #e5e7eb !important;
+  background: #fcfcfd !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color:#0f172a !important;
 }
 .legend-item {
-  border: 1px solid #ccc !important;
-  background: #fff !important;
+  border: 1px solid #d1d5db !important;
+  background: #f8fafc !important;
+  color:#0f172a !important;
 }
 
 /* Cartouche chantier */
 .print-header {
   margin-bottom: 3mm;
-  border: 1px solid #bbb;
+  border: 1px solid #cbd5e1;
   padding: 3mm;
-  background: #fff;
+  background: #f8fafc;
 }
 .print-header h1 {
   margin: 0 0 2mm 0;
@@ -241,6 +297,14 @@ body {
 .gantt-table .table td,
 .gantt-table .table th {
   padding: 4px 6px !important;
+}
+body.print-mode .num-badge{
+  box-shadow:none !important;
+  border:1px solid rgba(15,23,42,0.18) !important;
+}
+body.print-mode .badge.owner{
+  box-shadow:none !important;
+  border:1px solid rgba(15,23,42,0.18) !important;
 }
 
 /* Sauts de page matriss */
@@ -342,5 +406,47 @@ body {
   body.print-hours-report .report-table tr{
     break-inside:avoid;
     page-break-inside:avoid;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+@media print {
+  body.print-gantt-project .gantt-print-plain table,
+  body.print-gantt-project .gantt-export-plain{
+    table-layout: fixed !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  body.print-gantt-project .gantt-print-plain td,
+  body.print-gantt-project .gantt-print-plain th{
+    position: static !important;
+    left: auto !important;
+    z-index: auto !important;
+  }
+  body.print-gantt-project .gantt-print-bar{
+    height: 10px;
+    border: 1px solid rgba(0,0,0,0.35);
+    border-radius: 3px;
+    opacity: 1 !important;
+  }
+}
+
+@media print {
+  body.print-gantt-project .print-order{
+    display:block !important;
+  }
+  body.print-gantt-project .print-dynamic{
+    display:block !important;
   }
 }

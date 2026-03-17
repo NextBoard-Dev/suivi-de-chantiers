@@ -5,6 +5,22 @@
 
 
 const el = (id)=>document.getElementById(id);
+function setInputValue(id, value){ const n = el(id); if(n) n.value = value; return n; }
+function ensureProjectHeaderNodes(){
+  const projectView = el("viewProject") || document.body;
+  if(!el("projectTitle")){
+    const h = document.createElement("h2");
+    h.id = "projectTitle";
+    h.style.display = "none";
+    projectView.appendChild(h);
+  }
+  if(!el("projectSub")){
+    const p = document.createElement("p");
+    p.id = "projectSub";
+    p.style.display = "none";
+    projectView.appendChild(p);
+  }
+}
 
 const STORAGE_KEY = "suivi_chantiers_state_v1";
 
@@ -58,7 +74,16 @@ function softCatch(errLike, context="soft"){
 }
 window.reportAppError = reportAppError;
 window.addEventListener("error", (ev)=>{
-  reportAppError(ev?.error || ev?.message || "Erreur JavaScript", "window.error");
+  const msg = String(ev?.message || "").trim();
+  const src = String(ev?.filename || "").trim();
+  // "Script error." vient souvent d'un script cross-origin sans détail exploitable.
+  // On l'ignore pour ne pas polluer l'UI avec une fausse alerte bloquante.
+  if(msg === "Script error." && !ev?.error && !src){
+    console.warn("[window.error] Script error cross-origin ignorée");
+    return;
+  }
+  const details = ev?.error || `${msg}${src ? ` @ ${src}:${ev?.lineno||0}:${ev?.colno||0}` : ""}` || "Erreur JavaScript";
+  reportAppError(details, "window.error");
 });
 window.addEventListener("unhandledrejection", (ev)=>{
   reportAppError(ev?.reason || "Promesse rejetee", "promise");
@@ -876,7 +901,7 @@ function scrollViewToTop(){
   });
 }
 
-// verrouille la position de la sidebar une fois la mise en page stabilise
+// verrouille la position de la sidebar une fois la mise en page stabilisée
 function _lockSidebarAfterLayout(){
   updateSidebarTop();
   updateSidebarScrollState();
@@ -920,6 +945,13 @@ function formatShortDate(d){
 
   return `${dd}-${mm}-${yy}`;
 
+}
+
+function formatShortDateTwoLinesHTML(d){
+  const dd = String(d.getDate()).padStart(2,"0");
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const yy = String(d.getFullYear()).slice(-2);
+  return `<span class="wk-date-top">${dd}-${mm}</span><span class="wk-date-bottom">${yy}</span>`;
 }
 
 function isTodayInWeek(weekStart){
@@ -1158,6 +1190,7 @@ function initThemePicker(){
     const style = `background:linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 55%, ${accent} 100%);`;
     return `<button type="button" class="theme-swatch" data-theme="${t.id}" title="${t.label}" style="${style}"></button>`;
   }).join("");
+
   grid.querySelectorAll(".theme-swatch").forEach(btn=>{
     btn.addEventListener("click", ()=> setCurrentUserTheme(btn.dataset.theme || "sable"));
     btn.addEventListener("mouseenter", ()=>{
@@ -1309,7 +1342,7 @@ function renderUsersList(){
       const newRole = (prompt("Rôle (admin/user) :", users[idx].role||"user") || users[idx].role || "user").toLowerCase();
       const role = newRole === "admin" ? "admin" : "user";
       if(newEmail && users.some((u,i)=> i!==idx && (u.email||"").toLowerCase()===newEmail.toLowerCase())){
-        alert("Email dj utilis."); return;
+        alert("Email déjà utilisé."); return;
       }
       users[idx].name = newName;
       users[idx].email = newEmail;
@@ -1774,7 +1807,7 @@ const ownerType = (o="")=>{
 
   const hasExt = k.includes("externe");
 
-  // Plus de catgorie "mixte" : on priorise "interne" si exclusif, sinon "externe".
+  // Plus de catégorie "mixte" : on priorise "interne" si exclusif, sinon "externe".
 
   if(hasInt && !hasExt) return "interne";
 
@@ -2232,7 +2265,7 @@ function renderVendorDropdown(filter=""){
 
   if(list.length===0){
 
-    box.innerHTML = `<div class="vendor-empty">Aucun rsultat</div>`;
+    box.innerHTML = `<div class="vendor-empty">Aucun résultat</div>`;
 
   }else{
 
@@ -2282,7 +2315,7 @@ function renderVendorManager(){
 
   if(vendorsCache.length===0){
 
-    panel.innerHTML = `<div class="vendor-empty">Aucun prestataire enregistr</div>`;
+    panel.innerHTML = `<div class="vendor-empty">Aucun prestataire enregistré</div>`;
 
     return;
 
@@ -2418,7 +2451,7 @@ function renderDescriptionDropdown(filter=""){
 
   if(list.length===0){
 
-    box.innerHTML = `<div class="vendor-empty">Aucun rsultat</div>`;
+    box.innerHTML = `<div class="vendor-empty">Aucun résultat</div>`;
 
   }else{
 
@@ -2476,7 +2509,7 @@ function renderDescriptionManager(){
 
   if(descCache.length===0){
 
-    panel.innerHTML = `<div class="vendor-empty">Aucune description enregistre</div>`;
+    panel.innerHTML = `<div class="vendor-empty">Aucune description enregistrée</div>`;
 
     return;
 
@@ -3249,7 +3282,7 @@ function collectDataQualityIssues(currentState=state){
   const issues = [];
   if(invalidDates > 0) issues.push(`${invalidDates} tâche(s) avec dates invalides`);
   if(externalWithoutVendor > 0) issues.push(`${externalWithoutVendor} tâche(s) externes sans prestataire`);
-  if(legacyStatus > 0) issues.push(`${legacyStatus} tâche(s) en statut legacy HUIS_SER`);
+  if(legacyStatus > 0) issues.push(`${legacyStatus} tâche(s) en statut obsolète HUIS_SER`);
   if(orphanLogs > 0) issues.push(`${orphanLogs} log(s) orphelins`);
   if(logsOutsideTaskRange > 0) issues.push(`${logsOutsideTaskRange} log(s) hors période de tâche`);
 
@@ -3281,7 +3314,7 @@ function updateDataQualityBanner(notify=false){
     ? "color:#16a34a;border:1px solid #16a34a33;background:#16a34a14;padding:2px 8px;border-radius:10px;cursor:pointer;"
     : "color:#b91c1c;border:1px solid #b91c1c33;background:#b91c1c14;padding:2px 8px;border-radius:10px;cursor:pointer;";
 
-  brandSub.innerHTML = `Tableau maître  Projets  Gantt  Exports locaux  <span class="brand-date">${fmt}</span>  <span id="dataQualityBadge" style="${badgeStyle}">${badgeLabel}</span>`;
+  brandSub.innerHTML = `Tableau maître  Projets  Gantt  <span class="brand-date">${fmt}</span>  <span id="dataQualityBadge" style="${badgeStyle}">${badgeLabel}</span>`;
   const badge = el("dataQualityBadge");
   if(badge){
     badge.onclick = ()=>{
@@ -3320,7 +3353,7 @@ function exportDataQualityReportPdf(){
   setPrintPageFormat("A4 portrait", "6mm");
   document.body.classList.add("print-mode");
 
-  const tpl = document.getElementById("printTemplate");
+  const tpl = ensurePrintTemplate();
   if(!tpl) return;
 
   let container = document.getElementById("printInjection");
@@ -3372,7 +3405,7 @@ function exportDataQualityReportPdf(){
 
   setTimeout(()=>{
     maximizePrintContainer(container);
-    window.print();
+    openPreparedPrintInNewWindow();
   }, 0);
 }
 function animateMetricCounters(root){
@@ -4442,10 +4475,14 @@ function computeWorkloadData(tasks, mode="week", rangeStart=null, rangeEnd=null)
     if(roleExpected && role !== roleExpected) return;
     const hours = (Number(l.minutes||0) / 60);
     if(!hours) return;
-    if(role==="rsg") slot.rsg+=hours;
-    else if(role==="ri") slot.ri+=hours;
-    else if(role==="interne") slot.internal+=hours;
-    else slot.external+=hours;
+    const mult = (typeof roleHoursMultiplier === "function")
+      ? roleHoursMultiplier(role)
+      : (role === "interne" ? 2 : 1);
+    const weightedHours = hours * mult;
+    if(role==="rsg") slot.rsg+=weightedHours;
+    else if(role==="ri") slot.ri+=weightedHours;
+    else if(role==="interne") slot.internal+=weightedHours;
+    else slot.external+=weightedHours;
     slot.total = slot.internal + slot.external + slot.rsg + slot.ri;
   });
 
@@ -4543,7 +4580,7 @@ function renderGantt(projectId){
 
     const weekLabel = `S${String(info.week).padStart(2,"0")}`;
 
-    const mondayLabel = formatShortDate(w);
+    const mondayLabel = formatShortDateTwoLinesHTML(w);
 
     const todayClass = isTodayInWeek(w) ? " week-today" : "";
     const vacClass = vacWeeks[i] ? " vac-week" : "";
@@ -4835,7 +4872,7 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
     const wEnd=endOfWorkWeek(w);
     const range=`${w.toLocaleDateString("fr-FR",{day:"2-digit"})}-${wEnd.toLocaleDateString("fr-FR",{day:"2-digit"})}/${wEnd.toLocaleDateString("fr-FR",{month:"2-digit",year:"2-digit"})}`;
     const weekLabel = `${info.week}`;
-    const mondayLabel = formatShortDate(w);
+    const mondayLabel = formatShortDateTwoLinesHTML(w);
     const todayClass = isTodayInWeek(w) ? " week-today" : "";
     const vacClass = vacWeeks[i] ? " vac-week" : "";
     const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
@@ -4897,7 +4934,7 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
   return html;
 }
 
-function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverride=null){
+function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverride=null, plainOverride=null){
   const tasksAll = (tasksOverride || []).filter(t=>t.start && t.end);
   if(tasksAll.length===0) return "<div class='gantt-empty'>Aucune tâche date.</div>";
   const rs = rangeStart || null;
@@ -4932,77 +4969,91 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
   const hideStatus = !ganttColVisibility.projectStatus;
   const tableClass = `table${hideVendor ? " hide-vendor" : ""}${hideStatus ? " hide-status" : ""}`;
 
-  let html=`<div class='tablewrap gantt-table'><table class='${tableClass}' style='--gcol1:120px;--gcol2:90px;--gcol3:90px'>`;
-  html+="<thead><tr><th class='gantt-task-col-project gantt-col-task'>Tâche</th><th class='gantt-col-vendor' style='width:90px'>Prestataire</th><th class='gantt-col-status' style='width:90px'>Statut</th>";
+  const isProjectPrint = (plainOverride===null)
+    ? (typeof document !== "undefined" && document.body && document.body.classList.contains("print-gantt-project"))
+    : !!plainOverride;
 
-  weeks.forEach((w,i)=>{
-    const info=isoWeekInfo(w);
-    const wEnd=endOfWorkWeek(w);
-    const range=`${w.toLocaleDateString("fr-FR",{day:"2-digit"})}-${wEnd.toLocaleDateString("fr-FR",{day:"2-digit"})}/${wEnd.toLocaleDateString("fr-FR",{month:"2-digit",year:"2-digit"})}`;
-    const weekLabel = `${info.week}`;
-    const mondayLabel = formatShortDate(w);
-    const todayClass = isTodayInWeek(w) ? " week-today" : "";
-    const vacClass = vacWeeks[i] ? " vac-week" : "";
-    const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
-    html+=`<th class="week-cell${todayClass}${vacClass}${internalVacClass}" data-range="${range}" style='width:20px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
-  });
-
-  html+="</tr></thead><tbody>";
-
-  tasks.forEach((t,rowIdx)=>{
-    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
-    const mainStatus = statuses[0] || "";
-    const color = ownerColor(t.owner);
-    const vendorBadges = (()=> {
-      const set = new Set();
-      if(t.vendor) set.add(t.vendor);
-      const typ = ownerType(t.owner);
-      if(typ === "interne") set.add("INTERNE");
-      if(typ === "rsg") set.add("RSG");
-      if(typ === "ri") set.add("RI");
-      if(typ === "externe" && !t.vendor) set.add("Prestataire non renseigné");
-      if(set.size===0) return "<span class='text-muted'></span>";
-      return Array.from(set).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"})).map(v=>vendorBadge(v)).join(" ");
-    })();
-
-    const todayKey = new Date().toISOString().slice(0,10);
-    const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
-    const isLate = !!(t.end && t.end < todayKey);
-    const rowClassWithToday = `gantt-row${isToday ? " today-row" : ""}${isLate ? " late-row" : ""}`;
-    html+=`<tr class="${rowClassWithToday}" data-task="${t.id}">`;
-    const p = state?.projects?.find(x=>x.id===t.projectId);
-    const sub = (p?.subproject || "").trim();
-    const taskDesc = (t.roomNumber || "").trim();
-    const label = [sub, taskDesc].filter(Boolean).join("  ");
-    const miss = missingMap.get(t.id) || 0;
-    const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
-    html+=`<td class="gantt-task-col-project gantt-col-task">${missDot}<b><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></b> <span class="gantt-task-name">${attrEscape(label)}</span></td>`;
-    html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
-    html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
+  const buildTable = (subsetRows, rowOffset=0, plainMode=false)=>{
+    const tableCssClass = plainMode ? "table gantt-export-plain" : tableClass;
+    let html=`<div class='tablewrap gantt-table${plainMode ? " gantt-print-plain" : ""}'><table class='${tableCssClass}' style='--gcol1:120px;--gcol2:90px;--gcol3:90px'>`;
+    html+="<thead><tr><th class='gantt-task-col-project gantt-col-task'>Tâche</th><th class='gantt-col-vendor' style='width:90px'>Prestataire</th><th class='gantt-col-status' style='width:90px'>Statut</th>";
 
     weeks.forEach((w,i)=>{
-      const sDate=new Date(t.start+"T00:00:00");
-      const eDate=new Date(t.end+"T00:00:00");
-      const geo=barGeometry(sDate,eDate,w);
-      if(geo.days>0){
-        const title = t.vendor ? ` title="Prestataire : ${attrEscape(t.vendor)}"` : "";
-        const vacClass = vacWeeks[i] ? " vac-week" : "";
-        const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
-        const barDelay = (rowIdx * 0.03 + i * 0.015).toFixed(3);
-        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
-      }else{
-        const vacClass = vacWeeks[i] ? " vac-week" : "";
-        const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
-        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
-      }
+      const info=isoWeekInfo(w);
+      const wEnd=endOfWorkWeek(w);
+      const range=`${w.toLocaleDateString("fr-FR",{day:"2-digit"})}-${wEnd.toLocaleDateString("fr-FR",{day:"2-digit"})}/${wEnd.toLocaleDateString("fr-FR",{month:"2-digit",year:"2-digit"})}`;
+      const weekLabel = `${info.week}`;
+      const mondayLabel = formatShortDateTwoLinesHTML(w);
+      const todayClass = isTodayInWeek(w) ? " week-today" : "";
+      const vacClass = vacWeeks[i] ? " vac-week" : "";
+      const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
+      html+=`<th class="week-cell${todayClass}${vacClass}${internalVacClass}" data-range="${range}" style='width:20px;color:#111827'>${weekLabel}<div class="gantt-week-date">${mondayLabel}</div></th>`;
     });
-    html+="</tr>";
-  });
 
-  html+="</tbody></table></div>";
-  return html;
+    html+="</tr></thead><tbody>";
+
+    subsetRows.forEach((t,rowIdx)=>{
+      const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
+      const mainStatus = statuses[0] || "";
+      const color = ownerColor(t.owner);
+      const vendorBadges = (()=> {
+        const set = new Set();
+        if(t.vendor) set.add(t.vendor);
+        const typ = ownerType(t.owner);
+        if(typ === "interne") set.add("INTERNE");
+        if(typ === "rsg") set.add("RSG");
+        if(typ === "ri") set.add("RI");
+        if(typ === "externe" && !t.vendor) set.add("Prestataire non renseigné");
+        if(set.size===0) return "<span class='text-muted'></span>";
+        return Array.from(set).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"})).map(v=>vendorBadge(v)).join(" ");
+      })();
+
+      const todayKey = new Date().toISOString().slice(0,10);
+      const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
+      const isLate = !!(t.end && t.end < todayKey);
+      const rowClassWithToday = `gantt-row${isToday ? " today-row" : ""}${isLate ? " late-row" : ""}`;
+      html+=`<tr class="${rowClassWithToday}" data-task="${t.id}">`;
+      const p = state?.projects?.find(x=>x.id===t.projectId);
+      const sub = (p?.subproject || "").trim();
+      const taskDesc = (t.roomNumber || "").trim();
+      const label = [sub, taskDesc].filter(Boolean).join("  ");
+      const miss = missingMap.get(t.id) || 0;
+      const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
+      html+=`<td class="gantt-task-col-project gantt-col-task">${missDot}<b><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></b> <span class="gantt-task-name">${attrEscape(label)}</span></td>`;
+      html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
+      html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
+
+      weeks.forEach((w,i)=>{
+        const sDate=new Date(t.start+"T00:00:00");
+        const eDate=new Date(t.end+"T00:00:00");
+        const geo=barGeometry(sDate,eDate,w);
+        const vacClass = vacWeeks[i] ? " vac-week" : "";
+        const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
+        if(geo.days>0){
+          if(plainMode){
+            html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-print-bar" style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};"></div></div></div></td>`;
+          }else{
+            const title = t.vendor ? ` title="Prestataire : ${attrEscape(t.vendor)}"` : "";
+            const barDelay = ((rowOffset + rowIdx) * 0.03 + i * 0.015).toFixed(3);
+            html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
+          }
+        }else{
+          html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+        }
+      });
+      html+="</tr>";
+    });
+
+    html+="</tbody></table></div>";
+    return html;
+  };
+
+  if(!isProjectPrint){
+    return buildTable(tasks, 0, false);
+  }
+
+  return buildTable(tasks, 0, true);
 }
-
 function renderMasterGantt(){
 
   const wrap = el("masterGantt");
@@ -5054,7 +5105,7 @@ function renderMasterGantt(){
 
     const weekLabel = `S${String(info.week).padStart(2,"0")}`;
 
-    const mondayLabel = formatShortDate(w);
+    const mondayLabel = formatShortDateTwoLinesHTML(w);
 
     const todayClass = isTodayInWeek(w) ? " week-today" : "";
     const vacClass = vacWeeks[i] ? " vac-week" : "";
@@ -5180,275 +5231,6 @@ function renderMasterGantt(){
 
 
 
-function exportSvgToPdf(svgId, title="Export", pieId=null, tasksOverride=null){
-
-  const svg = document.getElementById(svgId);
-
-  if(!svg) return;
-
-
-
-  // Cloner et injecter le style indispensable pour l'export (sinon le SVG perd ses classes).
-
-  const clone = svg.cloneNode(true);
-
-  const inlineStyle = `
-
-    * { font-family: "Segoe UI", Arial, sans-serif; }
-
-    .wl-axis text{font-size:11px;fill:#0f172a;}
-
-    .wl-bg{fill:url(#brushed);}
-
-    .wl-bar-internal{}
-
-    .wl-bar-external{}
-
-    .wl-grid{stroke:#e5e7eb;stroke-width:1;}
-
-    .wl-grid-vert{stroke:#e5e7eb;stroke-width:1;stroke-dasharray:2 3;}
-
-    .wl-value{font-size:10px;fill:#0f172a;}
-
-  `;
-
-  const styleEl = document.createElement("style");
-
-  styleEl.textContent = inlineStyle;
-
-  clone.insertBefore(styleEl, clone.firstChild);
-
-
-
-  const serializer = new XMLSerializer();
-
-  const str = serializer.serializeToString(clone);
-
-  const blob = new Blob([str], {type:"image/svg+xml;charset=utf-8"});
-
-  const url = URL.createObjectURL(blob);
-
-  const img = new Image();
-
-  const { width, height } = svg.getBoundingClientRect();
-
-  const pieSvg = pieId ? document.getElementById(pieId) : null;
-
-  const fallbackWidth = svg.viewBox?.baseVal?.width || svg.clientWidth || 900;
-
-  const fallbackHeight = svg.viewBox?.baseVal?.height || svg.clientHeight || 260;
-
-  img.onload = function(){
-
-    const canvas = document.createElement("canvas");
-
-    canvas.width = Math.max(1, Math.floor(width || fallbackWidth));
-
-    canvas.height = Math.max(1, Math.floor(height || fallbackHeight));
-
-    const ctx = canvas.getContext("2d");
-
-    ctx.fillStyle="#fff";
-
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-
-    ctx.drawImage(img,0,0,canvas.width,canvas.height);
-
-    const data = canvas.toDataURL("image/png");
-
-    const pieData = pieSvg ? (()=> {
-
-      const pieClone = pieSvg.cloneNode(true);
-
-      const pieStyle = document.createElement("style");
-
-      pieStyle.textContent = inlineStyle;
-
-      pieClone.insertBefore(pieStyle, pieClone.firstChild);
-
-      const pieStr = serializer.serializeToString(pieClone);
-
-      const pieBlob = new Blob([pieStr], {type:"image/svg+xml;charset=utf-8"});
-
-      return URL.createObjectURL(pieBlob);
-
-    })() : "";
-
-    const w = window.open("","_blank");
-
-    if(!w) return;
-
-    const nowLabel = new Date().toLocaleDateString("fr-FR");
-
-    const sourceTasks = tasksOverride || filteredTasks();
-
-    const range = getWorkloadRange(sourceTasks, state.tasks || sourceTasks);
-
-    const totals = computeWorkloadData(sourceTasks || [], "week", range.start, range.end);
-
-    const tInt = totals.reduce((s,d)=>s+d.internal,0);
-
-    const tExt = totals.reduce((s,d)=>s+d.external,0);
-
-    const tAll = Math.max(1, tInt + tExt);
-
-    const pInt = Math.round((tInt/tAll)*100);
-
-    const pExt = 100 - pInt;
-
-    // Mise en page A4 paysage + centrage
-
-    w.document.write(`
-
-      <title>${title}</title>
-
-      <style>
-
-        @page { size: A4 landscape; margin: 10mm; }
-
-        :root{--green:#16a34a;--ext:#b45309;--ink:#0b1424;}
-
-        body{margin:0;padding:0;display:flex;flex-direction:column;align-items:center;font-family:"Segoe UI",Arial,sans-serif;background:#fff;color:var(--ink);}
-
-        .page{width:100%;box-sizing:border-box;padding:6mm 8mm 8mm;}
-
-        .header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #d1d5db;padding-bottom:6px;margin-bottom:6px;}
-
-        h1{font-size:18px;margin:0;}
-
-        .meta{font-size:10px;color:#475569;text-align:right;}
-
-        .subtitle{font-size:11px;color:#475569;margin-top:2px;}
-
-        .legend{display:flex;gap:10px;align-items:center;margin:6px 0 8px;}
-
-        .legend .item{display:flex;align-items:center;gap:6px;font-size:11px;}
-
-        .dot{width:10px;height:10px;border-radius:4px;display:inline-block;}
-
-        .dot.int{background:var(--green);}
-
-        .dot.ext{background:var(--ext);}
-
-        .frame{border:1px solid #e5e7eb;border-radius:10px;padding:6mm;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);}
-
-        .pie-frame{margin-top:6mm;border:1px solid #e5e7eb;border-radius:10px;padding:6mm;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);}
-
-        .img-wrap{width:100%;display:flex;justify-content:center;}
-
-        img{max-width:100%;height:auto;}
-
-        .footer{margin-top:6px;font-size:10px;color:#64748b;display:flex;justify-content:space-between;}
-
-      </style>
-
-      <div class="page">
-
-        <div class="header">
-
-          <div>
-
-            <h1>${title}</h1>
-
-            <div class="subtitle">Charge de travail  Unité : jours ouvrés</div>
-
-          </div>
-
-          <div class="meta">Export du ${nowLabel}</div>
-
-        </div>
-
-        <div class="legend">
-
-          <div class="item"><span class="dot int"></span>INTERNE ${pInt}%</div>
-
-          <div class="item"><span class="dot ext"></span>Prestataire externe ${pExt}%</div>
-
-        </div>
-
-        <div class="frame">
-
-          <div class="img-wrap"><img id="__print_img" src="${data}" aria-label="${title}"></div>
-
-        </div>
-
-        ${pieData ? `<div class="pie-frame"><div class="img-wrap"><img id="__pie_img" src="${pieData}" aria-label="Répartition interne/externe"></div></div>` : ""}
-
-        <div class="footer">
-
-          <span>Source : Suivi de Chantiers</span>
-
-          <span>PDF A4 paysage</span>
-
-        </div>
-
-      </div>
-
-    `);
-
-    w.document.close();
-
-    const targetImg = w.document.getElementById("__print_img");
-
-    const targetPie = w.document.getElementById("__pie_img");
-
-    let printed=false;
-
-    const launchPrint = ()=>{
-
-      if(printed) return;
-
-      const readyMain = targetImg && targetImg.complete;
-
-      const readyPie = !targetPie || targetPie.complete;
-
-      if(!(readyMain && readyPie)) return;
-
-      printed=true;
-
-      w.focus();
-
-      w.print();
-
-      // refermer la fentre d'export aprs l'impression (ou aprs un court dlai si pas de callback)
-
-      setTimeout(()=>{ try{ w.close(); }catch(e){ softCatch(e); } }, 800);
-
-    };
-
-    if(targetImg){
-
-      if(targetImg.complete){
-
-        launchPrint();
-
-      }else{
-
-        targetImg.addEventListener("load", ()=>launchPrint(), { once:true });
-
-        // filet de secours en cas d'absence d'vnement load
-
-        setTimeout(()=>launchPrint(),500);
-
-      }
-
-    }else{
-
-      launchPrint();
-
-    }
-
-    if(targetPie && !targetPie.complete){
-
-      targetPie.addEventListener("load", ()=>launchPrint(), { once:true });
-
-    }
-
-  };
-
-  img.src = url;
-
-}
 
 
 
@@ -5527,7 +5309,7 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
       pieSvg.setAttribute("viewBox", "0 0 720 360");
 
-      pieSvg.innerHTML = `<text x="360" y="180" text-anchor="middle" fill="#6b7280" font-size="12">Aucune donne</text>`;
+      pieSvg.innerHTML = `<text x="360" y="180" text-anchor="middle" fill="#6b7280" font-size="12">Aucune donnée</text>`;
 
     }
 
@@ -5650,30 +5432,23 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
   const totalRsg = data.reduce((s,d)=>s+d.rsg,0);
   const totalRi  = data.reduce((s,d)=>s+d.ri,0);
 
-  const totalAll = Math.max(1, totalInt + totalExt + totalRsg + totalRi);
-
-  const pctInt = Math.round((totalInt/totalAll)*100);
-  const pctExt = Math.round((totalExt/totalAll)*100);
-  const pctRsg = Math.round((totalRsg/totalAll)*100);
-  const pctRi  = Math.max(0, 100 - pctInt - pctExt - pctRsg);
-
   const legend=`<g transform="translate(${w-280},12)">
 
     <rect x="0" y="0" width="12" height="12" rx="3" fill="url(#${gradIntId})"></rect>
 
-    <text class="wl-axis" x="18" y="11">Interne ${pctInt}%</text>
+    <text class="wl-axis" x="18" y="11">Interne ${fmtHours(totalInt)} h</text>
 
     <rect x="0" y="20" width="12" height="12" rx="3" fill="url(#${gradExtId})"></rect>
 
-    <text class="wl-axis" x="18" y="31">Externe ${pctExt}%</text>
+    <text class="wl-axis" x="18" y="31">Externe ${fmtHours(totalExt)} h</text>
 
     <rect x="0" y="40" width="12" height="12" rx="3" fill="url(#${gradRsgId})"></rect>
 
-    <text class="wl-axis" x="18" y="51">RSG ${pctRsg}%</text>
+    <text class="wl-axis" x="18" y="51">RSG ${fmtHours(totalRsg)} h</text>
 
     <rect x="0" y="60" width="12" height="12" rx="3" fill="url(#${gradRiId})"></rect>
 
-    <text class="wl-axis" x="18" y="71">RI ${pctRi}%</text>
+    <text class="wl-axis" x="18" y="71">RI ${fmtHours(totalRi)} h</text>
 
   </g>`;
 
@@ -5685,19 +5460,19 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
       <rect x="0" y="0" width="12" height="12" rx="3" fill="url(#${gradIntId})"></rect>
 
-      <text class="wl-axis" x="18" y="11">Interne ${pctInt}%</text>
+      <text class="wl-axis" x="18" y="11">Interne ${fmtHours(totalInt)} h</text>
 
       <rect x="120" y="0" width="12" height="12" rx="3" fill="url(#${gradExtId})"></rect>
 
-      <text class="wl-axis" x="138" y="11">Externe ${pctExt}%</text>
+      <text class="wl-axis" x="138" y="11">Externe ${fmtHours(totalExt)} h</text>
 
       <rect x="240" y="0" width="12" height="12" rx="3" fill="url(#${gradRsgId})"></rect>
 
-      <text class="wl-axis" x="258" y="11">RSG ${pctRsg}%</text>
+      <text class="wl-axis" x="258" y="11">RSG ${fmtHours(totalRsg)} h</text>
 
       <rect x="320" y="0" width="12" height="12" rx="3" fill="url(#${gradRiId})"></rect>
 
-      <text class="wl-axis" x="338" y="11">RI ${pctRi}%</text>
+      <text class="wl-axis" x="338" y="11">RI ${fmtHours(totalRi)} h</text>
 
     </g>`;
 
@@ -5818,10 +5593,10 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
       const gap = 8;
       const segments = [
-        { key:"interne", label:"Interne", value: totalInt, pct: pctInt, grad: gradIntId },
-        { key:"externe", label:"Externe", value: totalExt, pct: pctExt, grad: gradExtId },
-        { key:"rsg", label:"RSG", value: totalRsg, pct: pctRsg, grad: gradRsgId },
-        { key:"ri", label:"RI", value: totalRi, pct: pctRi, grad: gradRiId },
+        { key:"interne", label:"Interne", value: totalInt, grad: gradIntId },
+        { key:"externe", label:"Externe", value: totalExt, grad: gradExtId },
+        { key:"rsg", label:"RSG", value: totalRsg, grad: gradRsgId },
+        { key:"ri", label:"RI", value: totalRi, grad: gradRiId },
       ].filter(s=>s.value>0);
 
       if(segments.length === 1){
@@ -5830,8 +5605,8 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
         pieMarkup += `
           <circle class="wl-anim-pie-seg" style="--pie-delay:0.02s" cx="${cx}" cy="${cy}" r="${r}" fill="url(#${s.grad})" filter="url(#${pieShadowId})"></circle>
           <line x1="${cx}" y1="${cy - r * 0.95}" x2="${cx}" y2="${cy - r * 1.06}" stroke="#94a3b8" stroke-width="1" />
-          <text class="wl-axis wl-anim-pie-label" style="--pie-delay:0.12s" x="${labelPos.x}" y="${labelPos.y}" text-anchor="middle">${s.pct}%</text>
-          <text class="wl-value wl-anim-pie-label" style="--pie-delay:0.18s" x="${labelPos.x}" y="${labelPos.y + 14}" text-anchor="middle">${s.value} j</text>
+          <text class="wl-axis wl-anim-pie-label" style="--pie-delay:0.12s" x="${labelPos.x}" y="${labelPos.y}" text-anchor="middle">${s.label}</text>
+          <text class="wl-value wl-anim-pie-label" style="--pie-delay:0.18s" x="${labelPos.x}" y="${labelPos.y + 14}" text-anchor="middle">${fmtHours(s.value)} h</text>
         `;
       }else{
         let cursor = 0;
@@ -5851,7 +5626,7 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
           pieMarkup += `
             <path class="wl-anim-pie-seg" style="--pie-delay:${segDelay}s" d="${path}" fill="url(#${seg.grad})" filter="url(#${pieShadowId})"></path>
             <line x1="${innerPos.x}" y1="${innerPos.y}" x2="${outerPos.x}" y2="${outerPos.y}" stroke="#94a3b8" stroke-width="1" />
-            <text class="wl-axis wl-anim-pie-label" style="--pie-delay:${labDelay}s" x="${outerPos.x}" y="${labelY}" text-anchor="${anchor}">${seg.pct}%</text>
+            <text class="wl-axis wl-anim-pie-label" style="--pie-delay:${labDelay}s" x="${outerPos.x}" y="${labelY}" text-anchor="${anchor}">${seg.label}</text>
             <text class="wl-value wl-anim-pie-label" style="--pie-delay:${(Number(labDelay)+0.04).toFixed(2)}s" x="${outerPos.x}" y="${labelY + 14}" text-anchor="${anchor}">${fmtHours(seg.value)} h</text>
           `;
           cursor = endA;
@@ -5862,13 +5637,13 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
         <text class="wl-axis" x="${cx}" y="${titleY}" text-anchor="middle">Répartition Interne / Externe / RSG / RI</text>
         <g transform="translate(${cx-250},${legendY})">
           <rect x="0" y="0" width="12" height="12" rx="3" fill="url(#${gradIntId})"></rect>
-          <text class="wl-axis" x="18" y="11">Interne ${pctInt}%  ${fmtHours(totalInt)} h</text>
+          <text class="wl-axis" x="18" y="11">Interne ${fmtHours(totalInt)} h</text>
           <rect x="150" y="0" width="12" height="12" rx="3" fill="url(#${gradExtId})"></rect>
-          <text class="wl-axis" x="168" y="11">Externe ${pctExt}%  ${fmtHours(totalExt)} h</text>
+          <text class="wl-axis" x="168" y="11">Externe ${fmtHours(totalExt)} h</text>
           <rect x="300" y="0" width="12" height="12" rx="3" fill="url(#${gradRsgId})"></rect>
-          <text class="wl-axis" x="318" y="11">RSG ${pctRsg}%  ${fmtHours(totalRsg)} h</text>
+          <text class="wl-axis" x="318" y="11">RSG ${fmtHours(totalRsg)} h</text>
           <rect x="420" y="0" width="12" height="12" rx="3" fill="url(#${gradRiId})"></rect>
-          <text class="wl-axis" x="438" y="11">RI ${pctRi}%  ${fmtHours(totalRi)} h</text>
+          <text class="wl-axis" x="438" y="11">RI ${fmtHours(totalRi)} h</text>
         </g>
       `;
     }
@@ -6104,7 +5879,7 @@ function renderKPIs(tasks){
 
 
 
-// Tri gnrique pour tableaux (master & projet)
+// Tri générique pour tableaux (master & projet)
 
 function sortTasks(list, cfg){
 
@@ -6262,11 +6037,11 @@ function renderMasterMetrics(tasks){
 
     <span class="panel-chip">Heures réelles : <span class="metric-val">${formatHoursMinutes(real.totalMinutes||0)}</span></span>
 
-    <span class="panel-chip" style="background:#0f172a;color:#fff;border-color:#0f172a;">Interne : <span class="metric-val">${internalDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.internalMinutes||0)}</span></span>
+    <span class="panel-chip" style="background:#e8eef8;color:#1f2937;border-color:#c7d2fe;">Interne : <span class="metric-val">${internalDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.internalMinutes||0)}</span></span>
 
-    <span class="panel-chip" style="background:#b45309;color:#fff;border-color:#b45309;">Externe : <span class="metric-val">${externalDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.externalMinutes||0)}</span></span>
-    <span class="panel-chip" style="background:#2563eb;color:#fff;border-color:#2563eb;">RSG : <span class="metric-val">${rsgDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.rsgMinutes||0)}</span></span>
-    <span class="panel-chip" style="background:#7c3aed;color:#fff;border-color:#7c3aed;">RI : <span class="metric-val">${riDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.riMinutes||0)}</span></span>
+    <span class="panel-chip" style="background:#fff1e6;color:#1f2937;border-color:#fdba74;">Externe : <span class="metric-val">${externalDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.externalMinutes||0)}</span></span>
+    <span class="panel-chip" style="background:#e8f0ff;color:#1f2937;border-color:#93c5fd;">RSG : <span class="metric-val">${rsgDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.rsgMinutes||0)}</span></span>
+    <span class="panel-chip" style="background:#f2eaff;color:#1f2937;border-color:#c4b5fd;">RI : <span class="metric-val">${riDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.riMinutes||0)}</span></span>
   `;
   animateMetricCounters(metrics);
 
@@ -6385,7 +6160,7 @@ function filteredTasks(){
 
   });
 
-  // Filet de secours : si les filtres vident tout alors qu'on a des donnes, on retourne toutes les tâches
+  // Filet de secours : si les filtres vident tout alors qu'on a des données, on retourne toutes les tâches
 
   let out = result;
   if(out.length===0 && state.tasks.length>0) out = state.tasks;
@@ -6733,6 +6508,9 @@ function formatHoursMinutes(totalMinutes){
   if(m === 0) return `${h} h`;
   return `${h} h ${m} min`;
 }
+function roleHoursMultiplier(roleKey){
+  return roleKey === "interne" ? 2 : 1;
+}
 function getTaskTimeTotals(taskRef){
   const taskId = (typeof taskRef === "string") ? taskRef : taskRef?.id;
   const roleKey = (typeof taskRef === "object" && taskRef) ? getTaskRoleKey(taskRef) : "";
@@ -6746,8 +6524,10 @@ function getTaskTimeTotals(taskRef){
   }).forEach(l=>{
     if(rangeStart && l.date < rangeStart) return;
     if(rangeEnd && l.date > rangeEnd) return;
-    const key = roleLabel(normalizeTimeLogRole(l));
-    totals.set(key, (totals.get(key)||0) + (l.minutes||0));
+    const normalizedRole = normalizeTimeLogRole(l);
+    const key = roleLabel(normalizedRole);
+    const weightedMinutes = Math.round((Number(l.minutes || 0)) * roleHoursMultiplier(normalizedRole));
+    totals.set(key, (totals.get(key)||0) + weightedMinutes);
   });
   const items = Array.from(totals.entries()).map(([name, minutes])=>({name, minutes}));
   items.sort((a,b)=>b.minutes - a.minutes);
@@ -6773,11 +6553,12 @@ function getRealMinutesForTasks(tasks){
     if(!m) return;
     const role = normalizeTimeLogRole(l);
     if(roleExpected && role !== roleExpected) return;
-    totalMinutes += m;
-    if(role === "externe") externalMinutes += m;
-    else if(role === "rsg") rsgMinutes += m;
-    else if(role === "ri") riMinutes += m;
-    else internalMinutes += m;
+    const weightedMinutes = Math.round(m * roleHoursMultiplier(role));
+    totalMinutes += weightedMinutes;
+    if(role === "externe") externalMinutes += weightedMinutes;
+    else if(role === "rsg") rsgMinutes += weightedMinutes;
+    else if(role === "ri") riMinutes += weightedMinutes;
+    else internalMinutes += weightedMinutes;
   });
   return { totalMinutes, internalMinutes, externalMinutes, rsgMinutes, riMinutes };
 }
@@ -6906,9 +6687,446 @@ function updateTimeLogUI(t, forceAlert=false){
     if(partsDay.length){
       summaryEl.textContent = `${partsDay.join(" | ")} | Total jour: ${formatHoursMinutes(totalDayMinutes)} | Total tâche: ${formatHoursMinutes(totalTask.totalMinutes)}${missLabel}`;
     }else{
-      summaryEl.textContent = `Aucun temps renseigné | Total tâche: ${formatHoursMinutes(totalTask.totalMinutes)}${missLabel}`;
+      summaryEl.textContent = `Total tâche: ${formatHoursMinutes(totalTask.totalMinutes)}${missLabel}`;
     }
   }
+}
+
+function getSelectedTaskForHoursModal(){
+  if(!selectedProjectId || !selectedTaskId) return null;
+  return state?.tasks?.find(x=>x.id===selectedTaskId && x.projectId===selectedProjectId) || null;
+}
+function isHoursTaskModalOpen(){
+  const modal = el("hoursTaskModal");
+  return !!(modal && !modal.classList.contains("hidden"));
+}
+
+function formatHoursDecimal(minutes){
+  const v = Math.round(((minutes || 0) / 60) * 100) / 100;
+  return String(v).replace(".", ",") + "h";
+}
+function ensureHoursModalCalendarDom(){
+  const modalCard = document.querySelector("#hoursTaskModal .modal-card");
+  if(!modalCard) return null;
+  let wrap = el("hm_calendarWrap");
+  if(!wrap){
+    wrap = document.createElement("div");
+    wrap.id = "hm_calendarWrap";
+    wrap.style.marginTop = "10px";
+    wrap.style.border = "1px solid var(--line)";
+    wrap.style.borderRadius = "10px";
+    wrap.style.padding = "10px";
+    wrap.style.background = "#f8fafc";
+
+    const legend = document.createElement("div");
+    legend.id = "hm_calendarLegend";
+    legend.style.display = "flex";
+    legend.style.gap = "10px";
+    legend.style.flexWrap = "wrap";
+    legend.style.marginBottom = "8px";
+    legend.style.fontSize = "12px";
+    legend.innerHTML = [
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;margin-right:6px"></span>Renseigné</span>',
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f59e0b;margin-right:6px"></span>Manquant</span>',
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#64748b;margin-right:6px"></span>À venir</span>'
+    ].join("");
+
+    const grid = document.createElement("div");
+    grid.id = "hm_calendar";
+    grid.style.display = "block";
+    grid.style.gap = "8px";
+
+    wrap.appendChild(legend);
+    wrap.appendChild(grid);
+
+    const summary = el("hm_summary");
+    if(summary && summary.parentElement){
+      summary.parentElement.insertBefore(wrap, summary.nextSibling);
+    }else{
+      modalCard.appendChild(wrap);
+    }
+  }
+  return wrap;
+}
+function renderHoursTaskCalendar(t){
+  const wrap = ensureHoursModalCalendarDom();
+  const grid = el("hm_calendar");
+  if(!wrap || !grid) return;
+  if(!t || !t.start || !t.end){
+    grid.innerHTML = "";
+    return;
+  }
+
+  const roleKey = getTaskRoleKey(t);
+  const todayKey = toLocalDateKey(new Date());
+  const logs = getCanonicalTimeLogs().filter(l=>l.taskId===t.id && normalizeTimeLogRole(l)===roleKey);
+  const byDate = new Map();
+  logs.forEach(l=>byDate.set(l.date, l));
+
+  const start = new Date(t.start + "T00:00:00");
+  const end = new Date(t.end + "T00:00:00");
+  if(isNaN(start) || isNaN(end) || end < start){
+    grid.innerHTML = "";
+    return;
+  }
+
+  const startDayIdx = (start.getDay() + 6) % 7; // lundi=0
+  const endDayIdx = (end.getDay() + 6) % 7;
+  const firstMonday = new Date(start);
+  firstMonday.setDate(start.getDate() - startDayIdx);
+  const lastFriday = new Date(end);
+  lastFriday.setDate(end.getDate() + (4 - endDayIdx));
+
+  const selectedDate = (el("hm_date")?.value || "").trim();
+  const rows = [];
+  const dayNames = ["Lun", "Mar", "Mer", "Jeu", "Ven"];
+
+  for(let ws = new Date(firstMonday); ws <= lastFriday; ws.setDate(ws.getDate()+7)){
+    const weekNo = String(isoWeekInfo(ws).week).padStart(2, "0");
+    const weekLabel = "S" + weekNo;
+    const cards = [];
+
+    for(let i=0; i<5; i++){
+      const d = new Date(ws);
+      d.setDate(ws.getDate() + i);
+      const key = toLocalDateKey(d);
+      const log = byDate.get(key) || null;
+      const inTaskRange = key >= t.start && key <= t.end;
+      const stateType = inTaskRange ? (log ? "filled" : (key < todayKey ? "missing" : "future")) : "outside";
+      const dateLabel = d.toLocaleDateString("fr-FR", { day:"2-digit", month:"2-digit" });
+      const hoursValue = log ? String(Math.round(((log.minutes || 0) / 60) * 100) / 100).replace(".", ",") : "";
+
+      let bg = "#ffffff";
+      let border = "#d0d7e2";
+      let text = "#0f172a";
+      if(stateType === "filled"){
+        bg = "#ecfdf3";
+        border = "#7dd3a3";
+      }else if(stateType === "missing"){
+        bg = "#fff7ed";
+        border = "#fdba74";
+      }else if(stateType === "outside"){
+        bg = "#e5e7eb";
+        border = "#cbd5e1";
+        text = "#64748b";
+      }
+
+      const selectedBorder = (selectedDate === key && inTaskRange) ? "2px solid #2563eb" : ("1px solid " + border);
+      const sub = hoursValue ? (hoursValue + "h") : (stateType === "missing" ? "manquant" : (stateType === "outside" ? "hors tâche" : "—"));
+      const activeAttr = inTaskRange ? "1" : "0";
+      const disabledAttr = inTaskRange ? "" : "disabled";
+
+      cards.push(
+        '<div class="hm-day" data-date="' + key + '" data-active="' + activeAttr + '" style="text-align:left;border:' + selectedBorder + ';background:' + bg + ';color:' + text + ';border-radius:8px;padding:3px 5px;min-height:52px;cursor:' + (inTaskRange ? 'pointer' : 'default') + ';display:flex;flex-direction:column;gap:1px">' +
+        '<div style="font-size:11px;line-height:1.1;opacity:.85">' + dayNames[i] + ' • ' + weekLabel + '</div>' +
+        '<div style="font-size:12px;font-weight:700;line-height:1.2">' + dateLabel + '</div>' +
+        '<input type="text" inputmode="decimal" class="hm-day-input" data-date="' + key + '" data-active="' + activeAttr + '" value="' + hoursValue + '" placeholder="h" ' + disabledAttr + ' style="margin-top:1px;height:18px;border:1px solid #cbd5e1;border-radius:6px;padding:1px 6px;background:#fff;color:#111827;font-size:11px" />' +
+        '<div style="font-size:11px;opacity:.92">' + sub + '</div>' +
+        '</div>'
+      );
+    }
+
+    let weekDays = 0;
+    const weekTotalMinutes = cards.reduce((acc, _c, idx)=>{
+      const d2 = new Date(ws);
+      d2.setDate(ws.getDate() + idx);
+      const k2 = toLocalDateKey(d2);
+      const inTask2 = k2 >= t.start && k2 <= t.end;
+      if(!inTask2) return acc;
+      weekDays += 1;
+      const l2 = byDate.get(k2) || null;
+      return acc + ((l2 && l2.minutes) ? l2.minutes : 0);
+    }, 0);
+    const weekAvgMinutes = weekDays > 0 ? Math.round(weekTotalMinutes / weekDays) : 0;
+
+    rows.push(
+      '<div class="hm-week-row" style="display:grid;grid-template-columns:64px repeat(5, minmax(82px,1fr)) 156px;gap:5px;align-items:stretch;margin-bottom:4px">' +
+      '<div style="border:1px solid #cbd5e1;border-radius:8px;background:#eef2ff;color:#1e293b;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">' + weekLabel + '</div>' +
+      cards.join("") +
+      '<div style="border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;color:#0f172a;padding:5px 7px;display:flex;flex-direction:column;justify-content:center;gap:2px">' +
+      '<div style="font-size:11px;color:#475569">Total semaine</div>' +
+      '<div style="font-size:12px;font-weight:700">' + formatHoursMinutes(weekTotalMinutes) + '</div>' +
+      '<div style="font-size:11px;color:#475569">Moyenne semaine</div>' +
+      '<div style="font-size:12px;font-weight:700">' + formatHoursMinutes(weekAvgMinutes) + '</div>' +
+      '</div>' +
+      '</div>'
+    );
+  }
+
+  grid.innerHTML = rows.join("");
+}
+
+function collectHoursTaskCalendarEntries(t){
+  const grid = el("hm_calendar");
+  if(!t || !grid) return [];
+  const entries = [];
+  grid.querySelectorAll(".hm-day-input[data-date][data-active='1']").forEach((input)=>{
+    const date = (input.getAttribute("data-date") || "").trim();
+    const raw = (input.value || "").toString().replace(",", ".").trim();
+    if(!date || raw === "") return;
+    const hours = parseFloat(raw);
+    if(!isFinite(hours) || hours < 0) return;
+    entries.push({ date, hours, minutes: Math.round(hours * 60) });
+  });
+  return entries;
+}
+function getHoursDraftForDate(dateKey){
+  if(!dateKey) return "";
+  const grid = el("hm_calendar");
+  if(!grid) return "";
+  const input = grid.querySelector(`.hm-day-input[data-date="${dateKey}"]`);
+  return (input?.value || "").toString();
+}
+
+
+function computeTaskWeeklySummary(t){
+  if(!t || !t.start || !t.end) return { rows: [], totalMinutes: 0 };
+  const roleKey = getTaskRoleKey(t);
+  const roleMultiplier = roleHoursMultiplier(roleKey);
+  const logs = getCanonicalTimeLogs().filter(l=>l.taskId===t.id && normalizeTimeLogRole(l)===roleKey);
+  const byDate = new Map();
+  logs.forEach((l)=> byDate.set(l.date, l.minutes || 0));
+
+  const start = new Date(t.start + "T00:00:00");
+  const end = new Date(t.end + "T00:00:00");
+  if(isNaN(start) || isNaN(end) || end < start) return { rows: [], totalMinutes: 0 };
+
+  const rowsMap = new Map();
+  let totalMinutes = 0;
+  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    if(!isWeekday(d)) continue;
+    const key = toLocalDateKey(d);
+    const info = isoWeekInfo(d);
+    const wk = `${info.year}-S${String(info.week).padStart(2, "0")}`;
+    const label = `S${String(info.week).padStart(2, "0")} (${info.year})`;
+    if(!rowsMap.has(wk)) rowsMap.set(wk, { key:wk, label, days:0, total:0 });
+    const row = rowsMap.get(wk);
+    row.days += 1;
+    const dayMinutes = Math.round((byDate.get(key) || 0) * roleMultiplier);
+    row.total += dayMinutes;
+    totalMinutes += dayMinutes;
+  }
+  return { rows: Array.from(rowsMap.values()), totalMinutes };
+}
+
+function renderHoursTaskWeeklySummary(t, draftEntries=null){
+  const box = el("hm_summary");
+  if(!box) return;
+  if(!t){ box.innerHTML = ""; return; }
+  let totalMinutes = 0;
+  if(Array.isArray(draftEntries)){
+    const roleMultiplier = roleHoursMultiplier(getTaskRoleKey(t));
+    const byDate = new Map();
+    draftEntries.forEach((e)=>{
+      const date = (e?.date || "").toString().trim();
+      if(!date) return;
+      if(!isTaskActiveOn(t, date)) return;
+      const d = new Date(date + "T00:00:00");
+      if(!isWeekday(d)) return;
+      byDate.set(date, Math.round(Math.max(0, Number(e?.minutes || 0)) * roleMultiplier));
+    });
+    totalMinutes = Array.from(byDate.values()).reduce((a,b)=>a+b,0);
+  }else{
+    const data = computeTaskWeeklySummary(t);
+    totalMinutes = data.totalMinutes || 0;
+  }
+  box.innerHTML = `<div style="margin-top:8px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:10px;color:#0f172a;font-weight:700;font-size:13px">Total tâche : ${formatHoursMinutes(totalMinutes)}</div>`;
+}
+
+function syncHoursTaskStatusFromMain(){
+  const statusInput = el("t_time_status");
+  const hmStatus = el("hm_status");
+  if(!hmStatus) return;
+  hmStatus.className = (statusInput?.className || "time-log-status");
+  hmStatus.innerHTML = statusInput?.innerHTML || "";
+  if((hmStatus.textContent || "").toLowerCase().includes("non renseign")){
+    hmStatus.textContent = "";
+  }
+}
+
+function syncHoursTaskStatusFromCalendarDraft(t, dayKey, rawValue){
+  const hmStatus = el("hm_status");
+  if(!hmStatus) return;
+  hmStatus.className = "time-log-status";
+  if(!t || !dayKey){
+    hmStatus.textContent = "";
+    return;
+  }
+  const inRange = isTaskActiveOn(t, dayKey);
+  if(!inRange){
+    hmStatus.textContent = "Hors période";
+    return;
+  }
+  const dateObj = new Date(dayKey + "T00:00:00");
+  if(!isWeekday(dateObj)){
+    hmStatus.textContent = "Week-end";
+    return;
+  }
+  const raw = (rawValue == null ? "" : String(rawValue)).replace(",", ".").trim();
+  if(raw === ""){
+    hmStatus.classList.add("missing");
+    hmStatus.innerHTML = `<span class="time-icon missing"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 7v5l3 2"></path></svg></span>Heures réelles manquantes`;
+    return;
+  }
+  const hours = parseFloat(raw);
+  if(!isFinite(hours) || hours < 0){
+    hmStatus.classList.add("missing");
+    hmStatus.textContent = "Temps invalide";
+    return;
+  }
+  hmStatus.textContent = "Déjà renseigné";
+  if((hmStatus.textContent || "").toLowerCase().includes("non renseign")){
+    hmStatus.textContent = "";
+  }
+}
+
+function syncHoursTaskModal(taskOverride=null){
+  const modal = el("hoursTaskModal");
+  if(!modal) return;
+  const t = taskOverride || getSelectedTaskForHoursModal();
+  const p = t ? (state?.projects || []).find(x=>x.id===t.projectId) : null;
+
+  const hmProject = el("hm_project");
+  const hmTask = el("hm_task");
+  const hmOwner = el("hm_owner");
+  const hmPeriod = el("hm_period");
+  const hmDate = el("hm_date");
+  const hmHours = el("hm_hours");
+  const hmStatus = el("hm_status");
+  const hmSummary = el("hm_summary");
+  const btnSave = el("btnSaveHoursModal");
+
+  if(!t){
+    if(hmProject) hmProject.value = "";
+    if(hmTask) hmTask.value = "";
+    if(hmOwner) hmOwner.value = "";
+    if(hmPeriod) hmPeriod.value = "";
+    if(hmDate) hmDate.value = "";
+    if(hmHours) hmHours.value = "";
+    if(hmStatus) hmStatus.textContent = "";
+    if(hmSummary) hmSummary.textContent = "";
+    if(btnSave) btnSave.disabled = true;
+    return;
+  }
+
+  const dateInput = el("t_time_date_input");
+  const hoursInput = el("t_time_hours");
+  const statusInput = el("t_time_status");
+  const desc = (t.roomNumber || "").trim();
+  const owner = roleLabel(getTaskRoleKey(t));
+  const vendor = (t.vendor || "").trim();
+
+  if(hmProject) hmProject.value = (p?.name || "").trim();
+  if(hmTask) hmTask.value = desc ? (((t.status || "").trim()) + " - " + desc) : ((t.status || "").trim() || "Tâche");
+  if(hmOwner) hmOwner.value = vendor ? (owner + " - " + vendor) : owner;
+  if(hmPeriod) hmPeriod.value = (formatDate(t.start || "") + " -> " + formatDate(t.end || ""));
+  if(hmDate){
+    hmDate.min = t.start || "";
+    hmDate.max = t.end || "";
+    hmDate.value = (dateInput?.value || t.start || "");
+  }
+  if(hmHours) hmHours.value = (hoursInput?.value || "").toString();
+  syncHoursTaskStatusFromMain();
+  renderHoursTaskWeeklySummary(t);
+  if(btnSave) btnSave.disabled = false;
+  renderHoursTaskCalendar(t);
+}
+function openHoursTaskModal(){
+  const modal = el("hoursTaskModal");
+  if(!modal) return;
+  const t = getSelectedTaskForHoursModal();
+  if(!t){
+    alert("Sélectionne une tâche.");
+    return;
+  }
+  updateTimeLogUI(t, true);
+  syncHoursTaskModal(t);
+  modal.classList.remove("hidden");
+  modal.style.display = "flex";
+  modal.setAttribute("aria-hidden","false");
+}
+function closeHoursTaskModal(){
+  const modal = el("hoursTaskModal");
+  hideModalSafely(modal, "#btnOpenHoursModal");
+}
+function saveHoursTaskModal(){
+  const t = getSelectedTaskForHoursModal();
+  if(!t){
+    alert("Sélectionne une tâche.");
+    return;
+  }
+  const hmDate = el("hm_date");
+  const hmHours = el("hm_hours");
+  const dateInput = el("t_time_date_input");
+  const hoursInput = el("t_time_hours");
+  if(!dateInput || !hoursInput || !hmDate || !hmHours){
+    alert("Saisie des heures indisponible.");
+    return;
+  }
+
+  const selectedDate = (hmDate.value || "").trim();
+  if(!selectedDate || !isTaskActiveOn(t, selectedDate)){
+    alert("La date est hors période de la tâche.");
+    return;
+  }
+  const dateObj = new Date(selectedDate + "T00:00:00");
+  if(!isWeekday(dateObj)){
+    alert("La date tombe un week-end.");
+    return;
+  }
+
+  const entries = collectHoursTaskCalendarEntries(t);
+  const grid = el("hm_calendar");
+  const emptyDates = [];
+  (grid ? Array.from(grid.querySelectorAll(".hm-day-input[data-date][data-active='1']")) : []).forEach((input)=>{
+    const date = (input.getAttribute("data-date") || "").trim();
+    if(!date) return;
+    const raw = (input.value || "").toString().replace(",", ".").trim();
+    if(raw === "") emptyDates.push(date);
+  });
+
+  const rawHours = (hmHours.value || "").toString().replace(",", ".").trim();
+  if(rawHours){
+    const hours = parseFloat(rawHours);
+    if(!isFinite(hours) || hours < 0){
+      alert("Temps invalide.");
+      return;
+    }
+    if(!entries.some((x)=>x.date === selectedDate)){
+      entries.push({ date: selectedDate, hours, minutes: Math.round(hours * 60) });
+    }
+  }
+  if(!entries.length && !emptyDates.length){
+    alert("Saisis le temps passé (heures).");
+    return;
+  }
+
+  saveUndoSnapshot();
+  const roleKey = getTaskRoleKey(t);
+  entries.forEach((entry)=>{
+    if(!isTaskActiveOn(t, entry.date)) return;
+    const dObj = new Date(entry.date + "T00:00:00");
+    if(!isWeekday(dObj)) return;
+    upsertTimeLog(t.id, t.projectId, entry.minutes, "", entry.date, roleKey);
+  });
+  if(emptyDates.length){
+    const logs = getTimeLogs();
+    for(let i = logs.length - 1; i >= 0; i--){
+      const l = logs[i];
+      if(!l || l.taskId !== t.id) continue;
+      if(!emptyDates.includes(l.date)) continue;
+      if(normalizeTimeLogRole(l) !== roleKey) continue;
+      logs.splice(i, 1);
+    }
+  }
+  closeHoursTaskModal();
+  markDirty();
+  dateInput.value = selectedDate;
+  hoursInput.value = rawHours;
+  updateTimeLogUI(t, true);
+  renderMaster();
+  renderProject();
+  saveState();
 }
 function checkTimeLogReminders(){
   const userKey = getCurrentUserKey();
@@ -6923,7 +7141,7 @@ function checkTimeLogReminders(){
     if(!findTimeLog(t.id, yKey, userKey)) missing++;
   });
   if(missing > 0){
-    showSaveToast("ok", "Rappel temps (veille)", `${missing} tâche(s) à renseigner`);
+    showSaveToast("ok", "Rappel temps (veille)", `${missing} tâche(s) à compléter`);
   }
   sessionStorage.setItem(flag, "1");
 }
@@ -6934,6 +7152,7 @@ function renderProject(){
   computeTaskOrderMap();
   renderTabs();
   closeAllOverlays();
+  ensureProjectHeaderNodes();
   const p=state.projects.find(x=>x.id===selectedProjectId);
   if(!p){ selectedProjectId=null; renderMaster(); return; }
 
@@ -6941,9 +7160,11 @@ function renderProject(){
 
   el("viewProject")?.classList.remove("hidden");
 
-  el("projectTitle").textContent = `Projet : ${p.name||"Sans nom"}`;
+  const projectTitleNode = el("projectTitle");
+  if(projectTitleNode) projectTitleNode.textContent = `Projet : ${p.name||"Sans nom"}`;
 
-  el("projectSub").textContent = p.site || "Détails • Gantt";
+  const projectSubNode = el("projectSub");
+  if(projectSubNode) projectSubNode.textContent = p.site || "Détails • Gantt";
   updateSitePhoto(p.site || "");
 
   const projectSummary = el("projectSummary");
@@ -7029,11 +7250,11 @@ function renderProject(){
 
       <span class="panel-chip">Heures réelles : <span class="metric-val">${formatHoursMinutes(real.totalMinutes||0)}</span></span>
 
-      <span class="panel-chip" style="background:#0f172a;color:#fff;border-color:#0f172a;">Interne : <span class="metric-val">${internalDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.internalMinutes||0)}</span></span>
+      <span class="panel-chip" style="background:#e8eef8;color:#1f2937;border-color:#c7d2fe;">Interne : <span class="metric-val">${internalDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.internalMinutes||0)}</span></span>
 
-      <span class="panel-chip" style="background:#b45309;color:#fff;border-color:#b45309;">Externe : <span class="metric-val">${externalDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.externalMinutes||0)}</span></span>
-      <span class="panel-chip" style="background:#2563eb;color:#fff;border-color:#2563eb;">RSG : <span class="metric-val">${rsgDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.rsgMinutes||0)}</span></span>
-      <span class="panel-chip" style="background:#7c3aed;color:#fff;border-color:#7c3aed;">RI : <span class="metric-val">${riDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.riMinutes||0)}</span></span>
+      <span class="panel-chip" style="background:#fff1e6;color:#1f2937;border-color:#fdba74;">Externe : <span class="metric-val">${externalDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.externalMinutes||0)}</span></span>
+      <span class="panel-chip" style="background:#e8f0ff;color:#1f2937;border-color:#93c5fd;">RSG : <span class="metric-val">${rsgDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.rsgMinutes||0)}</span></span>
+      <span class="panel-chip" style="background:#f2eaff;color:#1f2937;border-color:#c4b5fd;">RI : <span class="metric-val">${riDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.riMinutes||0)}</span></span>
 
     `;
 
@@ -7091,9 +7312,9 @@ function renderProject(){
 
   }
 
-  el("p_name").value=p.name||"";
+  setInputValue("p_name", p.name||"");
 
-  el("p_subproject").value=p.subproject||"";
+  setInputValue("p_subproject", p.subproject||"");
 
   const siteSelect = el("p_site");
   if(siteSelect){
@@ -7157,18 +7378,18 @@ function renderProject(){
 
     const desc = (t.roomNumber && t.roomNumber.trim()) || p.subproject || "";
 
-    el("t_room").value=desc;
+    setInputValue("t_room", desc);
 
     const ownerVal = (t.owner || "");
-    el("t_owner").value = ownerVal.toUpperCase()==="RSG/RI" ? "RSG" : ownerVal;
+    setInputValue("t_owner", ownerVal.toUpperCase()==="RSG/RI" ? "RSG" : ownerVal);
 
-    el("t_vendor").value=t.vendor||"";
+    setInputValue("t_vendor", t.vendor||"");
 
     const startVal = toInputDate(t.start);
     const endVal = toInputDate(t.end);
-    el("t_start").value=startVal;
+    setInputValue("t_start", startVal);
 
-    el("t_end").value=endVal;
+    setInputValue("t_end", endVal);
     setTaskProgressUI(taskProgress(t));
     updateTimeLogUI(t, true);
     if(window.__fpStart){ try{ window.__fpStart.setDate(startVal || null, true, "Y-m-d"); }catch(e){ softCatch(e); } }
@@ -7178,7 +7399,7 @@ function renderProject(){
 
   }else{
 
-    el("t_room").value=""; el("t_owner").value=""; el("t_vendor").value=""; el("t_start").value=""; el("t_end").value="";
+    setInputValue("t_room", ""); setInputValue("t_owner", ""); setInputValue("t_vendor", ""); setInputValue("t_start", ""); setInputValue("t_end", "");
     setTaskProgressUI(0);
     updateTimeLogUI(null);
     if(window.__fpStart){ try{ window.__fpStart.setDate(null); }catch(e){ softCatch(e); } }
@@ -7276,6 +7497,656 @@ function renderAll(){
 }
 
 
+
+
+function getExportFiltersPayload(){
+  const site = el("filterSite")?.value || "";
+  const project = el("filterProject")?.value || "";
+  const status = el("filterStatus")?.value || "";
+  const search = (el("filterSearch")?.value || "").trim();
+  const startAfter = el("filterStartAfter")?.value || "";
+  const endBefore = el("filterEndBefore")?.value || "";
+  const projectName = selectedProjectId ? (state.projects.find(p=>p.id===selectedProjectId)?.name || "") : "";
+  return { site, project, projectName, status, search, startAfter, endBefore };
+}
+
+function getUnifiedExportModuleDefinitions(){
+  const isProject = !el("viewProject")?.classList.contains("hidden");
+  if(isProject){
+    return [
+      { key:"project_header", label:"En-tête projet", selector:"#viewProject .panel-head", wide:false },
+      { key:"project_tasks", label:"Tableau des tâches", selector:"#viewProject .tablewrap.project-tasks", wide:true },
+      { key:"project_gantt", label:"Gantt hebdo", selector:"#viewProject #gantt", wide:true },
+      { key:"project_workload", label:"Charge de travail (projet)", selector:"#workloadChartProjectWrap", wide:true },
+      { key:"project_pie", label:"Répartition Interne / Externe / RSG / RI (projet)", selector:"#workloadPieProjectWrap", wide:false },
+      { key:"project_hours", label:"Analyse heures réelles (projet)", selector:"#projectHoursReportCard", wide:true },
+      { key:"project_hours_internal_only", label:"Analyse heures réelles (projet) - sans prestataires externes", selector:"#projectHoursReportCard", wide:true }
+    ];
+  }
+  return [
+    { key:"master_table", label:"Tableau maître", selector:"#viewMaster .tablewrap", wide:true },
+    { key:"master_gantt", label:"Gantt global", selector:"#viewMaster #masterGantt", wide:true },
+    { key:"master_pie", label:"Charge de travail / Répartition Interne / Externe / RSG / RI", selector:"#workloadPieWrap", wide:false },
+    { key:"master_hours", label:"Analyse heures réelles", selector:"#masterHoursReportCard", wide:true },
+    { key:"master_hours_internal_only", label:"Analyse heures réelles - sans prestataires externes", selector:"#masterHoursReportCard", wide:true }
+  ];
+}
+
+function cloneNodeForUnifiedExport(sourceNode){
+  if(!sourceNode) return null;
+  const clone = sourceNode.cloneNode(true);
+  clone.querySelectorAll("button,.btn,.theme-picker,.icon-btn,[data-no-export]").forEach(n=>n.remove());
+  clone.querySelectorAll("input,select,textarea").forEach(n=>{
+    const span = document.createElement("span");
+    const value = n.value || n.getAttribute("value") || "";
+    span.textContent = value;
+    span.className = "pdf-input-value";
+    n.replaceWith(span);
+  });
+  const sourceCanvas = sourceNode.querySelectorAll("canvas");
+  const cloneCanvas = clone.querySelectorAll("canvas");
+  cloneCanvas.forEach((c, idx)=>{
+    const src = sourceCanvas[idx];
+    if(!src) return;
+    try{
+      const img = document.createElement("img");
+      img.src = src.toDataURL("image/png", 1.0);
+      img.style.width = src.width ? `${src.width}px` : "100%";
+      img.style.maxWidth = "100%";
+      img.style.height = "auto";
+      c.replaceWith(img);
+    }catch(_e){/* noop */}
+  });
+  return clone;
+}
+
+function buildProjectTasksExportHTML(projectId){
+  const tasks = sortTasks(state.tasks.filter(t=>t.projectId===projectId), sortProject);
+  if(!tasks.length){
+    return "<div class='tablewrap project-tasks-export'><table class='table'><tbody><tr><td class='empty-row'>Aucune tâche</td></tr></tbody></table></div>";
+  }
+
+  const missingMap = buildMissingDaysMap(tasks);
+  let rows = "";
+  tasks.forEach(t=>{
+    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
+    const c = ownerColor(t.owner);
+    const ownerBadgeHtml = t.owner ? ownerBadgeForTask(t) : "";
+    const durLabel = durationLabelForTask(t);
+    const todayKey = new Date().toISOString().slice(0,10);
+    const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
+    const isLate = !!(t.end && t.end < todayKey);
+    const isSelected = t.id===selectedTaskId;
+    const rowClass = `${isSelected ? "row-selected " : ""}${isToday ? "today-row " : ""}${isLate ? "late-row" : ""}`.trim();
+    const miss = missingMap.get(t.id) || 0;
+    const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
+    rows += `<tr class="${rowClass}">
+      <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></td>
+      <td><span class="icon-picto"></span> ${taskTitleProjectView(t)}</td>
+      <td class="status-cell"><span class="status-left">${statusDot(statuses[0])}${statusLabels(t.status||"")}</span>${ownerBadgeHtml||""}</td>
+      <td>${formatDate(t.start)||""}</td>
+      <td>${formatDate(t.end)||""}</td>
+      <td>${taskProgress(t)}%</td>
+      <td>${durLabel}</td>
+    </tr>`;
+  });
+
+  return `<div class="tablewrap project-tasks-export"><table class="table" id="projectTasksExportTable">
+    <thead>
+      <tr>
+        <th style="width:70px">N</th>
+        <th>Description</th>
+        <th style="width:320px">Statuts</th>
+        <th style="width:120px">Début</th>
+        <th style="width:120px">Fin</th>
+        <th style="width:100px">Avancement</th>
+        <th style="width:130px">Durée (jours)</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+
+function buildMasterTableExportHTML(){
+  const sorted = sortTasks(filteredTasks(), sortMaster);
+  if(!sorted.length){
+    return "<div class='tablewrap master-table-export'><table class='table'><tbody><tr><td class='empty-row'>Aucune tâche.</td></tr></tbody></table></div>";
+  }
+
+  const missingMap = buildMissingDaysMap(sorted);
+  const todayKey = new Date().toISOString().slice(0,10);
+  let rows = "";
+
+  sorted.forEach(t=>{
+    const p = state.projects.find(x=>x.id===t.projectId);
+    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
+    const c = ownerColor(t.owner);
+    const rowBg = siteColor(p?.site);
+    const sub = (p?.subproject || "").trim();
+    const projLabel = sub ? `${p?.name||"Sans projet"} - ${sub}` : (p?.name||"Sans projet");
+    const taskLabel = (t.roomNumber||"").trim();
+    const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
+    const isLate = !!(t.end && t.end < todayKey);
+    const rowClass = `${isToday ? "today-row " : ""}${isLate ? "late-row" : ""}`.trim();
+    const miss = missingMap.get(t.id) || 0;
+    const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
+
+    rows += `<tr class="${rowClass}" style="--site-bg:${rowBg};background:var(--site-bg);">
+      <td>${p?.site||""}</td>
+      <td>${projLabel}</td>
+      <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskLabel}</td>
+      <td class="status-cell"><span class="status-left">${statusDot(statuses[0])}${statusLabels(t.status||"")}</span>${t.owner?ownerBadgeForTask(t):""}</td>
+      <td>${formatDate(t.start)||""}${isToday ? `<span class="today-dot" title="En cours aujourd'hui"></span>` : ""}</td>
+      <td>${formatDate(t.end)||""}</td>
+      <td>${taskProgress(t)}%</td>
+      <td>${durationLabelForTask(t)}</td>
+    </tr>`;
+  });
+
+  return `<div class="tablewrap master-table-export"><table class="table" id="masterTableExportTable">
+    <thead>
+      <tr>
+        <th style="width:80px">Site</th>
+        <th>Projet</th>
+        <th>Tâche</th>
+        <th style="width:300px">Statut</th>
+        <th style="width:120px">Début</th>
+        <th style="width:120px">Fin</th>
+        <th style="width:100px">Avancement</th>
+        <th style="width:130px">Durée (jours)</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+
+
+function buildMasterExportHeaderHTML(pdfTheme){
+  const tasks = filteredTasks();
+  const dated = tasks.filter(t=>t.start && t.end);
+  const start = dated.length ? dated.reduce((min, t)=> (!min || t.start < min ? t.start : min), "") : "";
+  const end = dated.length ? dated.reduce((max, t)=> (!max || t.end > max ? t.end : max), "") : "";
+  const sites = Array.from(new Set(tasks.map(t=>{
+    const p = state.projects.find(x=>x.id===t.projectId);
+    return (p?.site || "").trim();
+  }).filter(Boolean))).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+  const siteLabel = sites.length ? sites.join(", ") : "Tous";
+
+  return `
+    <div class="project-export-header-card" style="border:1px solid ${attrEscape(pdfTheme.line)};border-radius:8px;padding:6px 8px;background:${attrEscape(pdfTheme.panel)};background-image:linear-gradient(180deg, ${attrEscape(pdfTheme.panel)} 0%, ${attrEscape(pdfTheme.accentSoft)} 100%);margin-bottom:6px;box-shadow:0 3px 10px rgba(15,23,42,0.18);">
+      <div class="project-export-header-grid" style="display:grid;grid-template-columns:1.6fr 1fr .9fr 1fr 1fr 1fr;gap:8px;align-items:start;border-left:4px solid ${attrEscape(pdfTheme.accent)};padding-left:7px;">
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Contexte</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">Tableau maître</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Site / Zone</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(siteLabel)}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Tâches</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${tasks.length}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Début période</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(start ? formatDate(start) : "-")}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Fin période</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(end ? formatDate(end) : "-")}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Date export</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(new Date().toLocaleDateString("fr-FR", { day:"2-digit", month:"2-digit", year:"numeric" }))}</div></div>
+      </div>
+    </div>
+  `;
+}
+function renderUnifiedExportModulesList(){
+  const list = el("exportPdfModulesList");
+  if(!list) return;
+  let defs = getUnifiedExportModuleDefinitions().filter(d=>document.querySelector(d.selector));
+  const isProject = !el("viewProject")?.classList.contains("hidden");
+  if(isProject){
+    // L'en-tête projet est toujours injecté automatiquement sur chaque partie exportée.
+    // "project_pie" embarque déjà les 2 graphiques, donc on masque l'entrée redondante.
+    defs = defs.filter(d=>d.key !== "project_header" && d.key !== "project_workload");
+  }
+
+  const isProjectHoursVariant = (k)=>k === "project_hours" || k === "project_hours_internal_only";
+  const isMasterHoursVariant = (k)=>k === "master_hours" || k === "master_hours_internal_only";
+  const isHoursVariant = (k)=>isProjectHoursVariant(k) || isMasterHoursVariant(k);
+  const hintHtml = defs.some(d=>isHoursVariant(d.key))
+    ? `<div class="export-module-sub" style="margin:0 0 6px 2px;display:block;">Pour l'analyse des heures, choisissez une seule version.</div>`
+    : "";
+
+  list.innerHTML = hintHtml + defs.map((d)=>{
+    const exclusive = isHoursVariant(d.key);
+    const inputType = exclusive ? "radio" : "checkbox";
+    const inputName = isProjectHoursVariant(d.key) ? "project_hours_variant" : (isMasterHoursVariant(d.key) ? "master_hours_variant" : "");
+    const sub = exclusive
+      ? ((d.key === "project_hours" || d.key === "master_hours") ? "Version complète" : "Version interne uniquement")
+      : (d.wide ? "Format large" : "Format standard");
+    return `
+      <label class="export-module-row${exclusive ? " export-module-row-exclusive" : ""}">
+        <input type="${inputType}" ${inputName ? `name="${inputName}"` : ""} data-export-module-key="${attrEscape(d.key)}">
+        <span>
+          <span class="export-module-label">${attrEscape(d.label)}</span>
+          <span class="export-module-sub">${attrEscape(sub)}</span>
+        </span>
+      </label>
+    `;
+  }).join("");
+
+  list.querySelectorAll("input[name=\"project_hours_variant\"],input[name=\"master_hours_variant\"]").forEach((n)=>{
+    n.addEventListener("change", updateUnifiedHoursExclusiveUI);
+  });
+  updateUnifiedHoursExclusiveUI();
+}
+function updateUnifiedHoursExclusiveUI(){
+  const list = el("exportPdfModulesList");
+  if(!list) return;
+  const groups = [
+    [
+      list.querySelector('input[data-export-module-key="project_hours"]'),
+      list.querySelector('input[data-export-module-key="project_hours_internal_only"]')
+    ],
+    [
+      list.querySelector('input[data-export-module-key="master_hours"]'),
+      list.querySelector('input[data-export-module-key="master_hours_internal_only"]')
+    ]
+  ];
+
+  groups.forEach(([rFull, rInternal])=>{
+    if(!rFull || !rInternal) return;
+    const rowFull = rFull.closest('.export-module-row');
+    const rowInternal = rInternal.closest('.export-module-row');
+    if(rowFull){
+      rowFull.classList.toggle('export-module-row-locked', !!rInternal.checked);
+      rowFull.setAttribute('title', '');
+    }
+    if(rowInternal){
+      rowInternal.classList.toggle('export-module-row-locked', !!rFull.checked);
+      rowInternal.setAttribute('title', '');
+    }
+  });
+}
+function openUnifiedPdfModal(){
+  const modal = el("exportPdfModal");
+  if(!modal) return;
+  renderUnifiedExportModulesList();
+  modal.classList.remove("hidden");
+  modal.style.display = "flex";
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeUnifiedPdfModal(){
+  const modal = el("exportPdfModal");
+  hideModalSafely(modal, "#btnExportPdfUnified");
+}
+
+function runUnifiedPdfExport(){
+  try{
+    const defs = getUnifiedExportModuleDefinitions();
+    const selectedKeys = Array.from(document.querySelectorAll("#exportPdfModulesList input[data-export-module-key]:checked"))
+      .map(n=>n.getAttribute("data-export-module-key") || "");
+    if(selectedKeys.length===0){
+      alert("Sélectionnez au moins un module.");
+      return;
+    }
+
+    // Sécurité: variantes "Analyse heures" mutuellement exclusives.
+    if(selectedKeys.includes("project_hours") && selectedKeys.includes("project_hours_internal_only")){
+      const idxInternal = selectedKeys.indexOf("project_hours_internal_only");
+      if(idxInternal >= 0) selectedKeys.splice(idxInternal, 1);
+    }
+    if(selectedKeys.includes("master_hours") && selectedKeys.includes("master_hours_internal_only")){
+      const idxInternal = selectedKeys.indexOf("master_hours_internal_only");
+      if(idxInternal >= 0) selectedKeys.splice(idxInternal, 1);
+    }
+
+    const isProjectMode = !el("viewProject")?.classList.contains("hidden");
+    const currentProject = isProjectMode && selectedProjectId
+      ? state.projects.find(p=>p.id===selectedProjectId)
+      : null;
+
+    const selectedDefs = defs.filter(d=>selectedKeys.includes(d.key));
+    const mergeProjectHeaderWithTasks = isProjectMode && selectedKeys.includes("project_tasks");
+    const rootStyle = getComputedStyle(document.documentElement);
+    const pdfTheme = {
+      accent: (rootStyle.getPropertyValue("--accent") || "#2563eb").trim(),
+      accentSoft: (rootStyle.getPropertyValue("--accent-soft") || "#93c5fd").trim(),
+      panel: (rootStyle.getPropertyValue("--panel") || "#f8fafc").trim(),
+      line: (rootStyle.getPropertyValue("--line") || "rgba(0,0,0,0.14)").trim(),
+      text: (rootStyle.getPropertyValue("--text") || "#0f172a").trim(),
+      muted: (rootStyle.getPropertyValue("--muted") || "#475569").trim()
+    };
+    const p = currentProject;
+    const taskCount = p ? state.tasks.filter(t=>t.projectId===p.id).length : 0;
+    const projectTasks = p
+      ? state.tasks.filter(t=>t.projectId===p.id && t.start && t.end)
+      : [];
+    const projectTasksAll = p
+      ? state.tasks.filter(t=>t.projectId===p.id)
+      : [];
+
+    const checkProjectGanttVsTasks = isProjectMode && selectedKeys.includes("project_tasks") && selectedKeys.includes("project_gantt");
+    if(checkProjectGanttVsTasks){
+      const ganttCount = projectTasks.length;
+      const tableCount = projectTasksAll.length;
+      if(ganttCount !== tableCount){
+        const missingDates = projectTasksAll.filter(t=>!(t.start && t.end)).length;
+        alert(
+          `Export bloqué : incohérence tâches / Gantt.\n\n` +
+          `- Tableau des tâches : ${tableCount} ligne(s)\n` +
+          `- Gantt hebdo : ${ganttCount} ligne(s)\n` +
+          `- Tâches sans dates : ${missingDates}\n\n` +
+          `Action requise : renseignez les dates manquantes ou décochez "Gantt hebdo".`
+        );
+        return;
+      }
+    }
+
+    const checkMasterGanttVsTable = !isProjectMode && selectedKeys.includes("master_table") && selectedKeys.includes("master_gantt");
+    if(checkMasterGanttVsTable){
+      const allMasterTasks = filteredTasks();
+      const datedMasterTasks = allMasterTasks.filter(t=>t.start && t.end);
+      if(datedMasterTasks.length !== allMasterTasks.length){
+        const missingDates = allMasterTasks.length - datedMasterTasks.length;
+        alert(
+          `Export bloqué : incohérence tâches / Gantt.
+
+` +
+          `- Tableau maître : ${allMasterTasks.length} ligne(s)
+` +
+          `- Gantt global : ${datedMasterTasks.length} ligne(s)
+` +
+          `- Tâches sans dates : ${missingDates}
+
+` +
+          `Action requise : renseignez les dates manquantes ou décochez "Gantt global".`
+        );
+        return;
+      }
+    }
+    const firstTaskStart = projectTasks.length
+      ? projectTasks.reduce((min, t)=> (!min || t.start < min ? t.start : min), "")
+      : "";
+    const lastTaskEnd = projectTasks.length
+      ? projectTasks.reduce((max, t)=> (!max || t.end > max ? t.end : max), "")
+      : "";
+    const projectHeaderHtml = p ? `
+      <div class="project-export-header-card" style="border:1px solid ${attrEscape(pdfTheme.line)};border-radius:8px;padding:6px 8px;background:${attrEscape(pdfTheme.panel)};background-image:linear-gradient(180deg, ${attrEscape(pdfTheme.panel)} 0%, ${attrEscape(pdfTheme.accentSoft)} 100%);margin-bottom:6px;box-shadow:0 3px 10px rgba(15,23,42,0.18);">
+        <div class="project-export-header-grid" style="display:grid;grid-template-columns:1.6fr 1fr 1fr .75fr 1fr 1fr;gap:8px;align-items:start;border-left:4px solid ${attrEscape(pdfTheme.accent)};padding-left:7px;">
+          <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Chantier</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(p?.name || "-")}</div></div>
+          <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Site / Zone</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(p?.site || "-")}</div></div>
+          <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Sous-projet</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(p?.subproject || "-")}</div></div>
+          <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Tâches</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${taskCount}</div></div>
+          <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Début projet</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(firstTaskStart ? formatDate(firstTaskStart) : "-")}</div></div>
+          <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Fin projet</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(lastTaskEnd ? formatDate(lastTaskEnd) : "-")}</div></div>
+        </div>
+      </div>
+    ` : "";
+    const masterHeaderHtml = buildMasterExportHeaderHTML(pdfTheme);
+
+    const modules = [];
+    selectedDefs.forEach(def=>{
+      if(def.key === "project_workload" && selectedKeys.includes("project_pie")){
+        return;
+      }
+      if(def.key === "project_header"){
+        if(mergeProjectHeaderWithTasks) return;
+        modules.push({ key:def.key, label:"", wide:false, html:projectHeaderHtml });
+        return;
+      }
+
+      if(def.key === "project_tasks" && currentProject){
+        const tableHtml = buildProjectTasksExportHTML(currentProject.id);
+        const tasksTitle = `<div class="card-title">Tableau des tâches</div>`;
+        modules.push({ key:def.key, label:"", wide:true, html:`${projectHeaderHtml}${tasksTitle}${tableHtml}`, noAutoProjectHeader:true });
+        return;
+      }
+
+
+      if(def.key === "master_table"){
+        const tableTitle = `<div class="card-title">Tableau maître</div>`;
+        const tableHtml = buildMasterTableExportHTML();
+        modules.push({
+          key:def.key,
+          label:"",
+          wide:true,
+          html:`${masterHeaderHtml}${tableTitle}${tableHtml}`,
+          noAutoProjectHeader:true,
+          forceNewPage:true
+        });
+        return;
+      }
+
+      if(def.key === "master_gantt"){
+        const ganttHtml = buildMasterGanttHTMLForRange();
+        const ganttTitle = `<div class="card-title">Gantt global</div>`;
+        modules.push({
+          key:def.key,
+          label:"",
+          wide:true,
+          html:`${masterHeaderHtml}${ganttTitle}${ganttHtml}`,
+          noAutoProjectHeader:true,
+          forceNewPage:true
+        });
+        return;
+      }
+
+      if(def.key === "master_pie"){
+        const chartWrap = document.querySelector("#workloadChartWrap");
+        const pieWrap = document.querySelector("#workloadPieWrap");
+        const chartClone = chartWrap ? cloneNodeForUnifiedExport(chartWrap.closest(".card") || chartWrap) : null;
+        const pieClone = pieWrap ? cloneNodeForUnifiedExport(pieWrap.closest(".card") || pieWrap) : null;
+        const parts = [];
+        if(chartClone) parts.push(`<div class="pdf-two-graphs-item">${chartClone.outerHTML}</div>`);
+        if(pieClone) parts.push(`<div class="pdf-two-graphs-item">${pieClone.outerHTML}</div>`);
+        if(parts.length===0) return;
+        const sectionTitle = `<div class="card-title">Charge de travail / Répartition Interne / Externe / RSG / RI</div>`;
+        modules.push({
+          key:def.key,
+          label:"",
+          wide:true,
+          html:`${masterHeaderHtml}${sectionTitle}<div class="pdf-two-graphs-wrap">${parts.join("")}</div>`,
+          noAutoProjectHeader:true,
+          forceNewPage:true
+        });
+        return;
+      }
+
+      if(def.key === "master_hours"){
+        modules.push({
+          key:def.key,
+          label:"",
+          wide:true,
+          html:`${masterHeaderHtml}${buildMasterRealHoursReportInnerHTML(true)}`,
+          noAutoProjectHeader:true,
+          forceNewPage:true
+        });
+        return;
+      }
+
+      if(def.key === "master_hours_internal_only"){
+        modules.push({
+          key:def.key,
+          label:"",
+          wide:true,
+          html:`${masterHeaderHtml}${buildMasterRealHoursReportInnerHTML(false)}`,
+          noAutoProjectHeader:true,
+          forceNewPage:true
+        });
+        return;
+      }
+
+      if(def.key === "project_gantt" && currentProject){
+        const projectTasksForGantt = state.tasks.filter(t=>t.projectId===currentProject.id && t.start && t.end);
+        const ganttHtml = buildProjectGanttHTMLForRange(null, null, projectTasksForGantt, true);
+        const ganttTitle = `<div class="card-title">Gantt hebdo</div>`;
+        modules.push({
+          key:def.key,
+          label:"",
+          wide:true,
+          html:`${projectHeaderHtml}${ganttTitle}${ganttHtml}`,
+          noAutoProjectHeader:true,
+          forceNewPage:true
+        });
+        return;
+      }
+
+      if(def.key === "project_pie" && currentProject){
+        const chartWrap = document.querySelector("#workloadChartProjectWrap");
+        const pieWrap = document.querySelector("#workloadPieProjectWrap");
+        const chartClone = chartWrap ? cloneNodeForUnifiedExport(chartWrap.closest(".card") || chartWrap) : null;
+        const pieClone = pieWrap ? cloneNodeForUnifiedExport(pieWrap.closest(".card") || pieWrap) : null;
+        const parts = [];
+        if(chartClone){
+          const chartSvg = chartClone.querySelector("#workloadChartProject") || chartClone.querySelector("svg");
+          if(chartSvg){
+            const legendGroup = Array.from(chartSvg.querySelectorAll("g")).find(g=>{
+              const texts = Array.from(g.querySelectorAll("text")).map(t=>(t.textContent||"").trim());
+              return texts.some(t=>/^Interne\s+\d+(?:[.,]\d+)?\s*h/i.test(t))
+                && texts.some(t=>/^Externe\s+\d+(?:[.,]\d+)?\s*h/i.test(t))
+                && texts.some(t=>/^RSG\s+\d+(?:[.,]\d+)?\s*h/i.test(t))
+                && texts.some(t=>/^RI\s+\d+(?:[.,]\d+)?\s*h/i.test(t));
+            });
+            if(legendGroup){
+              const labels = Array.from(legendGroup.querySelectorAll("text"))
+                .map(t=>(t.textContent||"").trim())
+                .filter(Boolean)
+                .filter((v, i, a)=>a.indexOf(v)===i);
+              legendGroup.remove();
+              if(labels.length){
+                const colorByKey = {
+                  "interne": "#22c55e",
+                  "externe": "#b45309",
+                  "rsg": "#2563eb",
+                  "ri": "#7c3aed"
+                };
+                const legendHtml = `<div class="pdf-workload-legend">${labels.map(lbl=>{
+                  const k = lbl.toLowerCase();
+                  const ck = Object.keys(colorByKey).find(x=>k.startsWith(x)) || "interne";
+                  return `<span class="pdf-workload-legend-item"><span class="pdf-workload-legend-dot" style="background:${colorByKey[ck]}"></span>${attrEscape(lbl)}</span>`;
+                }).join("")}</div>`;
+                const chartHost = chartClone.querySelector("#workloadChartProjectWrap") || chartClone;
+                chartHost.insertAdjacentHTML("beforeend", legendHtml);
+              }
+            }
+          }
+          parts.push(`<div class="pdf-two-graphs-item">${chartClone.outerHTML}</div>`);
+        }
+        if(pieClone) parts.push(`<div class="pdf-two-graphs-item">${pieClone.outerHTML}</div>`);
+        if(parts.length===0) return;
+        const sectionTitle = `<div class="card-title">Répartition Interne / Externe / RSG / RI (projet)</div>`;
+        modules.push({
+          key:def.key,
+          label:"",
+          wide:true,
+          html:`${projectHeaderHtml}${sectionTitle}<div class="pdf-two-graphs-wrap">${parts.join("")}</div>`,
+          noAutoProjectHeader:true,
+          forceNewPage:true
+        });
+        return;
+      }
+
+
+      if((def.key === "project_hours" || def.key === "project_hours_internal_only") && currentProject){
+        const includeExternal = def.key !== "project_hours_internal_only";
+        const reportTitle = includeExternal
+          ? "Analyse heures réelles (projet)"
+          : "Analyse heures réelles (projet) - sans prestataires externes";
+        const hoursHtml = buildProjectRealHoursReportInnerHTML(currentProject.id, includeExternal, reportTitle);
+        modules.push({
+          key:def.key,
+          label:"",
+          wide:true,
+          html:`${projectHeaderHtml}${hoursHtml}`,
+          noAutoProjectHeader:true,
+          forceNewPage:true
+        });
+        return;
+      }
+
+      const rawNode = document.querySelector(def.selector);
+      if(!rawNode) return;
+      const node = rawNode.closest(".card") || rawNode;
+      const cloned = cloneNodeForUnifiedExport(node);
+      if(!cloned) return;
+      modules.push({
+        key: def.key,
+        label: def.label,
+        wide: !!def.wide,
+        html: cloned.outerHTML
+      });
+    });
+
+    if(modules.length===0){
+      alert("Aucun module exportable trouvé.");
+      return;
+    }
+
+    const viewer = window.open("about:blank", "_blank");
+    if(!viewer){
+      alert("Popup bloquée. Autorisez les popups puis réessayez.");
+      return;
+    }
+
+    setPrintPageFormat("A4 landscape", "2mm");
+    document.body.classList.add("print-mode");
+
+    const tpl = ensurePrintTemplate();
+    if(!tpl){
+      alert("Template d'export introuvable.");
+      return;
+    }
+
+    let container = document.getElementById("printInjection");
+    if(!container){
+      container = document.createElement("div");
+      container.id = "printInjection";
+      document.body.prepend(container);
+    }
+
+    container.innerHTML = tpl.innerHTML;
+
+    const header = container.querySelector("#printHeader");
+    const meta = container.querySelector("#printMeta");
+    const legend = container.querySelector("#printLegend");
+    const filters = getExportFiltersPayload();
+    const filtersLabel = Object.entries(filters)
+      .filter(([,v])=>String(v || "").trim())
+      .map(([k,v])=>`${k}: ${v}`)
+      .join(" • ") || "Aucun filtre";
+
+    if(header){
+      header.querySelector("h1").textContent = (el("brandTitle")?.textContent || "Suivi de Chantiers").trim();
+    }
+    if(meta){
+      const mode = isProjectMode
+        ? ((el("projectTitle")?.textContent || currentProject?.name || "Projet").trim())
+        : "Tableau maître";
+      const metaRows = [
+        ["Contexte", mode],
+        ["Date export", new Date().toLocaleDateString("fr-FR", { day:"2-digit", month:"short", year:"numeric" })],
+        ["Filtres", filtersLabel],
+        ["Modules", modules.length]
+      ];
+      meta.innerHTML = metaRows.map(([k,v])=>`<div><strong>${k}</strong><br>${attrEscape(String(v ?? ""))}</div>`).join("");
+    }
+    if(legend) legend.innerHTML = "";
+
+    container.querySelectorAll(".print-dynamic").forEach(n=>n.remove());
+    const wrap = document.createElement("div");
+    wrap.className = "print-dynamic";
+    modules.forEach((m)=>{
+      const block = document.createElement("div");
+      block.className = `card print-block${m.forceNewPage ? " force-new-page" : ""}`;
+      const titleHtml = m.label ? `<div class="card-title">${attrEscape(m.label)}</div>` : "";
+      const withProjectHeader = (isProjectMode && projectHeaderHtml && !m.noAutoProjectHeader && m.key !== "project_header" && m.key !== "project_tasks")
+        ? `${projectHeaderHtml}${titleHtml}${m.html || ""}`
+        : `${titleHtml}${m.html || ""}`;
+      block.innerHTML = withProjectHeader;
+      wrap.appendChild(block);
+    });
+    container.querySelector(".print-order")?.appendChild(wrap);
+
+    maximizePrintContainer(container);
+    openPreparedPrintInNewWindow("Export PDF", viewer);
+
+    closeUnifiedPdfModal();
+  }catch(err){
+    reportAppError(err, "export.pdf.modal");
+    alert("Erreur export PDF: " + (err?.message || err));
+  }
+}
+window.runUnifiedPdfExport = runUnifiedPdfExport;
 
 function bind(){
 
@@ -7497,7 +8368,7 @@ function bind(){
     if(!name || !pass){ alert("Nom et mot de passe requis."); return; }
     const users = loadUsers();
     if(email && users.some(u=>(u.email||"").toLowerCase()===email.toLowerCase())){
-      alert("Email dj existant."); return;
+      alert("Email déjà existant."); return;
     }
     const hash = await hashPassword(pass);
     users.push({id: uid(), name, email, role, hash, theme:"sable"});
@@ -7572,13 +8443,109 @@ function bind(){
     detailParts.push(`Supabase: ${supabaseOk ? "OK" : "ERREUR"}`);
     if(usersOk === false) detailParts.push(`Users: ERREUR`);
     if(getCurrentRole() === "admin") detailParts.push(`Backup: ${backupOk ? "OK" : "ERREUR"}`);
-    showSaveToast(supabaseOk ? "ok" : "error", "Sauvegarde termine", detailParts.join(" | "));
+    showSaveToast(supabaseOk ? "ok" : "error", "Sauvegarde terminée", detailParts.join(" | "));
 
     flashSaved();
     renderAll();
     el("btnNewTask")?.classList.remove("btn-armed");
   });
 
+  el("btnExportPdfUnified")?.addEventListener("click", ()=>{
+    openUnifiedPdfModal();
+  });
+  el("btnExportPdfCancel")?.addEventListener("click", ()=>{
+    closeUnifiedPdfModal();
+  });
+
+  
+  const hmModalRoot = el("hoursTaskModal");
+  if(!(hmModalRoot && hmModalRoot.dataset.hmListenersBound === "1")){
+    if(hmModalRoot) hmModalRoot.dataset.hmListenersBound = "1";
+    el("btnOpenHoursModal")?.addEventListener("click", ()=> openHoursTaskModal());
+    el("btnCloseHoursModal")?.addEventListener("click", ()=> closeHoursTaskModal());
+    el("btnSaveHoursModal")?.addEventListener("click", ()=> saveHoursTaskModal());
+    el("hoursTaskModal")?.addEventListener("click", (e)=>{
+    if(e.target && e.target.id === "hoursTaskModal") closeHoursTaskModal();
+    });
+    el("hm_date")?.addEventListener("change", ()=>{
+    const t = getSelectedTaskForHoursModal();
+    const dateInput = el("t_time_date_input");
+    const hmDate = el("hm_date");
+    const hmHours = el("hm_hours");
+    if(!t || !dateInput || !hmDate) return;
+    dateInput.value = hmDate.value || "";
+    if(hmHours) hmHours.value = getHoursDraftForDate(hmDate.value || "");
+    updateTimeLogUI(t, true);
+    syncHoursTaskStatusFromCalendarDraft(t, hmDate.value || "", hmHours?.value || "");
+    renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+    });
+    el("hm_date")?.addEventListener("input", ()=>{
+    const t = getSelectedTaskForHoursModal();
+    const dateInput = el("t_time_date_input");
+    const hmDate = el("hm_date");
+    const hmHours = el("hm_hours");
+    if(!t || !dateInput || !hmDate) return;
+    dateInput.value = hmDate.value || "";
+    if(hmHours) hmHours.value = getHoursDraftForDate(hmDate.value || "");
+    updateTimeLogUI(t, true);
+    syncHoursTaskStatusFromCalendarDraft(t, hmDate.value || "", hmHours?.value || "");
+    renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+    });
+
+    el("hoursTaskModal")?.addEventListener("click", (e)=>{
+    if(!e.target?.closest?.("#hm_calendar")) return;
+    if(e.target?.closest?.(".hm-day-input")) return;
+    const btn = e.target?.closest?.("#hm_calendar .hm-day[data-date][data-active='1']");
+    if(!btn) return;
+    const t = getSelectedTaskForHoursModal();
+    const hmDate = el("hm_date");
+    const dateInput = el("t_time_date_input");
+    if(!t || !hmDate || !dateInput) return;
+    const day = btn.getAttribute("data-date") || "";
+    hmDate.value = day;
+    dateInput.value = day;
+    const hmHours = el("hm_hours");
+    updateTimeLogUI(t, true);
+    const dayInput = btn.querySelector(".hm-day-input[data-date]");
+    if(hmHours) hmHours.value = dayInput ? (dayInput.value || "") : "";
+    syncHoursTaskStatusFromCalendarDraft(t, day, dayInput ? dayInput.value : "");
+    renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+    });
+    el("hoursTaskModal")?.addEventListener("input", (e)=>{
+    if(!e.target?.closest?.("#hm_calendar")) return;
+    const input = e.target?.closest?.("#hm_calendar .hm-day-input[data-date]");
+    if(!input) return;
+    const day = input.getAttribute("data-date") || "";
+    const hmDate = el("hm_date");
+    const hmHours = el("hm_hours");
+    const dateInput = el("t_time_date_input");
+    if(hmDate) hmDate.value = day;
+    if(dateInput) dateInput.value = day;
+    if(hmHours) hmHours.value = input.value || "";
+    const t = getSelectedTaskForHoursModal();
+    if(t){
+      syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
+      renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+    }
+    });
+    el("hoursTaskModal")?.addEventListener("focusin", (e)=>{
+    if(!e.target?.closest?.("#hm_calendar")) return;
+    const input = e.target?.closest?.("#hm_calendar .hm-day-input[data-date][data-active='1']");
+    if(!input) return;
+    const t = getSelectedTaskForHoursModal();
+    const day = input.getAttribute("data-date") || "";
+    const hmDate = el("hm_date");
+    const dateInput = el("t_time_date_input");
+    if(!t || !day) return;
+    if(hmDate) hmDate.value = day;
+    if(dateInput) dateInput.value = day;
+    const hmHours = el("hm_hours");
+    if(hmHours) hmHours.value = input.value || "";
+    updateTimeLogUI(t, true);
+    syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
+    renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+    });
+  }
   // bouton impression PDF (utilise print.css)
 
   el("btnBack")?.addEventListener("click", ()=>{
@@ -7588,187 +8555,6 @@ function bind(){
     renderAll();
 
   });
-
-  el("btnProjectExport")?.addEventListener("click", (e)=>{
-
-    e.preventDefault();
-
-    if(typeof openExportProjectModal === "function") openExportProjectModal();
-
-  });
-
-  el("btnExportMaster")?.addEventListener("click", (e)=>{
-
-    e.preventDefault();
-
-    if(typeof openExportMasterModal === "function") openExportMasterModal();
-
-  });
-  el("btnExportMasterGantt")?.addEventListener("click", (e)=>{
-    e.preventDefault();
-    const modal = el("exportMasterGanttModal");
-    if(modal){
-      ganttExportContext = "master";
-      initGanttExportRangeUI(state?.tasks || []);
-      modal.classList.remove("hidden");
-      modal.style.display="flex";
-      modal.setAttribute("aria-hidden","false");
-    }
-  });
-  el("btnExportProjectGantt")?.addEventListener("click", (e)=>{
-    e.preventDefault();
-    if(!selectedProjectId) return;
-    const modal = el("exportMasterGanttModal");
-    if(modal){
-      ganttExportContext = "project";
-      const projectTasks = state.tasks.filter(t=>t.projectId===selectedProjectId);
-      initGanttExportRangeUI(projectTasks);
-      modal.classList.remove("hidden");
-      modal.style.display="flex";
-      modal.setAttribute("aria-hidden","false");
-    }
-  });
-
-  el("workloadRangeType")?.addEventListener("change", ()=>{
-
-    workloadRangeType = el("workloadRangeType")?.value || "all";
-
-    renderWorkloadChart(filteredTasks());
-
-  });
-
-  el("workloadRangeYear")?.addEventListener("change", ()=>{
-
-    workloadRangeYear = el("workloadRangeYear")?.value || "";
-
-    renderWorkloadChart(filteredTasks());
-
-  });
-
-  el("workloadRangeStart")?.addEventListener("change", ()=>{
-
-    workloadRangeStart = el("workloadRangeStart")?.value || "";
-
-    renderWorkloadChart(filteredTasks());
-
-  });
-
-  el("workloadRangeEnd")?.addEventListener("change", ()=>{
-
-    workloadRangeEnd = el("workloadRangeEnd")?.value || "";
-
-    renderWorkloadChart(filteredTasks());
-
-  });
-  el("btnResetWorkload")?.addEventListener("click", ()=>{
-    resetMasterWorkloadFilters();
-    renderWorkloadChart(filteredTasks());
-  });
-
-  el("workloadRangeTypeProject")?.addEventListener("change", ()=>{
-
-    workloadRangeTypeProject = el("workloadRangeTypeProject")?.value || "all";
-
-    if(selectedProjectId) renderProject();
-
-  });
-
-  el("workloadRangeYearProject")?.addEventListener("change", ()=>{
-
-    workloadRangeYearProject = el("workloadRangeYearProject")?.value || "";
-
-    if(selectedProjectId) renderProject();
-
-  });
-
-  el("workloadRangeStartProject")?.addEventListener("change", ()=>{
-
-    workloadRangeStartProject = el("workloadRangeStartProject")?.value || "";
-
-    if(selectedProjectId) renderProject();
-
-  });
-
-  el("workloadRangeEndProject")?.addEventListener("change", ()=>{
-
-    workloadRangeEndProject = el("workloadRangeEndProject")?.value || "";
-
-    if(selectedProjectId) renderProject();
-
-  });
-  el("t_start")?.addEventListener("change", ()=> setTaskProgressUI(calcProgressFromInputs()));
-  el("t_end")?.addEventListener("change", ()=> setTaskProgressUI(calcProgressFromInputs()));
-  el("btnResetWorkloadProject")?.addEventListener("click", ()=>{
-    resetProjectWorkloadFilters();
-    if(selectedProjectId) renderProject();
-  });
-
-  el("btnExportWorkload")?.addEventListener("click", ()=>{
-
-    exportSvgToPdf("workloadChart","Charge de travail", "workloadPie", filteredTasks());
-
-  });
-
-  el("btnExportWorkloadProject")?.addEventListener("click", ()=>{
-
-    if(!selectedProjectId) return;
-
-    const projectTasks = state.tasks.filter(t=>t.projectId===selectedProjectId);
-
-    exportSvgToPdf("workloadChartProject","Charge de travail (projet)", "workloadPieProject", projectTasks);
-
-  });
-  let pendingHoursReportExportMode = "master";
-
-  document.addEventListener("click", (e)=>{
-
-    const btn = e.target?.closest?.("[data-report-export]");
-
-    if(!btn) return;
-
-    e.preventDefault();
-
-    const mode = btn.getAttribute("data-report-export") || "master";
-
-    if(mode === "project" && !selectedProjectId) return;
-
-    pendingHoursReportExportMode = mode;
-    const hoursModal = el("exportHoursReportModal");
-    if(hoursModal){
-      hoursModal.classList.remove("hidden");
-      hoursModal.style.display = "flex";
-      hoursModal.setAttribute("aria-hidden","false");
-    }
-
-  });
-
-  const exportHoursModal = el("exportHoursReportModal");
-  const btnHoursWithExternal = el("btnExportHoursWithExternal");
-  const btnHoursWithoutExternal = el("btnExportHoursWithoutExternal");
-  const btnHoursCancel = el("btnExportHoursCancel");
-
-  if(exportHoursModal && btnHoursWithExternal && btnHoursWithoutExternal){
-    const closeHoursModal = ()=> hideModalSafely(exportHoursModal);
-
-    btnHoursWithExternal.onclick = ()=>{
-      closeHoursModal();
-      exportRealHoursReportPdf(pendingHoursReportExportMode, true);
-    };
-
-    btnHoursWithoutExternal.onclick = ()=>{
-      closeHoursModal();
-      exportRealHoursReportPdf(pendingHoursReportExportMode, false);
-    };
-
-    if(btnHoursCancel){
-      btnHoursCancel.onclick = ()=> closeHoursModal();
-    }
-
-    exportHoursModal.addEventListener("click", (e)=>{
-      if(e.target===exportHoursModal) closeHoursModal();
-    });
-  }
-
   el("btnToggleMasterVendor")?.addEventListener("click", ()=>{
 
     ganttColVisibility.masterVendor = !ganttColVisibility.masterVendor;
@@ -7800,180 +8586,6 @@ function bind(){
     applyGanttColumnVisibility();
 
   });
-
-  const modal = el("exportProjectModal");
-
-  const btnNo = el("btnExportNoCharts");
-
-  const btnYes = el("btnExportWithCharts");
-
-  if(modal && btnNo && btnYes){
-
-    const closeModal = ()=>{
-      hideModalSafely(modal, "#btnProjectExport");
-    };
-
-    btnNo.onclick = ()=>{
-
-      closeModal();
-
-      preparePrint({includeGraphs:false});
-
-      window.print();
-
-    };
-
-    btnYes.onclick = ()=>{
-
-      closeModal();
-
-      preparePrint({includeGraphs:true});
-
-      window.print();
-
-    };
-
-    modal.addEventListener("click",(e)=>{
-
-      if(e.target===modal) closeModal();
-
-    });
-
-  }
-
-  const masterModal = el("exportMasterModal");
-
-  const btnMNo = el("btnExportMasterNoCharts");
-
-  const btnMYes = el("btnExportMasterWithCharts");
-
-  if(masterModal && btnMNo && btnMYes){
-
-    const closeMaster = ()=>{
-      hideModalSafely(masterModal, "#btnExportMaster");
-    };
-
-    btnMNo.onclick = ()=>{
-
-      closeMaster();
-
-      selectedProjectId = null;
-
-      preparePrint({includeGraphs:false});
-
-      window.print();
-
-    };
-
-    btnMYes.onclick = ()=>{
-
-      closeMaster();
-
-      selectedProjectId = null;
-
-      preparePrint({includeGraphs:true});
-
-      window.print();
-
-    };
-
-    masterModal.addEventListener("click",(e)=>{
-
-      if(e.target===masterModal) closeMaster();
-
-    });
-
-  }
-
-  const ganttModal = el("exportMasterGanttModal");
-  const btnGanttRun = el("btnExportMasterGanttRun");
-  const btnGanttCancel = el("btnExportMasterGanttCancel");
-  const ganttType = el("ganttExportRangeType");
-  const ganttYear = el("ganttExportRangeYear");
-
-  if(ganttModal && btnGanttRun && btnGanttCancel){
-    const closeGantt = ()=>{
-      const focusBack = ganttExportContext === "project" ? "#btnExportProjectGantt" : "#btnExportMasterGantt";
-      hideModalSafely(ganttModal, focusBack);
-    };
-    btnGanttCancel.onclick = ()=> closeGantt();
-    btnGanttRun.onclick = ()=>{
-      const isProject = ganttExportContext === "project";
-      let allTasks = isProject && selectedProjectId
-        ? state.tasks.filter(t=>t.projectId===selectedProjectId)
-        : filteredTasks();
-      if(!isProject){
-        const allSites = getAllSitesList();
-        const selectedSites = getSelectedExportSites();
-        if(allSites.length && selectedSites.length === 0){
-          alert("Sélectionne au moins un site.");
-          return;
-        }
-        if(selectedSites.length && selectedSites.length < allSites.length){
-          const selKeys = new Set(selectedSites.map(canonSiteKey));
-          allTasks = allTasks.filter(t=>{
-            const p = state.projects.find(x=>x.id===t.projectId);
-            const site = canonSiteKey(p?.site || "");
-            return selKeys.has(site);
-          });
-        }
-      }
-      const range = getMasterGanttExportRange(allTasks);
-      if(!range){ alert("Aucune tâche datée pour l'export."); return; }
-      const tasksAll = allTasks.filter(t=>t.start && t.end);
-      const tasksInRange = tasksAll.filter(t=>{
-        const s = new Date(t.start+"T00:00:00");
-        const e = new Date(t.end+"T00:00:00");
-        return e >= range.start && s <= range.end;
-      });
-      if(tasksInRange.length===0){
-        // fallback automatique pour l'annee scolaire si mauvais choix d'annee
-        const {min, max} = getTasksDateBounds(tasksAll);
-        const schoolYear = min ? ((min.getMonth() >= 8) ? min.getFullYear() : (min.getFullYear() - 1)) : null;
-        if(el("ganttExportRangeType")?.value === "school" && schoolYear !== null){
-          const fallbackRange = {start:new Date(schoolYear,8,1), end:new Date(schoolYear+1,7,31)};
-          const tasksFallback = tasksAll.filter(t=>{
-            const s = new Date(t.start+"T00:00:00");
-            const e = new Date(t.end+"T00:00:00");
-            return e >= fallbackRange.start && s <= fallbackRange.end;
-          });
-          if(tasksFallback.length>0){
-            closeGantt();
-            selectedProjectId = null;
-            prepareMasterGanttPrint(fallbackRange.start, fallbackRange.end);
-            window.print();
-            return;
-          }
-        }
-        alert("Aucune tâche dans cette période.");
-        return;
-      }
-      closeGantt();
-      if(isProject){
-        prepareProjectGanttPrint(range.start, range.end, tasksAll);
-      }else{
-        selectedProjectId = null;
-        prepareMasterGanttPrint(range.start, range.end, tasksAll);
-      }
-      window.print();
-    };
-    ganttModal.addEventListener("click",(e)=>{
-      if(e.target===ganttModal) closeGantt();
-    });
-    ganttType?.addEventListener("change", ()=>{
-      const tasks = (ganttExportContext==="project" && selectedProjectId)
-        ? state.tasks.filter(t=>t.projectId===selectedProjectId)
-        : (state?.tasks || []);
-      initGanttExportRangeUI(tasks);
-    });
-    ganttYear?.addEventListener("change", ()=>{
-      const tasks = (ganttExportContext==="project" && selectedProjectId)
-        ? state.tasks.filter(t=>t.projectId===selectedProjectId)
-        : (state?.tasks || []);
-      initGanttExportRangeUI(tasks);
-    });
-  }
-
   el("btnAddProject")?.addEventListener("click", ()=>{
 
     if(isLocked) return;
@@ -8195,7 +8807,7 @@ function bind(){
     t.vendor     = el("t_vendor").value.trim();
     const taskOwnerType = ownerType(t.owner);
     if(taskOwnerType === "externe" && !t.vendor){
-      alert("Prestataire externe requis : renseigne le nom du prestataire.");
+      alert("Prestataire externe requis : renseignez le nom du prestataire.");
       return;
     }
     if(taskOwnerType !== "externe"){
@@ -8349,7 +8961,7 @@ function bind(){
 
     const fmt = today.toLocaleDateString("fr-FR",{weekday:"long", day:"2-digit", month:"long", year:"numeric"});
 
-    brandSub.innerHTML = `Tableau maître  Projets  Gantt  Exports locaux  <span class="brand-date">${fmt}</span>`;
+    brandSub.innerHTML = `Tableau maître  Projets  Gantt  <span class="brand-date">${fmt}</span>`;
 
   }
 
@@ -8729,6 +9341,386 @@ function setPrintPageFormat(size, margin="6mm"){
   n.textContent = `@page { size: ${size}; margin: ${margin}; }`;
 }
 
+function ensurePrintTemplate(){
+  let tpl = document.getElementById("printTemplate");
+  if(tpl) return tpl;
+  tpl = document.createElement("template");
+  tpl.id = "printTemplate";
+  tpl.innerHTML = `
+    <section id="printHeader" class="print-header">
+      <h1>Export PDF</h1>
+      <div id="printMeta" class="print-meta"></div>
+      <div id="printLegend" class="print-legend"></div>
+    </section>
+    <section class="print-order"></section>
+  `;
+  document.body.appendChild(tpl);
+  return tpl;
+}
+let __pdfLibsPromise = null;
+function ensurePdfLibraries(){
+  if(window?.html2canvas && window?.jspdf?.jsPDF) return Promise.resolve();
+  if(__pdfLibsPromise) return __pdfLibsPromise;
+  const loadScript = (src)=> new Promise((resolve,reject)=>{
+    const s = document.createElement("script");
+    let done = false;
+    const t = setTimeout(()=>{
+      if(done) return;
+      done = true;
+      try{ s.remove(); }catch(_e){}
+      reject(new Error(`Timeout chargement script: ${src}`));
+    }, 12000);
+    s.src = src;
+    s.async = true;
+    s.onload = ()=>{
+      if(done) return;
+      done = true;
+      clearTimeout(t);
+      resolve();
+    };
+    s.onerror = ()=>{
+      if(done) return;
+      done = true;
+      clearTimeout(t);
+      reject(new Error(`Chargement impossible: ${src}`));
+    };
+    document.head.appendChild(s);
+  });
+  __pdfLibsPromise = (async()=>{
+    if(!window?.html2canvas){
+      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+    }
+    if(!window?.jspdf?.jsPDF){
+      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+    }
+  })();
+  return __pdfLibsPromise;
+}
+
+function readPdfPageSetup(){
+  const text = document.getElementById("printPageFormatOverride")?.textContent || "";
+  const sizeMatch = text.match(/size\s*:\s*([^;]+);/i);
+  const marginMatch = text.match(/margin\s*:\s*([0-9]+(?:\.[0-9]+)?)\s*mm\s*;/i);
+  const size = String(sizeMatch?.[1] || "A4 landscape").toLowerCase();
+  const marginMm = Number(marginMatch?.[1] || 2);
+  return {
+    format: size.includes("a3") ? "a3" : "a4",
+    orientation: size.includes("portrait") ? "portrait" : "landscape",
+    marginMm: Number.isFinite(marginMm) ? Math.max(1, marginMm) : 2
+  };
+}
+
+async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
+  const container = document.getElementById("printInjection");
+  if(!container || !container.innerHTML.trim()){
+    alert("Aucun contenu d'export à imprimer.");
+    return;
+  }
+
+  const viewer = viewerRef || window.open("about:blank", "_blank");
+  if(!viewer){
+    alert("Le popup PDF est bloqué. Autorisez les popups puis recommencez.");
+    return;
+  }
+
+  viewer.document.open();
+  viewer.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${attrEscape(title)}</title></head><body style="font-family:Segoe UI,Arial,sans-serif;padding:16px">Génération du PDF...</body></html>`);
+  viewer.document.close();
+
+  const host = document.createElement("div");
+  host.style.position = "fixed";
+  host.style.left = "-20000px";
+  host.style.top = "0";
+  host.style.width = "1800px";
+  host.style.background = "#fff";
+  host.style.zIndex = "-1";
+
+  const page = document.createElement("div");
+  page.className = "print-mode";
+  page.style.background = "#fff";
+  page.innerHTML = container.innerHTML;
+  host.appendChild(page);
+  document.body.appendChild(host);
+
+  try{
+    await ensurePdfLibraries();
+    await new Promise(r=>setTimeout(r, 80));
+
+    const setup = readPdfPageSetup();
+    const force = document.createElement("style");
+    force.textContent = `
+      *{animation:none !important;transition:none !important;}
+      .gantt-bar,.gantt-print-bar,.bar-wrapper,.gantt-days{opacity:1 !important;visibility:visible !important;transform:none !important;}
+      body.print-mode .gantt-print-bar{
+        display:block !important;
+        height:10px !important;
+        min-height:10px !important;
+        border-radius:3px !important;
+        border:1px solid rgba(0,0,0,0.35) !important;
+        box-sizing:border-box !important;
+        background-clip:padding-box !important;
+      }
+      body.print-mode .gantt-cell-inner{
+        min-height:14px !important;
+      }
+      body.print-mode .bar-wrapper{
+        min-height:12px !important;
+        width:100% !important;
+      }
+      body.print-mode .gantt-table th.week-cell{
+        text-align:center !important;
+        vertical-align:middle !important;
+        padding:2px 1px !important;
+        line-height:1.05 !important;
+      }
+      body.print-mode .gantt-table th.week-cell .gantt-week-date{
+        display:block !important;
+        margin-top:2px !important;
+        line-height:1 !important;
+        font-size:9px !important;
+      }
+      body.print-mode .pdf-two-graphs-wrap{
+        display:grid !important;
+        grid-template-columns:1fr 1fr !important;
+        gap:3mm !important;
+        align-items:stretch !important;
+        min-height:170mm !important;
+        place-items:center stretch !important;
+      }
+      body.print-mode .pdf-two-graphs-item{
+        min-width:0 !important;
+        height:100% !important;
+        display:flex !important;
+        align-items:center !important;
+      }
+      body.print-mode .pdf-two-graphs-item .card{
+        margin-bottom:0 !important;
+        width:100% !important;
+        min-height:158mm !important;
+        height:158mm !important;
+        border:1px solid #cbd5e1 !important;
+        border-radius:8px !important;
+        padding:2.5mm !important;
+        box-shadow:0 2mm 5mm rgba(15,23,42,.14) !important;
+        display:flex !important;
+        flex-direction:column !important;
+        justify-content:flex-start !important;
+      }
+      body.print-mode .pdf-two-graphs-item #workloadChartProjectWrap,
+      body.print-mode .pdf-two-graphs-item #workloadPieProjectWrap{
+        flex:1 1 auto !important;
+        min-height:0 !important;
+        overflow:visible !important;
+        padding-bottom:3mm !important;
+      }
+      body.print-mode .pdf-two-graphs-item #workloadChartProject,
+      body.print-mode .pdf-two-graphs-item #workloadPieProject{
+        height:130mm !important;
+        width:100% !important;
+      }
+      body.print-mode .pdf-workload-legend{
+        margin-top:1.5mm !important;
+        display:flex !important;
+        justify-content:center !important;
+        align-items:center !important;
+        flex-wrap:wrap !important;
+        gap:4mm !important;
+      }
+      body.print-mode .pdf-workload-legend-item{
+        display:inline-flex !important;
+        align-items:center !important;
+        gap:1.5mm !important;
+        font-size:10px !important;
+        color:#0f172a !important;
+        font-weight:700 !important;
+      }
+      body.print-mode .pdf-workload-legend-dot{
+        width:8px !important;
+        height:8px !important;
+        border-radius:999px !important;
+        display:inline-block !important;
+      }
+      body.print-mode .pdf-two-graphs-item svg{
+        width:100% !important;
+        max-height:146mm !important;
+        overflow:visible !important;
+      }
+      body.print-mode .pdf-two-graphs-item .apexcharts-canvas,
+      body.print-mode .pdf-two-graphs-item .apexcharts-svg,
+      body.print-mode .pdf-two-graphs-item .apexcharts-inner{
+        overflow:visible !important;
+      }
+      body.print-mode .card,
+      body.print-mode .tablewrap,
+      body.print-mode .gantt-table,
+      body.print-mode .panel,
+      body.print-mode .print-header,
+      body.print-mode .print-block{
+        border:none !important;
+        box-shadow:none !important;
+        outline:none !important;
+        background:#fff !important;
+      }
+      body.print-mode .pdf-two-graphs-item .card{
+        border:1px solid #cbd5e1 !important;
+        box-shadow:0 2mm 5mm rgba(15,23,42,.14) !important;
+        overflow:visible !important;
+      }
+      body.print-mode .card-title{
+        margin-bottom:4px !important;
+      }
+      body.print-mode .num-badge{
+        display:inline-flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        width:26px !important;
+        min-width:26px !important;
+        max-width:26px !important;
+        height:22px !important;
+        padding:0 !important;
+        margin-right:4px !important;
+        border-radius:999px !important;
+        line-height:1 !important;
+        font-size:12px !important;
+        font-weight:800 !important;
+        font-variant-numeric: tabular-nums !important;
+        font-feature-settings: "tnum" 1 !important;
+        letter-spacing:0 !important;
+        text-indent:0 !important;
+        vertical-align:middle !important;
+        opacity:1 !important;
+        filter:none !important;
+        border:none !important;
+        box-shadow:0 2mm 5mm rgba(15,23,42,.14) !important;
+        text-shadow:none !important;
+        background-image:none !important;
+        -webkit-text-stroke:0 !important;
+      }
+      body.print-mode .badge.owner{
+        opacity:1 !important;
+        filter:none !important;
+      }
+      body.print-mode #printHeader{
+        width:100% !important;
+        box-sizing:border-box !important;
+      }
+      body.print-mode #printMeta{
+        display:grid !important;
+        grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+        gap:2mm !important;
+        width:100% !important;
+        box-sizing:border-box !important;
+      }
+      body.print-mode #printMeta > div{
+        min-width:0 !important;
+        line-height:1.35 !important;
+      }
+      @media (max-width:1200px){
+        body.print-mode #printMeta{
+          grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+        }
+      }
+    `;
+    host.appendChild(force);
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: setup.orientation, unit: "mm", format: setup.format, compress: true });
+
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = setup.marginMm || 2;
+    const drawW = pageW - (margin * 2);
+    const drawH = pageH - (margin * 2);
+
+    const blocks = Array.from(page.querySelectorAll('.print-block'));
+    const targets = blocks.length ? blocks : [page];
+
+    let yCursor = margin;
+    let hasContentOnPage = false;
+
+    for(let i=0; i<targets.length; i++){
+      const block = targets[i];
+      if(i>0 && block.classList && block.classList.contains("force-new-page")){
+        pdf.addPage();
+        yCursor = margin;
+        hasContentOnPage = false;
+      }
+      const canvas = await window.html2canvas(block, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        windowWidth: Math.max(block.scrollWidth || block.clientWidth || 1800, 1800),
+        windowHeight: Math.max(block.scrollHeight || block.clientHeight || 300, 300)
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      const imgH = canvas.height * drawW / canvas.width;
+
+      if(yCursor + imgH <= (margin + drawH)){
+        pdf.addImage(imgData, "JPEG", margin, yCursor, drawW, imgH, undefined, "FAST");
+        yCursor += imgH + 2;
+        hasContentOnPage = true;
+        continue;
+      }
+
+      if(imgH <= drawH){
+        if(hasContentOnPage){
+          pdf.addPage();
+          yCursor = margin;
+          hasContentOnPage = false;
+        }
+        pdf.addImage(imgData, "JPEG", margin, yCursor, drawW, imgH, undefined, "FAST");
+        yCursor += imgH + 2;
+        hasContentOnPage = true;
+        continue;
+      }
+
+      const slicePx = Math.floor((drawH * canvas.width) / drawW);
+      let offsetPx = 0;
+      while(offsetPx < canvas.height){
+        if(hasContentOnPage){
+          pdf.addPage();
+          yCursor = margin;
+          hasContentOnPage = false;
+        }
+
+        const hPx = Math.min(slicePx, canvas.height - offsetPx);
+        const slice = document.createElement('canvas');
+        slice.width = canvas.width;
+        slice.height = hPx;
+        const sctx = slice.getContext('2d');
+        sctx.drawImage(canvas, 0, offsetPx, canvas.width, hPx, 0, 0, canvas.width, hPx);
+
+        const sliceData = slice.toDataURL('image/jpeg', 0.95);
+        const sliceH = hPx * drawW / canvas.width;
+        pdf.addImage(sliceData, 'JPEG', margin, yCursor, drawW, sliceH, undefined, 'FAST');
+        hasContentOnPage = true;
+
+        offsetPx += hPx;
+      }
+      yCursor = margin;
+    }
+
+    const blob = pdf.output("blob");
+    const blobUrl = URL.createObjectURL(blob);
+    viewer.location.href = blobUrl;
+    setTimeout(()=>{ try{ URL.revokeObjectURL(blobUrl); }catch(e){ softCatch(e); } }, 120000);
+  }catch(err){
+    console.error("PDF generation failed", err);
+    try{
+      viewer.document.open();
+      viewer.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Erreur export PDF</title></head><body style="font-family:Segoe UI,Arial,sans-serif;padding:16px"><h2>Erreur pendant la génération du PDF</h2><pre style="white-space:pre-wrap;color:#b91c1c">${attrEscape(String(err?.message || err || "Erreur inconnue"))}</pre></body></html>`);
+      viewer.document.close();
+    }catch(e){ softCatch(e); }
+    alert("Erreur pendant la génération du PDF.");
+  }finally{
+    try{ host.remove(); }catch(e){ softCatch(e); }
+    try{ cleanupPrint(); }catch(e){ softCatch(e); }
+  }
+}
+
 function maximizePrintContainer(container){
   if(!container) return;
   container.style.zoom = 1;
@@ -8773,15 +9765,16 @@ function buildRealHoursReportForTasks(tasksInput){
       const rk = isExternalTask ? "externe" : logRole;
       const mins = Number(l.minutes)||0;
       if(!mins) return;
+      const weightedMinutes = Math.round(mins * roleHoursMultiplier(rk));
       const prev = perRole.get(rk) || 0;
-      perRole.set(rk, prev + mins);
+      perRole.set(rk, prev + weightedMinutes);
 
       if(isExternalTask || rk==="externe"){
-        externalByName.set(extName, (externalByName.get(extName) || 0) + mins);
-        vendorTotals.set(extName, (vendorTotals.get(extName) || 0) + mins);
+        externalByName.set(extName, (externalByName.get(extName) || 0) + weightedMinutes);
+        vendorTotals.set(extName, (vendorTotals.get(extName) || 0) + weightedMinutes);
       }else{
         const intName = roleLabel(rk);
-        internalByName.set(intName, (internalByName.get(intName) || 0) + mins);
+        internalByName.set(intName, (internalByName.get(intName) || 0) + weightedMinutes);
       }
     });
     perRole.forEach((mins, rk)=>{
@@ -8889,9 +9882,23 @@ function buildRealHoursReportInnerHTML(rep, title, reportMode="master", includeE
     ).join("")
     : `<tr><td colspan="3" class="text-muted">Aucune donnée.</td></tr>`;
 
+  const vendorsBlock = includeExternal
+    ? `<div>
+        <div class="report-subtitle">Détail Externe (prestataires)</div>
+        <table class="report-table">
+          <thead><tr><th>Prestataire</th><th>Heures</th></tr></thead>
+          <tbody>${vendors}</tbody>
+        </table>
+      </div>`
+    : "";
+
+  const totalsSubtitle = includeExternal
+    ? "Totaux internes / externes par intervenant (nom)"
+    : "Totaux internes par intervenant (nom)";
+
   return `
-    <div class="row row-compact" style="justify-content:space-between;align-items:center;margin-bottom:6px;">\n      <div class="card-title">${attrEscape(title || "Analyse heures réelles")}</div>\n      <button class="btn report-export-btn" type="button" data-report-export="${reportMode}">\n        <span class="pdf-icon" aria-hidden="true"></span>\n        Export PDF\n      </button>\n    </div>
-    <div class="report-grid-two">
+    <div class="row row-compact" style="justify-content:space-between;align-items:center;margin-bottom:6px;">\n      <div class="card-title">${attrEscape(title || "Analyse heures réelles")}</div>\n    </div>
+    <div class="report-grid-two"${includeExternal ? "" : ' style="display:block"'}>
       <div>
         <div class="report-subtitle">Synthèse par intervenant</div>
         <table class="report-table report-table-summary">
@@ -8900,13 +9907,7 @@ function buildRealHoursReportInnerHTML(rep, title, reportMode="master", includeE
           <tfoot><tr><th>Total</th><th style="text-align:right">${formatHoursMinutes(report.internalTotalMinutes)}</th></tr></tfoot>
         </table>
       </div>
-      <div>
-        <div class="report-subtitle">Détail Externe (prestataires)</div>
-        <table class="report-table">
-          <thead><tr><th>Prestataire</th><th>Heures</th></tr></thead>
-          <tbody>${vendors}</tbody>
-        </table>
-      </div>
+      ${vendorsBlock}
     </div>
     <div class="report-subtitle">Détail tâche + intervenant</div>
     <table class="report-table">
@@ -8914,22 +9915,22 @@ function buildRealHoursReportInnerHTML(rep, title, reportMode="master", includeE
       <tbody>${details}</tbody>
       <tfoot><tr><th colspan="3">Total</th><th style="text-align:right">${formatHoursMinutes(detailTotalMinutes)}</th></tr></tfoot>
     </table>
-    <div class="report-subtitle" style="margin-top:8px">Totaux internes / externes par intervenant (nom)</div>
+    <div class="report-subtitle" style="margin-top:8px">${totalsSubtitle}</div>
     <table class="report-table">
       <thead><tr><th>Catégorie</th><th>Nom intervenant</th><th>Heures</th></tr></thead>
       <tbody>${totalsByNameHtml}</tbody>
       <tfoot>
         <tr><th colspan="2">Total interne</th><th style="text-align:right">${formatHoursMinutes(report.internalTotalMinutes)}</th></tr>
-        <tr><th colspan="2">Total externe</th><th style="text-align:right">${formatHoursMinutes(report.externalTotalMinutes)}</th></tr>
+        ${includeExternal ? `<tr><th colspan="2">Total externe</th><th style="text-align:right">${formatHoursMinutes(report.externalTotalMinutes)}</th></tr>` : ""}
         <tr><th colspan="2">Total heures réelles</th><th style="text-align:right">${formatHoursMinutes(report.totalMinutes)}</th></tr>
       </tfoot>
     </table>
   `;
 }
 
-function buildProjectRealHoursReportInnerHTML(projectId, includeExternal=true){
+function buildProjectRealHoursReportInnerHTML(projectId, includeExternal=true, title="Analyse heures réelles (projet)"){
   const rep = buildProjectRealHoursReport(projectId);
-  return buildRealHoursReportInnerHTML(rep, "Analyse heures réelles (projet)", "project", includeExternal);
+  return buildRealHoursReportInnerHTML(rep, title, "project", includeExternal);
 }
 
 function buildMasterRealHoursReportInnerHTML(includeExternal=true){
@@ -8942,374 +9943,6 @@ function buildProjectRealHoursReportHTML(projectId, includeExternal=true){
 }
 function buildMasterRealHoursReportHTML(includeExternal=true){
   return `<div class="card print-block report-hours-card">${buildMasterRealHoursReportInnerHTML(includeExternal)}</div>`;
-}
-
-function exportRealHoursReportPdf(mode="master", includeExternal=true){
-  const isProjectMode = mode === "project" && !!selectedProjectId;
-  const project = isProjectMode ? state.projects.find(p=>p.id===selectedProjectId) : null;
-  const reportHtml = isProjectMode
-    ? buildProjectRealHoursReportHTML(selectedProjectId, includeExternal)
-    : buildMasterRealHoursReportHTML(includeExternal);
-
-  setPrintPageFormat("A4 landscape", "2mm");
-  document.body.classList.add("print-mode");
-  document.body.classList.add("print-hours-report");
-
-  const tpl = document.getElementById("printTemplate");
-  if(!tpl) return;
-
-  let container = document.getElementById("printInjection");
-  if(!container){
-    container = document.createElement("div");
-    container.id = "printInjection";
-    document.body.prepend(container);
-  }
-
-  container.innerHTML = tpl.innerHTML;
-
-  const header = container.querySelector("#printHeader");
-  const meta = container.querySelector("#printMeta");
-  const legend = container.querySelector("#printLegend");
-  const today = new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});
-
-  if(header){
-    header.querySelector("h1").textContent = isProjectMode
-      ? `Analyse heures réelles - ${project?.name || "Projet"}`
-      : "Analyse heures réelles - Tableau maître";
-  }
-
-  if(meta){
-    const reportRaw = isProjectMode
-      ? buildProjectRealHoursReport(selectedProjectId)
-      : buildMasterRealHoursReport();
-    const report = filterRealHoursReportExternal(reportRaw, includeExternal);
-    const metaRows = [
-      ["Date export", today],
-      ["Contexte", isProjectMode ? "Projet" : "Tableau maître"],
-      ["Version", includeExternal ? "Avec prestataires externes" : "Sans prestataires externes"],
-      ["Heures réelles", formatHoursMinutes(report?.totalMinutes || 0)]
-    ];
-    meta.innerHTML = metaRows.map(([k,v])=>`<div><strong>${k}</strong><br>${v}</div>`).join("");
-  }
-
-  if(legend) legend.innerHTML = "";
-  container.querySelectorAll(".print-dynamic").forEach(n=>n.remove());
-
-  const wrap = document.createElement("div");
-  wrap.className = "print-dynamic";
-  const reportWrap = document.createElement("div");
-  reportWrap.innerHTML = reportHtml;
-  const reportCard = reportWrap.firstElementChild;
-  if(reportCard) wrap.appendChild(reportCard);
-  container.querySelector(".print-order")?.appendChild(wrap);
-
-  setTimeout(()=>{
-    maximizePrintContainer(container);
-    window.print();
-  }, 0);
-}
-
-function preparePrint(opts={}){
-
-  const includeGraphs = opts.includeGraphs !== false;
-  setPrintPageFormat("A4 landscape", "2mm");
-
-  document.body.classList.add("print-mode");
-
-  const tpl = document.getElementById("printTemplate");
-
-  if(!tpl) return;
-
-  let container = document.getElementById("printInjection");
-
-  if(!container){
-
-    container = document.createElement("div");
-
-    container.id="printInjection";
-
-    document.body.prepend(container);
-
-  }
-
-  container.innerHTML = tpl.innerHTML;
-
-  const header = container.querySelector("#printHeader");
-
-  const meta = container.querySelector("#printMeta");
-
-  const legend = container.querySelector("#printLegend");
-
-
-
-  const today = new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});
-
-  const currentProject = selectedProjectId ? state.projects.find(p=>p.id===selectedProjectId) : null;
-  const realTotal = currentProject
-    ? buildProjectRealHoursReport(currentProject.id).totalMinutes
-    : getRealMinutesForTasks(state.tasks || []).totalMinutes || 0;
-
-
-
-  header.querySelector("h1").textContent = currentProject ? `Projet : ${currentProject.name||"Sans nom"}` : "Tableau maître";
-
-  const metaRows = [
-
-    ["Sous-projet", currentProject?.subproject || "-"],
-
-    ["Site / Zone", currentProject?.site || "-"],
-
-    ["Date export", today],
-
-    ["Nombre de tâches", currentProject ? state.tasks.filter(t=>t.projectId===currentProject.id).length : state.tasks.length],
-    ["Heures réelles", formatHoursMinutes(realTotal)]
-
-  ];
-
-  meta.innerHTML = metaRows.map(([k,v])=>`<div><strong>${k}</strong><br>${v}</div>`).join("");
-
-
-
-  if(legend){
-
-    legend.innerHTML = STATUSES.map(s=>{
-
-      const c = STATUS_COLORS[s.v] || "#2563eb";
-
-      return `<span class="legend-item"><span class="legend-dot" style="background:${c};border-color:${c}"></span><span>${s.label}</span></span>`;
-
-    }).join("");
-
-  }
-
-
-
-  // Contenu imprim : selon qu'on est sur le maître ou un projet
-
-  container.querySelectorAll(".print-dynamic").forEach(n=>n.remove());
-
-  if(!selectedProjectId){
-
-    const wrap = document.createElement("div"); wrap.className="print-dynamic";
-
-    const tableWrap = document.querySelector("#masterTable")?.closest(".tablewrap");
-
-    if(tableWrap) wrap.appendChild(tableWrap.cloneNode(true));
-
-    const ganttCard = document.querySelector("#masterGantt")?.closest(".card");
-
-    if(ganttCard) wrap.appendChild(ganttCard.cloneNode(true));
-
-    if(includeGraphs){
-
-      const masterWorkload = document.querySelector("#workloadChart")?.closest(".card");
-
-      if(masterWorkload) wrap.appendChild(masterWorkload.cloneNode(true));
-
-      const masterPie = document.querySelector("#workloadPie")?.closest(".card");
-
-      if(masterPie) wrap.appendChild(masterPie.cloneNode(true));
-
-    }
-
-    const hoursReportWrap = document.createElement("div");
-    hoursReportWrap.innerHTML = buildMasterRealHoursReportHTML();
-    const reportCard = hoursReportWrap.firstElementChild;
-    if(reportCard) wrap.appendChild(reportCard);
-
-    container.querySelector(".print-order")?.appendChild(wrap);
-
-  }else{
-
-    // Projet : rutiliser l'affichage courant (table tâches + gantt projet)
-
-    const wrap = document.createElement("div"); wrap.className="print-dynamic";
-
-    const projTable = document.querySelector("#projectTasksTable")?.closest(".card");
-
-    if(projTable) wrap.appendChild(projTable.cloneNode(true));
-
-    const projGantt = document.querySelector("#gantt")?.closest(".card");
-
-    if(projGantt){
-
-      const clone = projGantt.cloneNode(true);
-
-      // éviter la double lgende : on garde celle du cartouche principal
-
-      clone.querySelectorAll("#legend").forEach(n=>n.remove());
-
-      wrap.appendChild(clone);
-
-    }
-
-    const hoursReportWrap = document.createElement("div");
-    hoursReportWrap.innerHTML = buildProjectRealHoursReportHTML(selectedProjectId);
-    const reportCard = hoursReportWrap.firstElementChild;
-    if(reportCard) wrap.appendChild(reportCard);
-
-    if(includeGraphs){
-
-      const projWorkload = document.querySelector("#workloadChartProject")?.closest(".card");
-
-      if(projWorkload) wrap.appendChild(projWorkload.cloneNode(true));
-
-      const projPie = document.querySelector("#workloadPieProject")?.closest(".card");
-
-      if(projPie) wrap.appendChild(projPie.cloneNode(true));
-
-    }
-
-    container.querySelector(".print-order")?.appendChild(wrap);
-
-  }
-
-  setTimeout(()=> maximizePrintContainer(container), 0);
-
-}
-
-function prepareMasterGanttPrint(rangeStart, rangeEnd, tasksAllOverride=null){
-  setPrintPageFormat("A3 landscape", "2mm");
-  document.body.classList.add("print-mode");
-  document.body.classList.add("print-gantt-master");
-  const tpl = document.getElementById("printTemplate");
-  if(!tpl) return;
-  let container = document.getElementById("printInjection");
-  if(!container){
-    container = document.createElement("div");
-    container.id="printInjection";
-    document.body.prepend(container);
-  }
-  container.innerHTML = tpl.innerHTML;
-
-  const header = container.querySelector("#printHeader");
-  const meta = container.querySelector("#printMeta");
-  const legend = container.querySelector("#printLegend");
-
-  const today = new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});
-  if(header){
-    header.querySelector("h1").textContent = "Tableau maître — Gantt";
-  }
-  const rangeLabel = (rangeStart && rangeEnd)
-    ? `${formatDate(toInputDate(rangeStart))}  ${formatDate(toInputDate(rangeEnd))}`
-    : "-";
-  const tasksAll = (tasksAllOverride || filteredTasks()).filter(t=>t.start && t.end);
-  const tasksInRange = (rangeStart && rangeEnd) ? tasksAll.filter(t=>{
-    const s = new Date(t.start+"T00:00:00");
-    const e = new Date(t.end+"T00:00:00");
-    return e >= rangeStart && s <= rangeEnd;
-  }) : tasksAll;
-  const filtersLabel = buildMasterFiltersLabel();
-  if(meta){
-    const metaRows = [
-      ["Période", rangeLabel],
-      ["Filtres", filtersLabel],
-      ["Date export", today],
-      ["Nombre de tâches", tasksInRange.length]
-    ];
-    meta.innerHTML = metaRows.map(([k,v])=>`<div><strong>${k}</strong><br>${v}</div>`).join("");
-  }
-  if(legend){
-    legend.innerHTML = STATUSES.map(s=>{
-      const c = STATUS_COLORS[s.v] || "#2563eb";
-      return `<span class="legend-item"><span class="legend-dot" style="background:${c};border-color:${c}"></span><span>${s.label}</span></span>`;
-    }).join("");
-  }
-
-  container.querySelectorAll(".print-dynamic").forEach(n=>n.remove());
-  const wrap = document.createElement("div");
-  wrap.className="print-dynamic";
-  const card = document.createElement("div");
-  card.className="card print-block";
-  card.innerHTML = `<div class="card-title">Gantt global</div>${buildMasterGanttHTMLForRange(rangeStart, rangeEnd, tasksAll)}`;
-  wrap.appendChild(card);
-  container.querySelector(".print-order")?.appendChild(wrap);
-
-  // Ajuster l'échelle du gantt pour tenir sur une page
-  setTimeout(()=> fitMasterGanttPrint(container), 0);
-}
-
-function prepareProjectGanttPrint(rangeStart, rangeEnd, tasksAllOverride=null){
-  setPrintPageFormat("A3 landscape", "2mm");
-  document.body.classList.add("print-mode");
-  document.body.classList.add("print-gantt-project");
-  const tpl = document.getElementById("printTemplate");
-  if(!tpl) return;
-  let container = document.getElementById("printInjection");
-  if(!container){
-    container = document.createElement("div");
-    container.id="printInjection";
-    document.body.prepend(container);
-  }
-  container.innerHTML = tpl.innerHTML;
-
-  const header = container.querySelector("#printHeader");
-  const meta = container.querySelector("#printMeta");
-  const legend = container.querySelector("#printLegend");
-
-  const today = new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});
-  const p = state?.projects?.find(x=>x.id===selectedProjectId);
-  const projectName = (p?.name || "Projet").trim() || "Projet";
-  if(header){
-    header.querySelector("h1").textContent = `${projectName} — Gantt`;
-  }
-  const rangeLabel = (rangeStart && rangeEnd)
-    ? `${formatDate(toInputDate(rangeStart))}  ${formatDate(toInputDate(rangeEnd))}`
-    : "-";
-  const tasksAll = (tasksAllOverride || []).filter(t=>t.start && t.end);
-  const tasksInRange = (rangeStart && rangeEnd) ? tasksAll.filter(t=>{
-    const s = new Date(t.start+"T00:00:00");
-    const e = new Date(t.end+"T00:00:00");
-    return e >= rangeStart && s <= rangeEnd;
-  }) : tasksAll;
-  const filtersLabel = buildMasterFiltersLabel();
-  if(meta){
-    const metaRows = [
-      ["Projet", projectName],
-      ["Période", rangeLabel],
-      ["Filtres", filtersLabel],
-      ["Date export", today],
-      ["Nombre de tâches", tasksInRange.length]
-    ];
-    meta.innerHTML = metaRows.map(([k,v])=>`<div><strong>${k}</strong><br>${v}</div>`).join("");
-  }
-  if(legend){
-    legend.innerHTML = STATUSES.map(s=>{
-      const c = STATUS_COLORS[s.v] || "#2563eb";
-      return `<span class="legend-item"><span class="legend-dot" style="background:${c};border-color:${c}"></span><span>${s.label}</span></span>`;
-    }).join("");
-  }
-
-  container.querySelectorAll(".print-dynamic").forEach(n=>n.remove());
-  const wrap = document.createElement("div");
-  wrap.className="print-dynamic";
-  const card = document.createElement("div");
-  card.className="card print-block";
-  card.innerHTML = `<div class="card-title">Gantt hebdo</div>${buildProjectGanttHTMLForRange(rangeStart, rangeEnd, tasksAll)}`;
-  wrap.appendChild(card);
-  container.querySelector(".print-order")?.appendChild(wrap);
-
-  setTimeout(()=> fitMasterGanttPrint(container), 0);
-}
-
-function fitMasterGanttPrint(container){
-  if(!container) return;
-  container.style.transform = "";
-  container.style.transformOrigin = "";
-  container.style.zoom = 1;
-  const pageW = window.innerWidth || document.documentElement.clientWidth || 1;
-  const pageH = window.innerHeight || document.documentElement.clientHeight || 1;
-  const contentW = container.scrollWidth || container.offsetWidth || 1;
-  const contentH = container.scrollHeight || container.offsetHeight || 1;
-  let scaleW = pageW / contentW;
-  let scaleH = pageH / contentH;
-  if(!isFinite(scaleW) || scaleW <= 0) scaleW = 1;
-  if(!isFinite(scaleH) || scaleH <= 0) scaleH = 1;
-  const scale = Math.min(1, scaleW, scaleH);
-  container.style.zoom = scale;
-  container.style.width = "100%";
-  container.style.height = "100%";
-  container.style.overflow = "hidden";
 }
 
 
@@ -9332,43 +9965,6 @@ function cleanupPrint(){
 if(typeof window !== "undefined"){
 
   window.onafterprint = cleanupPrint;
-
-function buildExportSummary(tasks){
-    const total = tasks.length;
-    const dated = tasks.filter(t=>t.start && t.end);
-    let range = "Plage: -";
-    if(dated.length){
-      const minStart = dated.reduce((a,t)=> !a || new Date(t.start) < new Date(a) ? t.start : a, "");
-      const maxEnd = dated.reduce((a,t)=> !a || new Date(t.end) > new Date(a) ? t.end : a, "");
-      range = `Plage: ${formatDate(minStart)}  ${formatDate(maxEnd)}`;
-    }
-    const datedPart = dated.length !== total ? ` (dates: ${dated.length})` : "";
-    return `Tâches: ${total}${datedPart}  ${range}`;
-  }
-  window.openExportProjectModal = ()=>{
-
-    const summary = el("exportProjectSummary");
-    if(summary){
-      const tasks = state.tasks.filter(t=>t.projectId===selectedProjectId);
-      summary.textContent = buildExportSummary(tasks);
-    }
-    const modal = el("exportProjectModal");
-
-    if(modal){ modal.classList.remove("hidden"); modal.style.display="flex"; modal.setAttribute("aria-hidden","false"); }
-
-  };
-
-  window.openExportMasterModal = ()=>{
-
-    const summary = el("exportMasterSummary");
-    if(summary){
-      summary.textContent = buildExportSummary(state.tasks || []);
-    }
-    const modal = el("exportMasterModal");
-
-    if(modal){ modal.classList.remove("hidden"); modal.style.display="flex"; modal.setAttribute("aria-hidden","false"); }
-
-  };
 
 }
 
@@ -9425,6 +10021,152 @@ function buildMasterFiltersLabel(){
   }
   return labels.length ? labels.join(" • ") : "Aucun";
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=null){
+  const tasksAll = (tasksAllOverride || []).filter(t=>t.start && t.end);
+  const tasks = (rangeStart && rangeEnd) ? tasksAll.filter(t=>{
+    const s = new Date(t.start+"T00:00:00");
+    const e = new Date(t.end+"T00:00:00");
+    return e >= rangeStart && s <= rangeEnd;
+  }) : tasksAll;
+
+  if(tasks.length===0){
+    return "<div style='padding:10px;font-size:12px;'>Aucune tâche dans cette période.</div>";
+  }
+
+  tasks.sort((a,b)=>{
+    const oa=(taskOrderMap[a.id]||9999)-(taskOrderMap[b.id]||9999);
+    if(oa!==0) return oa;
+    const sa=Date.parse(a.start||"9999-12-31"), sb=Date.parse(b.start||"9999-12-31");
+    if(sa!==sb) return sa-sb;
+    return taskTitle(a).localeCompare(taskTitle(b),"fr",{sensitivity:"base"});
+  });
+
+  const displayStart = startOfWeek(rangeStart || tasks.map(t=>new Date(t.start+"T00:00:00")).reduce((a,b)=>a<b?a:b));
+  const displayEnd = endOfWeek(rangeEnd || tasks.map(t=>new Date(t.end+"T00:00:00")).reduce((a,b)=>a>b?a:b));
+
+  const weeks=[];
+  for(let w=startOfWeek(displayStart); w<=addDays(startOfWeek(displayEnd),0); w=addDays(w,7)) weeks.push(new Date(w));
+
+  let html = "<table class='pdf-gantt-table'><thead><tr>";
+  html += "<th class='c-task'>Tâche</th><th class='c-vendor'>Prestataire</th><th class='c-status'>Statut</th>";
+  weeks.forEach((w)=>{
+    const info=isoWeekInfo(w);
+    html += `<th class='c-week'>${info.week}<div class='wk-date'>${formatShortDateTwoLinesHTML(w)}</div></th>`;
+  });
+  html += "</tr></thead><tbody>";
+
+  tasks.forEach((t)=>{
+    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
+    const mainStatus = statuses[0] || "";
+    const color = ownerColor(t.owner);
+    const p = state?.projects?.find(x=>x.id===t.projectId);
+    const sub = (p?.subproject || "").trim();
+    const taskDesc = (t.roomNumber || "").trim();
+    const label = [sub, taskDesc].filter(Boolean).join(" - ") || (taskTitle(t) || "-");
+
+    const vendorText = (()=>{
+      const typ = ownerType(t.owner);
+      if(t.vendor) return t.vendor;
+      if(typ === "interne") return "INTERNE";
+      if(typ === "rsg") return "RSG";
+      if(typ === "ri") return "RI";
+      if(typ === "externe") return "Prestataire non renseigné";
+      return "-";
+    })();
+
+    html += "<tr>";
+    html += `<td class='c-task'>${attrEscape(label)}</td>`;
+    html += `<td class='c-vendor'>${attrEscape(vendorText)}</td>`;
+    html += `<td class='c-status'>${attrEscape(statusLabels(mainStatus))}</td>`;
+
+    weeks.forEach((w)=>{
+      const sDate=new Date(t.start+"T00:00:00");
+      const eDate=new Date(t.end+"T00:00:00");
+      const geo=barGeometry(sDate,eDate,w);
+      if(geo.days>0){
+        html += `<td class='c-week'><div class='pdf-bar-wrap'><div class='pdf-bar' style='width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};'></div></div></td>`;
+      }else{
+        html += "<td class='c-week'></td>";
+      }
+    });
+
+    html += "</tr>";
+  });
+
+  html += "</tbody></table>";
+  return html;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
