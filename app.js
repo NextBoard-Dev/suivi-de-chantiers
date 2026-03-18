@@ -8458,18 +8458,14 @@ function bind(){
     try{ if(window.saveAppStateToSupabase) supabaseOk = await window.saveAppStateToSupabase(state); }catch(e){ softCatch(e); }
     try{ usersOk = await saveUsersToSupabase(loadUsers()); }catch(e){ softCatch(e); }
 
-    // Flux simple : téléchargement d'un JSON (admins uniquement, désactivé en local)
-    let backupOk = false;
-    const backupEnabled = getCurrentRole() === "admin" && isHostedGithubPages();
-    try{
-      if(backupEnabled){ downloadBackup(); backupOk = true; }
-    }catch(e){ softCatch(e); }
+    // Backup local JSON volontairement désactivé: sauvegarde via Supabase uniquement.
+    const backupEnabled = false;
 
     const detailParts = [];
     detailParts.push(`Supabase: ${supabaseOk ? "OK" : "ERREUR"}`);
     if(usersOk === false) detailParts.push(`Users: ERREUR`);
     if(getCurrentRole() === "admin"){
-      detailParts.push(backupEnabled ? `Backup: ${backupOk ? "OK" : "ERREUR"}` : "Backup: désactivé (local)");
+      detailParts.push("Backup local: désactivé");
     }
     showSaveToast(supabaseOk ? "ok" : "error", "Sauvegarde terminée", detailParts.join(" | "));
 
