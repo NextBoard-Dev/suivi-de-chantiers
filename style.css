@@ -3535,10 +3535,10 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
 #hoursTaskModal #btnSaveHoursModal.btn-primary.is-disabled{
   opacity:1 !important;
   filter:none !important;
-  background:#e5e7eb !important;
-  border-color:#94a3b8 !important;
-  color:#1f2937 !important;
-  -webkit-text-fill-color:#1f2937 !important;
+  background:linear-gradient(180deg,#22c55e 0%,#16a34a 100%) !important;
+  border-color:#15803d !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
   text-shadow:none !important;
   box-shadow:none !important;
 }
