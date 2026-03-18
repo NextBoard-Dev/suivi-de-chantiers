@@ -3526,3 +3526,20 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
   color:#475569;
 }
 
+/* Correctif final lisibilité bouton Valider (modale heures) */
+#hoursTaskModal #btnSaveHoursModal.btn-primary{
+  min-width:92px;
+  font-weight:800;
+}
+#hoursTaskModal #btnSaveHoursModal.btn-primary:disabled,
+#hoursTaskModal #btnSaveHoursModal.btn-primary.is-disabled{
+  opacity:1 !important;
+  filter:none !important;
+  background:#e5e7eb !important;
+  border-color:#94a3b8 !important;
+  color:#1f2937 !important;
+  -webkit-text-fill-color:#1f2937 !important;
+  text-shadow:none !important;
+  box-shadow:none !important;
+}
+
