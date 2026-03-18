@@ -6195,8 +6195,9 @@ function filtersActive(){
   const startAfter = el("filterStartAfter")?.value || "";
 
   const endBefore  = el("filterEndBefore")?.value || "";
+  const onlyMissing = !!el("toggleMissingOnly")?.checked;
 
-  return !!(fsite || fp || fs || q || startAfter || endBefore);
+  return !!(fsite || fp || fs || q || startAfter || endBefore || onlyMissing);
 
 }
 
@@ -6282,6 +6283,14 @@ function renderMaster(){
   const missingMap = buildMissingDaysMap(sorted);
   const todayKey = new Date().toISOString().slice(0,10);
   const missingHoursCount = sorted.reduce((acc, t)=> acc + ((missingMap.get(t.id) || 0) > 0 ? 1 : 0), 0);
+  const onlyMissingEnabled = !!el("toggleMissingOnly")?.checked;
+  const visibleTasks = onlyMissingEnabled
+    ? sorted.filter(t=> (missingMap.get(t.id) || 0) > 0)
+    : sorted;
+  const missingOnlyToggleWrap = el("missingOnlyToggleWrap");
+  if(missingOnlyToggleWrap){
+    missingOnlyToggleWrap.classList.toggle("inactive", !onlyMissingEnabled);
+  }
   const missingHoursBadge = el("missingHoursBadge");
   if(missingHoursBadge){
     updateBadge(
@@ -6292,9 +6301,11 @@ function renderMaster(){
     );
   }
 
-  if(sorted.length===0){
+  if(visibleTasks.length===0){
 
-    tbody.innerHTML="<tr><td colspan='8' class='empty-row'>Aucune tâche.</td></tr>";
+    tbody.innerHTML = onlyMissingEnabled
+      ? "<tr><td colspan='8' class='empty-row'>Aucune tâche à compléter.</td></tr>"
+      : "<tr><td colspan='8' class='empty-row'>Aucune tâche.</td></tr>";
 
     return;
 
@@ -6302,7 +6313,7 @@ function renderMaster(){
 
   let h="";
 
-  sorted.forEach(t=>{
+  visibleTasks.forEach(t=>{
 
     const p = state.projects.find(x=>x.id===t.projectId);
 
@@ -7512,6 +7523,8 @@ function renderAll(){
     if(n) n.value="";
 
   });
+  const toggleMissingOnly = el("toggleMissingOnly");
+  if(toggleMissingOnly) toggleMissingOnly.checked = false;
   _filteredCache = { key:"", version:-1, tasks:null };
 
   renderFilters();
@@ -8989,6 +9002,11 @@ function bind(){
     const onSearch = debounce(()=>{ renderMaster(); saveUIState(); markDirty(); }, 250);
     search.addEventListener("input", onSearch);
   }
+  el("toggleMissingOnly")?.addEventListener("change", ()=>{
+    renderMaster();
+    saveUIState();
+    markDirty();
+  });
 
   document.addEventListener("keydown",(e)=>{
     if(e.defaultPrevented) return;
@@ -9251,6 +9269,8 @@ function bind(){
       const n = el(id);
       if(n) n.value = "";
     });
+    const toggleMissingOnly = el("toggleMissingOnly");
+    if(toggleMissingOnly) toggleMissingOnly.checked = false;
 
     renderMaster();
 

@@ -926,6 +926,12 @@ body{
   box-shadow:none;
 }
 .filters-indicator.inactive::before{content:"";}
+.missing-only-toggle{cursor:pointer;user-select:none;}
+.missing-only-toggle-input{
+  width:14px;
+  height:14px;
+  accent-color:#0f766e;
+}
 
 .card .kpis .kpi:nth-child(1){background:#ffedd5;border-color:#fb923c;}
 .card .kpis .kpi:nth-child(2){background:#dbeafe;border-color:#2563eb;}
