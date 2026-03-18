@@ -595,7 +595,7 @@ let sortMaster = {key:"start", dir:"asc"};
 
 let sortProject = {key:"start", dir:"asc"};
 
-let tabsSortMode = "default"; // default | progress_asc | progress_desc
+let tabsSortMode = "progress_asc"; // default de tri projets : avancement 0% -> 100%
 
 let unsavedChanges = false;
 let lastUndoSnapshot = null;
@@ -5745,7 +5745,7 @@ function renderTabs(){
     tabsSortBtn.textContent = (tabsSortMode === "progress_desc") ? "Tri avancement 100%→0%" : "Tri avancement 0%→100%";
   }
   if(tabsSortResetBtn){
-    tabsSortResetBtn.disabled = (tabsSortMode === "default");
+    tabsSortResetBtn.disabled = (tabsSortMode === "progress_asc");
   }
 
   const projectIcon = (name="")=>{
@@ -8333,7 +8333,7 @@ function bind(){
     renderTabs();
   });
   el("btnTabsSortReset")?.addEventListener("click", ()=>{
-    tabsSortMode = "default";
+    tabsSortMode = "progress_asc";
     renderTabs();
   });
   el("btnConfigCloseTop")?.addEventListener("click", ()=>{
