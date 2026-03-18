@@ -67,14 +67,14 @@
   "tasks": [
     {
       "id": "c807465d19c05012673",
-      "end": "2026-02-10",
+      "end": "2026-04-21",
       "notes": "",
-      "owner": "INTERNE",
-      "start": "2026-02-09",
-      "status": "PREPARATION",
-      "vendor": "",
+      "owner": "PRESTATAIRE EXTERNE",
+      "start": "2026-04-20",
+      "status": "HUISSERIES",
+      "vendor": "MARION",
       "projectId": "3e86100919c04fb8456",
-      "roomNumber": "Vidage & Protection"
+      "roomNumber": "Changement Porte"
     },
     {
       "id": "f490f0e019c0571bee2",
@@ -776,34 +776,6 @@
       "note": "",
       "createdAt": "2026-02-16T20:21:33.928Z",
       "updatedAt": "2026-03-17T18:19:21.246Z"
-    },
-    {
-      "id": "f96713d919c6a58bbca",
-      "taskId": "c807465d19c05012673",
-      "projectId": "3e86100919c04fb8456",
-      "userKey": "sebastien.duc@scse.fr",
-      "userName": "Sébastien DUC",
-      "userEmail": "sebastien.duc@scse.fr",
-      "role": "interne",
-      "date": "2026-02-09",
-      "minutes": 180,
-      "note": "",
-      "createdAt": "2026-02-17T06:45:26.090Z",
-      "updatedAt": "2026-02-17T06:45:26.090Z"
-    },
-    {
-      "id": "2d9af48a19c6a58e832",
-      "taskId": "c807465d19c05012673",
-      "projectId": "3e86100919c04fb8456",
-      "userKey": "sebastien.duc@scse.fr",
-      "userName": "Sébastien DUC",
-      "userEmail": "sebastien.duc@scse.fr",
-      "role": "interne",
-      "date": "2026-02-10",
-      "minutes": 180,
-      "note": "",
-      "createdAt": "2026-02-17T06:45:37.458Z",
-      "updatedAt": "2026-02-18T06:49:26.222Z"
     },
     {
       "id": "c9f35fde19c6a5e343f",
