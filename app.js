@@ -6980,6 +6980,25 @@ function syncHoursTaskStatusFromCalendarDraft(t, dayKey, rawValue){
   }
 }
 
+function applyHoursSaveButtonVisualState(btn){
+  if(!btn) return;
+  // Forçage visuel anti-écrasement CSS: bouton Valider toujours vert et lisible.
+  btn.style.setProperty("background", "linear-gradient(180deg,#22c55e 0%,#16a34a 100%)", "important");
+  btn.style.setProperty("border-color", "#15803d", "important");
+  btn.style.setProperty("color", "#ffffff", "important");
+  btn.style.setProperty("-webkit-text-fill-color", "#ffffff", "important");
+  btn.style.setProperty("text-shadow", "none", "important");
+  if(btn.disabled || btn.classList.contains("is-disabled")){
+    btn.style.setProperty("opacity", "1", "important");
+    btn.style.setProperty("filter", "none", "important");
+    btn.style.setProperty("box-shadow", "none", "important");
+  }else{
+    btn.style.removeProperty("opacity");
+    btn.style.removeProperty("filter");
+    btn.style.removeProperty("box-shadow");
+  }
+}
+
 function syncHoursTaskModal(taskOverride=null){
   const modal = el("hoursTaskModal");
   if(!modal) return;
@@ -7005,7 +7024,10 @@ function syncHoursTaskModal(taskOverride=null){
     if(hmHours) hmHours.value = "";
     if(hmStatus) hmStatus.textContent = "";
     if(hmSummary) hmSummary.textContent = "";
-    if(btnSave) btnSave.disabled = true;
+    if(btnSave){
+      btnSave.disabled = true;
+      applyHoursSaveButtonVisualState(btnSave);
+    }
     return;
   }
 
@@ -7028,7 +7050,10 @@ function syncHoursTaskModal(taskOverride=null){
   if(hmHours) hmHours.value = (hoursInput?.value || "").toString();
   syncHoursTaskStatusFromMain();
   renderHoursTaskWeeklySummary(t);
-  if(btnSave) btnSave.disabled = false;
+  if(btnSave){
+    btnSave.disabled = false;
+    applyHoursSaveButtonVisualState(btnSave);
+  }
   renderHoursTaskCalendar(t);
 }
 function openHoursTaskModal(){
