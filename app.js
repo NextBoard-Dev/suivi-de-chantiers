@@ -8433,16 +8433,19 @@ function bind(){
     try{ if(window.saveAppStateToSupabase) supabaseOk = await window.saveAppStateToSupabase(state); }catch(e){ softCatch(e); }
     try{ usersOk = await saveUsersToSupabase(loadUsers()); }catch(e){ softCatch(e); }
 
-    // Flux simple : tlchargement d'un JSON (admins uniquement)
+    // Flux simple : téléchargement d'un JSON (admins uniquement, désactivé en local)
     let backupOk = false;
+    const backupEnabled = getCurrentRole() === "admin" && isHostedGithubPages();
     try{
-      if(getCurrentRole() === "admin"){ downloadBackup(); backupOk = true; }
+      if(backupEnabled){ downloadBackup(); backupOk = true; }
     }catch(e){ softCatch(e); }
 
     const detailParts = [];
     detailParts.push(`Supabase: ${supabaseOk ? "OK" : "ERREUR"}`);
     if(usersOk === false) detailParts.push(`Users: ERREUR`);
-    if(getCurrentRole() === "admin") detailParts.push(`Backup: ${backupOk ? "OK" : "ERREUR"}`);
+    if(getCurrentRole() === "admin"){
+      detailParts.push(backupEnabled ? `Backup: ${backupOk ? "OK" : "ERREUR"}` : "Backup: désactivé (local)");
+    }
     showSaveToast(supabaseOk ? "ok" : "error", "Sauvegarde terminée", detailParts.join(" | "));
 
     flashSaved();
@@ -8544,6 +8547,25 @@ function bind(){
     updateTimeLogUI(t, true);
     syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
     renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+    });
+    el("hoursTaskModal")?.addEventListener("keydown", (e)=>{
+    if(e.key !== "Enter" || e.isComposing) return;
+    const input = e.target?.closest?.("#hm_calendar .hm-day-input[data-date][data-active='1']");
+    if(!input) return;
+    e.preventDefault();
+    const day = input.getAttribute("data-date") || "";
+    const hmDate = el("hm_date");
+    const hmHours = el("hm_hours");
+    const dateInput = el("t_time_date_input");
+    if(hmDate) hmDate.value = day;
+    if(dateInput) dateInput.value = day;
+    if(hmHours) hmHours.value = input.value || "";
+    const t = getSelectedTaskForHoursModal();
+    if(t){
+      syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
+      renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+    }
+    saveHoursTaskModal();
     });
   }
   // bouton impression PDF (utilise print.css)

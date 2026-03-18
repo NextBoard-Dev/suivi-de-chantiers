@@ -3336,6 +3336,20 @@ html[data-theme] .gantt-toggle-row .btn.btn-primary{
 .hours-modal-compact .input{ height:30px; padding:4px 9px; }
 .hours-modal-compact .time-log-status{ margin-right:auto; font-size:12px; }
 .hours-modal-compact .modal-actions.spaced{ margin-top:4px; margin-bottom:4px; }
+.hours-modal-compact #btnSaveHoursModal{
+  min-width:92px;
+  font-weight:800;
+}
+.hours-modal-compact #btnSaveHoursModal:disabled,
+.hours-modal-compact #btnSaveHoursModal.is-disabled{
+  opacity:1 !important;
+  filter:none !important;
+  background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%) !important;
+  border-color:#94a3b8 !important;
+  color:#334155 !important;
+  -webkit-text-fill-color:#334155 !important;
+  text-shadow:none !important;
+}
 .hours-modal-compact #hm_calendarWrap{
   padding:6px !important;
   margin-top:4px !important;
