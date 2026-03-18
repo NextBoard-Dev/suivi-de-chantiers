@@ -601,6 +601,7 @@ let unsavedChanges = false;
 let lastUndoSnapshot = null;
 let _stateVersion = 0;
 let _filteredCache = { key:"", version:-1, tasks:null };
+let _missingHoursFlow = null;
 
 let isLocked = true; // verrou logique = droits utilisateur (admin = false)
 const isHostedGithubPages = ()=>{
@@ -6625,6 +6626,61 @@ function buildMissingDaysMap(tasks){
   });
   return map;
 }
+function getMissingTasksForMasterFlow(){
+  const sorted = sortTasks(filteredTasks(), sortMaster);
+  const missingMap = buildMissingDaysMap(sorted);
+  return sorted
+    .filter(t=> (missingMap.get(t.id) || 0) > 0)
+    .map(t=>({ projectId: t.projectId, taskId: t.id }));
+}
+function finishMissingHoursFlow(){
+  _missingHoursFlow = null;
+  selectedProjectId = null;
+  selectedTaskId = null;
+  renderMaster();
+}
+function openMissingHoursFlowStep(){
+  if(!_missingHoursFlow || !_missingHoursFlow.tasks.length) return;
+  while(_missingHoursFlow.index < _missingHoursFlow.tasks.length){
+    const step = _missingHoursFlow.tasks[_missingHoursFlow.index];
+    const t = state?.tasks?.find(x=>x.id===step.taskId && x.projectId===step.projectId);
+    if(!t){
+      _missingHoursFlow.index += 1;
+      continue;
+    }
+    selectedProjectId = step.projectId;
+    selectedTaskId = step.taskId;
+    renderProject();
+    setTimeout(()=>{
+      if(!_missingHoursFlow) return;
+      const selected = getSelectedTaskForHoursModal();
+      if(!selected){
+        _missingHoursFlow.index += 1;
+        openMissingHoursFlowStep();
+        return;
+      }
+      openHoursTaskModal();
+    }, 0);
+    return;
+  }
+  showSaveToast("ok", "Parcours terminé", "Toutes les tâches à compléter ont été traitées.");
+  finishMissingHoursFlow();
+}
+function startMissingHoursFlow(){
+  const tasks = getMissingTasksForMasterFlow();
+  if(!tasks.length){
+    showSaveToast("ok", "A compléter", "Aucune tâche à compléter.");
+    return;
+  }
+  _missingHoursFlow = { tasks, index: 0 };
+  showSaveToast("ok", "Parcours lancé", `${tasks.length} tâche(s) à compléter`);
+  openMissingHoursFlowStep();
+}
+function advanceMissingHoursFlow(){
+  if(!_missingHoursFlow) return;
+  _missingHoursFlow.index += 1;
+  openMissingHoursFlowStep();
+}
 function updateTimeLogUI(t, forceAlert=false){
   const dateInput = el("t_time_date_input");
   const input = el("t_time_hours");
@@ -7091,9 +7147,13 @@ function openHoursTaskModal(){
   modal.style.display = "flex";
   modal.setAttribute("aria-hidden","false");
 }
-function closeHoursTaskModal(){
+function closeHoursTaskModal(stopFlow=true){
   const modal = el("hoursTaskModal");
   hideModalSafely(modal, "#btnOpenHoursModal");
+  if(stopFlow && _missingHoursFlow){
+    _missingHoursFlow = null;
+    showSaveToast("ok", "Parcours arrêté", "Traitement des tâches à compléter interrompu.");
+  }
 }
 function saveHoursTaskModal(){
   const t = getSelectedTaskForHoursModal();
@@ -7165,7 +7225,7 @@ function saveHoursTaskModal(){
       logs.splice(i, 1);
     }
   }
-  closeHoursTaskModal();
+  closeHoursTaskModal(false);
   markDirty();
   dateInput.value = selectedDate;
   hoursInput.value = rawHours;
@@ -7173,6 +7233,9 @@ function saveHoursTaskModal(){
   renderMaster();
   renderProject();
   saveState();
+  if(_missingHoursFlow){
+    advanceMissingHoursFlow();
+  }
 }
 function checkTimeLogReminders(){
   const userKey = getCurrentUserKey();
@@ -9006,6 +9069,9 @@ function bind(){
     renderMaster();
     saveUIState();
     markDirty();
+  });
+  el("btnProcessMissingHours")?.addEventListener("click", ()=>{
+    startMissingHoursFlow();
   });
 
   document.addEventListener("keydown",(e)=>{
