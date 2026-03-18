@@ -6281,6 +6281,16 @@ function renderMaster(){
   const sorted = sortTasks(tasks, sortMaster);
   const missingMap = buildMissingDaysMap(sorted);
   const todayKey = new Date().toISOString().slice(0,10);
+  const missingHoursCount = sorted.reduce((acc, t)=> acc + ((missingMap.get(t.id) || 0) > 0 ? 1 : 0), 0);
+  const missingHoursBadge = el("missingHoursBadge");
+  if(missingHoursBadge){
+    updateBadge(
+      missingHoursBadge,
+      missingHoursCount > 0,
+      `${missingHoursCount} tâche(s) à compléter`,
+      "Heures réelles: OK"
+    );
+  }
 
   if(sorted.length===0){
 
