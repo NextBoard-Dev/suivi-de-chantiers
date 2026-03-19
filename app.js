@@ -7108,7 +7108,7 @@ function syncHoursTaskModal(taskOverride=null){
 
   const hmProject = el("hm_project");
   const hmTask = el("hm_task");
-  const hmOwner = el("hm_owner");
+  const hmOwnerBadge = el("hm_owner_badge");
   const hmPeriod = el("hm_period");
   const hmDate = el("hm_date");
   const hmHours = el("hm_hours");
@@ -7119,7 +7119,7 @@ function syncHoursTaskModal(taskOverride=null){
   if(!t){
     if(hmProject) hmProject.value = "";
     if(hmTask) hmTask.value = "";
-    if(hmOwner) hmOwner.value = "";
+    if(hmOwnerBadge) hmOwnerBadge.innerHTML = "";
     if(hmPeriod) hmPeriod.value = "";
     if(hmDate) hmDate.value = "";
     if(hmHours) hmHours.value = "";
@@ -7141,7 +7141,10 @@ function syncHoursTaskModal(taskOverride=null){
 
   if(hmProject) hmProject.value = (p?.name || "").trim();
   if(hmTask) hmTask.value = desc ? (((t.status || "").trim()) + " - " + desc) : ((t.status || "").trim() || "Tâche");
-  if(hmOwner) hmOwner.value = vendor ? (owner + " - " + vendor) : owner;
+  if(hmOwnerBadge){
+    const badgeHtml = ownerBadgeForTask(t) || ownerBadge(owner, vendor ? `${owner} - ${vendor}` : owner);
+    hmOwnerBadge.innerHTML = badgeHtml || `<span>${attrEscape(vendor ? `${owner} - ${vendor}` : owner)}</span>`;
+  }
   if(hmPeriod) hmPeriod.value = (formatDate(t.start || "") + " -> " + formatDate(t.end || ""));
   if(hmDate){
     hmDate.min = t.start || "";

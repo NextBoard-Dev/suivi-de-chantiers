@@ -3378,6 +3378,25 @@ html[data-theme] .gantt-toggle-row .btn.btn-primary{
 .hours-modal-compact .grid2{ gap:7px; margin-bottom:5px !important; }
 .hours-modal-compact .label{ margin-bottom:2px; font-size:11px; }
 .hours-modal-compact .input{ height:30px; padding:4px 9px; }
+.hours-modal-compact .hm-strong-field{
+  font-size:18px;
+  font-weight:800;
+  color:#0f172a;
+}
+.hours-modal-compact .hm-owner-badge-wrap{
+  min-height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  font-size:16px;
+  font-weight:700;
+}
+.hours-modal-compact .hm-owner-badge-wrap .badge.owner{
+  font-size:13px;
+  font-weight:800;
+  border-radius:999px;
+  padding:4px 10px;
+}
 .hours-modal-compact .time-log-status{ margin-right:auto; font-size:12px; }
 .hours-modal-compact .modal-actions.spaced{ margin-top:4px; margin-bottom:4px; }
 .hours-modal-compact #btnSaveHoursModal{
