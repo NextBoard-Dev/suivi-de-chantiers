@@ -4017,6 +4017,24 @@ html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectStatus.is-disabled{
   opacity:1 !important;
   filter:none !important;
 }
+/* Verrou global anti-rectangles: badges + boutons harmonises */
+body[data-ui-harmony="v1"] .legend-item,
+body[data-ui-harmony="v1"] .filters-indicator,
+body[data-ui-harmony="v1"] .panel-chip,
+body[data-ui-harmony="v1"] .help-chip{
+  border-radius:999px !important;
+  padding:4px 10px !important;
+}
+body[data-ui-harmony="v1"] .gantt-toggle-row .btn,
+body[data-ui-harmony="v1"] .panel-controls .btn,
+body[data-ui-harmony="v1"] #btnToggleMasterVendor,
+body[data-ui-harmony="v1"] #btnToggleMasterStatus,
+body[data-ui-harmony="v1"] #btnToggleProjectVendor,
+body[data-ui-harmony="v1"] #btnToggleProjectStatus{
+  border-radius:10px !important;
+  min-height:30px !important;
+  padding:4px 12px !important;
+}
 @media (max-width: 1100px){
   body[data-ui-harmony="v1"] .layout{
     padding:10px !important;
