@@ -6637,6 +6637,8 @@ function finishMissingHoursFlow(){
   _missingHoursFlow = null;
   selectedProjectId = null;
   selectedTaskId = null;
+  const toggleMissingOnly = el("toggleMissingOnly");
+  if(toggleMissingOnly) toggleMissingOnly.checked = false;
   renderMaster();
 }
 function openMissingHoursFlowStep(){
@@ -10284,67 +10286,3 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
