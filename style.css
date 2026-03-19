@@ -3685,4 +3685,79 @@ body[data-ui-harmony="v1"] .btn-primary{
   border-color:#355564 !important;
   box-shadow:0 6px 14px rgba(63,97,112,0.3) !important;
 }
+body[data-ui-harmony="v1"] .layout{
+  gap:12px;
+  padding:12px 14px 14px 286px;
+}
+body[data-ui-harmony="v1"] .main{
+  gap:10px;
+}
+body[data-ui-harmony="v1"] .topbar-user{
+  background:rgba(221,231,235,0.78);
+  border:1px solid rgba(173,190,199,0.85);
+  color:#24414f;
+}
+body[data-ui-harmony="v1"] .actions{
+  gap:7px;
+}
+body[data-ui-harmony="v1"] .actions .btn{
+  min-height:34px;
+  border-radius:9px;
+}
+body[data-ui-harmony="v1"] .sidebar-logo-wrap{
+  margin-bottom:6px;
+}
+body[data-ui-harmony="v1"] .sidebar-logo-img{
+  border:1px solid rgba(173,190,199,0.7);
+}
+body[data-ui-harmony="v1"] .section-filters .label{
+  color:#365463;
+  font-weight:700;
+}
+body[data-ui-harmony="v1"] .section-filters .input,
+body[data-ui-harmony="v1"] .section-filters select{
+  font-size:11px;
+  min-height:30px;
+  border-color:rgba(173,190,199,0.85);
+  background:linear-gradient(180deg,#ffffff 0%,#eef2f7 100%);
+}
+body[data-ui-harmony="v1"] .panel-head{
+  padding-bottom:6px;
+  border-bottom:1px solid rgba(173,190,199,0.45);
+}
+body[data-ui-harmony="v1"] .panel-sub{
+  color:#4f6572;
+}
+body[data-ui-harmony="v1"] .panel-metrics{
+  gap:8px;
+}
+body[data-ui-harmony="v1"] .panel-chip{
+  background:rgba(221,231,235,0.82);
+  border-color:rgba(173,190,199,0.78);
+  color:#1f3642;
+}
+body[data-ui-harmony="v1"] .panel-controls{
+  gap:7px;
+  flex-wrap:wrap;
+}
+body[data-ui-harmony="v1"] .kpi{
+  border-radius:9px;
+  border-color:rgba(173,190,199,0.9);
+}
+body[data-ui-harmony="v1"] .tablewrap{
+  border-color:rgba(173,190,199,0.8);
+  box-shadow:0 8px 18px rgba(31,49,59,0.12), inset 0 1px 0 rgba(255,255,255,0.8);
+}
+body[data-ui-harmony="v1"] .table th{
+  color:#355564;
+  letter-spacing:.05em;
+  font-size:11px;
+  border-bottom:1px solid rgba(173,190,199,0.95);
+}
+body[data-ui-harmony="v1"] .table td{
+  border-bottom:1px solid rgba(173,190,199,0.55);
+}
+body[data-ui-harmony="v1"] .table tbody tr:hover td{
+  background:rgba(196,216,226,0.42);
+}
 
