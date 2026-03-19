@@ -3632,22 +3632,47 @@ body[data-ui-harmony="v1"] .topbar{
   z-index:120;
   width:100%;
   margin:0 !important;
-  padding:10px 14px;
+  min-height:58px;
+  padding:9px 14px;
   border-radius:0 !important;
-  background:linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(244,241,234,0.95) 100%) !important;
+  background:linear-gradient(180deg, #f7f4ee 0%, #ece7de 100%) !important;
   border-top:none !important;
   border-left:none !important;
   border-right:none !important;
-  border-bottom:1px solid rgba(173,190,199,0.85) !important;
-  box-shadow:0 6px 16px rgba(31,49,59,0.18) !important;
+  border-bottom:1px solid rgba(63,97,112,0.38) !important;
+  box-shadow:0 4px 10px rgba(31,49,59,0.14) !important;
   backdrop-filter:none !important;
 }
 body[data-ui-harmony="v1"] .brand{
-  letter-spacing:.01em;
-  color:var(--h-text-main) !important;
+  letter-spacing:.02em;
+  color:#162c36 !important;
+  font-size:21px;
+  line-height:1.05;
 }
 body[data-ui-harmony="v1"] .subtitle{
-  color:var(--h-text-soft) !important;
+  color:#4e6470 !important;
+  font-size:11px;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+body[data-ui-harmony="v1"] .topbar .btn{
+  border-radius:8px;
+  min-height:34px;
+  border-color:rgba(63,97,112,0.24) !important;
+}
+body[data-ui-harmony="v1"] .topbar .btn::after{
+  background:linear-gradient(90deg, rgba(63,97,112,0.92), rgba(93,120,134,0.88)) !important;
+}
+body[data-ui-harmony="v1"] .theme-toggle{
+  border:1px solid rgba(63,97,112,0.32) !important;
+  background:linear-gradient(180deg,#ffffff 0%, #eef2f7 100%) !important;
+  box-shadow:0 3px 8px rgba(31,49,59,0.12) !important;
+  color:#1d3744 !important;
+}
+body[data-ui-harmony="v1"] .theme-grid{
+  background:rgba(247,244,238,0.97) !important;
+  border-color:rgba(173,190,199,0.9) !important;
+  box-shadow:0 10px 20px rgba(31,49,59,0.14) !important;
 }
 body[data-ui-harmony="v1"] .sidebar{
   background:linear-gradient(180deg, var(--h-sidebar-top) 0%, var(--h-sidebar-bottom) 100%) !important;
@@ -3752,15 +3777,16 @@ body[data-ui-harmony="v1"] .main{
   gap:10px;
 }
 body[data-ui-harmony="v1"] .topbar-user{
-  background:rgba(221,231,235,0.78);
-  border:1px solid rgba(173,190,199,0.85);
-  color:#24414f;
-  border-radius:10px;
+  background:rgba(221,231,235,0.62);
+  border:1px solid rgba(173,190,199,0.82);
+  color:#1f3a47;
+  border-radius:8px;
   min-height:36px;
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:0 10px;
+  padding:0 12px;
+  letter-spacing:.02em;
 }
 body[data-ui-harmony="v1"] .actions{
   gap:7px;
