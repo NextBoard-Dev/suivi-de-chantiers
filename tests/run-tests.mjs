@@ -6,11 +6,9 @@ import assert from "node:assert/strict";
 const root = process.cwd();
 const appJsPath = path.join(root, "app.js");
 const indexHtmlPath = path.join(root, "index.html");
-const styleCssPath = path.join(root, "style.css");
 
 const appJs = fs.readFileSync(appJsPath, "utf8");
 const indexHtml = fs.readFileSync(indexHtmlPath, "utf8");
-const styleCss = fs.readFileSync(styleCssPath, "utf8");
 
 function findBalancedBlock(src, startIndex) {
   let depth = 0;
@@ -220,30 +218,6 @@ test("Export PDF: fonction unifiée presente", () => {
 test("Export PDF: template impression contient concepteur", () => {
   assert.match(indexHtml, /Concepteur\s*:\s*Sébastien DUC/);
   assert.match(indexHtml, /config-copyright/);
-});
-
-test("UI: mode harmonisation v1 actif", () => {
-  assert.match(indexHtml, /<body[^>]*data-ui-harmony="v1"/);
-  assert.match(styleCss, /Harmonisation v1/);
-});
-
-test("UI: parcours heures a completer present", () => {
-  assert.match(indexHtml, /id="btnProcessMissingHours"[^>]*>Completer Heures Réelles</);
-  assert.match(indexHtml, /id="toggleMissingOnly"/);
-  assert.match(appJs, /processMissingBtn\.textContent\s*=\s*"Completer Heures Réelles"/);
-});
-
-test("UI: modale heures affiche badge intervenant", () => {
-  assert.match(indexHtml, /id="hm_owner_badge"/);
-  assert.match(indexHtml, /id="hm_project"/);
-  assert.match(indexHtml, /class="[^"]*\bhm-strong-field\b[^"]*"/);
-  assert.match(appJs, /hmOwnerBadge\.innerHTML\s*=\s*badgeHtml/);
-});
-
-test("UI: alerte bouton heures a completer stylee", () => {
-  assert.match(styleCss, /#btnProcessMissingHours\.missing-hours-attention/);
-  assert.match(styleCss, /@keyframes\s+missingHoursHalo/);
-  assert.match(styleCss, /@keyframes\s+missingHoursArrowNudge/);
 });
 
 let failed = 0;

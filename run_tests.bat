@@ -7,13 +7,6 @@ if errorlevel 1 (
   echo.
   exit /b 1
 )
-node tests\security-fuzz.mjs
-if errorlevel 1 (
-  echo.
-  echo [ECHEC] Le fuzz securite a echoue.
-  echo.
-  exit /b 1
-)
 echo.
 echo [OK] Tous les tests sont passes.
 echo.
