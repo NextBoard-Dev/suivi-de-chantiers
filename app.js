@@ -602,6 +602,7 @@ let lastUndoSnapshot = null;
 let _stateVersion = 0;
 let _filteredCache = { key:"", version:-1, tasks:null };
 let _missingHoursFlow = null;
+let _missingHoursAttentionActive = false;
 
 let isLocked = true; // verrou logique = droits utilisateur (admin = false)
 const isHostedGithubPages = ()=>{
@@ -6283,7 +6284,9 @@ function renderMaster(){
   const sorted = sortTasks(tasks, sortMaster);
   const missingMap = buildMissingDaysMap(sorted);
   const todayKey = new Date().toISOString().slice(0,10);
-  const missingHoursCount = sorted.reduce((acc, t)=> acc + ((missingMap.get(t.id) || 0) > 0 ? 1 : 0), 0);
+  const allTasks = Array.isArray(state?.tasks) ? state.tasks : [];
+  const missingMapAll = buildMissingDaysMap(allTasks);
+  const missingHoursCount = allTasks.reduce((acc, t)=> acc + ((missingMapAll.get(t.id) || 0) > 0 ? 1 : 0), 0);
   const onlyMissingEnabled = !!el("toggleMissingOnly")?.checked;
   const visibleTasks = onlyMissingEnabled
     ? sorted.filter(t=> (missingMap.get(t.id) || 0) > 0)
@@ -6300,6 +6303,25 @@ function renderMaster(){
       `${missingHoursCount} tâche(s) à compléter`,
       "Heures réelles: OK"
     );
+  }
+  const processMissingBtn = el("btnProcessMissingHours");
+  if(processMissingBtn){
+    processMissingBtn.classList.toggle("missing-hours-attention", missingHoursCount > 0);
+    processMissingBtn.disabled = missingHoursCount <= 0;
+    processMissingBtn.textContent = "Heures à compléter";
+    processMissingBtn.setAttribute("aria-label", `Heures à compléter (${missingHoursCount})`);
+    if(missingHoursCount > 0 && !_missingHoursAttentionActive){
+      const ae = document.activeElement;
+      const typingTarget = !!(ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.tagName === "SELECT" || ae.isContentEditable));
+      if(!typingTarget){
+        setTimeout(()=>{
+          try{ processMissingBtn.focus({preventScroll:true}); }catch(e){ softCatch(e); }
+        }, 0);
+      }
+      _missingHoursAttentionActive = true;
+    }else if(missingHoursCount <= 0){
+      _missingHoursAttentionActive = false;
+    }
   }
 
   if(visibleTasks.length===0){
@@ -6627,7 +6649,7 @@ function buildMissingDaysMap(tasks){
   return map;
 }
 function getMissingTasksForMasterFlow(){
-  const sorted = sortTasks(filteredTasks(), sortMaster);
+  const sorted = sortTasks((state?.tasks || []), sortMaster);
   const missingMap = buildMissingDaysMap(sorted);
   return sorted
     .filter(t=> (missingMap.get(t.id) || 0) > 0)
