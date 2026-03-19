@@ -926,12 +926,6 @@ body{
   box-shadow:none;
 }
 .filters-indicator.inactive::before{content:"";}
-.missing-only-toggle{cursor:pointer;user-select:none;}
-.missing-only-toggle-input{
-  width:14px;
-  height:14px;
-  accent-color:#0f766e;
-}
 
 .card .kpis .kpi:nth-child(1){background:#ffedd5;border-color:#fb923c;}
 .card .kpis .kpi:nth-child(2){background:#dbeafe;border-color:#2563eb;}
@@ -1885,42 +1879,6 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 .panel-controls .btn-ghost{
   color:#000 !important;
 }
-#btnProcessMissingHours{
-  position:relative;
-  overflow:visible;
-}
-#btnProcessMissingHours.missing-hours-attention{
-  border-color:#b91c1c !important;
-  box-shadow:0 0 0 0 rgba(220,38,38,0.55), 0 6px 12px rgba(0,0,0,0.14) !important;
-  animation:missingHoursHalo 1.2s ease-out infinite;
-}
-#btnProcessMissingHours:focus,
-#btnProcessMissingHours:focus-visible{
-  outline:none !important;
-}
-#btnProcessMissingHours.missing-hours-attention::before{
-  content:"";
-  position:absolute;
-  left:-18px;
-  top:50%;
-  width:0;
-  height:0;
-  border-top:7px solid transparent;
-  border-bottom:7px solid transparent;
-  border-left:11px solid #16a34a;
-  transform:translateY(-50%);
-  filter:drop-shadow(0 0 2px rgba(22,163,74,0.65));
-  animation:missingHoursArrowNudge .9s ease-in-out infinite;
-}
-@keyframes missingHoursHalo{
-  0%{box-shadow:0 0 0 0 rgba(220,38,38,0.55), 0 6px 12px rgba(0,0,0,0.14);}
-  70%{box-shadow:0 0 0 12px rgba(220,38,38,0), 0 6px 12px rgba(0,0,0,0.14);}
-  100%{box-shadow:0 0 0 0 rgba(220,38,38,0), 0 6px 12px rgba(0,0,0,0.14);}
-}
-@keyframes missingHoursArrowNudge{
-  0%,100%{transform:translateY(-50%) translateX(0);}
-  50%{transform:translateY(-50%) translateX(5px);}
-}
 #btnToggleMasterVendor,
 #btnToggleMasterStatus,
 #btnToggleProjectVendor,
@@ -2784,8 +2742,6 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   .tab.active::before{animation:none;}
   .filters-active-icon.active,
   .filters-reset-row .btn.btn-danger,
-  #btnProcessMissingHours.missing-hours-attention,
-  #btnProcessMissingHours.missing-hours-attention::before,
   #btnSave:hover::after,
   #btnExportMaster:hover::after,
   #btnExportMasterGantt:hover::after,
@@ -3378,25 +3334,6 @@ html[data-theme] .gantt-toggle-row .btn.btn-primary{
 .hours-modal-compact .grid2{ gap:7px; margin-bottom:5px !important; }
 .hours-modal-compact .label{ margin-bottom:2px; font-size:11px; }
 .hours-modal-compact .input{ height:30px; padding:4px 9px; }
-.hours-modal-compact .hm-strong-field{
-  font-size:18px;
-  font-weight:800;
-  color:#0f172a;
-}
-.hours-modal-compact .hm-owner-badge-wrap{
-  min-height:30px;
-  display:flex;
-  align-items:center;
-  justify-content:flex-start;
-  font-size:16px;
-  font-weight:700;
-}
-.hours-modal-compact .hm-owner-badge-wrap .badge.owner{
-  font-size:13px;
-  font-weight:800;
-  border-radius:999px;
-  padding:4px 10px;
-}
 .hours-modal-compact .time-log-status{ margin-right:auto; font-size:12px; }
 .hours-modal-compact .modal-actions.spaced{ margin-top:4px; margin-bottom:4px; }
 .hours-modal-compact #btnSaveHoursModal{
