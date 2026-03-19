@@ -4053,6 +4053,47 @@ body[data-ui-harmony="v1"] #btnToggleProjectStatus{
     padding:10px 10px 12px 262px !important;
   }
 }
+@media (max-width: 1700px){
+  body[data-ui-harmony="v1"] .brand{
+    font-size:19px;
+  }
+  body[data-ui-harmony="v1"] .subtitle{
+    font-size:10px;
+  }
+  body[data-ui-harmony="v1"] .actions .btn{
+    min-height:32px;
+    padding:0 10px;
+    font-size:11px;
+  }
+  body[data-ui-harmony="v1"] .topbar-user{
+    min-height:34px;
+    font-size:13px;
+    padding:0 10px;
+  }
+}
+@media (max-width: 1440px){
+  body[data-ui-harmony="v1"] .topbar{
+    flex-wrap:wrap;
+    align-items:flex-start;
+  }
+  body[data-ui-harmony="v1"] .topbar-user{
+    order:3;
+    width:100%;
+    min-width:0;
+    max-width:none;
+  }
+  body[data-ui-harmony="v1"] .actions{
+    width:100%;
+    gap:6px;
+    justify-content:flex-start;
+  }
+  body[data-ui-harmony="v1"] .sidebar{
+    width:220px !important;
+  }
+  body[data-ui-harmony="v1"] .layout{
+    padding:8px 8px 10px 234px !important;
+  }
+}
 @media (max-width: 1366px){
   body[data-ui-harmony="v1"] .topbar{
     flex-wrap:wrap;
