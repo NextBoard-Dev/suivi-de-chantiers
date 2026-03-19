@@ -3746,13 +3746,16 @@ body[data-ui-harmony="v1"] .tabs-master .tab.active:not(.tab-master){
       rgba(143,183,194,0.34) 100%) !important;
 }
 body[data-ui-harmony="v1"] .panel{
-  background:linear-gradient(180deg, rgba(244,241,234,0.98) 0%, rgba(233,238,240,0.92) 100%) !important;
-  border:1px solid rgba(173,190,199,0.65) !important;
-  box-shadow:var(--h-shadow) !important;
+  background:rgba(244,241,234,0.92) !important;
+  border:1px solid rgba(173,190,199,0.72) !important;
+  border-radius:8px !important;
+  box-shadow:none !important;
 }
 body[data-ui-harmony="v1"] .card{
-  background:linear-gradient(180deg, rgba(244,241,234,0.99) 0%, rgba(221,231,235,0.99) 100%) !important;
-  border:1px solid rgba(173,190,199,0.75) !important;
+  background:rgba(244,241,234,0.9) !important;
+  border:1px solid rgba(173,190,199,0.72) !important;
+  border-radius:8px !important;
+  box-shadow:none !important;
 }
 body[data-ui-harmony="v1"] .panel-title,
 body[data-ui-harmony="v1"] .card-title{
@@ -3841,12 +3844,15 @@ body[data-ui-harmony="v1"] .panel-controls{
   flex-wrap:wrap;
 }
 body[data-ui-harmony="v1"] .kpi{
-  border-radius:9px;
+  border-radius:6px;
   border-color:rgba(173,190,199,0.9);
+  box-shadow:none !important;
 }
 body[data-ui-harmony="v1"] .tablewrap{
   border-color:rgba(173,190,199,0.8);
-  box-shadow:0 8px 18px rgba(31,49,59,0.12), inset 0 1px 0 rgba(255,255,255,0.8);
+  border-radius:6px !important;
+  box-shadow:none !important;
+  background:rgba(255,255,255,0.38) !important;
 }
 body[data-ui-harmony="v1"] .table th{
   color:#355564;
@@ -3863,7 +3869,7 @@ body[data-ui-harmony="v1"] .table tbody tr:hover td{
 body[data-ui-harmony="v1"] #viewProject .card,
 body[data-ui-harmony="v1"] #viewMaster .card{
   border:1px solid rgba(173,190,199,0.72) !important;
-  box-shadow:0 8px 18px rgba(31,49,59,0.11) !important;
+  box-shadow:none !important;
 }
 body[data-ui-harmony="v1"] .task-progress-track{
   background:rgba(173,190,199,0.4) !important;
@@ -3876,7 +3882,7 @@ body[data-ui-harmony="v1"] .task-progress-fill{
 body[data-ui-harmony="v1"] .gantt-toggle-row .btn{
   border-color:rgba(173,190,199,0.85) !important;
   background:linear-gradient(180deg,#ffffff 0%,#eef2f7 100%) !important;
-  box-shadow:0 3px 8px rgba(31,49,59,0.1) !important;
+  box-shadow:none !important;
 }
 body[data-ui-harmony="v1"] .gantt-table .table th,
 body[data-ui-harmony="v1"] .gantt-table table th{
@@ -3889,9 +3895,10 @@ body[data-ui-harmony="v1"] .gantt-table table td{
 }
 body[data-ui-harmony="v1"] .modal-card,
 body[data-ui-harmony="v1"] .modal-card.config-card{
-  background:linear-gradient(180deg, rgba(244,241,234,0.99) 0%, rgba(221,231,235,0.98) 100%) !important;
+  background:rgba(244,241,234,0.96) !important;
   border:1px solid rgba(173,190,199,0.9) !important;
-  box-shadow:0 16px 30px rgba(31,49,59,0.18) !important;
+  border-radius:8px !important;
+  box-shadow:none !important;
 }
 body[data-ui-harmony="v1"] .modal-title{
   color:#132730 !important;
