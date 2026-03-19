@@ -3697,7 +3697,12 @@ body[data-ui-harmony="v1"] .tab{
 body[data-ui-harmony="v1"] .tabs .tab:not(.tab-master),
 body[data-ui-harmony="v1"] .tabs-master .tab:not(.tab-master){
   border-left:3px solid hsl(var(--tab-hue, 0) 70% 45%) !important;
-  background:rgba(255,255,255,0.20) !important;
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--tab-progress-color, #0ea5e9) 20%, transparent) 0%,
+      color-mix(in srgb, var(--tab-progress-color, #0ea5e9) 20%, transparent) var(--tab-progress, 0%),
+      rgba(255,255,255,0.20) var(--tab-progress, 0%),
+      rgba(255,255,255,0.20) 100%) !important;
   box-shadow:none !important;
 }
 body[data-ui-harmony="v1"] .tab.active{
@@ -3705,6 +3710,15 @@ body[data-ui-harmony="v1"] .tab.active{
   background:rgba(143,183,194,0.34) !important;
   box-shadow:inset 3px 0 0 #d9896a !important;
   font-weight:800;
+}
+body[data-ui-harmony="v1"] .tabs .tab.active:not(.tab-master),
+body[data-ui-harmony="v1"] .tabs-master .tab.active:not(.tab-master){
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--tab-progress-color, #0ea5e9) 28%, transparent) 0%,
+      color-mix(in srgb, var(--tab-progress-color, #0ea5e9) 28%, transparent) var(--tab-progress, 0%),
+      rgba(143,183,194,0.34) var(--tab-progress, 0%),
+      rgba(143,183,194,0.34) 100%) !important;
 }
 body[data-ui-harmony="v1"] .panel{
   background:linear-gradient(180deg, rgba(244,241,234,0.98) 0%, rgba(233,238,240,0.92) 100%) !important;
