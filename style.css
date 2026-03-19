@@ -4022,8 +4022,8 @@ body[data-ui-harmony="v1"] .legend-item,
 body[data-ui-harmony="v1"] .filters-indicator,
 body[data-ui-harmony="v1"] .panel-chip,
 body[data-ui-harmony="v1"] .help-chip{
-  border-radius:999px !important;
-  padding:4px 10px !important;
+  border-radius:8px !important;
+  padding:4px 9px !important;
 }
 body[data-ui-harmony="v1"] .gantt-toggle-row .btn,
 body[data-ui-harmony="v1"] .panel-controls .btn,
@@ -4031,9 +4031,9 @@ body[data-ui-harmony="v1"] #btnToggleMasterVendor,
 body[data-ui-harmony="v1"] #btnToggleMasterStatus,
 body[data-ui-harmony="v1"] #btnToggleProjectVendor,
 body[data-ui-harmony="v1"] #btnToggleProjectStatus{
-  border-radius:10px !important;
+  border-radius:8px !important;
   min-height:30px !important;
-  padding:4px 12px !important;
+  padding:4px 10px !important;
 }
 @media (max-width: 1600px){
   body[data-ui-harmony="v1"] .topbar{
