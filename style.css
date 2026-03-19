@@ -3872,7 +3872,7 @@ body[data-ui-harmony="v1"] .legend-item,
 body[data-ui-harmony="v1"] .panel-chip{
   background:rgba(221,231,235,0.58) !important;
   border:1px solid rgba(173,190,199,0.86) !important;
-  border-radius:6px !important;
+  border-radius:2px !important;
   box-shadow:none !important;
 }
 body[data-ui-harmony="v1"] #viewMaster .panel-controls .btn,
@@ -3898,6 +3898,28 @@ body[data-ui-harmony="v1"] #viewProject .panel-controls .btn::after{
 body[data-ui-harmony="v1"] #viewProject .card,
 body[data-ui-harmony="v1"] #viewMaster .card{
   border:1px solid rgba(173,190,199,0.72) !important;
+  border-radius:2px !important;
+  background:rgba(244,241,234,0.72) !important;
+  box-shadow:none !important;
+}
+body[data-ui-harmony="v1"] .main .panel,
+body[data-ui-harmony="v1"] .main .card,
+body[data-ui-harmony="v1"] .main .tablewrap{
+  box-shadow:none !important;
+  border-radius:2px !important;
+}
+body[data-ui-harmony="v1"] .main .tablewrap{
+  background:rgba(255,255,255,0.2) !important;
+}
+body[data-ui-harmony="v1"] .main .table th{
+  background:rgba(221,231,235,0.56) !important;
+}
+body[data-ui-harmony="v1"] .main .table td{
+  background:transparent !important;
+}
+body[data-ui-harmony="v1"] .main .panel-controls .btn,
+body[data-ui-harmony="v1"] .main .gantt-toggle-row .btn{
+  border-radius:2px !important;
   box-shadow:none !important;
 }
 body[data-ui-harmony="v1"] .task-progress-track{
