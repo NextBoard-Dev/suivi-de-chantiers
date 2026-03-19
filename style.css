@@ -2634,11 +2634,12 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 
 @media(max-width:1080px){
   .layout{grid-template-columns:1fr;padding:14px;}
-  .sidebar{order:2;position:static;width:auto;max-height:none;overflow:visible;}
-  .main{order:1;}
+  .sidebar{position:relative;top:auto;left:auto;width:auto;height:auto;max-height:none;overflow:visible;}
   .table{min-width:720px;}
 }
 @media (max-width:980px){
+  .layout{grid-template-columns:1fr;padding:10px;}
+  .sidebar{position:relative;height:auto;width:auto;max-height:none;}
   .topbar{
     flex-wrap:wrap;
     gap:8px;
