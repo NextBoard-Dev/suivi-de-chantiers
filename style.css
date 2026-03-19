@@ -3688,16 +3688,22 @@ body[data-ui-harmony="v1"] .tabs-master{
 }
 body[data-ui-harmony="v1"] .tab{
   min-height:30px;
-  border-radius:8px !important;
+  border-radius:4px !important;
   border:1px solid rgba(63,97,112,0.14) !important;
-  background:rgba(255,255,255,0.34) !important;
+  background:rgba(255,255,255,0.20) !important;
   color:#18313c !important;
+  box-shadow:none !important;
+}
+body[data-ui-harmony="v1"] .tabs .tab:not(.tab-master),
+body[data-ui-harmony="v1"] .tabs-master .tab:not(.tab-master){
+  border-left:3px solid hsl(var(--tab-hue, 0) 70% 45%) !important;
+  background:rgba(255,255,255,0.20) !important;
   box-shadow:none !important;
 }
 body[data-ui-harmony="v1"] .tab.active{
   border-color:rgba(63,97,112,0.42) !important;
-  background:linear-gradient(180deg, rgba(143,183,194,0.52) 0%, rgba(232,215,167,0.36) 100%) !important;
-  box-shadow:inset 3px 0 0 #d9896a, 0 4px 10px rgba(31,49,59,0.10) !important;
+  background:rgba(143,183,194,0.34) !important;
+  box-shadow:inset 3px 0 0 #d9896a !important;
   font-weight:800;
 }
 body[data-ui-harmony="v1"] .panel{
@@ -3760,8 +3766,9 @@ body[data-ui-harmony="v1"] .sidebar-logo-wrap{
   margin:0 0 6px;
 }
 body[data-ui-harmony="v1"] .sidebar-logo-img{
-  border:1px solid rgba(173,190,199,0.7);
-  border-radius:10px;
+  border:1px solid rgba(173,190,199,0.55);
+  border-radius:4px;
+  box-shadow:none !important;
 }
 body[data-ui-harmony="v1"] .section-filters .label{
   color:#365463;
