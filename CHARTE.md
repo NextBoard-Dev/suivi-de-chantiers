@@ -45,4 +45,10 @@
 - Si le besoin est ambigu, poser une question avant de coder.
 - Si l’utilisateur dit "go", exécuter directement.
 
+## 7) Résolution écran / layout
+- Toute modification UI doit rester stable en changement de résolution.
+- Le positionnement des blocs majeurs (topbar, sidebar, contenu central, boutons d’action) ne doit pas être réorganisé automatiquement selon la taille d’écran, sauf demande explicite.
+- Si l’espace manque, privilégier le scroll navigateur plutôt qu’un déplacement de la structure.
+- Validation systématique sur au moins 2 tailles de fenêtre (large + portable) avant livraison.
+
 

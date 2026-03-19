@@ -88,3 +88,13 @@ Ce document est la référence à suivre pour toute modification du dashboard.
 - Export projet: `A4 paysage` avec marges étroites.
 - Exports Gantt dédiés: `A3 paysage` conservé.
 - Optimiser l’occupation de page (espaces réduits, blocs utiles, pas de pages vides).
+
+15) Stabilité multi-résolution (obligatoire)
+- Toute modification UI doit préserver le positionnement des éléments clés (topbar, sidebar, zone centrale, actions).
+- Interdiction de déplacer/restructurer ces blocs selon la résolution écran, sauf demande explicite de l’utilisateur.
+- Le navigateur peut ajouter du scroll (horizontal/vertical) si nécessaire, mais pas casser la structure fonctionnelle.
+- Avant validation, vérifier visuellement au minimum en fenêtre large et en fenêtre portable:
+  - alignement des boutons d’action
+  - accès au bouton "Completer Heures Réelles"
+  - accès à la modale de saisie d’heures
+  - lisibilité du tableau maître (entêtes + lignes).
