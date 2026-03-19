@@ -3965,6 +3965,58 @@ body[data-ui-harmony="v1"] .modal textarea{
   border-color:rgba(173,190,199,0.88) !important;
   background:linear-gradient(180deg,#ffffff 0%,#eef2f7 100%) !important;
 }
+/* Verrou final uniformisation boutons Prestataire/Statut (toutes vues) */
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterVendor,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterStatus,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectVendor,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectStatus{
+  border-radius:2px !important;
+  border:1px solid rgba(173,190,199,0.9) !important;
+  box-shadow:none !important;
+  text-shadow:none !important;
+}
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterVendor.btn-ghost,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterStatus.btn-ghost,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectVendor.btn-ghost,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectStatus.btn-ghost{
+  background:rgba(255,255,255,0.62) !important;
+  background-color:rgba(255,255,255,0.62) !important;
+  border-color:rgba(173,190,199,0.9) !important;
+  color:#1f3642 !important;
+  -webkit-text-fill-color:#1f3642 !important;
+}
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterVendor.btn-primary,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterStatus.btn-primary,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectVendor.btn-primary,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectStatus.btn-primary{
+  background:rgba(76,119,135,0.92) !important;
+  background-color:rgba(76,119,135,0.92) !important;
+  border-color:#355564 !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+}
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterVendor:hover,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterStatus:hover,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectVendor:hover,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectStatus:hover,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterVendor:focus-visible,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterStatus:focus-visible,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectVendor:focus-visible,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectStatus:focus-visible{
+  box-shadow:none !important;
+  filter:none !important;
+}
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterVendor:disabled,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterStatus:disabled,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectVendor:disabled,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectStatus:disabled,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterVendor.is-disabled,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterStatus.is-disabled,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectVendor.is-disabled,
+html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectStatus.is-disabled{
+  opacity:1 !important;
+  filter:none !important;
+}
 @media (max-width: 1100px){
   body[data-ui-harmony="v1"] .layout{
     padding:10px !important;
