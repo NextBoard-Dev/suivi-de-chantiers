@@ -6308,8 +6308,8 @@ function renderMaster(){
   if(processMissingBtn){
     processMissingBtn.classList.toggle("missing-hours-attention", missingHoursCount > 0);
     processMissingBtn.disabled = missingHoursCount <= 0;
-    processMissingBtn.textContent = "Heures à compléter";
-    processMissingBtn.setAttribute("aria-label", `Heures à compléter (${missingHoursCount})`);
+    processMissingBtn.textContent = "Completer Heures Réelles";
+    processMissingBtn.setAttribute("aria-label", `Completer Heures Réelles (${missingHoursCount})`);
     if(missingHoursCount > 0 && !_missingHoursAttentionActive){
       const ae = document.activeElement;
       const typingTarget = !!(ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.tagName === "SELECT" || ae.isContentEditable));
