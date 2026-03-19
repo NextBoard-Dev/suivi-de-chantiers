@@ -4045,6 +4045,44 @@ body[data-ui-harmony="v1"] #btnToggleProjectStatus{
   min-height:30px !important;
   padding:4px 10px !important;
 }
+/* Verrou typo v1: meme famille + echelle proche Suivi des effets */
+body[data-ui-harmony="v1"]{
+  font-family:"Segoe UI", "Helvetica Neue", Arial, sans-serif !important;
+  --v1-fs-xs:10px;
+  --v1-fs-sm:11px;
+  --v1-fs-md:12px;
+  --v1-fs-lg:13px;
+  --v1-fs-xl:16px;
+}
+body[data-ui-harmony="v1"] .brand{
+  font-size:var(--v1-fs-xl) !important;
+}
+body[data-ui-harmony="v1"] .subtitle,
+body[data-ui-harmony="v1"] .section-title,
+body[data-ui-harmony="v1"] .label,
+body[data-ui-harmony="v1"] .panel-sub{
+  font-size:var(--v1-fs-sm) !important;
+}
+body[data-ui-harmony="v1"] .panel-title,
+body[data-ui-harmony="v1"] .card-title{
+  font-size:var(--v1-fs-xl) !important;
+}
+body[data-ui-harmony="v1"] .btn,
+body[data-ui-harmony="v1"] .tab,
+body[data-ui-harmony="v1"] .input,
+body[data-ui-harmony="v1"] select,
+body[data-ui-harmony="v1"] textarea,
+body[data-ui-harmony="v1"] .filters-indicator,
+body[data-ui-harmony="v1"] .legend-item,
+body[data-ui-harmony="v1"] .panel-chip{
+  font-size:var(--v1-fs-md) !important;
+}
+body[data-ui-harmony="v1"] .table th{
+  font-size:var(--v1-fs-sm) !important;
+}
+body[data-ui-harmony="v1"] .table td{
+  font-size:var(--v1-fs-md) !important;
+}
 /* Verrou final: dimensionnement fluide global (independant du type d'ecran) */
 body[data-ui-harmony="v1"]{
   --v1-sidebar-w: clamp(206px, 16.5vw, 272px);
