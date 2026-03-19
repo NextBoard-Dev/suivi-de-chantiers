@@ -3866,6 +3866,35 @@ body[data-ui-harmony="v1"] .table td{
 body[data-ui-harmony="v1"] .table tbody tr:hover td{
   background:rgba(196,216,226,0.42);
 }
+body[data-ui-harmony="v1"] #viewMaster .filters-indicator,
+body[data-ui-harmony="v1"] #viewProject .filters-indicator,
+body[data-ui-harmony="v1"] .legend-item,
+body[data-ui-harmony="v1"] .panel-chip{
+  background:rgba(221,231,235,0.58) !important;
+  border:1px solid rgba(173,190,199,0.86) !important;
+  border-radius:6px !important;
+  box-shadow:none !important;
+}
+body[data-ui-harmony="v1"] #viewMaster .panel-controls .btn,
+body[data-ui-harmony="v1"] #viewProject .panel-controls .btn,
+body[data-ui-harmony="v1"] .gantt-toggle-row .btn{
+  background:rgba(255,255,255,0.62) !important;
+  border:1px solid rgba(173,190,199,0.9) !important;
+  border-radius:6px !important;
+  box-shadow:none !important;
+}
+body[data-ui-harmony="v1"] #viewMaster .panel-controls .btn.btn-primary,
+body[data-ui-harmony="v1"] #viewProject .panel-controls .btn.btn-primary,
+body[data-ui-harmony="v1"] .gantt-toggle-row .btn.btn-primary{
+  background:rgba(76,119,135,0.92) !important;
+  border-color:#355564 !important;
+  color:#fff !important;
+}
+body[data-ui-harmony="v1"] .gantt-toggle-row .btn::after,
+body[data-ui-harmony="v1"] #viewMaster .panel-controls .btn::after,
+body[data-ui-harmony="v1"] #viewProject .panel-controls .btn::after{
+  display:none !important;
+}
 body[data-ui-harmony="v1"] #viewProject .card,
 body[data-ui-harmony="v1"] #viewMaster .card{
   border:1px solid rgba(173,190,199,0.72) !important;
