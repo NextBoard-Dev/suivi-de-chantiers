@@ -902,6 +902,7 @@ function applyUiUpperNoAccent(root=document.body){
   while((node = walker.nextNode())){
     node.nodeValue = uiUpperNoAccent(node.nodeValue);
   }
+  if(typeof root.querySelectorAll !== "function") return;
   root.querySelectorAll("input[placeholder], textarea[placeholder]").forEach((n)=>{
     n.placeholder = uiUpperNoAccent(n.placeholder || "");
   });
