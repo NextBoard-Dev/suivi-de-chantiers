@@ -3449,20 +3449,20 @@ html[data-theme] .gantt-toggle-row .btn.btn-primary{
 #btnToggleMasterStatus.btn-ghost,
 #btnToggleProjectVendor.btn-ghost,
 #btnToggleProjectStatus.btn-ghost{
-  background:linear-gradient(180deg,#ffffff 0%,#e8edf3 100%) !important;
-  background-color:#e8edf3 !important;
-  border-color:#94a3b8 !important;
-  color:#0f172a !important;
-  -webkit-text-fill-color:#0f172a !important;
+  background:rgba(255,255,255,0.66) !important;
+  background-color:rgba(255,255,255,0.66) !important;
+  border-color:rgba(148,163,184,0.9) !important;
+  color:#1f3642 !important;
+  -webkit-text-fill-color:#1f3642 !important;
 }
 .gantt-toggle-row .btn.btn-primary,
 #btnToggleMasterVendor.btn-primary,
 #btnToggleMasterStatus.btn-primary,
 #btnToggleProjectVendor.btn-primary,
 #btnToggleProjectStatus.btn-primary{
-  background:linear-gradient(180deg,#2563eb 0%,#1d4ed8 100%) !important;
-  background-color:#1d4ed8 !important;
-  border-color:#1d4ed8 !important;
+  background:rgba(76,119,135,0.92) !important;
+  background-color:rgba(76,119,135,0.92) !important;
+  border-color:#355564 !important;
   color:#ffffff !important;
   -webkit-text-fill-color:#ffffff !important;
 }
@@ -3520,9 +3520,10 @@ html[data-theme] #btnToggleMasterVendor.btn-ghost,
 html[data-theme] #btnToggleMasterStatus.btn-ghost,
 html[data-theme] #btnToggleProjectVendor.btn-ghost,
 html[data-theme] #btnToggleProjectStatus.btn-ghost{
-  color:#0f172a !important;
-  -webkit-text-fill-color:#0f172a !important;
-  background-color:#e8edf3 !important;
+  color:#1f3642 !important;
+  -webkit-text-fill-color:#1f3642 !important;
+  background-color:rgba(255,255,255,0.66) !important;
+  border-color:rgba(148,163,184,0.9) !important;
 }
 html[data-theme] #btnToggleMasterVendor.btn-primary,
 html[data-theme] #btnToggleMasterStatus.btn-primary,
@@ -3530,7 +3531,8 @@ html[data-theme] #btnToggleProjectVendor.btn-primary,
 html[data-theme] #btnToggleProjectStatus.btn-primary{
   color:#ffffff !important;
   -webkit-text-fill-color:#ffffff !important;
-  background-color:#1d4ed8 !important;
+  background-color:rgba(76,119,135,0.92) !important;
+  border-color:#355564 !important;
 }
 html[data-theme] .help-toolbar .help-btn{
   font-weight:800 !important;
