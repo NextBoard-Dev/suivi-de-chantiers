@@ -602,7 +602,6 @@ let lastUndoSnapshot = null;
 let _stateVersion = 0;
 let _filteredCache = { key:"", version:-1, tasks:null };
 let _missingHoursFlow = null;
-let _missingHoursAttentionActive = false;
 
 let isLocked = true; // verrou logique = droits utilisateur (admin = false)
 const isHostedGithubPages = ()=>{
@@ -6310,17 +6309,15 @@ function renderMaster(){
     processMissingBtn.disabled = missingHoursCount <= 0;
     processMissingBtn.textContent = "Completer Heures Réelles";
     processMissingBtn.setAttribute("aria-label", `Completer Heures Réelles (${missingHoursCount})`);
-    if(missingHoursCount > 0 && !_missingHoursAttentionActive){
+    if(missingHoursCount > 0){
       const ae = document.activeElement;
       const typingTarget = !!(ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.tagName === "SELECT" || ae.isContentEditable));
-      if(!typingTarget){
+      const modalOpen = isHoursTaskModalOpen();
+      if(!typingTarget && !modalOpen){
         setTimeout(()=>{
           try{ processMissingBtn.focus({preventScroll:true}); }catch(e){ softCatch(e); }
         }, 0);
       }
-      _missingHoursAttentionActive = true;
-    }else if(missingHoursCount <= 0){
-      _missingHoursAttentionActive = false;
     }
   }
 
