@@ -867,6 +867,62 @@ const siteColor = (_site="")=>"transparent";
 
 const attrEscape = (s="")=> s.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 
+const uiUpperNoAccent = (value="")=>
+  String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+
+function applyUiUpperNoAccent(root=document.body){
+  if(!root) return;
+  if(root.nodeType === Node.TEXT_NODE){
+    const parent = root.parentElement;
+    if(parent){
+      const tag = parent.tagName;
+      if(tag==="SCRIPT" || tag==="STYLE" || tag==="NOSCRIPT" || tag==="TEXTAREA") return;
+      if(parent.closest("[contenteditable='true']")) return;
+    }
+    if(root.nodeValue && root.nodeValue.trim()){
+      root.nodeValue = uiUpperNoAccent(root.nodeValue);
+    }
+    return;
+  }
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node){
+      if(!node || !node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      const parent = node.parentElement;
+      if(!parent) return NodeFilter.FILTER_REJECT;
+      const tag = parent.tagName;
+      if(tag==="SCRIPT" || tag==="STYLE" || tag==="NOSCRIPT" || tag==="TEXTAREA") return NodeFilter.FILTER_REJECT;
+      if(parent.closest("[contenteditable='true']")) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  let node = null;
+  while((node = walker.nextNode())){
+    node.nodeValue = uiUpperNoAccent(node.nodeValue);
+  }
+  root.querySelectorAll("input[placeholder], textarea[placeholder]").forEach((n)=>{
+    n.placeholder = uiUpperNoAccent(n.placeholder || "");
+  });
+  root.querySelectorAll("option").forEach((opt)=>{
+    opt.textContent = uiUpperNoAccent(opt.textContent || "");
+  });
+}
+
+let uiUpperObserver = null;
+function ensureUiUpperNoAccentObserver(){
+  if(uiUpperObserver || !document.body) return;
+  uiUpperObserver = new MutationObserver((mutations)=>{
+    for(const mutation of mutations){
+      mutation.addedNodes?.forEach((node)=>{
+        applyUiUpperNoAccent(node);
+      });
+    }
+  });
+  uiUpperObserver.observe(document.body, { childList:true, subtree:true });
+}
+
 function updateTopbarHeight(){
 
   const tb = document.querySelector(".topbar");
@@ -5503,41 +5559,41 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
       <linearGradient id="${gradIntId}" x1="0" x2="0" y1="0" y2="1">
 
-        <stop offset="0%" stop-color="#22c55e" stop-opacity="0.98"/>
+        <stop offset="0%" stop-color="#8bbf9f" stop-opacity="0.95"/>
 
-        <stop offset="55%" stop-color="#16a34a" stop-opacity="0.92"/>
+        <stop offset="55%" stop-color="#78ac8d" stop-opacity="0.9"/>
 
-        <stop offset="100%" stop-color="#15803d" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#679979" stop-opacity="0.86"/>
 
       </linearGradient>
 
       <linearGradient id="${gradExtId}" x1="0" x2="0" y1="0" y2="1">
 
-        <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.98"/>
+        <stop offset="0%" stop-color="#d6b27b" stop-opacity="0.95"/>
 
-        <stop offset="55%" stop-color="#b45309" stop-opacity="0.92"/>
+        <stop offset="55%" stop-color="#c49b64" stop-opacity="0.9"/>
 
-        <stop offset="100%" stop-color="#92400e" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#b18754" stop-opacity="0.86"/>
 
       </linearGradient>
       <linearGradient id="${gradRsgId}" x1="0" x2="0" y1="0" y2="1">
-        <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.98"/>
-        <stop offset="55%" stop-color="#3b82f6" stop-opacity="0.92"/>
-        <stop offset="100%" stop-color="#2563eb" stop-opacity="0.9"/>
+        <stop offset="0%" stop-color="#93abc7" stop-opacity="0.95"/>
+        <stop offset="55%" stop-color="#7f97b4" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#6f86a2" stop-opacity="0.86"/>
       </linearGradient>
       <linearGradient id="${gradRiId}" x1="0" x2="0" y1="0" y2="1">
-        <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.98"/>
-        <stop offset="55%" stop-color="#7c3aed" stop-opacity="0.92"/>
-        <stop offset="100%" stop-color="#5b21b6" stop-opacity="0.9"/>
+        <stop offset="0%" stop-color="#b7a6ca" stop-opacity="0.95"/>
+        <stop offset="55%" stop-color="#a18dbc" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#8d79aa" stop-opacity="0.86"/>
       </linearGradient>
 
       <filter id="${barShadowId}" x="-20%" y="-20%" width="140%" height="160%">
 
-        <feDropShadow dx="0" dy="2" stdDeviation="1.6" flood-color="#0b1424" flood-opacity="0.18"/>
+        <feDropShadow dx="0" dy="1.2" stdDeviation="1.1" flood-color="#0b1424" flood-opacity="0.12"/>
 
       </filter>
       <filter id="${pieShadowId}" x="-30%" y="-30%" width="180%" height="190%">
-        <feDropShadow dx="0" dy="2.5" stdDeviation="2.1" flood-color="#0b1424" flood-opacity="0.22"/>
+        <feDropShadow dx="0" dy="1.8" stdDeviation="1.6" flood-color="#0b1424" flood-opacity="0.14"/>
       </filter>
 
     </defs>
@@ -5743,7 +5799,7 @@ function renderTabs(){
   if(!tabs) return;
 
   if(tabsSortBtn){
-    tabsSortBtn.textContent = (tabsSortMode === "progress_desc") ? "Tri avancement 100%→0%" : "Tri avancement 0%→100%";
+    tabsSortBtn.textContent = (tabsSortMode === "progress_desc") ? "TRI 100%->0%" : "TRI 0%->100%";
   }
   if(tabsSortResetBtn){
     tabsSortResetBtn.disabled = (tabsSortMode === "progress_asc");
@@ -5797,11 +5853,8 @@ function renderTabs(){
   const total = projectsSorted.length || 1;
   projectsSorted.forEach((p,idx)=>{
     const hue = 0 + (120 * (idx/(total-1 || 1))); // rouge -> vert
-    const tasksDated = state.tasks.filter(t=>t.projectId===p.id && t.start && t.end);
-    const minStart = tasksDated.length ? tasksDated.map(t=>t.start).sort()[0] : "";
-    const maxEnd = tasksDated.length ? tasksDated.map(t=>t.end).sort().slice(-1)[0] : "";
-    const progress = (minStart && maxEnd) ? taskProgress({start:minStart, end:maxEnd}) : 0;
-    h+=`<button class="tab ${selectedProjectId===p.id?"active":""}" data-tab="${p.id}" style="--tab-hue:${hue};--tab-progress:${progress}%;--tab-progress-color:hsl(${hue} 72% 45%);"><span>${p.name||"Projet"}</span><span class="tab-close" data-close="${p.id}" aria-label="Supprimer le projet"></span></button>`;
+    const progress = getProjectCompletion(p.id);
+    h+=`<button class="tab ${selectedProjectId===p.id?"active":""}" data-tab="${p.id}" style="--tab-hue:${hue};--tab-progress:${progress}%;--tab-progress-color:hsl(${hue} 72% 45%);"><span class="tab-progress-fill" style="width:${progress}%;background:hsl(${hue} 78% 66% / .42);"></span><span>${p.name||"Projet"}</span><span class="tab-close" data-close="${p.id}" aria-label="Supprimer le projet"></span></button>`;
   });
 
   if(tabsMaster){ tabsMaster.innerHTML = masterBtn; }
@@ -7080,13 +7133,17 @@ function syncHoursTaskStatusFromCalendarDraft(t, dayKey, rawValue){
 
 function applyHoursSaveButtonVisualState(btn){
   if(!btn) return;
-  // Forçage visuel anti-écrasement CSS: bouton Valider toujours vert et lisible.
-  btn.style.setProperty("background", "linear-gradient(180deg,#22c55e 0%,#16a34a 100%)", "important");
-  btn.style.setProperty("border-color", "#15803d", "important");
+  // Palette harmonisée UI: bouton Valider bleu-gris (plus de vert forcé).
+  btn.style.setProperty("background", "#3f6170", "important");
+  btn.style.setProperty("border-color", "#365563", "important");
   btn.style.setProperty("color", "#ffffff", "important");
   btn.style.setProperty("-webkit-text-fill-color", "#ffffff", "important");
   btn.style.setProperty("text-shadow", "none", "important");
   if(btn.disabled || btn.classList.contains("is-disabled")){
+    btn.style.setProperty("background", "#8ea2ad", "important");
+    btn.style.setProperty("border-color", "#7f939e", "important");
+    btn.style.setProperty("color", "#f5f8fa", "important");
+    btn.style.setProperty("-webkit-text-fill-color", "#f5f8fa", "important");
     btn.style.setProperty("opacity", "1", "important");
     btn.style.setProperty("filter", "none", "important");
     btn.style.setProperty("box-shadow", "none", "important");
@@ -7628,6 +7685,8 @@ function renderAll(){
   applySidebarTopLock();
   checkTimeLogReminders();
   updateDataQualityBanner(false);
+  applyUiUpperNoAccent();
+  ensureUiUpperNoAccentObserver();
 
 }
 
@@ -8140,10 +8199,10 @@ function runUnifiedPdfExport(){
               legendGroup.remove();
               if(labels.length){
                 const colorByKey = {
-                  "interne": "#22c55e",
-                  "externe": "#b45309",
-                  "rsg": "#2563eb",
-                  "ri": "#7c3aed"
+                  "interne": "#78ac8d",
+                  "externe": "#c49b64",
+                  "rsg": "#7f97b4",
+                  "ri": "#a18dbc"
                 };
                 const legendHtml = `<div class="pdf-workload-legend">${labels.map(lbl=>{
                   const k = lbl.toLowerCase();

@@ -1184,7 +1184,7 @@
 
   <header class="topbar">
 
-    <div>
+    <div class="topbar-main">
 
       <div class="brand" id="brandTitle">Suivi de Chantiers</div>
 
@@ -1194,29 +1194,31 @@
 
     <div class="topbar-user" id="topbarUser"></div>
 
-    <button class="btn btn-ghost hidden" id="btnSwitchUser">
+    <div class="topbar-controls">
 
-      <span class="btn-icon"></span>
+      <button class="btn btn-ghost hidden" id="btnSwitchUser">
 
-      Changer d'utilisateur
+        <span class="btn-icon"></span>
 
-    </button>
+        Changer d'utilisateur
 
-    <button class="btn btn-ghost hidden" id="btnLogout">
+      </button>
 
-      Se déconnecter
+      <button class="btn btn-ghost hidden" id="btnLogout">
 
-    </button>
+        Se déconnecter
 
-    <div class="theme-picker" id="themePicker" aria-label="Choix du thème">
+      </button>
 
-      <button type="button" class="theme-toggle" id="themeToggle">Thème</button>
+      <div class="theme-picker" id="themePicker" aria-label="Choix du thème">
 
-      <div id="themeGrid" class="theme-grid" role="listbox" aria-label="Palette de thèmes"></div>
+        <button type="button" class="theme-toggle" id="themeToggle">Thème</button>
 
-    </div>
+        <div id="themeGrid" class="theme-grid" role="listbox" aria-label="Palette de thèmes"></div>
 
-    <div class="actions">
+      </div>
+
+      <div class="actions">
 
       <button class="btn icon-btn" id="btnHelp" title="Aide" aria-label="Aide">
 
@@ -1235,6 +1237,8 @@
       <button class="btn btn-primary" id="btnSave">Sauvegarder</button>
       <button class="btn btn-ghost" id="btnExportPdfUnified">Exporter PDF</button>
       <button class="btn hidden" id="btnConfig">Configuration</button>
+
+      </div>
 
     </div>
 
@@ -1338,7 +1342,7 @@
 
           <button class="btn btn-primary btn-add" id="btnAddProject">Nouveau Projet</button>
 
-          <button class="btn btn-primary btn-add btn-add-right" id="btnAddTask">Nouvette Tâche</button>
+          <button class="btn btn-primary btn-add btn-add-right" id="btnAddTask">Nouvelle Tâche</button>
 
         </div>
 
