@@ -3921,7 +3921,7 @@ body[data-ui-harmony="v1"] .main .table td{
 }
 body[data-ui-harmony="v1"] .main .panel-controls .btn,
 body[data-ui-harmony="v1"] .main .gantt-toggle-row .btn{
-  border-radius:2px !important;
+  border-radius:10px !important;
   box-shadow:none !important;
 }
 body[data-ui-harmony="v1"] .task-progress-track{
@@ -3970,7 +3970,7 @@ html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterVendor,
 html[data-theme] body[data-ui-harmony="v1"] #btnToggleMasterStatus,
 html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectVendor,
 html[data-theme] body[data-ui-harmony="v1"] #btnToggleProjectStatus{
-  border-radius:2px !important;
+  border-radius:10px !important;
   border:1px solid rgba(173,190,199,0.9) !important;
   box-shadow:none !important;
   text-shadow:none !important;
@@ -4034,6 +4034,41 @@ body[data-ui-harmony="v1"] #btnToggleProjectStatus{
   border-radius:10px !important;
   min-height:30px !important;
   padding:4px 12px !important;
+}
+@media (max-width: 1600px){
+  body[data-ui-harmony="v1"] .topbar{
+    gap:8px;
+    padding:8px 10px;
+  }
+  body[data-ui-harmony="v1"] .topbar-user{
+    flex:1 1 420px;
+    max-width:620px;
+    min-width:280px;
+    font-size:14px;
+  }
+  body[data-ui-harmony="v1"] .sidebar{
+    width:248px !important;
+  }
+  body[data-ui-harmony="v1"] .layout{
+    padding:10px 10px 12px 262px !important;
+  }
+}
+@media (max-width: 1366px){
+  body[data-ui-harmony="v1"] .topbar{
+    flex-wrap:wrap;
+  }
+  body[data-ui-harmony="v1"] .actions{
+    width:100%;
+  }
+  body[data-ui-harmony="v1"] .sidebar{
+    width:230px !important;
+  }
+  body[data-ui-harmony="v1"] .layout{
+    padding:10px 8px 12px 244px !important;
+  }
+  body[data-ui-harmony="v1"] .main .table{
+    min-width:780px;
+  }
 }
 @media (max-width: 1100px){
   body[data-ui-harmony="v1"] .layout{
