@@ -65,12 +65,19 @@ Ce document est la référence à suivre pour toute modification du dashboard.
 
 12) Snapshots (obligatoire)
 - Avant toute modification sensible, créer un snapshot.
-- Nommage snapshot: `YYYYMMDD_HHMMSS_Contexte`.
-- Lors de la création d’un nouveau snapshot, renommer le précédent en ajoutant `_ok`.
-- Inclure systématiquement: `app.js`, `index.html`, `style.css`, `print.css`, `suivi_chantiers_backup.json`.
-- Stockage: déplacer les snapshots `_ok` dans `snapshots_ok/`.
-- Garder à la racine seulement les snapshots non `_ok` (versions de travail).
-- Si les règles changent, inclure aussi `RULES_FONCTIONNEMENT.md` et `AGENTS.md`.
+- Nommage obligatoire: `YYYYMMDD_HHMMSS_ContexteCourt`.
+- Stockage obligatoire: `snapshots_ok/`, dans un dossier de lot `YYYYMMDD_HHMMSS_ContexteCourt/` si plusieurs fichiers sont liés à la même action.
+- Inclure au minimum selon le besoin: `app.js`, `index.html`, `style.css` (+ fichiers docs si modifiés).
+- Les snapshots ne doivent jamais être commit/push sur GitHub (`snapshots_ok/` exclu).
+- Conserver un fichier `LATEST_MAJOR_SNAPSHOT.txt` pour pointer le dernier snapshot majeur.
+
+16) Méthode harmonisation (obligatoire)
+- Référence visuelle: dashboard `Suivi des effets` (lecture seule).
+- Travailler par petits lots réversibles (topbar, sidebar, zone centrale, modales).
+- Ne pas toucher la logique métier JS sans demande explicite.
+- Après chaque lot:
+  - lancer `run_tests.bat`
+  - proposer la phrase de commit.
 
 13) Exports projet (métier)
 - Export projet structuré pour usage comptable (immobilisation):

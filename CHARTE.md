@@ -15,17 +15,10 @@
 
 ## 3) Convention snapshots
 - Format: YYYYMMDD_HHMMSS_Contexte
-- Le snapshot précédent devient suffixé _ok
-- Fichiers minimum à inclure:
-  - app.js
-  - index.html
-  - style.css
-  - print.css
-  - suivi_chantiers_backup.json
-- Si règles modifiées, inclure aussi:
-  - RULES_FONCTIONNEMENT.md
-  - AGENTS.md
-- Les snapshots _ok sont rangés dans snapshots_ok/
+- Format recommandé: `YYYYMMDD_HHMMSS_ContexteCourt`
+- Les snapshots sont rangés dans `snapshots_ok/` (dossier de lot si plusieurs fichiers)
+- Les snapshots ne sont jamais commit/push (`snapshots_ok/` exclu)
+- Inclure au minimum les fichiers réellement touchés (`app.js`, `index.html`, `style.css` + docs si modifiées)
 
 ## 4) Règles UI / produit demandées
 - Les exports PDF doivent ouvrir un vrai PDF imprimable (pas une capture brute).
@@ -50,5 +43,10 @@
 - Le positionnement des blocs majeurs (topbar, sidebar, contenu central, boutons d’action) ne doit pas être réorganisé automatiquement selon la taille d’écran, sauf demande explicite.
 - Si l’espace manque, privilégier le scroll navigateur plutôt qu’un déplacement de la structure.
 - Validation systématique sur au moins 2 tailles de fenêtre (large + portable) avant livraison.
+
+## 8) Harmonisation visuelle
+- Référence visuelle prioritaire: dashboard `Suivi des effets`.
+- Procéder par lots courts et réversibles.
+- Après chaque lot: exécuter les tests et fournir la phrase de commit.
 
 
