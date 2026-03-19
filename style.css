@@ -1894,6 +1894,10 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   box-shadow:0 0 0 0 rgba(220,38,38,0.55), 0 6px 12px rgba(0,0,0,0.14) !important;
   animation:missingHoursHalo 1.2s ease-out infinite;
 }
+#btnProcessMissingHours:focus,
+#btnProcessMissingHours:focus-visible{
+  outline:none !important;
+}
 #btnProcessMissingHours.missing-hours-attention::before{
   content:"";
   position:absolute;
