@@ -601,6 +601,7 @@ let unsavedChanges = false;
 let lastUndoSnapshot = null;
 let _stateVersion = 0;
 let _filteredCache = { key:"", version:-1, tasks:null };
+let _missingHoursFlow = null;
 
 let isLocked = true; // verrou logique = droits utilisateur (admin = false)
 const isHostedGithubPages = ()=>{
@@ -6195,8 +6196,9 @@ function filtersActive(){
   const startAfter = el("filterStartAfter")?.value || "";
 
   const endBefore  = el("filterEndBefore")?.value || "";
+  const onlyMissing = !!el("toggleMissingOnly")?.checked;
 
-  return !!(fsite || fp || fs || q || startAfter || endBefore);
+  return !!(fsite || fp || fs || q || startAfter || endBefore || onlyMissing);
 
 }
 
@@ -6281,7 +6283,17 @@ function renderMaster(){
   const sorted = sortTasks(tasks, sortMaster);
   const missingMap = buildMissingDaysMap(sorted);
   const todayKey = new Date().toISOString().slice(0,10);
-  const missingHoursCount = sorted.reduce((acc, t)=> acc + ((missingMap.get(t.id) || 0) > 0 ? 1 : 0), 0);
+  const allTasks = Array.isArray(state?.tasks) ? state.tasks : [];
+  const missingMapAll = buildMissingDaysMap(allTasks);
+  const missingHoursCount = allTasks.reduce((acc, t)=> acc + ((missingMapAll.get(t.id) || 0) > 0 ? 1 : 0), 0);
+  const onlyMissingEnabled = !!el("toggleMissingOnly")?.checked;
+  const visibleTasks = onlyMissingEnabled
+    ? sorted.filter(t=> (missingMap.get(t.id) || 0) > 0)
+    : sorted;
+  const missingOnlyToggleWrap = el("missingOnlyToggleWrap");
+  if(missingOnlyToggleWrap){
+    missingOnlyToggleWrap.classList.toggle("inactive", !onlyMissingEnabled);
+  }
   const missingHoursBadge = el("missingHoursBadge");
   if(missingHoursBadge){
     updateBadge(
@@ -6291,10 +6303,29 @@ function renderMaster(){
       "Heures réelles: OK"
     );
   }
+  const processMissingBtn = el("btnProcessMissingHours");
+  if(processMissingBtn){
+    processMissingBtn.classList.toggle("missing-hours-attention", missingHoursCount > 0);
+    processMissingBtn.disabled = missingHoursCount <= 0;
+    processMissingBtn.textContent = "Completer Heures Réelles";
+    processMissingBtn.setAttribute("aria-label", `Completer Heures Réelles (${missingHoursCount})`);
+    if(missingHoursCount > 0){
+      const ae = document.activeElement;
+      const typingTarget = !!(ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.tagName === "SELECT" || ae.isContentEditable));
+      const modalOpen = isHoursTaskModalOpen();
+      if(!typingTarget && !modalOpen){
+        setTimeout(()=>{
+          try{ processMissingBtn.focus({preventScroll:true}); }catch(e){ softCatch(e); }
+        }, 0);
+      }
+    }
+  }
 
-  if(sorted.length===0){
+  if(visibleTasks.length===0){
 
-    tbody.innerHTML="<tr><td colspan='8' class='empty-row'>Aucune tâche.</td></tr>";
+    tbody.innerHTML = onlyMissingEnabled
+      ? "<tr><td colspan='8' class='empty-row'>Aucune tâche à compléter.</td></tr>"
+      : "<tr><td colspan='8' class='empty-row'>Aucune tâche.</td></tr>";
 
     return;
 
@@ -6302,7 +6333,7 @@ function renderMaster(){
 
   let h="";
 
-  sorted.forEach(t=>{
+  visibleTasks.forEach(t=>{
 
     const p = state.projects.find(x=>x.id===t.projectId);
 
@@ -6613,6 +6644,63 @@ function buildMissingDaysMap(tasks){
     map.set(t.id, countMissingDaysForTask(t));
   });
   return map;
+}
+function getMissingTasksForMasterFlow(){
+  const sorted = sortTasks((state?.tasks || []), sortMaster);
+  const missingMap = buildMissingDaysMap(sorted);
+  return sorted
+    .filter(t=> (missingMap.get(t.id) || 0) > 0)
+    .map(t=>({ projectId: t.projectId, taskId: t.id }));
+}
+function finishMissingHoursFlow(){
+  _missingHoursFlow = null;
+  selectedProjectId = null;
+  selectedTaskId = null;
+  const toggleMissingOnly = el("toggleMissingOnly");
+  if(toggleMissingOnly) toggleMissingOnly.checked = false;
+  renderMaster();
+}
+function openMissingHoursFlowStep(){
+  if(!_missingHoursFlow || !_missingHoursFlow.tasks.length) return;
+  while(_missingHoursFlow.index < _missingHoursFlow.tasks.length){
+    const step = _missingHoursFlow.tasks[_missingHoursFlow.index];
+    const t = state?.tasks?.find(x=>x.id===step.taskId && x.projectId===step.projectId);
+    if(!t){
+      _missingHoursFlow.index += 1;
+      continue;
+    }
+    selectedProjectId = step.projectId;
+    selectedTaskId = step.taskId;
+    renderProject();
+    setTimeout(()=>{
+      if(!_missingHoursFlow) return;
+      const selected = getSelectedTaskForHoursModal();
+      if(!selected){
+        _missingHoursFlow.index += 1;
+        openMissingHoursFlowStep();
+        return;
+      }
+      openHoursTaskModal();
+    }, 0);
+    return;
+  }
+  showSaveToast("ok", "Parcours terminé", "Toutes les tâches à compléter ont été traitées.");
+  finishMissingHoursFlow();
+}
+function startMissingHoursFlow(){
+  const tasks = getMissingTasksForMasterFlow();
+  if(!tasks.length){
+    showSaveToast("ok", "A compléter", "Aucune tâche à compléter.");
+    return;
+  }
+  _missingHoursFlow = { tasks, index: 0 };
+  showSaveToast("ok", "Parcours lancé", `${tasks.length} tâche(s) à compléter`);
+  openMissingHoursFlowStep();
+}
+function advanceMissingHoursFlow(){
+  if(!_missingHoursFlow) return;
+  _missingHoursFlow.index += 1;
+  openMissingHoursFlowStep();
 }
 function updateTimeLogUI(t, forceAlert=false){
   const dateInput = el("t_time_date_input");
@@ -7017,7 +7105,7 @@ function syncHoursTaskModal(taskOverride=null){
 
   const hmProject = el("hm_project");
   const hmTask = el("hm_task");
-  const hmOwner = el("hm_owner");
+  const hmOwnerBadge = el("hm_owner_badge");
   const hmPeriod = el("hm_period");
   const hmDate = el("hm_date");
   const hmHours = el("hm_hours");
@@ -7028,7 +7116,7 @@ function syncHoursTaskModal(taskOverride=null){
   if(!t){
     if(hmProject) hmProject.value = "";
     if(hmTask) hmTask.value = "";
-    if(hmOwner) hmOwner.value = "";
+    if(hmOwnerBadge) hmOwnerBadge.innerHTML = "";
     if(hmPeriod) hmPeriod.value = "";
     if(hmDate) hmDate.value = "";
     if(hmHours) hmHours.value = "";
@@ -7050,7 +7138,10 @@ function syncHoursTaskModal(taskOverride=null){
 
   if(hmProject) hmProject.value = (p?.name || "").trim();
   if(hmTask) hmTask.value = desc ? (((t.status || "").trim()) + " - " + desc) : ((t.status || "").trim() || "Tâche");
-  if(hmOwner) hmOwner.value = vendor ? (owner + " - " + vendor) : owner;
+  if(hmOwnerBadge){
+    const badgeHtml = ownerBadgeForTask(t) || ownerBadge(owner, vendor ? `${owner} - ${vendor}` : owner);
+    hmOwnerBadge.innerHTML = badgeHtml || `<span>${attrEscape(vendor ? `${owner} - ${vendor}` : owner)}</span>`;
+  }
   if(hmPeriod) hmPeriod.value = (formatDate(t.start || "") + " -> " + formatDate(t.end || ""));
   if(hmDate){
     hmDate.min = t.start || "";
@@ -7080,9 +7171,13 @@ function openHoursTaskModal(){
   modal.style.display = "flex";
   modal.setAttribute("aria-hidden","false");
 }
-function closeHoursTaskModal(){
+function closeHoursTaskModal(stopFlow=true){
   const modal = el("hoursTaskModal");
   hideModalSafely(modal, "#btnOpenHoursModal");
+  if(stopFlow && _missingHoursFlow){
+    _missingHoursFlow = null;
+    showSaveToast("ok", "Parcours arrêté", "Traitement des tâches à compléter interrompu.");
+  }
 }
 function saveHoursTaskModal(){
   const t = getSelectedTaskForHoursModal();
@@ -7154,7 +7249,7 @@ function saveHoursTaskModal(){
       logs.splice(i, 1);
     }
   }
-  closeHoursTaskModal();
+  closeHoursTaskModal(false);
   markDirty();
   dateInput.value = selectedDate;
   hoursInput.value = rawHours;
@@ -7162,6 +7257,9 @@ function saveHoursTaskModal(){
   renderMaster();
   renderProject();
   saveState();
+  if(_missingHoursFlow){
+    advanceMissingHoursFlow();
+  }
 }
 function checkTimeLogReminders(){
   const userKey = getCurrentUserKey();
@@ -7512,6 +7610,8 @@ function renderAll(){
     if(n) n.value="";
 
   });
+  const toggleMissingOnly = el("toggleMissingOnly");
+  if(toggleMissingOnly) toggleMissingOnly.checked = false;
   _filteredCache = { key:"", version:-1, tasks:null };
 
   renderFilters();
@@ -8989,6 +9089,14 @@ function bind(){
     const onSearch = debounce(()=>{ renderMaster(); saveUIState(); markDirty(); }, 250);
     search.addEventListener("input", onSearch);
   }
+  el("toggleMissingOnly")?.addEventListener("change", ()=>{
+    renderMaster();
+    saveUIState();
+    markDirty();
+  });
+  el("btnProcessMissingHours")?.addEventListener("click", ()=>{
+    startMissingHoursFlow();
+  });
 
   document.addEventListener("keydown",(e)=>{
     if(e.defaultPrevented) return;
@@ -9251,6 +9359,8 @@ function bind(){
       const n = el(id);
       if(n) n.value = "";
     });
+    const toggleMissingOnly = el("toggleMissingOnly");
+    if(toggleMissingOnly) toggleMissingOnly.checked = false;
 
     renderMaster();
 
@@ -10198,67 +10308,3 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
