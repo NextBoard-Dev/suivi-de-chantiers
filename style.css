@@ -3543,3 +3543,39 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
   box-shadow:none !important;
 }
 
+/* Alerte heures manquantes: fleche verte + halo rouge */
+#btnProcessMissingHours{
+  position:relative;
+}
+#btnProcessMissingHours:focus,
+#btnProcessMissingHours:focus-visible{
+  outline:none !important;
+  box-shadow:none !important;
+}
+#btnProcessMissingHours.missing-hours-attention{
+  box-shadow:0 0 0 0 rgba(220,38,38,0.55), 0 6px 12px rgba(0,0,0,0.14) !important;
+  animation:missingHoursHaloPulse 1.3s ease-out infinite;
+}
+#btnProcessMissingHours.missing-hours-attention::before{
+  content:"";
+  position:absolute;
+  left:-13px;
+  top:50%;
+  width:0;
+  height:0;
+  border-top:6px solid transparent;
+  border-bottom:6px solid transparent;
+  border-right:10px solid #22c55e;
+  transform:translateY(-50%);
+  animation:missingHoursArrowNudge 1s ease-in-out infinite;
+}
+@keyframes missingHoursHaloPulse{
+  0%{box-shadow:0 0 0 0 rgba(220,38,38,0.55), 0 6px 12px rgba(0,0,0,0.14);}
+  70%{box-shadow:0 0 0 12px rgba(220,38,38,0), 0 6px 12px rgba(0,0,0,0.14);}
+  100%{box-shadow:0 0 0 0 rgba(220,38,38,0), 0 6px 12px rgba(0,0,0,0.14);}
+}
+@keyframes missingHoursArrowNudge{
+  0%,100%{transform:translateY(-50%) translateX(0);}
+  50%{transform:translateY(-50%) translateX(3px);}
+}
+
