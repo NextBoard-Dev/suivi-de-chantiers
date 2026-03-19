@@ -3834,6 +3834,51 @@ body[data-ui-harmony="v1"] .table td{
 body[data-ui-harmony="v1"] .table tbody tr:hover td{
   background:rgba(196,216,226,0.42);
 }
+body[data-ui-harmony="v1"] #viewProject .card,
+body[data-ui-harmony="v1"] #viewMaster .card{
+  border:1px solid rgba(173,190,199,0.72) !important;
+  box-shadow:0 8px 18px rgba(31,49,59,0.11) !important;
+}
+body[data-ui-harmony="v1"] .task-progress-track{
+  background:rgba(173,190,199,0.4) !important;
+  border:1px solid rgba(173,190,199,0.75) !important;
+}
+body[data-ui-harmony="v1"] .task-progress-fill{
+  box-shadow:none !important;
+  filter:saturate(0.9);
+}
+body[data-ui-harmony="v1"] .gantt-toggle-row .btn{
+  border-color:rgba(173,190,199,0.85) !important;
+  background:linear-gradient(180deg,#ffffff 0%,#eef2f7 100%) !important;
+  box-shadow:0 3px 8px rgba(31,49,59,0.1) !important;
+}
+body[data-ui-harmony="v1"] .gantt-table .table th,
+body[data-ui-harmony="v1"] .gantt-table table th{
+  background:rgba(221,231,235,0.66) !important;
+  color:#2c4c59 !important;
+}
+body[data-ui-harmony="v1"] .gantt-table .table td,
+body[data-ui-harmony="v1"] .gantt-table table td{
+  border-color:rgba(173,190,199,0.55) !important;
+}
+body[data-ui-harmony="v1"] .modal-card,
+body[data-ui-harmony="v1"] .modal-card.config-card{
+  background:linear-gradient(180deg, rgba(244,241,234,0.99) 0%, rgba(221,231,235,0.98) 100%) !important;
+  border:1px solid rgba(173,190,199,0.9) !important;
+  box-shadow:0 16px 30px rgba(31,49,59,0.18) !important;
+}
+body[data-ui-harmony="v1"] .modal-title{
+  color:#132730 !important;
+}
+body[data-ui-harmony="v1"] .modal-sub{
+  color:#486170 !important;
+}
+body[data-ui-harmony="v1"] .modal .input,
+body[data-ui-harmony="v1"] .modal select,
+body[data-ui-harmony="v1"] .modal textarea{
+  border-color:rgba(173,190,199,0.88) !important;
+  background:linear-gradient(180deg,#ffffff 0%,#eef2f7 100%) !important;
+}
 @media (max-width: 1100px){
   body[data-ui-harmony="v1"] .layout{
     padding:10px !important;
