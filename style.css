@@ -2640,18 +2640,15 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 }
 @media (max-width:980px){
   .topbar{
-    flex-wrap:nowrap;
+    flex-wrap:wrap;
     gap:8px;
     padding:8px 10px;
-    overflow-x:auto;
-    overflow-y:hidden;
   }
   .topbar-user{
-    order:initial;
-    width:auto;
-    text-align:center;
-    font-size:16px;
-    min-width:0;
+    order:3;
+    width:100%;
+    text-align:left;
+    font-size:14px;
   }
   .panel-metrics{
     gap:8px;
