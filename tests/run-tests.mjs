@@ -220,6 +220,20 @@ test("Export PDF: template impression contient concepteur", () => {
   assert.match(indexHtml, /config-copyright/);
 });
 
+test("Export PDF: helpers de sélection des variantes heures présents", () => {
+  assert.match(appJs, /function\s+resolveHoursVariantsFromModalState\s*\(/);
+  assert.match(appJs, /function\s+buildSelectedExportDefinitions\s*\(/);
+});
+
+test("Export PDF: suppression des drapeaux redondants de variantes heures", () => {
+  assert.doesNotMatch(appJs, /projectHoursModuleDone|masterHoursModuleDone/);
+});
+
+test("Export PDF: repartition et analyse heures projet forcent une page dédiée", () => {
+  assert.match(appJs, /if\(def\.key === "project_pie"[\s\S]*?forceNewPage:true/);
+  assert.match(appJs, /if\(\(def\.key === "project_hours" \|\| def\.key === "project_hours_internal_only"\)[\s\S]*?forceNewPage:true/);
+});
+
 let failed = 0;
 for (const t of tests) {
   try {

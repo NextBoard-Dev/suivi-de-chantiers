@@ -3366,6 +3366,9 @@ html[data-theme] .gantt-toggle-row .btn.btn-primary{
 .export-module-row-locked{opacity:.55;filter:grayscale(.2);}
 .export-module-row-locked .export-module-label{color:#6b7280;}
 .export-module-row-locked .export-module-sub{color:#94a3b8;}
+.export-projects-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 4px;}
+.export-projects-actions{display:inline-flex;align-items:center;gap:6px;}
+.export-project-row{background:rgba(245,248,250,0.85);}
 
 
 /* Modale saisie heures - version compacte */

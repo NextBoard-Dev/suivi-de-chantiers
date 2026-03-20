@@ -625,6 +625,7 @@ let workloadRangeStartProject = "";
 let workloadRangeEndProject = "";
 let workloadRangeYearProject = "";
 let ganttExportContext = "master"; // master | project
+let unifiedExportSelectedProjectIds = [];
 
 function resetMasterWorkloadFilters(){
   workloadRangeType = "all";
@@ -7705,6 +7706,33 @@ function getExportFiltersPayload(){
   return { site, project, projectName, status, search, startAfter, endBefore };
 }
 
+function getProjectsSortedForExport(){
+  return [...(state?.projects || [])].sort((a,b)=>
+    (a?.name || "").localeCompare((b?.name || ""), "fr", { sensitivity:"base" })
+  );
+}
+
+function getUnifiedDefaultExportProjectIds(){
+  const projects = getProjectsSortedForExport();
+  if(!projects.length) return [];
+  if(selectedProjectId && projects.some(p=>p.id===selectedProjectId)) return [selectedProjectId];
+  return [projects[0].id];
+}
+
+function normalizeUnifiedExportProjectIds(ids){
+  const allowed = new Set(getProjectsSortedForExport().map(p=>p.id));
+  const uniq = Array.from(new Set((ids || []).map(normId).filter(Boolean)));
+  const out = uniq.filter(id=>allowed.has(id));
+  return out.length ? out : getUnifiedDefaultExportProjectIds();
+}
+
+function getUnifiedExportSelectedProjectIdsFromUi(root){
+  const scope = root || document;
+  const nodes = Array.from(scope.querySelectorAll("#exportPdfModulesList input[data-export-project-id]:checked"));
+  const ids = nodes.map(n=>normId(n.getAttribute("data-export-project-id")));
+  return normalizeUnifiedExportProjectIds(ids);
+}
+
 function getUnifiedExportModuleDefinitions(){
   const isProject = !el("viewProject")?.classList.contains("hidden");
   if(isProject){
@@ -7882,6 +7910,104 @@ function buildMasterExportHeaderHTML(pdfTheme){
     </div>
   `;
 }
+
+function buildGroupedProjectTasksExportHTML(projectIds){
+  const idSet = new Set((projectIds || []).map(normId).filter(Boolean));
+  const tasksRaw = (state.tasks || []).filter(t=> idSet.has(t.projectId));
+  if(!tasksRaw.length){
+    return "<div class='tablewrap project-tasks-export'><table class='table'><tbody><tr><td class='empty-row'>Aucune tâche</td></tr></tbody></table></div>";
+  }
+  const tasks = sortTasks(tasksRaw, sortMaster);
+  const missingMap = buildMissingDaysMap(tasks);
+  const todayKey = new Date().toISOString().slice(0,10);
+  let rows = "";
+  tasks.forEach((t)=>{
+    const p = state.projects.find(x=>x.id===t.projectId);
+    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
+    const c = ownerColor(t.owner);
+    const ownerBadgeHtml = t.owner ? ownerBadgeForTask(t) : "";
+    const durLabel = durationLabelForTask(t);
+    const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
+    const isLate = !!(t.end && t.end < todayKey);
+    const rowClass = `${isToday ? "today-row " : ""}${isLate ? "late-row" : ""}`.trim();
+    const miss = missingMap.get(t.id) || 0;
+    const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
+    rows += `<tr class="${rowClass}">
+      <td>${attrEscape(p?.name || "Projet")}</td>
+      <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></td>
+      <td><span class="icon-picto"></span> ${taskTitleProjectView(t)}</td>
+      <td class="status-cell"><span class="status-left">${statusDot(statuses[0])}${statusLabels(t.status||"")}</span>${ownerBadgeHtml||""}</td>
+      <td>${formatDate(t.start)||""}</td>
+      <td>${formatDate(t.end)||""}</td>
+      <td>${taskProgress(t)}%</td>
+      <td>${durLabel}</td>
+    </tr>`;
+  });
+  return `<div class="tablewrap project-tasks-export"><table class="table" id="projectTasksExportTable">
+    <thead>
+      <tr>
+        <th style="width:220px">Chantier</th>
+        <th style="width:70px">N</th>
+        <th>Description</th>
+        <th style="width:320px">Statuts</th>
+        <th style="width:120px">Début</th>
+        <th style="width:120px">Fin</th>
+        <th style="width:100px">Avancement</th>
+        <th style="width:130px">Durée (jours)</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function buildProjectExportHeaderHTML(project, pdfTheme){
+  if(!project) return "";
+  const projectTasks = state.tasks.filter(t=>t.projectId===project.id);
+  const projectTasksDated = projectTasks.filter(t=>t.start && t.end);
+  const firstTaskStart = projectTasksDated.length
+    ? projectTasksDated.reduce((min, t)=> (!min || t.start < min ? t.start : min), "")
+    : "";
+  const lastTaskEnd = projectTasksDated.length
+    ? projectTasksDated.reduce((max, t)=> (!max || t.end > max ? t.end : max), "")
+    : "";
+  return `
+    <div class="project-export-header-card" style="border:1px solid ${attrEscape(pdfTheme.line)};border-radius:8px;padding:6px 8px;background:${attrEscape(pdfTheme.panel)};background-image:linear-gradient(180deg, ${attrEscape(pdfTheme.panel)} 0%, ${attrEscape(pdfTheme.accentSoft)} 100%);margin-bottom:6px;box-shadow:0 3px 10px rgba(15,23,42,0.18);">
+      <div class="project-export-header-grid" style="display:grid;grid-template-columns:1.6fr 1fr 1fr .75fr 1fr 1fr;gap:8px;align-items:start;border-left:4px solid ${attrEscape(pdfTheme.accent)};padding-left:7px;">
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Chantier</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(project?.name || "-")}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Site / Zone</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(project?.site || "-")}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Sous-projet</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(project?.subproject || "-")}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Tâches</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${projectTasks.length}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Début projet</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(firstTaskStart ? formatDate(firstTaskStart) : "-")}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Fin projet</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(lastTaskEnd ? formatDate(lastTaskEnd) : "-")}</div></div>
+      </div>
+    </div>
+  `;
+}
+
+function buildGroupedProjectsExportHeaderHTML(projects, pdfTheme){
+  const list = (projects || []).filter(Boolean);
+  if(!list.length) return "";
+  const ids = new Set(list.map(p=>p.id));
+  const tasks = (state.tasks || []).filter(t=>ids.has(t.projectId));
+  const dated = tasks.filter(t=>t.start && t.end);
+  const start = dated.length ? dated.reduce((min, t)=> (!min || t.start < min ? t.start : min), "") : "";
+  const end = dated.length ? dated.reduce((max, t)=> (!max || t.end > max ? t.end : max), "") : "";
+  const sites = Array.from(new Set(list.map(p=>(p?.site || "").trim()).filter(Boolean))).sort((a,b)=>a.localeCompare(b, "fr", { sensitivity:"base" }));
+  const names = list.map(p=>p?.name || "Chantier").join(", ");
+  return `
+    <div class="project-export-header-card" style="border:1px solid ${attrEscape(pdfTheme.line)};border-radius:8px;padding:6px 8px;background:${attrEscape(pdfTheme.panel)};background-image:linear-gradient(180deg, ${attrEscape(pdfTheme.panel)} 0%, ${attrEscape(pdfTheme.accentSoft)} 100%);margin-bottom:6px;box-shadow:0 3px 10px rgba(15,23,42,0.18);">
+      <div class="project-export-header-grid" style="display:grid;grid-template-columns:1.5fr 1fr .9fr 1fr 1fr 1fr;gap:8px;align-items:start;border-left:4px solid ${attrEscape(pdfTheme.accent)};padding-left:7px;">
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Chantiers regroupés</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(names)}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Sites / Zones</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(sites.join(", ") || "-")}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Chantiers</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${list.length}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Tâches</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${tasks.length}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Début période</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(start ? formatDate(start) : "-")}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Fin période</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(end ? formatDate(end) : "-")}</div></div>
+      </div>
+    </div>
+  `;
+}
+
 function renderUnifiedExportModulesList(){
   const list = el("exportPdfModulesList");
   if(!list) return;
@@ -7900,7 +8026,32 @@ function renderUnifiedExportModulesList(){
     ? `<div class="export-module-sub" style="margin:0 0 6px 2px;display:block;">Pour l'analyse des heures, choisissez une seule version.</div>`
     : "";
 
-  list.innerHTML = hintHtml + defs.map((d)=>{
+  const projectPickerHtml = isProject ? (()=> {
+    const projects = getProjectsSortedForExport();
+    unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(unifiedExportSelectedProjectIds);
+    const selected = new Set(unifiedExportSelectedProjectIds);
+    const rows = projects.map((p)=>`
+      <label class="export-module-row export-project-row">
+        <input type="checkbox" data-export-project-id="${attrEscape(p.id)}" ${selected.has(p.id) ? "checked" : ""}>
+        <span>
+          <span class="export-module-label">${attrEscape(p.name || "Chantier")}</span>
+          <span class="export-module-sub">${attrEscape((p.site || "-") + (p.subproject ? ` • ${p.subproject}` : ""))}</span>
+        </span>
+      </label>
+    `).join("");
+    return `
+      <div class="export-projects-head">
+        <span class="export-module-label">Chantiers à regrouper</span>
+        <span class="export-projects-actions">
+          <button type="button" class="btn btn-ghost btn-xs" id="btnExportProjectsActiveOnly">Actif uniquement</button>
+          <button type="button" class="btn btn-ghost btn-xs" id="btnExportProjectsAll">Tous</button>
+        </span>
+      </div>
+      ${rows}
+    `;
+  })() : "";
+
+  list.innerHTML = projectPickerHtml + hintHtml + defs.map((d)=>{
     const exclusive = isHoursVariant(d.key);
     const inputType = exclusive ? "radio" : "checkbox";
     const inputName = isProjectHoursVariant(d.key) ? "project_hours_variant" : (isMasterHoursVariant(d.key) ? "master_hours_variant" : "");
@@ -7921,6 +8072,28 @@ function renderUnifiedExportModulesList(){
   list.querySelectorAll("input[name=\"project_hours_variant\"],input[name=\"master_hours_variant\"]").forEach((n)=>{
     n.addEventListener("change", updateUnifiedHoursExclusiveUI);
   });
+
+  if(isProject){
+    const projectChecks = Array.from(list.querySelectorAll("input[data-export-project-id]"));
+    const syncProjectSelection = ()=>{
+      const ids = projectChecks.filter(n=>n.checked).map(n=>normId(n.getAttribute("data-export-project-id")));
+      unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(ids);
+      const selected = new Set(unifiedExportSelectedProjectIds);
+      projectChecks.forEach((n)=>{ n.checked = selected.has(normId(n.getAttribute("data-export-project-id"))); });
+    };
+    projectChecks.forEach((n)=> n.addEventListener("change", syncProjectSelection));
+    list.querySelector("#btnExportProjectsActiveOnly")?.addEventListener("click", ()=>{
+      unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds([selectedProjectId]);
+      syncProjectSelection();
+    });
+    list.querySelector("#btnExportProjectsAll")?.addEventListener("click", ()=>{
+      unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(getProjectsSortedForExport().map(p=>p.id));
+      syncProjectSelection();
+    });
+    syncProjectSelection();
+  }else{
+    unifiedExportSelectedProjectIds = [];
+  }
   updateUnifiedHoursExclusiveUI();
 }
 function updateUnifiedHoursExclusiveUI(){
@@ -7954,6 +8127,12 @@ function updateUnifiedHoursExclusiveUI(){
 function openUnifiedPdfModal(){
   const modal = el("exportPdfModal");
   if(!modal) return;
+  const isProject = !el("viewProject")?.classList.contains("hidden");
+  if(isProject){
+    unifiedExportSelectedProjectIds = getUnifiedDefaultExportProjectIds();
+  }else{
+    unifiedExportSelectedProjectIds = [];
+  }
   renderUnifiedExportModulesList();
   modal.classList.remove("hidden");
   modal.style.display = "flex";
@@ -7965,32 +8144,100 @@ function closeUnifiedPdfModal(){
   hideModalSafely(modal, "#btnExportPdfUnified");
 }
 
+const HOURS_VARIANT_KEYS = new Set([
+  "project_hours",
+  "project_hours_internal_only",
+  "master_hours",
+  "master_hours_internal_only"
+]);
+
+function getCheckedExportModuleKeys(listRoot){
+  return Array.from(listRoot.querySelectorAll("input[data-export-module-key]:checked"))
+    .map((n)=>n.getAttribute("data-export-module-key") || "");
+}
+
+function resolveHoursVariantsFromModalState(listRoot, selectedKeys){
+  const projectHoursFullChecked = !!listRoot.querySelector('input[data-export-module-key="project_hours"]')?.checked;
+  const projectHoursInternalChecked = !!listRoot.querySelector('input[data-export-module-key="project_hours_internal_only"]')?.checked;
+  const masterHoursFullChecked = !!listRoot.querySelector('input[data-export-module-key="master_hours"]')?.checked;
+  const masterHoursInternalChecked = !!listRoot.querySelector('input[data-export-module-key="master_hours_internal_only"]')?.checked;
+
+  if(projectHoursFullChecked && projectHoursInternalChecked){
+    throw new Error("Sélection incohérente: choisissez une seule variante pour l'analyse heures projet.");
+  }
+  if(masterHoursFullChecked && masterHoursInternalChecked){
+    throw new Error("Sélection incohérente: choisissez une seule variante pour l'analyse heures tableau maître.");
+  }
+
+  const selectedProjectHoursVariant = projectHoursInternalChecked
+    ? "project_hours_internal_only"
+    : (projectHoursFullChecked ? "project_hours" : "");
+  const selectedMasterHoursVariant = masterHoursInternalChecked
+    ? "master_hours_internal_only"
+    : (masterHoursFullChecked ? "master_hours" : "");
+
+  const cleanKeys = selectedKeys.filter((k)=>!HOURS_VARIANT_KEYS.has(k));
+  if(selectedProjectHoursVariant) cleanKeys.push(selectedProjectHoursVariant);
+  if(selectedMasterHoursVariant) cleanKeys.push(selectedMasterHoursVariant);
+
+  return {
+    selectedProjectHoursVariant,
+    selectedMasterHoursVariant,
+    selectedKeys: Array.from(new Set(cleanKeys))
+  };
+}
+
+function buildSelectedExportDefinitions(defs, selectedKeys, selectedProjectHoursVariant, selectedMasterHoursVariant){
+  const selectedDefs = defs.filter((d)=>selectedKeys.includes(d.key) && !HOURS_VARIANT_KEYS.has(d.key));
+  if(selectedProjectHoursVariant){
+    const def = defs.find((d)=>d.key === selectedProjectHoursVariant);
+    if(def) selectedDefs.push(def);
+  }
+  if(selectedMasterHoursVariant){
+    const def = defs.find((d)=>d.key === selectedMasterHoursVariant);
+    if(def) selectedDefs.push(def);
+  }
+  return selectedDefs;
+}
+
 function runUnifiedPdfExport(){
   try{
+    const modal = el("exportPdfModal");
+    const listRoot = modal?.querySelector("#exportPdfModulesList") || el("exportPdfModulesList") || document;
     const defs = getUnifiedExportModuleDefinitions();
-    const selectedKeys = Array.from(document.querySelectorAll("#exportPdfModulesList input[data-export-module-key]:checked"))
-      .map(n=>n.getAttribute("data-export-module-key") || "");
+    const rawSelectedKeys = getCheckedExportModuleKeys(listRoot);
+    const {
+      selectedProjectHoursVariant,
+      selectedMasterHoursVariant,
+      selectedKeys
+    } = resolveHoursVariantsFromModalState(listRoot, rawSelectedKeys);
+
     if(selectedKeys.length===0){
       alert("Sélectionnez au moins un module.");
       return;
     }
 
-    // Sécurité: variantes "Analyse heures" mutuellement exclusives.
-    if(selectedKeys.includes("project_hours") && selectedKeys.includes("project_hours_internal_only")){
-      const idxInternal = selectedKeys.indexOf("project_hours_internal_only");
-      if(idxInternal >= 0) selectedKeys.splice(idxInternal, 1);
-    }
-    if(selectedKeys.includes("master_hours") && selectedKeys.includes("master_hours_internal_only")){
-      const idxInternal = selectedKeys.indexOf("master_hours_internal_only");
-      if(idxInternal >= 0) selectedKeys.splice(idxInternal, 1);
-    }
-
     const isProjectMode = !el("viewProject")?.classList.contains("hidden");
-    const currentProject = isProjectMode && selectedProjectId
-      ? state.projects.find(p=>p.id===selectedProjectId)
-      : null;
+    const selectedProjectIds = isProjectMode
+      ? getUnifiedExportSelectedProjectIdsFromUi(listRoot)
+      : [];
+    if(isProjectMode && !selectedProjectIds.length){
+      alert("Sélectionnez au moins un chantier.");
+      return;
+    }
+    const selectedProjects = isProjectMode
+      ? selectedProjectIds
+          .map(id=> state.projects.find(p=>p.id===id))
+          .filter(Boolean)
+      : [];
+    const currentProject = isProjectMode ? (selectedProjects[0] || null) : null;
 
-    const selectedDefs = defs.filter(d=>selectedKeys.includes(d.key));
+    const selectedDefs = buildSelectedExportDefinitions(
+      defs,
+      selectedKeys,
+      selectedProjectHoursVariant,
+      selectedMasterHoursVariant
+    );
     const mergeProjectHeaderWithTasks = isProjectMode && selectedKeys.includes("project_tasks");
     const rootStyle = getComputedStyle(document.documentElement);
     const pdfTheme = {
@@ -8001,29 +8248,24 @@ function runUnifiedPdfExport(){
       text: (rootStyle.getPropertyValue("--text") || "#0f172a").trim(),
       muted: (rootStyle.getPropertyValue("--muted") || "#475569").trim()
     };
-    const p = currentProject;
-    const taskCount = p ? state.tasks.filter(t=>t.projectId===p.id).length : 0;
-    const projectTasks = p
-      ? state.tasks.filter(t=>t.projectId===p.id && t.start && t.end)
-      : [];
-    const projectTasksAll = p
-      ? state.tasks.filter(t=>t.projectId===p.id)
-      : [];
 
     const checkProjectGanttVsTasks = isProjectMode && selectedKeys.includes("project_tasks") && selectedKeys.includes("project_gantt");
     if(checkProjectGanttVsTasks){
-      const ganttCount = projectTasks.length;
-      const tableCount = projectTasksAll.length;
-      if(ganttCount !== tableCount){
-        const missingDates = projectTasksAll.filter(t=>!(t.start && t.end)).length;
-        alert(
-          `Export bloqué : incohérence tâches / Gantt.\n\n` +
-          `- Tableau des tâches : ${tableCount} ligne(s)\n` +
-          `- Gantt hebdo : ${ganttCount} ligne(s)\n` +
-          `- Tâches sans dates : ${missingDates}\n\n` +
-          `Action requise : renseignez les dates manquantes ou décochez "Gantt hebdo".`
-        );
-        return;
+      for(const project of selectedProjects){
+        const projectTasksAll = state.tasks.filter(t=>t.projectId===project.id);
+        const projectTasksDated = projectTasksAll.filter(t=>t.start && t.end);
+        if(projectTasksDated.length !== projectTasksAll.length){
+          const missingDates = projectTasksAll.length - projectTasksDated.length;
+          alert(
+            `Export bloqué : incohérence tâches / Gantt.\n\n` +
+            `Chantier: ${project.name || "Projet"}\n` +
+            `- Tableau des tâches : ${projectTasksAll.length} ligne(s)\n` +
+            `- Gantt hebdo : ${projectTasksDated.length} ligne(s)\n` +
+            `- Tâches sans dates : ${missingDates}\n\n` +
+            `Action requise : renseignez les dates manquantes ou décochez "Gantt hebdo".`
+          );
+          return;
+        }
       }
     }
 
@@ -8049,24 +8291,6 @@ function runUnifiedPdfExport(){
         return;
       }
     }
-    const firstTaskStart = projectTasks.length
-      ? projectTasks.reduce((min, t)=> (!min || t.start < min ? t.start : min), "")
-      : "";
-    const lastTaskEnd = projectTasks.length
-      ? projectTasks.reduce((max, t)=> (!max || t.end > max ? t.end : max), "")
-      : "";
-    const projectHeaderHtml = p ? `
-      <div class="project-export-header-card" style="border:1px solid ${attrEscape(pdfTheme.line)};border-radius:8px;padding:6px 8px;background:${attrEscape(pdfTheme.panel)};background-image:linear-gradient(180deg, ${attrEscape(pdfTheme.panel)} 0%, ${attrEscape(pdfTheme.accentSoft)} 100%);margin-bottom:6px;box-shadow:0 3px 10px rgba(15,23,42,0.18);">
-        <div class="project-export-header-grid" style="display:grid;grid-template-columns:1.6fr 1fr 1fr .75fr 1fr 1fr;gap:8px;align-items:start;border-left:4px solid ${attrEscape(pdfTheme.accent)};padding-left:7px;">
-          <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Chantier</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(p?.name || "-")}</div></div>
-          <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Site / Zone</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(p?.site || "-")}</div></div>
-          <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Sous-projet</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(p?.subproject || "-")}</div></div>
-          <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Tâches</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${taskCount}</div></div>
-          <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Début projet</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(firstTaskStart ? formatDate(firstTaskStart) : "-")}</div></div>
-          <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Fin projet</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(lastTaskEnd ? formatDate(lastTaskEnd) : "-")}</div></div>
-        </div>
-      </div>
-    ` : "";
     const masterHeaderHtml = buildMasterExportHeaderHTML(pdfTheme);
 
     const modules = [];
@@ -8076,14 +8300,28 @@ function runUnifiedPdfExport(){
       }
       if(def.key === "project_header"){
         if(mergeProjectHeaderWithTasks) return;
-        modules.push({ key:def.key, label:"", wide:false, html:projectHeaderHtml });
+        modules.push({
+          key:def.key,
+          label:"",
+          wide:false,
+          html:buildGroupedProjectsExportHeaderHTML(selectedProjects, pdfTheme),
+          forceNewPage:true
+        });
         return;
       }
 
-      if(def.key === "project_tasks" && currentProject){
-        const tableHtml = buildProjectTasksExportHTML(currentProject.id);
-        const tasksTitle = `<div class="card-title">Tableau des tâches</div>`;
-        modules.push({ key:def.key, label:"", wide:true, html:`${projectHeaderHtml}${tasksTitle}${tableHtml}`, noAutoProjectHeader:true });
+      if(def.key === "project_tasks" && selectedProjects.length){
+        const tableHtml = buildGroupedProjectTasksExportHTML(selectedProjectIds);
+        const tasksTitle = `<div class="card-title">Tableau des tâches (cumul chantiers)</div>`;
+        const groupedHeader = buildGroupedProjectsExportHeaderHTML(selectedProjects, pdfTheme);
+        modules.push({
+          key:def.key,
+          label:"",
+          wide:true,
+          html:`${groupedHeader}${tasksTitle}${tableHtml}`,
+          noAutoProjectHeader:true,
+          forceNewPage:true
+        });
         return;
       }
 
@@ -8138,6 +8376,7 @@ function runUnifiedPdfExport(){
       }
 
       if(def.key === "master_hours"){
+        if(selectedMasterHoursVariant !== "master_hours") return;
         modules.push({
           key:def.key,
           label:"",
@@ -8150,6 +8389,7 @@ function runUnifiedPdfExport(){
       }
 
       if(def.key === "master_hours_internal_only"){
+        if(selectedMasterHoursVariant !== "master_hours_internal_only") return;
         modules.push({
           key:def.key,
           label:"",
@@ -8161,70 +8401,34 @@ function runUnifiedPdfExport(){
         return;
       }
 
-      if(def.key === "project_gantt" && currentProject){
-        const projectTasksForGantt = state.tasks.filter(t=>t.projectId===currentProject.id && t.start && t.end);
+      if(def.key === "project_gantt" && selectedProjects.length){
+        const projectTasksForGantt = state.tasks.filter(t=> selectedProjectIds.includes(t.projectId) && t.start && t.end);
         const ganttHtml = buildProjectGanttHTMLForRange(null, null, projectTasksForGantt, true);
-        const ganttTitle = `<div class="card-title">Gantt hebdo</div>`;
+        const ganttTitle = `<div class="card-title">Gantt hebdo (cumul chantiers)</div>`;
+        const groupedHeader = buildGroupedProjectsExportHeaderHTML(selectedProjects, pdfTheme);
         modules.push({
           key:def.key,
           label:"",
           wide:true,
-          html:`${projectHeaderHtml}${ganttTitle}${ganttHtml}`,
+          html:`${groupedHeader}${ganttTitle}${ganttHtml}`,
           noAutoProjectHeader:true,
           forceNewPage:true
         });
         return;
       }
 
-      if(def.key === "project_pie" && currentProject){
-        const chartWrap = document.querySelector("#workloadChartProjectWrap");
-        const pieWrap = document.querySelector("#workloadPieProjectWrap");
-        const chartClone = chartWrap ? cloneNodeForUnifiedExport(chartWrap.closest(".card") || chartWrap) : null;
-        const pieClone = pieWrap ? cloneNodeForUnifiedExport(pieWrap.closest(".card") || pieWrap) : null;
-        const parts = [];
-        if(chartClone){
-          const chartSvg = chartClone.querySelector("#workloadChartProject") || chartClone.querySelector("svg");
-          if(chartSvg){
-            const legendGroup = Array.from(chartSvg.querySelectorAll("g")).find(g=>{
-              const texts = Array.from(g.querySelectorAll("text")).map(t=>(t.textContent||"").trim());
-              return texts.some(t=>/^Interne\s+\d+(?:[.,]\d+)?\s*h/i.test(t))
-                && texts.some(t=>/^Externe\s+\d+(?:[.,]\d+)?\s*h/i.test(t))
-                && texts.some(t=>/^RSG\s+\d+(?:[.,]\d+)?\s*h/i.test(t))
-                && texts.some(t=>/^RI\s+\d+(?:[.,]\d+)?\s*h/i.test(t));
-            });
-            if(legendGroup){
-              const labels = Array.from(legendGroup.querySelectorAll("text"))
-                .map(t=>(t.textContent||"").trim())
-                .filter(Boolean)
-                .filter((v, i, a)=>a.indexOf(v)===i);
-              legendGroup.remove();
-              if(labels.length){
-                const colorByKey = {
-                  "interne": "#78ac8d",
-                  "externe": "#c49b64",
-                  "rsg": "#7f97b4",
-                  "ri": "#a18dbc"
-                };
-                const legendHtml = `<div class="pdf-workload-legend">${labels.map(lbl=>{
-                  const k = lbl.toLowerCase();
-                  const ck = Object.keys(colorByKey).find(x=>k.startsWith(x)) || "interne";
-                  return `<span class="pdf-workload-legend-item"><span class="pdf-workload-legend-dot" style="background:${colorByKey[ck]}"></span>${attrEscape(lbl)}</span>`;
-                }).join("")}</div>`;
-                const chartHost = chartClone.querySelector("#workloadChartProjectWrap") || chartClone;
-                chartHost.insertAdjacentHTML("beforeend", legendHtml);
-              }
-            }
-          }
-          parts.push(`<div class="pdf-two-graphs-item">${chartClone.outerHTML}</div>`);
-        }
-        if(pieClone) parts.push(`<div class="pdf-two-graphs-item">${pieClone.outerHTML}</div>`);
-        if(parts.length===0) return;
-        const sectionTitle = `<div class="card-title">Répartition Interne / Externe / RSG / RI (projet)</div>`;
+      if(def.key === "project_pie" && selectedProjects.length){
+        const sectionHtml = buildGroupedProjectsRepartitionExportInnerHTML(
+          selectedProjectIds,
+          true,
+          "Répartition Interne / Externe / RSG / RI (cumul chantiers)"
+        );
+        const groupedHeader = buildGroupedProjectsExportHeaderHTML(selectedProjects, pdfTheme);
         modules.push({
           key:def.key,
           label:"",
           wide:true,
-          html:`${projectHeaderHtml}${sectionTitle}<div class="pdf-two-graphs-wrap">${parts.join("")}</div>`,
+          html:`${groupedHeader}${sectionHtml}`,
           noAutoProjectHeader:true,
           forceNewPage:true
         });
@@ -8232,17 +8436,19 @@ function runUnifiedPdfExport(){
       }
 
 
-      if((def.key === "project_hours" || def.key === "project_hours_internal_only") && currentProject){
+      if((def.key === "project_hours" || def.key === "project_hours_internal_only") && selectedProjects.length){
+        if(def.key !== selectedProjectHoursVariant) return;
         const includeExternal = def.key !== "project_hours_internal_only";
         const reportTitle = includeExternal
-          ? "Analyse heures réelles (projet)"
-          : "Analyse heures réelles (projet) - sans prestataires externes";
-        const hoursHtml = buildProjectRealHoursReportInnerHTML(currentProject.id, includeExternal, reportTitle);
+          ? "Analyse heures réelles (cumul chantiers)"
+          : "Analyse heures réelles (cumul chantiers) - sans prestataires externes";
+        const hoursHtml = buildGroupedProjectsRealHoursReportInnerHTML(selectedProjectIds, includeExternal, reportTitle);
+        const groupedHeader = buildGroupedProjectsExportHeaderHTML(selectedProjects, pdfTheme);
         modules.push({
           key:def.key,
           label:"",
           wide:true,
-          html:`${projectHeaderHtml}${hoursHtml}`,
+          html:`${groupedHeader}${hoursHtml}`,
           noAutoProjectHeader:true,
           forceNewPage:true
         });
@@ -8305,7 +8511,7 @@ function runUnifiedPdfExport(){
     }
     if(meta){
       const mode = isProjectMode
-        ? ((el("projectTitle")?.textContent || currentProject?.name || "Projet").trim())
+        ? (selectedProjects.length > 1 ? `${selectedProjects.length} chantiers regroupés` : ((el("projectTitle")?.textContent || currentProject?.name || "Projet").trim()))
         : "Tableau maître";
       const metaRows = [
         ["Contexte", mode],
@@ -8324,10 +8530,7 @@ function runUnifiedPdfExport(){
       const block = document.createElement("div");
       block.className = `card print-block${m.forceNewPage ? " force-new-page" : ""}`;
       const titleHtml = m.label ? `<div class="card-title">${attrEscape(m.label)}</div>` : "";
-      const withProjectHeader = (isProjectMode && projectHeaderHtml && !m.noAutoProjectHeader && m.key !== "project_header" && m.key !== "project_tasks")
-        ? `${projectHeaderHtml}${titleHtml}${m.html || ""}`
-        : `${titleHtml}${m.html || ""}`;
-      block.innerHTML = withProjectHeader;
+      block.innerHTML = `${titleHtml}${m.html || ""}`;
       wrap.appendChild(block);
     });
     container.querySelector(".print-order")?.appendChild(wrap);
@@ -10044,6 +10247,12 @@ function buildProjectRealHoursReport(projectId){
   return buildRealHoursReportForTasks(tasks);
 }
 
+function buildGroupedProjectsRealHoursReport(projectIds){
+  const idSet = new Set((projectIds || []).map(normId).filter(Boolean));
+  const tasks = (state.tasks || []).filter(t=>idSet.has(t.projectId) && t.start && t.end);
+  return buildRealHoursReportForTasks(tasks);
+}
+
 function buildMasterRealHoursReport(){
   const tasks = (filteredTasks() || []).filter(t=>t.start && t.end);
   return buildRealHoursReportForTasks(tasks);
@@ -10154,6 +10363,53 @@ function buildRealHoursReportInnerHTML(rep, title, reportMode="master", includeE
 function buildProjectRealHoursReportInnerHTML(projectId, includeExternal=true, title="Analyse heures réelles (projet)"){
   const rep = buildProjectRealHoursReport(projectId);
   return buildRealHoursReportInnerHTML(rep, title, "project", includeExternal);
+}
+
+function buildGroupedProjectsRealHoursReportInnerHTML(projectIds, includeExternal=true, title="Analyse heures réelles (chantiers regroupés)"){
+  const rep = buildGroupedProjectsRealHoursReport(projectIds);
+  return buildRealHoursReportInnerHTML(rep, title, "project", includeExternal);
+}
+
+function buildProjectRepartitionExportInnerHTML(projectId, includeExternal=true, title="Répartition Interne / Externe / RSG / RI (projet)"){
+  const rep = filterRealHoursReportExternal(buildProjectRealHoursReport(projectId), includeExternal);
+  const totalMinutes = Number(rep.totalMinutes) || 0;
+  const rowsHtml = (rep.summaryRows || []).map((r)=>{
+    const label = String(r?.label || "");
+    const mins = Number(r?.mins) || 0;
+    const part = totalMinutes > 0 ? ((mins / totalMinutes) * 100) : 0;
+    const partTxt = `${part.toFixed(1).replace(".", ",")} %`;
+    return `<tr><td>${attrEscape(label)}</td><td style="text-align:right">${formatHoursMinutes(mins)}</td><td style="text-align:right">${partTxt}</td></tr>`;
+  }).join("") || `<tr><td colspan="3" style="text-align:center;color:#64748b;">Aucune donnée</td></tr>`;
+  const total = formatHoursMinutes(rep.totalMinutes || 0);
+  return `
+    <div class="card-title">${attrEscape(title)}</div>
+    <table class="report-table report-table-summary" style="margin-top:6px">
+      <thead><tr><th>Catégorie</th><th>Heures</th><th>Part</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+      <tfoot><tr><th>Total</th><th style="text-align:right">${total}</th><th style="text-align:right">100,0 %</th></tr></tfoot>
+    </table>
+  `;
+}
+
+function buildGroupedProjectsRepartitionExportInnerHTML(projectIds, includeExternal=true, title="Répartition Interne / Externe / RSG / RI (chantiers regroupés)"){
+  const rep = filterRealHoursReportExternal(buildGroupedProjectsRealHoursReport(projectIds), includeExternal);
+  const totalMinutes = Number(rep.totalMinutes) || 0;
+  const rowsHtml = (rep.summaryRows || []).map((r)=>{
+    const label = String(r?.label || "");
+    const mins = Number(r?.mins) || 0;
+    const part = totalMinutes > 0 ? ((mins / totalMinutes) * 100) : 0;
+    const partTxt = `${part.toFixed(1).replace(".", ",")} %`;
+    return `<tr><td>${attrEscape(label)}</td><td style="text-align:right">${formatHoursMinutes(mins)}</td><td style="text-align:right">${partTxt}</td></tr>`;
+  }).join("") || `<tr><td colspan="3" style="text-align:center;color:#64748b;">Aucune donnée</td></tr>`;
+  const total = formatHoursMinutes(rep.totalMinutes || 0);
+  return `
+    <div class="card-title">${attrEscape(title)}</div>
+    <table class="report-table report-table-summary" style="margin-top:6px">
+      <thead><tr><th>Catégorie</th><th>Heures</th><th>Part</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+      <tfoot><tr><th>Total</th><th style="text-align:right">${total}</th><th style="text-align:right">100,0 %</th></tr></tfoot>
+    </table>
+  `;
 }
 
 function buildMasterRealHoursReportInnerHTML(includeExternal=true){
@@ -10368,3 +10624,5 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
+
