@@ -5404,15 +5404,20 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
   const isDay = mode === "day";
 
-  const groupGap = 8;
+  const denseLayout = data.length > 22;
+  const groupGap = denseLayout ? 2 : 8;
 
-  const innerGap = 4;
+  const groupW = Math.max(8, Math.min(90, (chartW / data.length) - groupGap));
 
-  const groupW = Math.max(26, Math.min(90, (chartW / data.length) - groupGap));
+  const innerGap = denseLayout ? 1 : 4;
 
-  const barW = Math.max(7, (groupW - innerGap*3) / 4);
+  const barW = Math.max(1.2, (groupW - innerGap*3) / 4);
 
-  const labelEvery = 1;
+  const denseMode = data.length > 18;
+  const axisLabelStep = denseMode ? Math.ceil(data.length / 14) : 1;
+  const hideValueLabels = true;
+  const labelMinValue = maxVal >= 60 ? 5 : (maxVal >= 25 ? 3 : 1);
+  const maxLabelsPerGroup = maxVal >= 25 ? 2 : 4;
 
   const xStart = m.l;
 
@@ -5492,17 +5497,30 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
     const ly = h - m.b + 14;
 
-    bars+=`<text class="wl-axis" x="${lx}" y="${ly}" text-anchor="middle">${lbl}</text>`;
+    const showXAxisLabel = (idx % axisLabelStep) === 0 || idx === data.length - 1;
+    if(showXAxisLabel){
+      bars+=`<text class="wl-axis" x="${lx}" y="${ly}" text-anchor="middle">${lbl}</text>`;
+    }
 
     const valueYInt = Math.max(m.t + 12, yBase - Math.max(hInt, 0) - 8);
     const valueYExt = Math.max(m.t + 12, yBase - Math.max(hExt, 0) - 8);
     const valueYRsg = Math.max(m.t + 12, yBase - Math.max(hRsg, 0) - 8);
     const valueYRi = Math.max(m.t + 12, yBase - Math.max(hRi, 0) - 8);
 
-    bars+=`<text class="wl-value" x="${xInt + barW/2}" y="${valueYInt}" text-anchor="middle">${fmtHours(d.internal)} h</text>`;
-    bars+=`<text class="wl-value" x="${xExt + barW/2}" y="${valueYExt}" text-anchor="middle">${fmtHours(d.external)} h</text>`;
-    bars+=`<text class="wl-value" x="${xRsg + barW/2}" y="${valueYRsg}" text-anchor="middle">${fmtHours(d.rsg)} h</text>`;
-    bars+=`<text class="wl-value" x="${xRi + barW/2}" y="${valueYRi}" text-anchor="middle">${fmtHours(d.ri)} h</text>`;
+    if(!hideValueLabels){
+      const labelCandidates = [
+        { v: Number(d.internal) || 0, x: xInt + barW/2, y: valueYInt },
+        { v: Number(d.external) || 0, x: xExt + barW/2, y: valueYExt },
+        { v: Number(d.rsg) || 0, x: xRsg + barW/2, y: valueYRsg },
+        { v: Number(d.ri) || 0, x: xRi + barW/2, y: valueYRi }
+      ]
+        .filter((c)=>c.v >= labelMinValue)
+        .sort((a,b)=>b.v-a.v)
+        .slice(0, maxLabelsPerGroup);
+      labelCandidates.forEach((c)=>{
+        bars+=`<text class="wl-value" x="${c.x}" y="${c.y}" text-anchor="middle">${fmtHours(c.v)} h</text>`;
+      });
+    }
 
   });
 
