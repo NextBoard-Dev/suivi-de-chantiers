@@ -4337,15 +4337,15 @@ html[data-theme] #btnToggleProjectStatus.btn-primary{
 
 /* Audit final global: uniformisation boutons + badges */
 :root{
-  --ui-btn-neutral-bg:#edf1f3;
-  --ui-btn-neutral-border:rgba(63,97,112,0.16);
-  --ui-btn-neutral-text:#2f4350;
+  --ui-btn-neutral-bg:rgba(63,97,112,0.18);
+  --ui-btn-neutral-border:rgba(63,97,112,0.28);
+  --ui-btn-neutral-text:#213b48;
   --ui-btn-active-bg:#3f6170;
-  --ui-btn-active-border:#365563;
+  --ui-btn-active-border:#3f6170;
   --ui-btn-active-text:#ffffff;
-  --ui-btn-save-idle-bg:#dbe7f1;
-  --ui-btn-save-idle-border:#b8cddd;
-  --ui-btn-save-idle-text:#3f6170;
+  --ui-btn-save-idle-bg:rgba(63,97,112,0.18);
+  --ui-btn-save-idle-border:rgba(63,97,112,0.28);
+  --ui-btn-save-idle-text:#213b48;
 }
 
 button,
