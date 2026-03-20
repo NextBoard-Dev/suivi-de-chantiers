@@ -4896,6 +4896,7 @@ function renderProjectTasks(projectId){
     const active = (sortProject.key!=="start" || sortProject.dir!=="asc");
 
     updateBadge(pf, active, "Tri/filtre actif", "Tri par défaut");
+    updateResetSortButtonVisual(el("btnResetSortProject"), active);
 
   }
 
@@ -6275,6 +6276,13 @@ function updateBadge(node, active, textActive="Tri/filtre actif", textInactive="
 
 }
 
+function updateResetSortButtonVisual(btn, active){
+  if(!btn) return;
+  btn.classList.toggle("btn-primary", !!active);
+  btn.classList.toggle("btn-ghost", !active);
+  btn.classList.remove("btn-danger");
+}
+
 
 
 function filtersActive(){
@@ -6481,6 +6489,7 @@ function renderMaster(){
     const active = filtersActive() || sortMaster.key!=="start" || sortMaster.dir!=="asc";
 
     updateBadge(fb, active, "Tri/filtre actif", "Tri par défaut");
+    updateResetSortButtonVisual(el("btnResetSortMaster"), active);
 
   }
   updateSidebarFilterIndicator();
@@ -10809,5 +10818,6 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
 
 
