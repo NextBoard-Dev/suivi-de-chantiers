@@ -7002,17 +7002,18 @@ function renderHoursTaskCalendar(t){
         text = "#64748b";
       }
 
-      const selectedBorder = (selectedDate === key && inTaskRange) ? "2px solid #2563eb" : ("1px solid " + border);
+      const isEditable = inTaskRange && key <= todayKey;
+      const selectedBorder = (selectedDate === key && isEditable) ? "2px solid #2563eb" : ("1px solid " + border);
       const sub = hoursValue ? (hoursValue + "h") : (stateType === "missing" ? "manquant" : (stateType === "outside" ? "hors tâche" : "—"));
-      const activeAttr = inTaskRange ? "1" : "0";
-      const disabledAttr = inTaskRange ? "" : "disabled";
+      const activeAttr = isEditable ? "1" : "0";
+      const disabledAttr = isEditable ? "" : "disabled";
 
       cards.push(
-        '<div class="hm-day" data-date="' + key + '" data-active="' + activeAttr + '" style="text-align:left;border:' + selectedBorder + ';background:' + bg + ';color:' + text + ';border-radius:8px;padding:3px 5px;min-height:52px;cursor:' + (inTaskRange ? 'pointer' : 'default') + ';display:flex;flex-direction:column;gap:1px">' +
+        '<div class="hm-day" data-date="' + key + '" data-active="' + activeAttr + '" data-state-base="' + stateType + '" style="text-align:left;border:' + selectedBorder + ';background:' + bg + ';color:' + text + ';border-radius:8px;padding:3px 5px;min-height:52px;cursor:' + (inTaskRange ? 'pointer' : 'default') + ';display:flex;flex-direction:column;gap:1px">' +
         '<div style="font-size:11px;line-height:1.1;opacity:.85">' + dayNames[i] + ' • ' + weekLabel + '</div>' +
         '<div style="font-size:12px;font-weight:700;line-height:1.2">' + dateLabel + '</div>' +
         '<input type="text" inputmode="decimal" class="hm-day-input" data-date="' + key + '" data-active="' + activeAttr + '" value="' + hoursValue + '" placeholder="h" ' + disabledAttr + ' style="margin-top:1px;height:18px;border:1px solid #cbd5e1;border-radius:6px;padding:1px 6px;background:#fff;color:#111827;font-size:11px" />' +
-        '<div style="font-size:11px;opacity:.92">' + sub + '</div>' +
+        '<div class="hm-day-sub" style="font-size:11px;opacity:.92">' + sub + '</div>' +
         '</div>'
       );
     }
@@ -7050,11 +7051,13 @@ function renderHoursTaskCalendar(t){
 function collectHoursTaskCalendarEntries(t){
   const grid = el("hm_calendar");
   if(!t || !grid) return [];
+  const todayKey = toLocalDateKey(new Date());
   const entries = [];
   grid.querySelectorAll(".hm-day-input[data-date][data-active='1']").forEach((input)=>{
     const date = (input.getAttribute("data-date") || "").trim();
     const raw = (input.value || "").toString().replace(",", ".").trim();
     if(!date || raw === "") return;
+    if(date > todayKey) return;
     const hours = parseFloat(raw);
     if(!isFinite(hours) || hours < 0) return;
     entries.push({ date, hours, minutes: Math.round(hours * 60) });
@@ -7067,6 +7070,57 @@ function getHoursDraftForDate(dateKey){
   if(!grid) return "";
   const input = grid.querySelector(`.hm-day-input[data-date="${dateKey}"]`);
   return (input?.value || "").toString();
+}
+
+function refreshHoursDayCardVisual(input){
+  const dayInput = input?.closest?.(".hm-day-input[data-date]");
+  if(!dayInput) return;
+  const card = dayInput.closest(".hm-day[data-date]");
+  if(!card) return;
+  const day = (dayInput.getAttribute("data-date") || "").trim();
+  const active = (dayInput.getAttribute("data-active") || card.getAttribute("data-active") || "0") === "1";
+  const baseState = (card.getAttribute("data-state-base") || "future").toLowerCase();
+  const hmDate = el("hm_date");
+  const selectedDay = (hmDate?.value || "").trim();
+  const isSelected = !!day && day === selectedDay && active;
+
+  const raw = (dayInput.value || "").toString().replace(",", ".").trim();
+  const parsed = parseFloat(raw);
+  const hasValidHours = raw !== "" && isFinite(parsed) && parsed >= 0;
+  const state = hasValidHours ? "filled" : baseState;
+
+  let bg = "#ffffff";
+  let border = "#d0d7e2";
+  let text = "#0f172a";
+  if(state === "filled"){
+    bg = "#ecfdf3";
+    border = "#7dd3a3";
+  }else if(state === "missing"){
+    bg = "#fff7ed";
+    border = "#fdba74";
+  }else if(state === "outside"){
+    bg = "#e5e7eb";
+    border = "#cbd5e1";
+    text = "#64748b";
+  }
+
+  card.style.background = bg;
+  card.style.color = text;
+  card.style.border = isSelected ? "2px solid #2563eb" : ("1px solid " + border);
+
+  const sub = card.querySelector(".hm-day-sub");
+  if(sub){
+    if(hasValidHours){
+      const shown = String(Math.round(parsed * 100) / 100).replace(".", ",");
+      sub.textContent = shown + "h";
+    }else if(state === "missing"){
+      sub.textContent = "manquant";
+    }else if(state === "outside"){
+      sub.textContent = "hors tâche";
+    }else{
+      sub.textContent = "—";
+    }
+  }
 }
 
 
@@ -7151,6 +7205,11 @@ function syncHoursTaskStatusFromCalendarDraft(t, dayKey, rawValue){
   const dateObj = new Date(dayKey + "T00:00:00");
   if(!isWeekday(dateObj)){
     hmStatus.textContent = "Week-end";
+    return;
+  }
+  const todayKey = toLocalDateKey(new Date());
+  if(dayKey > todayKey){
+    hmStatus.textContent = "À venir";
     return;
   }
   const raw = (rawValue == null ? "" : String(rawValue)).replace(",", ".").trim();
@@ -7241,9 +7300,12 @@ function syncHoursTaskModal(taskOverride=null){
   }
   if(hmPeriod) hmPeriod.value = (formatDate(t.start || "") + " -> " + formatDate(t.end || ""));
   if(hmDate){
+    const todayKey = toLocalDateKey(new Date());
+    const maxAllowed = (!t.end || t.end > todayKey) ? todayKey : t.end;
     hmDate.min = t.start || "";
-    hmDate.max = t.end || "";
+    hmDate.max = maxAllowed || "";
     hmDate.value = (dateInput?.value || t.start || "");
+    if(hmDate.value && maxAllowed && hmDate.value > maxAllowed) hmDate.value = maxAllowed;
   }
   if(hmHours) hmHours.value = (hoursInput?.value || "").toString();
   syncHoursTaskStatusFromMain();
@@ -7297,6 +7359,11 @@ function saveHoursTaskModal(){
   const dateObj = new Date(selectedDate + "T00:00:00");
   if(!isWeekday(dateObj)){
     alert("La date tombe un week-end.");
+    return;
+  }
+  const todayKey = toLocalDateKey(new Date());
+  if(selectedDate > todayKey){
+    alert("La date est dans le futur.");
     return;
   }
 
@@ -8961,6 +9028,7 @@ function bind(){
     if(hmDate) hmDate.value = day;
     if(dateInput) dateInput.value = day;
     if(hmHours) hmHours.value = input.value || "";
+    refreshHoursDayCardVisual(input);
     const t = getSelectedTaskForHoursModal();
     if(t){
       syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
