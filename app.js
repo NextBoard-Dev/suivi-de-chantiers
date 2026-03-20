@@ -9960,8 +9960,51 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
   }
 
   viewer.document.open();
-  viewer.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${attrEscape(title)}</title></head><body style="font-family:Segoe UI,Arial,sans-serif;padding:16px">Génération du PDF...</body></html>`);
+  viewer.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${attrEscape(title)}</title><style>
+    :root{color-scheme:light;}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px;background:#eef3f7;font-family:"Segoe UI",Arial,sans-serif;color:#0f172a}
+    .pdf-progress-card{display:inline-flex;flex-direction:column;max-width:92vw;background:linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(233,231,225,0.96) 100%);border:1px solid rgba(0,0,0,0.12);border-radius:10px;box-shadow:0 10px 22px rgba(0,0,0,0.18);overflow:hidden}
+    .pdf-progress-body{display:flex;align-items:center;gap:20px;padding:24px 32px}
+    .pdf-progress-ok{width:48px;height:48px;border-radius:8px;border:1px solid rgba(0,0,0,0.12);background:#d1fae5;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#0f172a;flex:none}
+    .pdf-progress-main{flex:1;min-width:0}
+    .pdf-progress-title{font-size:18px;line-height:1.1;letter-spacing:.1px;font-weight:800;color:#0f172a;margin:0 0 4px}
+    .pdf-progress-sub{font-size:16px;line-height:1.2;margin:0;color:#475569}
+    .pdf-progress-step{font-size:13px;line-height:1.2;margin-top:6px;color:#64748b}
+    .pdf-progress-bar-wrap{height:4px;background:rgba(148,163,184,0.25)}
+    .pdf-progress-bar{height:100%;width:0%;background:linear-gradient(90deg,#34d399 0%, #22c55e 100%);transition:width .2s ease}
+    @media (max-width:900px){
+      .pdf-progress-body{padding:16px 16px;gap:12px}
+      .pdf-progress-title{font-size:16px}
+      .pdf-progress-sub{font-size:14px}
+      .pdf-progress-step{font-size:12px}
+    }
+  </style></head><body>
+    <div class="pdf-progress-card" role="status" aria-live="polite">
+      <div class="pdf-progress-body">
+        <div class="pdf-progress-ok">OK</div>
+        <div class="pdf-progress-main">
+          <h1 class="pdf-progress-title">GENERATION PDF</h1>
+          <p class="pdf-progress-sub" id="pdfProgressSub">PREPARATION EN COURS</p>
+          <div class="pdf-progress-step" id="pdfProgressStep">INITIALISATION...</div>
+        </div>
+      </div>
+      <div class="pdf-progress-bar-wrap"><div class="pdf-progress-bar" id="pdfProgressBar"></div></div>
+    </div>
+  </body></html>`);
   viewer.document.close();
+  const updateViewerProgress = (percent, stepText="", subText="")=>{
+    try{
+      const p = Math.max(0, Math.min(100, Number(percent) || 0));
+      const bar = viewer.document.getElementById("pdfProgressBar");
+      const step = viewer.document.getElementById("pdfProgressStep");
+      const sub = viewer.document.getElementById("pdfProgressSub");
+      if(bar) bar.style.width = `${p}%`;
+      if(stepText && step) step.textContent = String(stepText).toUpperCase();
+      if(subText && sub) sub.textContent = String(subText).toUpperCase();
+    }catch(e){ softCatch(e); }
+  };
+  updateViewerProgress(4, "Initialisation...", "Préparation en cours");
 
   const host = document.createElement("div");
   host.style.position = "fixed";
@@ -9979,7 +10022,9 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
   document.body.appendChild(host);
 
   try{
+    updateViewerProgress(10, "Chargement des bibliothèques PDF...", "Préparation en cours");
     await ensurePdfLibraries();
+    updateViewerProgress(18, "Préparation du rendu...", "Préparation en cours");
     await new Promise(r=>setTimeout(r, 80));
 
     const setup = readPdfPageSetup();
@@ -10170,12 +10215,16 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
 
     const blocks = Array.from(page.querySelectorAll('.print-block'));
     const targets = blocks.length ? blocks : [page];
+    const totalTargets = Math.max(1, targets.length);
+    updateViewerProgress(24, `${totalTargets} module(s) à rendre...`, "Rendu des pages");
 
     let yCursor = margin;
     let hasContentOnPage = false;
 
     for(let i=0; i<targets.length; i++){
       const block = targets[i];
+      const loopStartPct = 24 + Math.round((i / totalTargets) * 60);
+      updateViewerProgress(loopStartPct, `Rendu du module ${i+1}/${totalTargets}...`, "Rendu des pages");
       if(i>0 && block.classList && block.classList.contains("force-new-page")){
         pdf.addPage();
         yCursor = margin;
@@ -10237,10 +10286,15 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
         offsetPx += hPx;
       }
       yCursor = margin;
+      const loopEndPct = 24 + Math.round(((i + 1) / totalTargets) * 60);
+      updateViewerProgress(loopEndPct, `Module ${i+1}/${totalTargets} prêt`, "Rendu des pages");
     }
 
+    updateViewerProgress(90, "Assemblage final du PDF...", "Finalisation");
     const blob = pdf.output("blob");
+    updateViewerProgress(97, "Ouverture du document...", "Finalisation");
     const blobUrl = URL.createObjectURL(blob);
+    updateViewerProgress(100, "Terminé", "PDF prêt");
     viewer.location.href = blobUrl;
     setTimeout(()=>{ try{ URL.revokeObjectURL(blobUrl); }catch(e){ softCatch(e); } }, 120000);
   }catch(err){
