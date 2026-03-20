@@ -4877,3 +4877,27 @@ button.btn.is-disabled{
   overflow:hidden !important;
   text-overflow:ellipsis !important;
 }
+
+/* Fix heberge: supprimer contours noirs des cartes centrales */
+.main .panel,
+.main .card,
+.main .tablewrap,
+.main .panel-head{
+  border:1px solid rgba(173,190,199,0.68) !important;
+  box-shadow:none !important;
+}
+
+/* Suppression effet "carte" dans toutes les parties centrales */
+.main .panel,
+.main .card,
+.main .tablewrap,
+.main .panel-head,
+.main .panel-summary,
+.main .panel-chip,
+.main .kpi{
+  background:var(--db-bg-effets, #eceae5) !important;
+  background-image:none !important;
+  border:none !important;
+  box-shadow:none !important;
+  border-radius:0 !important;
+}
