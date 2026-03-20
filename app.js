@@ -3565,22 +3565,26 @@ function saveState(opts={}){
 
 
 function updateSaveButton(){
-
-  const btn = el("btnSave");
-
-  if(!btn) return;
-
-  btn.classList.remove("btn-danger","btn-success");
-
-  if(unsavedChanges){
-
-    btn.classList.add("btn-danger");
-
-  }else{
-
-    btn.classList.add("btn-success");
-
-  }
+  const saveButtonIds = [
+    "btnSave",
+    "btnSaveProject",
+    "btnSaveTask",
+    "btnConfigSaveTop",
+    "btnConfigSave",
+    "btnVacSave"
+  ];
+  const buttons = saveButtonIds.map((id)=>el(id)).filter(Boolean);
+  if(!buttons.length) return;
+  buttons.forEach((btn)=>{
+    btn.classList.remove("btn-danger","btn-success");
+    if(unsavedChanges){
+      btn.classList.add("btn-primary");
+      btn.classList.remove("btn-save-idle");
+    }else{
+      btn.classList.remove("btn-primary");
+      btn.classList.add("btn-save-idle");
+    }
+  });
 
 }
 
