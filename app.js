@@ -5920,11 +5920,11 @@ function renderKPIs(tasks){
 
   tasks.forEach(t=>{ byStatus[t.status]= (byStatus[t.status]||0)+1; });
 
-  let h=`<div class="kpi">Total:&nbsp;<b>${total}</b></div>`;
+  let h=`<div class="kpi"><span class="kpi-dot" style="--kpi-dot:#64748b"></span>Total:&nbsp;<b>${total}</b></div>`;
 
   STATUSES.forEach(s=>{
 
-    h+=`<div class="kpi">${s.label}:&nbsp;<b>${byStatus[s.v]||0}</b></div>`;
+    h+=`<div class="kpi"><span class="kpi-dot" style="--kpi-dot:${statusColor(s.v)}"></span>${s.label}:&nbsp;<b>${byStatus[s.v]||0}</b></div>`;
 
   });
 
