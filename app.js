@@ -7749,7 +7749,7 @@ function getUnifiedExportModuleDefinitions(){
   return [
     { key:"master_table", label:"Tableau maître", selector:"#viewMaster .tablewrap", wide:true },
     { key:"master_gantt", label:"Gantt global", selector:"#viewMaster #masterGantt", wide:true },
-    { key:"master_pie", label:"Charge de travail / Répartition Interne / Externe / RSG / RI", selector:"#workloadPieWrap", wide:false },
+    { key:"master_pie", label:"Répartition Interne / Externe / RSG / RI (tableau maître)", selector:"#workloadPieWrap", wide:false },
     { key:"master_hours", label:"Analyse heures réelles", selector:"#masterHoursReportCard", wide:true },
     { key:"master_hours_internal_only", label:"Analyse heures réelles - sans prestataires externes", selector:"#masterHoursReportCard", wide:true }
   ];
@@ -8026,7 +8026,7 @@ function renderUnifiedExportModulesList(){
     ? `<div class="export-module-sub" style="margin:0 0 6px 2px;display:block;">Pour l'analyse des heures, choisissez une seule version.</div>`
     : "";
 
-  const projectPickerHtml = isProject ? (()=> {
+  const projectPickerHtml = (()=> {
     const projects = getProjectsSortedForExport();
     unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(unifiedExportSelectedProjectIds);
     const selected = new Set(unifiedExportSelectedProjectIds);
@@ -8049,7 +8049,7 @@ function renderUnifiedExportModulesList(){
       </div>
       ${rows}
     `;
-  })() : "";
+  })();
 
   list.innerHTML = projectPickerHtml + hintHtml + defs.map((d)=>{
     const exclusive = isHoursVariant(d.key);
@@ -8073,27 +8073,23 @@ function renderUnifiedExportModulesList(){
     n.addEventListener("change", updateUnifiedHoursExclusiveUI);
   });
 
-  if(isProject){
-    const projectChecks = Array.from(list.querySelectorAll("input[data-export-project-id]"));
-    const syncProjectSelection = ()=>{
-      const ids = projectChecks.filter(n=>n.checked).map(n=>normId(n.getAttribute("data-export-project-id")));
-      unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(ids);
-      const selected = new Set(unifiedExportSelectedProjectIds);
-      projectChecks.forEach((n)=>{ n.checked = selected.has(normId(n.getAttribute("data-export-project-id"))); });
-    };
-    projectChecks.forEach((n)=> n.addEventListener("change", syncProjectSelection));
-    list.querySelector("#btnExportProjectsActiveOnly")?.addEventListener("click", ()=>{
-      unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds([selectedProjectId]);
-      syncProjectSelection();
-    });
-    list.querySelector("#btnExportProjectsAll")?.addEventListener("click", ()=>{
-      unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(getProjectsSortedForExport().map(p=>p.id));
-      syncProjectSelection();
-    });
+  const projectChecks = Array.from(list.querySelectorAll("input[data-export-project-id]"));
+  const syncProjectSelection = ()=>{
+    const ids = projectChecks.filter(n=>n.checked).map(n=>normId(n.getAttribute("data-export-project-id")));
+    unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(ids);
+    const selected = new Set(unifiedExportSelectedProjectIds);
+    projectChecks.forEach((n)=>{ n.checked = selected.has(normId(n.getAttribute("data-export-project-id"))); });
+  };
+  projectChecks.forEach((n)=> n.addEventListener("change", syncProjectSelection));
+  list.querySelector("#btnExportProjectsActiveOnly")?.addEventListener("click", ()=>{
+    unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds([selectedProjectId]);
     syncProjectSelection();
-  }else{
-    unifiedExportSelectedProjectIds = [];
-  }
+  });
+  list.querySelector("#btnExportProjectsAll")?.addEventListener("click", ()=>{
+    unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(getProjectsSortedForExport().map(p=>p.id));
+    syncProjectSelection();
+  });
+  syncProjectSelection();
   updateUnifiedHoursExclusiveUI();
 }
 function updateUnifiedHoursExclusiveUI(){
@@ -8127,12 +8123,7 @@ function updateUnifiedHoursExclusiveUI(){
 function openUnifiedPdfModal(){
   const modal = el("exportPdfModal");
   if(!modal) return;
-  const isProject = !el("viewProject")?.classList.contains("hidden");
-  if(isProject){
-    unifiedExportSelectedProjectIds = getUnifiedDefaultExportProjectIds();
-  }else{
-    unifiedExportSelectedProjectIds = [];
-  }
+  unifiedExportSelectedProjectIds = getUnifiedDefaultExportProjectIds();
   renderUnifiedExportModulesList();
   modal.classList.remove("hidden");
   modal.style.display = "flex";
@@ -8218,18 +8209,14 @@ function runUnifiedPdfExport(){
     }
 
     const isProjectMode = !el("viewProject")?.classList.contains("hidden");
-    const selectedProjectIds = isProjectMode
-      ? getUnifiedExportSelectedProjectIdsFromUi(listRoot)
-      : [];
-    if(isProjectMode && !selectedProjectIds.length){
+    const selectedProjectIds = getUnifiedExportSelectedProjectIdsFromUi(listRoot);
+    if(!selectedProjectIds.length){
       alert("Sélectionnez au moins un chantier.");
       return;
     }
-    const selectedProjects = isProjectMode
-      ? selectedProjectIds
-          .map(id=> state.projects.find(p=>p.id===id))
-          .filter(Boolean)
-      : [];
+    const selectedProjects = selectedProjectIds
+      .map(id=> state.projects.find(p=>p.id===id))
+      .filter(Boolean);
     const currentProject = isProjectMode ? (selectedProjects[0] || null) : null;
 
     const selectedDefs = buildSelectedExportDefinitions(
@@ -8271,7 +8258,7 @@ function runUnifiedPdfExport(){
 
     const checkMasterGanttVsTable = !isProjectMode && selectedKeys.includes("master_table") && selectedKeys.includes("master_gantt");
     if(checkMasterGanttVsTable){
-      const allMasterTasks = filteredTasks();
+      const allMasterTasks = state.tasks.filter((t)=>selectedProjectIds.includes(t.projectId));
       const datedMasterTasks = allMasterTasks.filter(t=>t.start && t.end);
       if(datedMasterTasks.length !== allMasterTasks.length){
         const missingDates = allMasterTasks.length - datedMasterTasks.length;
@@ -8327,13 +8314,14 @@ function runUnifiedPdfExport(){
 
 
       if(def.key === "master_table"){
-        const tableTitle = `<div class="card-title">Tableau maître</div>`;
-        const tableHtml = buildMasterTableExportHTML();
+        const tableTitle = `<div class="card-title">Tableau maître (cumul chantiers)</div>`;
+        const tableHtml = buildGroupedProjectTasksExportHTML(selectedProjectIds);
+        const groupedHeader = buildGroupedProjectsExportHeaderHTML(selectedProjects, pdfTheme);
         modules.push({
           key:def.key,
           label:"",
           wide:true,
-          html:`${masterHeaderHtml}${tableTitle}${tableHtml}`,
+          html:`${groupedHeader}${tableTitle}${tableHtml}`,
           noAutoProjectHeader:true,
           forceNewPage:true
         });
@@ -8341,13 +8329,15 @@ function runUnifiedPdfExport(){
       }
 
       if(def.key === "master_gantt"){
-        const ganttHtml = buildMasterGanttHTMLForRange();
-        const ganttTitle = `<div class="card-title">Gantt global</div>`;
+        const ganttTasks = state.tasks.filter((t)=>selectedProjectIds.includes(t.projectId) && t.start && t.end);
+        const ganttHtml = buildProjectGanttHTMLForRange(null, null, ganttTasks, true);
+        const ganttTitle = `<div class="card-title">Gantt global (cumul chantiers)</div>`;
+        const groupedHeader = buildGroupedProjectsExportHeaderHTML(selectedProjects, pdfTheme);
         modules.push({
           key:def.key,
           label:"",
           wide:true,
-          html:`${masterHeaderHtml}${ganttTitle}${ganttHtml}`,
+          html:`${groupedHeader}${ganttTitle}${ganttHtml}`,
           noAutoProjectHeader:true,
           forceNewPage:true
         });
@@ -8355,20 +8345,17 @@ function runUnifiedPdfExport(){
       }
 
       if(def.key === "master_pie"){
-        const chartWrap = document.querySelector("#workloadChartWrap");
-        const pieWrap = document.querySelector("#workloadPieWrap");
-        const chartClone = chartWrap ? cloneNodeForUnifiedExport(chartWrap.closest(".card") || chartWrap) : null;
-        const pieClone = pieWrap ? cloneNodeForUnifiedExport(pieWrap.closest(".card") || pieWrap) : null;
-        const parts = [];
-        if(chartClone) parts.push(`<div class="pdf-two-graphs-item">${chartClone.outerHTML}</div>`);
-        if(pieClone) parts.push(`<div class="pdf-two-graphs-item">${pieClone.outerHTML}</div>`);
-        if(parts.length===0) return;
-        const sectionTitle = `<div class="card-title">Charge de travail / Répartition Interne / Externe / RSG / RI</div>`;
+        const sectionHtml = buildGroupedProjectsRepartitionExportInnerHTML(
+          selectedProjectIds,
+          true,
+          "Répartition Interne / Externe / RSG / RI (tableau maître - cumul chantiers)"
+        );
+        const groupedHeader = buildGroupedProjectsExportHeaderHTML(selectedProjects, pdfTheme);
         modules.push({
           key:def.key,
           label:"",
           wide:true,
-          html:`${masterHeaderHtml}${sectionTitle}<div class="pdf-two-graphs-wrap">${parts.join("")}</div>`,
+          html:`${groupedHeader}${sectionHtml}`,
           noAutoProjectHeader:true,
           forceNewPage:true
         });
@@ -8377,11 +8364,12 @@ function runUnifiedPdfExport(){
 
       if(def.key === "master_hours"){
         if(selectedMasterHoursVariant !== "master_hours") return;
+        const groupedHeader = buildGroupedProjectsExportHeaderHTML(selectedProjects, pdfTheme);
         modules.push({
           key:def.key,
           label:"",
           wide:true,
-          html:`${masterHeaderHtml}${buildMasterRealHoursReportInnerHTML(true)}`,
+          html:`${groupedHeader}${buildGroupedProjectsRealHoursReportInnerHTML(selectedProjectIds, true, "Analyse heures réelles (tableau maître - cumul chantiers)")}`,
           noAutoProjectHeader:true,
           forceNewPage:true
         });
@@ -8390,11 +8378,12 @@ function runUnifiedPdfExport(){
 
       if(def.key === "master_hours_internal_only"){
         if(selectedMasterHoursVariant !== "master_hours_internal_only") return;
+        const groupedHeader = buildGroupedProjectsExportHeaderHTML(selectedProjects, pdfTheme);
         modules.push({
           key:def.key,
           label:"",
           wide:true,
-          html:`${masterHeaderHtml}${buildMasterRealHoursReportInnerHTML(false)}`,
+          html:`${groupedHeader}${buildGroupedProjectsRealHoursReportInnerHTML(selectedProjectIds, false, "Analyse heures réelles (tableau maître - cumul chantiers) - sans prestataires externes")}`,
           noAutoProjectHeader:true,
           forceNewPage:true
         });
@@ -10393,6 +10382,27 @@ function buildProjectRepartitionExportInnerHTML(projectId, includeExternal=true,
 
 function buildGroupedProjectsRepartitionExportInnerHTML(projectIds, includeExternal=true, title="Répartition Interne / Externe / RSG / RI (chantiers regroupés)"){
   const rep = filterRealHoursReportExternal(buildGroupedProjectsRealHoursReport(projectIds), includeExternal);
+  const totalMinutes = Number(rep.totalMinutes) || 0;
+  const rowsHtml = (rep.summaryRows || []).map((r)=>{
+    const label = String(r?.label || "");
+    const mins = Number(r?.mins) || 0;
+    const part = totalMinutes > 0 ? ((mins / totalMinutes) * 100) : 0;
+    const partTxt = `${part.toFixed(1).replace(".", ",")} %`;
+    return `<tr><td>${attrEscape(label)}</td><td style="text-align:right">${formatHoursMinutes(mins)}</td><td style="text-align:right">${partTxt}</td></tr>`;
+  }).join("") || `<tr><td colspan="3" style="text-align:center;color:#64748b;">Aucune donnée</td></tr>`;
+  const total = formatHoursMinutes(rep.totalMinutes || 0);
+  return `
+    <div class="card-title">${attrEscape(title)}</div>
+    <table class="report-table report-table-summary" style="margin-top:6px">
+      <thead><tr><th>Catégorie</th><th>Heures</th><th>Part</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+      <tfoot><tr><th>Total</th><th style="text-align:right">${total}</th><th style="text-align:right">100,0 %</th></tr></tfoot>
+    </table>
+  `;
+}
+
+function buildMasterRepartitionExportInnerHTML(title="Répartition Interne / Externe / RSG / RI (tableau maître)"){
+  const rep = filterRealHoursReportExternal(buildMasterRealHoursReport(), true);
   const totalMinutes = Number(rep.totalMinutes) || 0;
   const rowsHtml = (rep.summaryRows || []).map((r)=>{
     const label = String(r?.label || "");
