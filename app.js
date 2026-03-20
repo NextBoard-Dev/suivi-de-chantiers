@@ -1649,6 +1649,26 @@ function closeConfigModal(){
   if(!modal) return;
   hideModalSafely(modal);
 }
+function resetModalScrollTop(modal){
+  if(!modal) return;
+  try{
+    modal.scrollTop = 0;
+    modal.querySelectorAll(".modal-card,.modal-body,.modal-content,.config-col,.config-users-list,.export-modules-list,#exportPdfModulesList").forEach((n)=>{
+      if(n && typeof n.scrollTop === "number") n.scrollTop = 0;
+    });
+  }catch(e){ softCatch(e); }
+}
+function showModalSafely(modal){
+  if(!modal) return;
+  modal.classList.remove("hidden");
+  modal.style.display = "flex";
+  modal.setAttribute("aria-hidden","false");
+  resetModalScrollTop(modal);
+  try{
+    requestAnimationFrame(()=> resetModalScrollTop(modal));
+    setTimeout(()=> resetModalScrollTop(modal), 60);
+  }catch(e){ softCatch(e); }
+}
 function hideModalSafely(modal, focusFallbackSelector=""){
   if(!modal) return;
   try{
@@ -7226,9 +7246,7 @@ function openHoursTaskModal(){
   }
   updateTimeLogUI(t, true);
   syncHoursTaskModal(t);
-  modal.classList.remove("hidden");
-  modal.style.display = "flex";
-  modal.setAttribute("aria-hidden","false");
+  showModalSafely(modal);
 }
 function closeHoursTaskModal(stopFlow=true){
   const modal = el("hoursTaskModal");
@@ -7719,18 +7737,30 @@ function getUnifiedDefaultExportProjectIds(){
   return [projects[0].id];
 }
 
-function normalizeUnifiedExportProjectIds(ids){
+function normalizeUnifiedExportProjectIds(ids, opts={}){
+  const allowEmpty = !!opts.allowEmpty;
   const allowed = new Set(getProjectsSortedForExport().map(p=>p.id));
   const uniq = Array.from(new Set((ids || []).map(normId).filter(Boolean)));
   const out = uniq.filter(id=>allowed.has(id));
-  return out.length ? out : getUnifiedDefaultExportProjectIds();
+  if(out.length) return out;
+  return allowEmpty ? [] : getUnifiedDefaultExportProjectIds();
 }
 
 function getUnifiedExportSelectedProjectIdsFromUi(root){
   const scope = root || document;
   const nodes = Array.from(scope.querySelectorAll("#exportPdfModulesList input[data-export-project-id]:checked"));
   const ids = nodes.map(n=>normId(n.getAttribute("data-export-project-id")));
-  return normalizeUnifiedExportProjectIds(ids);
+  return normalizeUnifiedExportProjectIds(ids, { allowEmpty:true });
+}
+
+function getActiveProjectIdsForToday(){
+  const todayKey = new Date().toISOString().slice(0,10);
+  const activeSet = new Set(
+    (state.tasks || [])
+      .filter((t)=>t?.projectId && t.start && t.end && t.start <= todayKey && t.end >= todayKey)
+      .map((t)=>t.projectId)
+  );
+  return normalizeUnifiedExportProjectIds(Array.from(activeSet), { allowEmpty:true });
 }
 
 function getUnifiedExportModuleDefinitions(){
@@ -8045,6 +8075,7 @@ function renderUnifiedExportModulesList(){
         <span class="export-projects-actions">
           <button type="button" class="btn btn-ghost btn-xs" id="btnExportProjectsActiveOnly">Actif uniquement</button>
           <button type="button" class="btn btn-ghost btn-xs" id="btnExportProjectsAll">Tous</button>
+          <button type="button" class="btn btn-ghost btn-xs" id="btnExportProjectsNone">Aucun</button>
         </span>
       </div>
       ${rows}
@@ -8074,22 +8105,30 @@ function renderUnifiedExportModulesList(){
   });
 
   const projectChecks = Array.from(list.querySelectorAll("input[data-export-project-id]"));
-  const syncProjectSelection = ()=>{
-    const ids = projectChecks.filter(n=>n.checked).map(n=>normId(n.getAttribute("data-export-project-id")));
-    unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(ids);
+  const applyProjectSelectionToUi = ()=>{
+    unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(unifiedExportSelectedProjectIds, { allowEmpty:true });
     const selected = new Set(unifiedExportSelectedProjectIds);
     projectChecks.forEach((n)=>{ n.checked = selected.has(normId(n.getAttribute("data-export-project-id"))); });
   };
-  projectChecks.forEach((n)=> n.addEventListener("change", syncProjectSelection));
+  const syncProjectSelectionFromUi = ()=>{
+    const ids = projectChecks.filter(n=>n.checked).map(n=>normId(n.getAttribute("data-export-project-id")));
+    unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(ids, { allowEmpty:true });
+    applyProjectSelectionToUi();
+  };
+  projectChecks.forEach((n)=> n.addEventListener("change", syncProjectSelectionFromUi));
   list.querySelector("#btnExportProjectsActiveOnly")?.addEventListener("click", ()=>{
-    unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds([selectedProjectId]);
-    syncProjectSelection();
+    unifiedExportSelectedProjectIds = getActiveProjectIdsForToday();
+    applyProjectSelectionToUi();
   });
   list.querySelector("#btnExportProjectsAll")?.addEventListener("click", ()=>{
     unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(getProjectsSortedForExport().map(p=>p.id));
-    syncProjectSelection();
+    applyProjectSelectionToUi();
   });
-  syncProjectSelection();
+  list.querySelector("#btnExportProjectsNone")?.addEventListener("click", ()=>{
+    unifiedExportSelectedProjectIds = [];
+    applyProjectSelectionToUi();
+  });
+  applyProjectSelectionToUi();
   updateUnifiedHoursExclusiveUI();
 }
 function updateUnifiedHoursExclusiveUI(){
@@ -8125,9 +8164,7 @@ function openUnifiedPdfModal(){
   if(!modal) return;
   unifiedExportSelectedProjectIds = getUnifiedDefaultExportProjectIds();
   renderUnifiedExportModulesList();
-  modal.classList.remove("hidden");
-  modal.style.display = "flex";
-  modal.setAttribute("aria-hidden", "false");
+  showModalSafely(modal);
 }
 
 function closeUnifiedPdfModal(){
@@ -8594,9 +8631,7 @@ function bind(){
   el("btnHelp")?.addEventListener("click", ()=>{
     const modal = el("helpModal");
     if(!modal) return;
-    modal.classList.remove("hidden");
-    modal.style.display="flex";
-    modal.setAttribute("aria-hidden","false");
+    showModalSafely(modal);
   });
   el("btnHelpClose")?.addEventListener("click", ()=>{
     const modal = el("helpModal");
