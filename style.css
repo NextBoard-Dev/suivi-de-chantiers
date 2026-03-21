@@ -5069,3 +5069,80 @@ button.btn-click-ack,
   box-shadow:none !important;
   border:none !important;
 }
+
+/* Verrou typographique final: alleger le gras global */
+body,
+.main,
+.sidebar,
+.topbar,
+.panel,
+.card,
+.table,
+.table td,
+.kpi,
+.panel-chip,
+.btn,
+button,
+.help-btn,
+.theme-toggle,
+.label,
+.tab{
+  font-weight:500 !important;
+}
+
+/* Zones qui doivent rester lisibles/structurees */
+h1,
+h2,
+h3,
+.brand,
+.panel-title,
+.card-title,
+.table th,
+.table thead th,
+.kpi strong,
+.panel-chip .metric-val,
+.topbar .brand-title,
+.topbar .brand-date,
+.sidebar .section-title{
+  font-weight:600 !important;
+}
+
+/* Affinage tables: alleger encore les graisses typographiques */
+.table th,
+.table thead th,
+.gantt-table .table th,
+.gantt-table table th,
+.report-table th,
+.report-table thead th,
+.report-table-summary thead th,
+.report-table tfoot th,
+.report-table-summary tfoot th{
+  font-weight:500 !important;
+}
+
+.table td,
+.table tbody td,
+.gantt-table .table td,
+.gantt-table table td,
+.report-table td,
+.report-table-summary td{
+  font-weight:400 !important;
+}
+
+/* Harmonisation en-tetes colonnes Gantt: alignement stable */
+.gantt-table table thead th,
+.gantt-table .table thead th{
+  vertical-align:middle !important;
+  text-align:left !important;
+}
+
+.gantt-table table thead th.week-cell,
+.gantt-table .table thead th.week-cell{
+  text-align:center !important;
+}
+
+.gantt-week-date{
+  align-items:center !important;
+  justify-content:center !important;
+  line-height:1.15 !important;
+}

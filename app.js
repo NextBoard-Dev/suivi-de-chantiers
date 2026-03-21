@@ -4662,7 +4662,7 @@ function renderGantt(projectId){
 
   let html="<div class='tablewrap gantt-table'><table class='table' style='--gcol0:70px;--gcol1:200px;--gcol2:120px;--gcol3:120px'>";
 
-  html+="<thead><tr><th class='gantt-col-site' style='width:70px'>Site / Zone</th><th class='gantt-task-col-project gantt-col-task'>Nom</th><th class='gantt-col-vendor' style='width:120px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
+  html+="<thead><tr><th class='gantt-col-site' style='width:70px'>Site</th><th class='gantt-task-col-project gantt-col-task'>Nom</th><th class='gantt-col-vendor' style='width:120px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
 
   weeks.forEach((w,i)=>{
 
@@ -4960,7 +4960,7 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
   const tableClass = `table${hideVendor ? " hide-vendor" : ""}${hideStatus ? " hide-status" : ""}`;
 
   let html=`<div class='tablewrap gantt-table'><table class='${tableClass}' style='--gcol0:70px;--gcol1:120px;--gcol2:90px;--gcol3:90px'>`;
-  html+="<thead><tr><th class='gantt-col-site' style='width:70px'>Site / Zone</th><th class='gantt-col-task' style='width:120px'>Tâche</th><th class='gantt-col-vendor' style='width:90px'>Prestataire</th><th class='gantt-col-status' style='width:90px'>Statut</th>";
+  html+="<thead><tr><th class='gantt-col-site' style='width:70px'>Site</th><th class='gantt-col-task' style='width:120px'>Tâche</th><th class='gantt-col-vendor' style='width:90px'>Prestataire</th><th class='gantt-col-status' style='width:90px'>Statut</th>";
 
   weeks.forEach((w,i)=>{
     const info=isoWeekInfo(w);
@@ -5188,7 +5188,7 @@ function renderMasterGantt(){
 
   let html="<div class='tablewrap gantt-table'><table class='table' style='--gcol0:70px;--gcol1:150px;--gcol2:140px;--gcol3:120px'>";
 
-  html+="<thead><tr><th class='gantt-col-site' style='width:70px'>Site / Zone</th><th class='gantt-col-task' style='width:150px'>Nom</th><th class='gantt-col-vendor' style='width:140px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
+  html+="<thead><tr><th class='gantt-col-site' style='width:70px'>Site</th><th class='gantt-col-task' style='width:150px'>Nom</th><th class='gantt-col-vendor' style='width:140px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
 
   weeks.forEach((w,i)=>{
 
@@ -8071,7 +8071,7 @@ function buildMasterExportHeaderHTML(pdfTheme){
     <div class="project-export-header-card" style="border:1px solid ${attrEscape(pdfTheme.line)};border-radius:8px;padding:6px 8px;background:${attrEscape(pdfTheme.panel)};background-image:linear-gradient(180deg, ${attrEscape(pdfTheme.panel)} 0%, ${attrEscape(pdfTheme.accentSoft)} 100%);margin-bottom:6px;box-shadow:0 3px 10px rgba(15,23,42,0.18);">
       <div class="project-export-header-grid" style="display:grid;grid-template-columns:1.6fr 1fr .9fr 1fr 1fr 1fr;gap:8px;align-items:start;border-left:4px solid ${attrEscape(pdfTheme.accent)};padding-left:7px;">
         <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Contexte</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">Tableau maître</div></div>
-        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Site / Zone</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(siteLabel)}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Site</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(siteLabel)}</div></div>
         <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Tâches</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${tasks.length}</div></div>
         <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Début période</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(start ? formatDate(start) : "-")}</div></div>
         <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Fin période</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(end ? formatDate(end) : "-")}</div></div>
@@ -8144,7 +8144,7 @@ function buildProjectExportHeaderHTML(project, pdfTheme){
     <div class="project-export-header-card" style="border:1px solid ${attrEscape(pdfTheme.line)};border-radius:8px;padding:6px 8px;background:${attrEscape(pdfTheme.panel)};background-image:linear-gradient(180deg, ${attrEscape(pdfTheme.panel)} 0%, ${attrEscape(pdfTheme.accentSoft)} 100%);margin-bottom:6px;box-shadow:0 3px 10px rgba(15,23,42,0.18);">
       <div class="project-export-header-grid" style="display:grid;grid-template-columns:1.6fr 1fr 1fr .75fr 1fr 1fr;gap:8px;align-items:start;border-left:4px solid ${attrEscape(pdfTheme.accent)};padding-left:7px;">
         <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Chantier</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(project?.name || "-")}</div></div>
-        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Site / Zone</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(project?.site || "-")}</div></div>
+        <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Site</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(project?.site || "-")}</div></div>
         <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Sous-projet</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(project?.subproject || "-")}</div></div>
         <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Tâches</div><div style="font-weight:800;font-size:16px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${projectTasks.length}</div></div>
         <div><div style="font-size:12px;color:${attrEscape(pdfTheme.muted)};letter-spacing:.15px;margin-bottom:2px;font-weight:700;">Début projet</div><div style="font-weight:800;font-size:15px;line-height:1.2;color:${attrEscape(pdfTheme.text)};">${attrEscape(firstTaskStart ? formatDate(firstTaskStart) : "-")}</div></div>
@@ -10865,6 +10865,7 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
 
 
 
