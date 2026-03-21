@@ -5178,3 +5178,47 @@ h3,
   height:32px !important;
   padding:0 12px !important;
 }
+
+/* Notice d'utilisation - verrou final harmonisation visuelle */
+.help-tag{
+  background:#edf1f3 !important;
+  border:1px solid rgba(63,97,112,0.16) !important;
+  color:#2f4350 !important;
+  -webkit-text-fill-color:#2f4350 !important;
+  box-shadow:none !important;
+}
+
+.help-tag.primary{
+  background:#3f6170 !important;
+  border-color:#365563 !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+}
+
+.help-btn,
+.help-toolbar .help-btn{
+  background:#edf1f3 !important;
+  border:1px solid rgba(63,97,112,0.16) !important;
+  color:#2f4350 !important;
+  -webkit-text-fill-color:#2f4350 !important;
+  box-shadow:none !important;
+}
+
+.help-btn.primary,
+.help-toolbar .help-btn.primary{
+  background:#3f6170 !important;
+  border-color:#365563 !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+}
+
+.help-btn:hover,
+.help-toolbar .help-btn:hover{
+  background:#e3ebef !important;
+}
+
+.help-btn.primary:hover,
+.help-toolbar .help-btn.primary:hover{
+  background:#365563 !important;
+  border-color:#2f4b57 !important;
+}
