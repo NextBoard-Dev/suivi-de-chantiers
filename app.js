@@ -3728,13 +3728,9 @@ function flashSaved(){
 
   if(!btn) return;
 
-  const old = btn.textContent;
-
-  btn.textContent = " Sauvegard";
-
   btn.classList.add("pulse");
 
-  setTimeout(()=>{ btn.textContent = old; btn.classList.remove("pulse"); },1200);
+  setTimeout(()=>{ btn.classList.remove("pulse"); },1200);
 
 }
 

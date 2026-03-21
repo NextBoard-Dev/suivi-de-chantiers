@@ -5055,3 +5055,17 @@ button.btn-click-ack,
   transform-origin:center center !important;
   filter:brightness(0.94) saturate(1.04) !important;
 }
+
+/* Verrou final unique: centre sans effet carte externe */
+.layout,
+.main,
+.main.view-fade,
+.main > .panel,
+.main > .card,
+.main > .tablewrap,
+.main > .panel-head{
+  background:var(--db-bg-effets, #eceae5) !important;
+  background-image:none !important;
+  box-shadow:none !important;
+  border:none !important;
+}
