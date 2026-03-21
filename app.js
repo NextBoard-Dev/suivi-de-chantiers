@@ -7329,6 +7329,17 @@ function syncHoursTaskModal(taskOverride=null){
   }
   renderHoursTaskCalendar(t);
 }
+function scrollHoursTaskModalToFirstMissing(){
+  const grid = el("hm_calendar");
+  if(!grid) return;
+  const targetInput =
+    grid.querySelector(".hm-day[data-active='1'][data-state-base='missing'] .hm-day-input[data-active='1']") ||
+    grid.querySelector(".hm-day[data-active='1'] .hm-day-input[data-active='1']");
+  if(!targetInput) return;
+  const targetCard = targetInput.closest(".hm-day");
+  if(!targetCard) return;
+  targetCard.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+}
 function openHoursTaskModal(){
   const modal = el("hoursTaskModal");
   if(!modal) return;
@@ -7340,6 +7351,11 @@ function openHoursTaskModal(){
   updateTimeLogUI(t, true);
   syncHoursTaskModal(t);
   showModalSafely(modal);
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      scrollHoursTaskModalToFirstMissing();
+    });
+  });
 }
 function closeHoursTaskModal(stopFlow=true){
   const modal = el("hoursTaskModal");
