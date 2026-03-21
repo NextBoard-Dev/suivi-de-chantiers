@@ -1,6 +1,6 @@
 PROJET: SUIVI DE CHANTIERS
 DOSSIER: 
-C:\Users\sebastien.duc\CLOUD\02_ARCHIVAGE PERSONNEL\DASHBOARDS\SUIVI DE CHANTIERS\suivi-de-chantiers
+C:\Users\sebastien.duc\CLOUD\02_ARCHIVAGE PERSONNEL\DASHBOARDS\SUIVI DE CHANTIERS
 REMOTE_ORIGIN: 
 https://github.com/Mililumatt/suivi-de-chantiers.git
 BRANCHE: 
