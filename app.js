@@ -74,7 +74,7 @@ function softCatch(errLike, context="soft"){
 }
 
 function bindGlobalButtonClickFeedback(){
-  const selector = "button, .btn, .tab, .help-btn, .theme-toggle, .login-log-sort, .cfg-accordion-head";
+  const selector = "button, .btn, .tab, .help-btn, .login-log-sort, .cfg-accordion-head";
   document.addEventListener("click", (e)=>{
     const btn = e.target?.closest?.(selector);
     if(!btn) return;
@@ -495,9 +495,7 @@ async function loadUsersFromSupabase(force=false){
     if(error){ console.warn("Supabase users select error", error); return false; }
     if(!data || !data.users_json) return false;
     const normalized = (data.users_json || []).map(u=>{
-      if(!u || typeof u !== "object") return u;
-      if(!u.theme) u.theme = "sable";
-      if(!u.id) u.id = uid();
+      if(!u || typeof u !== "object") return u;      if(!u.id) u.id = uid();
       return u;
     });
     saveUsers(normalized);
@@ -1195,99 +1193,24 @@ function getCurrentUserRecord(){
   if(!name) return null;
   return users.find(u=>u.name===name) || null;
 }
-function applyTheme(themeId){
-  const id = themeId || "sable";
-  document.documentElement.setAttribute("data-theme", id);
-  const grid = el("themeGrid");
-  if(grid){
-    grid.querySelectorAll(".theme-swatch").forEach(n=>{
-      n.classList.toggle("active", n.dataset.theme===id);
-    });
-  }
-}
-function applyThemeForCurrentUser(){
-  const u = getCurrentUserRecord();
-  const sessionTheme = sessionStorage.getItem("current_theme") || "";
-  const theme = (u && u.theme) ? u.theme : (sessionTheme || "sable");
-  applyTheme(theme);
-}
-function setCurrentUserTheme(themeId){
-  const name = getCurrentUserName();
-  const email = getCurrentUserEmail();
-  try{ sessionStorage.setItem("current_theme", themeId || "sable"); }catch(e){ softCatch(e); }
-  if(!name){
-    applyTheme(themeId);
-    return;
-  }
-  const users = loadUsers();
-  let idx = -1;
-  if(email){
-    idx = users.findIndex(u=>(u.email||"").toLowerCase()===email.toLowerCase());
-  }
-  if(idx < 0){
-    idx = users.findIndex(u=>u.name===name);
-  }
-  if(idx>=0){
-    users[idx].theme = themeId;
-    saveUsers(users);
-  }
-  applyTheme(themeId);
-}
-function initThemePicker(){
-  const grid = el("themeGrid");
-  const picker = el("themePicker");
-  const toggle = el("themeToggle");
-  if(!grid || !picker || !toggle) return;
-  const hexToRgb = (hex)=>{
-    const v = (hex || "").replace("#","").trim();
-    if(v.length !== 6) return {r:0,g:0,b:0};
-    return {
-      r: parseInt(v.slice(0,2),16),
-      g: parseInt(v.slice(2,4),16),
-      b: parseInt(v.slice(4,6),16)
-    };
-  };
-  const luma = (hex)=>{
-    const {r,g,b} = hexToRgb(hex);
-    return 0.2126*r + 0.7152*g + 0.0722*b;
-  };
-  const themesSorted = [...THEMES].sort((a,b)=>{
-    const ac = a.swatch || ["#ffffff","#ffffff"];
-    const bc = b.swatch || ["#ffffff","#ffffff"];
-    const al = (luma(ac[0]) + luma(ac[1])) / 2;
-    const bl = (luma(bc[0]) + luma(bc[1])) / 2;
-    return bl - al; // clair -> foncé
-  });
-  grid.innerHTML = themesSorted.map(t=>{
-    const colors = t.swatch || ["#e2e8f0","#94a3b8"];
-    const accent = THEME_ACCENTS[t.id] || colors[1] || "#94a3b8";
-    const style = `background:linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 55%, ${accent} 100%);`;
-    return `<button type="button" class="theme-swatch" data-theme="${t.id}" title="${t.label}" style="${style}"></button>`;
-  }).join("");
+const UNIQUE_THEME_ID = "sable";
 
-  grid.querySelectorAll(".theme-swatch").forEach(btn=>{
-    btn.addEventListener("click", ()=> setCurrentUserTheme(btn.dataset.theme || "sable"));
-    btn.addEventListener("mouseenter", ()=>{
-      const t = btn.dataset.theme || "sable";
-      applyTheme(t);
-    });
-    btn.addEventListener("mouseleave", ()=>{
-      applyThemeForCurrentUser();
-    });
-  });
-  toggle.addEventListener("click", (e)=>{
-    e.stopPropagation();
-    picker.classList.toggle("open");
-    if(!picker.classList.contains("open")) applyThemeForCurrentUser();
-  });
-  document.addEventListener("click", (e)=>{
-    if(!picker.classList.contains("open")) return;
-    if(picker.contains(e.target)) return;
-    picker.classList.remove("open");
-    applyThemeForCurrentUser();
-  });
-  applyThemeForCurrentUser();
+function applyTheme(){
+  document.documentElement.setAttribute("data-theme", UNIQUE_THEME_ID);
 }
+
+function applyThemeForCurrentUser(){
+  applyTheme();
+}
+
+function setCurrentUserTheme(){
+  applyTheme();
+}
+
+function initThemePicker(){
+  applyTheme();
+}
+
 function getCurrentRole(){
   return sessionStorage.getItem("current_role") || "user";
 }
@@ -8742,9 +8665,7 @@ function bind(){
       sessionStorage.removeItem("unlocked");
       sessionStorage.removeItem("current_user");
       sessionStorage.removeItem("current_role");
-      sessionStorage.removeItem("current_email");
-      sessionStorage.removeItem("current_theme");
-      localStorage.removeItem("login_session_token_v1");
+      sessionStorage.removeItem("current_email");      localStorage.removeItem("login_session_token_v1");
     }catch(e){ softCatch(e); }
     const lock = document.getElementById("lockscreen");
     if(lock) lock.classList.remove("hidden");
@@ -8933,7 +8854,7 @@ function bind(){
       alert("Email déjà existant."); return;
     }
     const hash = await hashPassword(pass);
-    users.push({id: uid(), name, email, role, hash, theme:"sable"});
+    users.push({id: uid(), name, email, role, hash});
     saveUsers(users);
     el("cfg_user_name").value = "";
     el("cfg_user_email").value = "";
@@ -10880,6 +10801,7 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
 
 
 
