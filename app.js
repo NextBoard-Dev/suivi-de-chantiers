@@ -7332,13 +7332,28 @@ function syncHoursTaskModal(taskOverride=null){
 function scrollHoursTaskModalToFirstMissing(){
   const grid = el("hm_calendar");
   if(!grid) return;
-  const targetInput =
+  const initialTargetInput =
     grid.querySelector(".hm-day[data-active='1'][data-state-base='missing'] .hm-day-input[data-active='1']") ||
     grid.querySelector(".hm-day[data-active='1'] .hm-day-input[data-active='1']");
+  if(!initialTargetInput) return;
+  const targetDate = (initialTargetInput.getAttribute("data-date") || "").trim();
+  const hmDate = el("hm_date");
+  const dateInput = el("t_time_date_input");
+  if(targetDate){
+    if(hmDate) hmDate.value = targetDate;
+    if(dateInput) dateInput.value = targetDate;
+    const t = getSelectedTaskForHoursModal();
+    if(t) renderHoursTaskCalendar(t);
+  }
+  const targetInput = targetDate
+    ? grid.querySelector(`.hm-day-input[data-date="${targetDate}"][data-active='1']`)
+    : initialTargetInput;
   if(!targetInput) return;
   const targetCard = targetInput.closest(".hm-day");
   if(!targetCard) return;
   targetCard.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+  try{ targetInput.focus({ preventScroll: true }); }
+  catch(_){ targetInput.focus(); }
 }
 function openHoursTaskModal(){
   const modal = el("hoursTaskModal");

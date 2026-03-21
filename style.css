@@ -4620,6 +4620,17 @@ body,
   color:#3f5662 !important;
 }
 
+/* Modale export PDF: fond verrouille sur la teinte de reference */
+#exportPdfModal .modal-card{
+  background:#eceae5 !important;
+  background-image:none !important;
+  border:1px solid #c8ced4 !important;
+}
+#exportPdfModal .modal-sub,
+#exportPdfModal .export-module-sub{
+  color:#556b78 !important;
+}
+
 /* Verrou final boutons modale heures */
 #hoursTaskModal .btn,
 #hoursTaskModal #btnSaveHoursModal,
@@ -4975,4 +4986,33 @@ button,
 
 .legend-dot{
   border:1px solid rgba(63,97,112,0.24) !important;
+}
+
+/* Verrou final boutons (reference visuelle suivi des effets) */
+.topbar .btn:not(.btn-primary):not(.btn-danger):not(.btn-success),
+.btn:not(.btn-primary):not(.btn-danger):not(.btn-success),
+button.btn:not(.btn-primary):not(.btn-danger):not(.btn-success),
+.btn.btn-ghost,
+.btn.btn-save-idle{
+  background:#edf1f3 !important;
+  background-image:none !important;
+  border:1px solid rgba(63,97,112,0.16) !important;
+  color:#2f4350 !important;
+  -webkit-text-fill-color:#2f4350 !important;
+}
+
+.topbar .btn.btn-primary,
+.btn.btn-primary,
+button.btn.btn-primary,
+.btn.active,
+.gantt-toggle-row .btn.btn-primary,
+#btnToggleMasterVendor.btn-primary,
+#btnToggleMasterStatus.btn-primary,
+#btnToggleProjectVendor.btn-primary,
+#btnToggleProjectStatus.btn-primary{
+  background:#3f6170 !important;
+  background-image:none !important;
+  border:1px solid #365563 !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
 }
