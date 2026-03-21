@@ -2,8 +2,8 @@ PROJET: SUIVI DE CHANTIERS
 DOSSIER: 
 C:\Users\sebastien.duc\CLOUD\02_ARCHIVAGE PERSONNEL\DASHBOARDS\SUIVI DE CHANTIERS
 REMOTE_ORIGIN: 
-https://github.com/Mililumatt/suivi-de-chantiers.git
+https://github.com/NextBoard-Dev/suivi-de-chantiers.git
 BRANCHE: 
 main
 REGLE: Ne jamais copier de fichiers vers Dotations.
-URL_LIVE: https://mililumatt.github.io/suivi-de-chantiers/
+URL_LIVE: https://nextboard-dev.github.io/suivi-de-chantiers/
