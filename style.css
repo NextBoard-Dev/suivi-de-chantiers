@@ -5016,3 +5016,42 @@ button.btn.btn-primary,
   color:#ffffff !important;
   -webkit-text-fill-color:#ffffff !important;
 }
+
+/* Feedback clic global: micro animation de confirmation */
+@keyframes btnClickAck{
+  0%{
+    transform:translateY(0) scale(1);
+    filter:brightness(1);
+    box-shadow:0 0 0 0 rgba(63,97,112,0);
+  }
+  40%{
+    transform:translateY(1px) scale(0.95);
+    filter:brightness(0.96);
+    box-shadow:0 0 0 3px rgba(63,97,112,0.26);
+  }
+  100%{
+    transform:translateY(0) scale(1);
+    filter:brightness(1);
+    box-shadow:0 0 0 0 rgba(63,97,112,0);
+  }
+}
+
+button.btn-click-ack,
+.btn.btn-click-ack,
+.tab.btn-click-ack,
+.help-btn.btn-click-ack,
+.theme-toggle.btn-click-ack,
+.login-log-sort.btn-click-ack,
+.cfg-accordion-head.btn-click-ack{
+  animation:btnClickAck .22s cubic-bezier(.2,.8,.2,1) 1;
+}
+
+/* Topbar + sidebar: renfort de visibilite du feedback clic */
+.topbar .btn.btn-click-ack,
+.topbar .theme-toggle.btn-click-ack,
+.sidebar .btn.btn-click-ack,
+.sidebar .tab.btn-click-ack{
+  animation:btnClickAck .24s cubic-bezier(.2,.8,.2,1) 1 !important;
+  transform-origin:center center !important;
+  filter:brightness(0.94) saturate(1.04) !important;
+}

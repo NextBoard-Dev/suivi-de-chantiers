@@ -72,6 +72,20 @@ function softCatch(errLike, context="soft"){
     // no-op volontaire: ne jamais casser l'UI pour une remontée d'erreur
   }
 }
+
+function bindGlobalButtonClickFeedback(){
+  const selector = "button, .btn, .tab, .help-btn, .theme-toggle, .login-log-sort, .cfg-accordion-head";
+  document.addEventListener("click", (e)=>{
+    const btn = e.target?.closest?.(selector);
+    if(!btn) return;
+    if(btn.disabled || btn.classList.contains("is-disabled")) return;
+    btn.classList.remove("btn-click-ack");
+    // restart animation if user clicks quickly several times
+    void btn.offsetWidth;
+    btn.classList.add("btn-click-ack");
+    window.setTimeout(()=> btn.classList.remove("btn-click-ack"), 170);
+  }, true);
+}
 window.reportAppError = reportAppError;
 window.addEventListener("error", (ev)=>{
   const msg = String(ev?.message || "").trim();
@@ -92,6 +106,7 @@ window.addEventListener("unhandledrejection", (ev)=>{
 document.addEventListener("DOMContentLoaded", ()=>{
   el("appErrorClose")?.addEventListener("click", ()=> el("appErrorBanner")?.classList.add("hidden"));
   el("appErrorReload")?.addEventListener("click", ()=> window.location.reload());
+  bindGlobalButtonClickFeedback();
 });
 
 
