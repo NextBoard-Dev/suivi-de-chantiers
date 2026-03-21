@@ -1,0 +1,6 @@
+PROJET: SUIVI DE CHANTIERS
+DOSSIER: C:\Users\sebastien.duc\CLOUD\02_ARCHIVAGE PERSONNEL\DASHBOARDS\SUIVI DE CHANTIERS RAZ 2026-03-15 SAISIE DES HEURES HARMONISATION NextBo@rd git syncsuivi-de-chantiers-clean\suivi-de-chantiers
+REMOTE_ORIGIN: https://github.com/Mililumatt/suivi-de-chantiers.git
+BRANCHE: main
+REGLE: Ne jamais copier de fichiers vers Dotations.
+URL_LIVE: https://mililumatt.github.io/suivi-de-chantiers/
