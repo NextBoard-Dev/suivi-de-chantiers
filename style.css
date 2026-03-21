@@ -5222,3 +5222,19 @@ h3,
   background:#365563 !important;
   border-color:#2f4b57 !important;
 }
+/* Topbar aide - rendu net et centre */
+#btnHelp{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  padding:0 !important;
+  background:#edf1f3 !important;
+  border:1px solid rgba(63,97,112,0.16) !important;
+}
+
+#btnHelp .help-icon-svg{
+  width:20px !important;
+  height:20px !important;
+  display:block !important;
+}
+
