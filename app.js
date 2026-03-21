@@ -9018,7 +9018,22 @@ function bind(){
     closeUnifiedPdfModal();
   });
 
-  
+  const exportModalRoot = el("exportPdfModal");
+  if(exportModalRoot && exportModalRoot.dataset.exportListenersBound !== "1"){
+    exportModalRoot.dataset.exportListenersBound = "1";
+    exportModalRoot.addEventListener("click", (e)=>{
+      if(e.target && e.target.id === "exportPdfModal"){
+        closeUnifiedPdfModal();
+      }
+    });
+    exportModalRoot.addEventListener("keydown", (e)=>{
+      if(e.key !== "Enter") return;
+      if(e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      e.preventDefault();
+      el("btnExportPdfRun")?.click();
+    });
+  }
+
   const hmModalRoot = el("hoursTaskModal");
   if(!(hmModalRoot && hmModalRoot.dataset.hmListenersBound === "1")){
     if(hmModalRoot) hmModalRoot.dataset.hmListenersBound = "1";
