@@ -5146,3 +5146,35 @@ h3,
   justify-content:center !important;
   line-height:1.15 !important;
 }
+
+/* Modale Export PDF: harmonisation couleurs boutons */
+#exportPdfModal .btn,
+#exportPdfModal .btn.btn-ghost{
+  background:#edf1f3 !important;
+  background-image:none !important;
+  border:1px solid rgba(63,97,112,0.16) !important;
+  color:#2f4350 !important;
+  -webkit-text-fill-color:#2f4350 !important;
+}
+
+#exportPdfModal #btnExportPdfRun,
+#exportPdfModal #btnExportPdfRun.btn,
+#exportPdfModal #btnExportPdfRun.btn-success{
+  background:#3f6170 !important;
+  background-image:none !important;
+  border:1px solid #365563 !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+}
+
+#exportPdfModal #btnExportPdfRun:hover,
+#exportPdfModal #btnExportPdfRun:focus-visible{
+  background:#365563 !important;
+  border-color:#2f4b57 !important;
+}
+
+#exportPdfModal .export-projects-actions .btn{
+  min-height:32px !important;
+  height:32px !important;
+  padding:0 12px !important;
+}
