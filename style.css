@@ -5332,3 +5332,22 @@ h3,
 
 
 
+
+/* Verrou final: mise en exergue onglet actif sidebar */
+.sidebar .tab.active{
+  opacity:1 !important;
+  border-color:#2f4b58 !important;
+  background:linear-gradient(180deg, #e7f0f5 0%, #d1e2ec 100%) !important;
+  box-shadow:inset 4px 0 0 #2f4b58, 0 0 0 2px rgba(47,75,88,0.22), 0 2px 6px rgba(15,23,42,0.18) !important;
+}
+.sidebar .tabs .tab.active:not(.tab-master),
+.sidebar .tabs-master .tab.active:not(.tab-master){
+  border-left:4px solid #2f4b58 !important;
+}
+.sidebar .tab.active > span:not(.tab-progress-fill):not(.tab-close){
+  color:#0f2530 !important;
+  font-weight:700 !important;
+}
+.sidebar .tab:not(.active){
+  opacity:.84 !important;
+}
