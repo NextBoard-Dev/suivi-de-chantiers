@@ -1308,7 +1308,7 @@
 
         <div class="row row-tight filters-reset-row">
 
-          <button class="btn btn-ghost" onclick="document.getElementById('filterSite').value='';document.getElementById('filterProject').value='';document.getElementById('filterStatus').value='';document.getElementById('filterSearch').value='';document.getElementById('filterStartAfter').value='';document.getElementById('filterEndBefore').value='';renderAll();">Réinitialiser</button>
+          <button class="btn btn-ghost" id="btnResetSidebarFilters" onclick="document.getElementById('filterSite').value='';document.getElementById('filterProject').value='';document.getElementById('filterStatus').value='';document.getElementById('filterSearch').value='';document.getElementById('filterStartAfter').value='';document.getElementById('filterEndBefore').value='';renderAll();">Réinitialiser</button>
 
           <span class="filters-active-icon" id="filtersActiveIcon" title="Attention filtre actif" aria-label="Attention filtre actif"></span>
 
@@ -2599,6 +2599,7 @@
 </body>
 
 </html>
+
 
 
 

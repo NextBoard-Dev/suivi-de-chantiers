@@ -5811,7 +5811,11 @@ function renderTabs(){
     tabsSortBtn.textContent = (tabsSortMode === "progress_desc") ? "TRI 100%->0%" : "TRI 0%->100%";
   }
   if(tabsSortResetBtn){
-    tabsSortResetBtn.disabled = (tabsSortMode === "progress_asc");
+    const activeTabsSort = (tabsSortMode !== "progress_asc");
+    tabsSortResetBtn.disabled = !activeTabsSort;
+    tabsSortResetBtn.classList.toggle("btn-primary", activeTabsSort);
+    tabsSortResetBtn.classList.toggle("btn-ghost", !activeTabsSort);
+    tabsSortResetBtn.classList.remove("btn-danger");
   }
 
   const projectIcon = (name="")=>{
@@ -6273,12 +6277,14 @@ function filtersActive(){
 
 function updateSidebarFilterIndicator(){
   const icon = el("filtersActiveIcon");
-  const resetBtn = document.querySelector(".filters-reset-row .btn");
+  const resetBtn = el("btnResetSidebarFilters") || document.querySelector(".filters-reset-row .btn");
   if(!icon) return;
   const active = filtersActive();
   icon.classList.toggle("active", active);
   if(resetBtn){
-    resetBtn.classList.toggle("btn-danger", active);
+    resetBtn.classList.toggle("btn-primary", !!active);
+    resetBtn.classList.toggle("btn-ghost", !active);
+    resetBtn.classList.remove("btn-danger");
   }
 }
 
@@ -10886,6 +10892,8 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
+
 
 
 
