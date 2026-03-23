@@ -974,6 +974,27 @@ function scrollViewToTop(){
 }
 
 // verrouille la position de la sidebar une fois la mise en page stabilisée
+
+function scrollGanttToCurrentWeek(ganttRoot){
+  try{
+    if(!ganttRoot) return;
+    const scroller = ganttRoot.querySelector(".tablewrap.gantt-table");
+    if(!scroller) return;
+    const currentWeekCell = scroller.querySelector("th.week-cell.week-today");
+    if(!currentWeekCell) return;
+    const target = Math.max(0, currentWeekCell.offsetLeft - Math.round(scroller.clientWidth * 0.35));
+    scroller.scrollLeft = target;
+  }catch(e){ softCatch(e); }
+}
+
+function scheduleGanttScrollToCurrentWeek(ganttRoot){
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      scrollGanttToCurrentWeek(ganttRoot);
+    });
+  });
+}
+
 function _lockSidebarAfterLayout(){
   updateSidebarTop();
   updateSidebarScrollState();
@@ -4709,6 +4730,7 @@ function renderGantt(projectId){
   wrap.innerHTML=html;
 
   applyGanttColumnVisibility();
+  scheduleGanttScrollToCurrentWeek(wrap);
 
   wrap.querySelectorAll(".bar-click")?.forEach(bar=>{
 
@@ -5230,6 +5252,7 @@ function renderMasterGantt(){
   wrap.innerHTML=html;
 
   applyGanttColumnVisibility();
+  scheduleGanttScrollToCurrentWeek(wrap);
 
   wrap.querySelectorAll(".bar-click")?.forEach(bar=>{
 
@@ -10813,6 +10836,7 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
 
 
 
