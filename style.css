@@ -5264,3 +5264,50 @@ h3,
   color:#ffffff !important;
   -webkit-text-fill-color:#ffffff !important;
 }
+
+
+/* Verrou cible: opacite uniquement de l'entete colonne Tache (entre Nom et Prestataire) */
+.gantt-table table thead th.gantt-col-task,
+.gantt-table .table thead th.gantt-col-task,
+.gantt-table table thead th.gantt-task-col-project,
+.gantt-table .table thead th.gantt-task-col-project{
+  background:#e8e7e4 !important;
+  background-image:none !important;
+  background-color:#e8e7e4 !important;
+  opacity:1 !important;
+  background-clip:padding-box !important;
+}
+
+/* Verrou final sticky Gantt: evite chevauchement NOM sur SITE */
+.gantt-table table th.gantt-col-site,
+.gantt-table .table th.gantt-col-site,
+.gantt-table table td.gantt-col-site,
+.gantt-table .table td.gantt-col-site{
+  left:0 !important;
+  z-index:70 !important;
+  background:#e8e7e4 !important;
+  background-color:#e8e7e4 !important;
+  background-image:none !important;
+}
+
+.gantt-table table th.gantt-col-task,
+.gantt-table .table th.gantt-col-task,
+.gantt-table table th.gantt-task-col-project,
+.gantt-table .table th.gantt-task-col-project{
+  left:var(--gcol0, 70px) !important;
+  z-index:65 !important;
+  background:#e8e7e4 !important;
+  background-color:#e8e7e4 !important;
+  background-image:none !important;
+}
+
+.gantt-table table td.gantt-col-task,
+.gantt-table .table td.gantt-col-task,
+.gantt-table table td.gantt-task-col-project,
+.gantt-table .table td.gantt-task-col-project{
+  left:var(--gcol0, 70px) !important;
+  z-index:55 !important;
+  background:#eceae5 !important;
+  background-color:#eceae5 !important;
+  background-image:none !important;
+}
