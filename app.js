@@ -4663,8 +4663,7 @@ function renderGantt(projectId){
     const miss = missingMap.get(t.id) || 0;
     const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
     html+=`<td class="gantt-task-col-project gantt-col-task">${missDot}<b><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></b> <span class="gantt-task-name">${attrEscape(label)}</span></td>`;
-
-    html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
+      html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
 
     html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
 
@@ -4780,6 +4779,7 @@ function renderProjectTasks(projectId){
   }
 
   let h="";
+  const includeChantierCol = (new Set(sorted.map(t=>String(t.projectId||""))).size > 1);
   const missingMap = buildMissingDaysMap(sorted);
 
   sorted.forEach(t=>{
@@ -4991,10 +4991,13 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
     ? (typeof document !== "undefined" && document.body && document.body.classList.contains("print-gantt-project"))
     : !!plainOverride;
 
+  const includeChantierCol = isProjectPrint && (new Set(tasks.map(t=>String(t.projectId||""))).size > 1);
   const buildTable = (subsetRows, rowOffset=0, plainMode=false)=>{
     const tableCssClass = plainMode ? "table gantt-export-plain" : tableClass;
     let html=`<div class='tablewrap gantt-table${plainMode ? " gantt-print-plain" : ""}'><table class='${tableCssClass}' style='--gcol1:120px;--gcol2:90px;--gcol3:90px'>`;
-    html+="<thead><tr><th class='gantt-task-col-project gantt-col-task'>Tâche</th><th class='gantt-col-vendor' style='width:90px'>Prestataire</th><th class='gantt-col-status' style='width:90px'>Statut</th>";
+    html+="<thead><tr><th class='gantt-task-col-project gantt-col-task'>Tâche</th>";
+    if(includeChantierCol) html+="<th class='gantt-col-project' style='width:120px'>Chantier</th>";
+    html+="<th class='gantt-col-vendor' style='width:90px'>Prestataire</th><th class='gantt-col-status' style='width:90px'>Statut</th>";
 
     weeks.forEach((w,i)=>{
       const info=isoWeekInfo(w);
@@ -5035,6 +5038,7 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
       const sub = (p?.subproject || "").trim();
       const taskDesc = (t.roomNumber || "").trim();
       const label = [sub, taskDesc].filter(Boolean).join("  ");
+      const chantierLabel = (p?.name || "").trim() || "-";
       const miss = missingMap.get(t.id) || 0;
       const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
       html+=`<td class="gantt-task-col-project gantt-col-task">${missDot}<b><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></b> <span class="gantt-task-name">${attrEscape(label)}</span></td>`;
@@ -6320,6 +6324,7 @@ function renderMaster(){
   }
 
   const sorted = sortTasks(tasks, sortMaster);
+  const includeChantierCol = (new Set(sorted.map(t=>String(t.projectId||""))).size > 1);
   const missingMap = buildMissingDaysMap(sorted);
   const todayKey = new Date().toISOString().slice(0,10);
   const allTasks = Array.isArray(state?.tasks) ? state.tasks : [];
@@ -6381,6 +6386,7 @@ function renderMaster(){
     const c = ownerColor(t.owner);
 
     const rowBg = siteColor(p?.site);
+    const chantierLabel = (p?.name || "").trim() || "Sans chantier";
     const sub = (p?.subproject || "").trim();
     const projLabel = sub ? `${p?.name||"Sans projet"} - ${sub}` : (p?.name||"Sans projet");
     const taskLabel = (t.roomNumber||"").trim();
@@ -6393,6 +6399,7 @@ function renderMaster(){
     h+=`<tr class="${rowClass}" data-project="${t.projectId}" data-task="${t.id}" style="--site-bg:${rowBg};background:var(--site-bg);">
 
       <td>${p?.site||""}</td>
+      ${includeChantierCol ? `<td>${attrEscape(chantierLabel)}</td>` : ""}
 
       <td>${projLabel}</td>
 
@@ -6687,6 +6694,7 @@ function buildMissingDaysMap(tasks){
 }
 function getMissingTasksForMasterFlow(){
   const sorted = sortTasks((state?.tasks || []), sortMaster);
+  const includeChantierCol = (new Set(sorted.map(t=>String(t.projectId||""))).size > 1);
   const missingMap = buildMissingDaysMap(sorted);
   return sorted
     .filter(t=> (missingMap.get(t.id) || 0) > 0)
@@ -7930,6 +7938,7 @@ function buildMasterTableExportHTML(){
     return "<div class='tablewrap master-table-export'><table class='table'><tbody><tr><td class='empty-row'>Aucune tâche.</td></tr></tbody></table></div>";
   }
 
+  const includeChantierCol = (new Set(sorted.map(t=>String(t.projectId||""))).size > 1);
   const missingMap = buildMissingDaysMap(sorted);
   const todayKey = new Date().toISOString().slice(0,10);
   let rows = "";
@@ -7939,6 +7948,7 @@ function buildMasterTableExportHTML(){
     const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
     const c = ownerColor(t.owner);
     const rowBg = siteColor(p?.site);
+    const chantierLabel = (p?.name || "").trim() || "Sans chantier";
     const sub = (p?.subproject || "").trim();
     const projLabel = sub ? `${p?.name||"Sans projet"} - ${sub}` : (p?.name||"Sans projet");
     const taskLabel = (t.roomNumber||"").trim();
@@ -7950,6 +7960,7 @@ function buildMasterTableExportHTML(){
 
     rows += `<tr class="${rowClass}" style="--site-bg:${rowBg};background:var(--site-bg);">
       <td>${p?.site||""}</td>
+      ${includeChantierCol ? `<td>${attrEscape(chantierLabel)}</td>` : ""}
       <td>${projLabel}</td>
       <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskLabel}</td>
       <td class="status-cell"><span class="status-left">${statusDot(statuses[0])}${statusLabels(t.status||"")}</span>${t.owner?ownerBadgeForTask(t):""}</td>
@@ -7964,6 +7975,7 @@ function buildMasterTableExportHTML(){
     <thead>
       <tr>
         <th style="width:80px">Site</th>
+        ${includeChantierCol ? `<th style="width:170px">Chantier</th>` : ""}
         <th>Projet</th>
         <th>Tâche</th>
         <th style="width:300px">Statut</th>
@@ -10801,6 +10813,12 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
+
+
+
+
+
 
 
 
