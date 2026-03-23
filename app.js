@@ -839,6 +839,16 @@ const statusDot = (v)=> `<span class="icon-dot" style="background:${statusColor(
 
 const parseStatuses = (s)=> (s||"").split(",").map(x=>x.trim()).filter(Boolean);
 
+function getTaskMainStatus(task){
+  const raw = parseStatuses(task?.status || "");
+  if(!raw.length) return "";
+  for(const item of raw){
+    const key = normalizeStatusId(item);
+    if(key && STATUS_COLORS[key]) return key;
+  }
+  return normalizeStatusId(raw[0] || "");
+}
+
 const taskProgress = (t)=>{
   if(!t?.start || !t?.end) return 0;
   const s = new Date(t.start+"T00:00:00");
@@ -4634,11 +4644,9 @@ function renderGantt(projectId){
 
   tasks.forEach((t,rowIdx)=>{
 
-    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
+    const mainStatus = getTaskMainStatus(t);
 
-    const mainStatus = statuses[0] || "";
-
-    const color = ownerColor(t.owner);
+    const color = statusColor(mainStatus);
 
     const ownerBadges = t.owner ? ownerBadgeForTask(t) : "";
 
@@ -4805,9 +4813,8 @@ function renderProjectTasks(projectId){
 
   sorted.forEach(t=>{
 
-    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
-
-    const c = ownerColor(t.owner);
+    const mainStatus = getTaskMainStatus(t);
+    const c = statusColor(mainStatus);
 
     const ownerBadgeHtml = t.owner ? ownerBadgeForTask(t) : "";
     const durLabel = durationLabelForTask(t);
@@ -4825,7 +4832,7 @@ function renderProjectTasks(projectId){
 
       <td><span class="icon-picto"></span> ${taskTitleProjectView(t)}</td>
 
-      <td class="status-cell"><span class="status-left">${statusDot(statuses[0])}${statusLabels(t.status||"")}</span>${ownerBadgeHtml||""}</td>
+      <td class="status-cell"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${ownerBadgeHtml||""}</td>
 
       <td>${formatDate(t.start)||""}${isToday ? `<span class="today-dot" title="En cours aujourd'hui"></span>` : ""}</td>
 
@@ -4921,9 +4928,8 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
   html+="</tr></thead><tbody>";
 
   tasks.forEach((t,rowIdx)=>{
-    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
-    const mainStatus = statuses[0] || "";
-    const color = ownerColor(t.owner);
+    const mainStatus = getTaskMainStatus(t);
+    const color = statusColor(mainStatus);
     const p = state?.projects?.find(x=>x.id===t.projectId);
     const projectName = (p?.name || "Projet").trim() || "Projet";
     const vendorBadges = (()=>{
@@ -5035,9 +5041,8 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
     html+="</tr></thead><tbody>";
 
     subsetRows.forEach((t,rowIdx)=>{
-      const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
-      const mainStatus = statuses[0] || "";
-      const color = ownerColor(t.owner);
+      const mainStatus = getTaskMainStatus(t);
+    const color = statusColor(mainStatus);
       const vendorBadges = (()=> {
         const set = new Set();
         if(t.vendor) set.add(t.vendor);
@@ -5163,11 +5168,9 @@ function renderMasterGantt(){
 
   tasks.forEach((t,rowIdx)=>{
 
-    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
+    const mainStatus = getTaskMainStatus(t);
 
-    const mainStatus = statuses[0] || "";
-
-    const color = ownerColor(t.owner);
+    const color = statusColor(mainStatus);
 
     const p = state?.projects?.find(x=>x.id===t.projectId);
 
@@ -6325,9 +6328,9 @@ function renderMaster(){
 
         const num = taskOrderMap[t.id]||"";
 
-        const status = parseStatuses(t.status)[0] || "";
+        const status = getTaskMainStatus(t);
 
-        const color = ownerColor(t.owner);
+        const color = statusColor(status);
 
         const label = STATUSES.find(s=>s.v===status)?.label || status || "En cours";
 
@@ -6403,9 +6406,8 @@ function renderMaster(){
 
     const p = state.projects.find(x=>x.id===t.projectId);
 
-    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
-
-    const c = ownerColor(t.owner);
+    const mainStatus = getTaskMainStatus(t);
+    const c = statusColor(mainStatus);
 
     const rowBg = siteColor(p?.site);
     const chantierLabel = (p?.name || "").trim() || "Sans chantier";
@@ -6427,7 +6429,7 @@ function renderMaster(){
 
       <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskLabel}</td>
 
-      <td class="status-cell"><span class="status-left">${statusDot(statuses[0])}${statusLabels(t.status||"")}</span>${t.owner?ownerBadgeForTask(t):""}</td>
+      <td class="status-cell"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${t.owner?ownerBadgeForTask(t):""}</td>
 
       <td>${formatDate(t.start)||""}${isToday ? `<span class="today-dot" title="En cours aujourd'hui"></span>` : ""}</td>
 
@@ -7597,9 +7599,9 @@ function renderProject(){
 
         const num = taskOrderMap[t.id]||"";
 
-        const status = parseStatuses(t.status)[0] || "";
+        const status = getTaskMainStatus(t);
 
-        const color = ownerColor(t.owner);
+        const color = statusColor(status);
 
         const label = STATUSES.find(s=>s.v===status)?.label || status || "En cours";
 
@@ -7915,8 +7917,8 @@ function buildProjectTasksExportHTML(projectId){
   const missingMap = buildMissingDaysMap(tasks);
   let rows = "";
   tasks.forEach(t=>{
-    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
-    const c = ownerColor(t.owner);
+    const mainStatus = getTaskMainStatus(t);
+    const c = statusColor(mainStatus);
     const ownerBadgeHtml = t.owner ? ownerBadgeForTask(t) : "";
     const durLabel = durationLabelForTask(t);
     const todayKey = new Date().toISOString().slice(0,10);
@@ -7929,7 +7931,7 @@ function buildProjectTasksExportHTML(projectId){
     rows += `<tr class="${rowClass}">
       <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></td>
       <td><span class="icon-picto"></span> ${taskTitleProjectView(t)}</td>
-      <td class="status-cell"><span class="status-left">${statusDot(statuses[0])}${statusLabels(t.status||"")}</span>${ownerBadgeHtml||""}</td>
+      <td class="status-cell"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${ownerBadgeHtml||""}</td>
       <td>${formatDate(t.start)||""}</td>
       <td>${formatDate(t.end)||""}</td>
       <td>${taskProgress(t)}%</td>
@@ -7967,8 +7969,8 @@ function buildMasterTableExportHTML(){
 
   sorted.forEach(t=>{
     const p = state.projects.find(x=>x.id===t.projectId);
-    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
-    const c = ownerColor(t.owner);
+    const mainStatus = getTaskMainStatus(t);
+    const c = statusColor(mainStatus);
     const rowBg = siteColor(p?.site);
     const chantierLabel = (p?.name || "").trim() || "Sans chantier";
     const sub = (p?.subproject || "").trim();
@@ -7985,7 +7987,7 @@ function buildMasterTableExportHTML(){
       ${includeChantierCol ? `<td>${attrEscape(chantierLabel)}</td>` : ""}
       <td>${projLabel}</td>
       <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskLabel}</td>
-      <td class="status-cell"><span class="status-left">${statusDot(statuses[0])}${statusLabels(t.status||"")}</span>${t.owner?ownerBadgeForTask(t):""}</td>
+      <td class="status-cell"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${t.owner?ownerBadgeForTask(t):""}</td>
       <td>${formatDate(t.start)||""}${isToday ? `<span class="today-dot" title="En cours aujourd'hui"></span>` : ""}</td>
       <td>${formatDate(t.end)||""}</td>
       <td>${taskProgress(t)}%</td>
@@ -8050,8 +8052,8 @@ function buildGroupedProjectTasksExportHTML(projectIds){
   let rows = "";
   tasks.forEach((t)=>{
     const p = state.projects.find(x=>x.id===t.projectId);
-    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
-    const c = ownerColor(t.owner);
+    const mainStatus = getTaskMainStatus(t);
+    const c = statusColor(mainStatus);
     const ownerBadgeHtml = t.owner ? ownerBadgeForTask(t) : "";
     const durLabel = durationLabelForTask(t);
     const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
@@ -8063,7 +8065,7 @@ function buildGroupedProjectTasksExportHTML(projectIds){
       <td>${attrEscape(p?.name || "Projet")}</td>
       <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></td>
       <td><span class="icon-picto"></span> ${taskTitleProjectView(t)}</td>
-      <td class="status-cell"><span class="status-left">${statusDot(statuses[0])}${statusLabels(t.status||"")}</span>${ownerBadgeHtml||""}</td>
+      <td class="status-cell"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${ownerBadgeHtml||""}</td>
       <td>${formatDate(t.start)||""}</td>
       <td>${formatDate(t.end)||""}</td>
       <td>${taskProgress(t)}%</td>
@@ -10795,9 +10797,8 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tr></thead><tbody>";
 
   tasks.forEach((t)=>{
-    const statuses = parseStatuses(t.status).map(v=>v.toUpperCase());
-    const mainStatus = statuses[0] || "";
-    const color = ownerColor(t.owner);
+    const mainStatus = getTaskMainStatus(t);
+    const color = statusColor(mainStatus);
     const p = state?.projects?.find(x=>x.id===t.projectId);
     const sub = (p?.subproject || "").trim();
     const taskDesc = (t.roomNumber || "").trim();
@@ -10835,6 +10836,10 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
+
+
+
 
 
 
