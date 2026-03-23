@@ -966,7 +966,6 @@ function scrollViewToTop(){
   try{ window.scrollTo(0,0); }catch(e){ softCatch(e); }
   document.querySelectorAll(".tablewrap").forEach(el=>{
     el.scrollTop = 0;
-    el.scrollLeft = 0;
   });
   document.querySelectorAll(".tabs-scroll").forEach(el=>{
     el.scrollTop = 0;
@@ -10836,6 +10835,7 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
 
 
 
