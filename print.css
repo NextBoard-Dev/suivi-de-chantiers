@@ -170,8 +170,8 @@
   }
   body.print-gantt-project .gantt-table .table tbody,
   body.print-gantt-project .gantt-table .table tr{
-    break-inside: auto !important;
-    page-break-inside: auto !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 }
 
@@ -450,3 +450,14 @@ body.print-mode .badge.owner{
     display:block !important;
   }
 }
+
+@media print {
+  body.print-gantt-project .pdf-gantt-table tr,
+  body.print-gantt-master .pdf-gantt-table tr{
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
+
+
+

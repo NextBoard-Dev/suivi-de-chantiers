@@ -5068,6 +5068,7 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
       const miss = missingMap.get(t.id) || 0;
       const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
       html+=`<td class="gantt-task-col-project gantt-col-task">${missDot}<b><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></b> <span class="gantt-task-name">${attrEscape(label)}</span></td>`;
+      if(includeChantierCol) html+=`<td class="gantt-col-project" style="width:120px">${attrEscape(chantierLabel)}</td>`;
       html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
       html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
 
@@ -9974,6 +9975,40 @@ function readPdfPageSetup(){
   };
 }
 
+function computeRowAwareSliceHeights(block, canvas, maxSlicePx){
+  const out = [];
+  const maxPx = Math.max(1, Math.floor(maxSlicePx || 1));
+  try{
+    const rows = Array.from(block?.querySelectorAll?.('.gantt-table .table tbody tr') || []);
+    const blockHeight = Number(block?.scrollHeight || block?.offsetHeight || 0);
+    if(!rows.length || !blockHeight || !canvas?.height) return out;
+
+    const ratioY = canvas.height / blockHeight;
+    const blockRect = block.getBoundingClientRect();
+    const boundaries = rows
+      .map((tr)=>{
+        const r = tr.getBoundingClientRect();
+        return Math.round((r.bottom - blockRect.top) * ratioY);
+      })
+      .filter((v)=> Number.isFinite(v) && v > 0 && v < canvas.height)
+      .sort((a,b)=>a-b);
+
+    if(!boundaries.length) return out;
+
+    let offset = 0;
+    while(offset < canvas.height){
+      const wanted = offset + maxPx;
+      const minWanted = offset + Math.floor(maxPx * 0.45);
+      let cut = boundaries.filter((b)=> b > minWanted && b <= wanted).pop();
+      if(!cut) cut = boundaries.filter((b)=> b > offset && b <= wanted).pop();
+      if(!cut) cut = Math.min(canvas.height, wanted);
+      const h = Math.max(1, cut - offset);
+      out.push(h);
+      offset += h;
+    }
+  }catch(e){ softCatch(e); }
+  return out;
+}
 async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
   const container = document.getElementById("printInjection");
   if(!container || !container.innerHTML.trim()){
@@ -10291,7 +10326,9 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
       }
 
       const slicePx = Math.floor((drawH * canvas.width) / drawW);
+      const plannedHeights = computeRowAwareSliceHeights(block, canvas, slicePx);
       let offsetPx = 0;
+      let sliceIdx = 0;
       while(offsetPx < canvas.height){
         if(hasContentOnPage){
           pdf.addPage();
@@ -10299,7 +10336,11 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
           hasContentOnPage = false;
         }
 
-        const hPx = Math.min(slicePx, canvas.height - offsetPx);
+        const nextPlanned = plannedHeights[sliceIdx];
+        const hPx = Math.min(
+          Math.max(1, Number.isFinite(nextPlanned) ? nextPlanned : slicePx),
+          canvas.height - offsetPx
+        );
         const slice = document.createElement('canvas');
         slice.width = canvas.width;
         slice.height = hPx;
@@ -10312,6 +10353,7 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
         hasContentOnPage = true;
 
         offsetPx += hPx;
+        sliceIdx += 1;
       }
       yCursor = margin;
       const loopEndPct = 24 + Math.round(((i + 1) / totalTargets) * 60);
@@ -10836,6 +10878,10 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
+
+
+
 
 
 
