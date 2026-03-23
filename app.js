@@ -5021,7 +5021,7 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
   const includeChantierCol = isProjectPrint && (new Set(tasks.map(t=>String(t.projectId||""))).size > 1);
   const buildTable = (subsetRows, rowOffset=0, plainMode=false)=>{
     const tableCssClass = plainMode ? "table gantt-export-plain" : tableClass;
-    let html=`<div class='tablewrap gantt-table${plainMode ? " gantt-print-plain" : ""}'><table class='${tableCssClass}' style='--gcol1:120px;--gcol2:90px;--gcol3:90px'>`;
+    let html=`<div class='tablewrap gantt-table${plainMode ? " gantt-print-plain" : ""}'><table class='${tableCssClass}' style='--gcol1:120px;--gcolp:${includeChantierCol?120:0}px;--gcol2:90px;--gcol3:90px'>`;
     html+="<thead><tr><th class='gantt-task-col-project gantt-col-task'>Tâche</th>";
     if(includeChantierCol) html+="<th class='gantt-col-project' style='width:120px'>Chantier</th>";
     html+="<th class='gantt-col-vendor' style='width:90px'>Prestataire</th><th class='gantt-col-status' style='width:90px'>Statut</th>";
@@ -10111,6 +10111,14 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
         min-height:12px !important;
         width:100% !important;
       }
+      body.print-mode .gantt-export-plain .gantt-col-task,
+      body.print-mode .gantt-export-plain .gantt-col-project,
+      body.print-mode .gantt-export-plain .gantt-col-vendor,
+      body.print-mode .gantt-export-plain .gantt-col-status{
+        position:static !important;
+        left:auto !important;
+        z-index:auto !important;
+      }
       body.print-mode .gantt-table th.week-cell{
         text-align:center !important;
         vertical-align:middle !important;
@@ -10878,6 +10886,10 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
+
+
+
 
 
 

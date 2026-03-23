@@ -2075,10 +2075,26 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   position:sticky;
   left:var(--gcol0, 0px);
 }
+.gantt-table table th.gantt-col-project,
+.gantt-table table td.gantt-col-project{
+  position:sticky;
+  left:calc(var(--gcol0, 0px) + var(--gcol1, 200px));
+  z-index:50;
+  background:linear-gradient(180deg, #e8e7e4 0%, #d6d3ce 100%) !important;
+  background-color:#e8e7e4 !important;
+  background-clip:padding-box;
+}
+.gantt-table table td.gantt-col-project{
+  background:#eceae5 !important;
+  background-color:#eceae5 !important;
+  background-image:none;
+  background-clip:padding-box;
+  position:sticky;
+}
 .gantt-table table th.gantt-col-vendor,
 .gantt-table table td.gantt-col-vendor{
   position:sticky;
-  left:calc(var(--gcol0, 0px) + var(--gcol1, 200px));
+  left:calc(var(--gcol0, 0px) + var(--gcol1, 200px) + var(--gcolp, 0px));
   z-index:50;
   background:linear-gradient(180deg, #e8e7e4 0%, #d6d3ce 100%) !important;
   background-color:#e8e7e4 !important;
@@ -2094,7 +2110,7 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 .gantt-table table th.gantt-col-status,
 .gantt-table table td.gantt-col-status{
   position:sticky;
-  left:calc(var(--gcol0, 0px) + var(--gcol1, 200px) + var(--gcol2, 120px));
+  left:calc(var(--gcol0, 0px) + var(--gcol1, 200px) + var(--gcolp, 0px) + var(--gcol2, 120px));
   z-index:50;
   background:linear-gradient(180deg, #e8e7e4 0%, #d6d3ce 100%) !important;
   background-color:#e8e7e4 !important;
@@ -2108,6 +2124,7 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   position:sticky;
 }
 .gantt-table table td.gantt-col-task::before,
+.gantt-table table td.gantt-col-project::before,
 .gantt-table table td.gantt-col-vendor::before,
 .gantt-table table td.gantt-col-status::before{
   content:"";
@@ -2117,6 +2134,7 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   z-index:-1;
 }
 .gantt-table table th.gantt-col-task,
+.gantt-table table th.gantt-col-project,
 .gantt-table table th.gantt-col-vendor,
 .gantt-table table th.gantt-col-status{
   z-index:60;
@@ -2146,7 +2164,7 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 }
 .gantt-table table.hide-vendor th.gantt-col-status,
 .gantt-table table.hide-vendor td.gantt-col-status{
-  left:var(--gcol1, 200px);
+  left:calc(var(--gcol0, 0px) + var(--gcol1, 200px) + var(--gcolp, 0px));
 }
 .gantt-table .table tbody tr,
 .gantt-table table tbody tr{
@@ -5311,3 +5329,6 @@ h3,
   background-color:#eceae5 !important;
   background-image:none !important;
 }
+
+
+
