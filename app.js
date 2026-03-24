@@ -7536,19 +7536,22 @@ function saveHoursTaskModal(){
   }
 
   const selectedDate = (hmDate.value || "").trim();
-  if(!selectedDate || !isTaskActiveOn(t, selectedDate)){
-    alert("La date est hors période de la tâche.");
-    return;
-  }
-  const dateObj = new Date(selectedDate + "T00:00:00");
-  if(!isWeekday(dateObj)){
-    alert("La date tombe un week-end.");
-    return;
-  }
-  const todayKey = toLocalDateKey(new Date());
-  if(selectedDate > todayKey){
-    alert("La date est dans le futur.");
-    return;
+  const rawHours = (hmHours.value || "").toString().replace(",", ".").trim();
+  if(rawHours){
+    if(!selectedDate || !isTaskActiveOn(t, selectedDate)){
+      alert("La date est hors période de la tâche.");
+      return;
+    }
+    const dateObj = new Date(selectedDate + "T00:00:00");
+    if(!isWeekday(dateObj)){
+      alert("La date tombe un week-end.");
+      return;
+    }
+    const todayKey = toLocalDateKey(new Date());
+    if(selectedDate > todayKey){
+      alert("La date est dans le futur.");
+      return;
+    }
   }
 
   const entries = collectHoursTaskCalendarEntries(t);
@@ -7561,7 +7564,6 @@ function saveHoursTaskModal(){
     if(raw === "") emptyDates.push(date);
   });
 
-  const rawHours = (hmHours.value || "").toString().replace(",", ".").trim();
   if(rawHours){
     const hours = parseFloat(rawHours);
     if(!isFinite(hours) || hours < 0){
