@@ -6989,16 +6989,18 @@ function renderHoursTaskCalendar(t){
       }
 
       const isEditable = inTaskRange && key <= todayKey;
+      const canClearOutside = !isEditable && stateType === "outside" && !!log;
       const selectedBorder = (selectedDate === key && isEditable) ? "2px solid #2563eb" : ("1px solid " + border);
       const sub = hoursValue ? (hoursValue + "h") : (stateType === "missing" ? "manquant" : (stateType === "outside" ? "hors tâche" : "—"));
       const activeAttr = isEditable ? "1" : "0";
-      const disabledAttr = isEditable ? "" : "disabled";
+      const clearableAttr = canClearOutside ? "1" : "0";
+      const disabledAttr = (isEditable || canClearOutside) ? "" : "disabled";
 
       cards.push(
-        '<div class="hm-day" data-date="' + key + '" data-active="' + activeAttr + '" data-state-base="' + stateType + '" style="text-align:left;border:' + selectedBorder + ';background:' + bg + ';color:' + text + ';border-radius:8px;padding:3px 5px;min-height:52px;cursor:' + (isEditable ? 'pointer' : 'default') + ';display:flex;flex-direction:column;gap:1px">' +
+        '<div class="hm-day" data-date="' + key + '" data-active="' + activeAttr + '" data-clearable="' + clearableAttr + '" data-state-base="' + stateType + '" style="text-align:left;border:' + selectedBorder + ';background:' + bg + ';color:' + text + ';border-radius:8px;padding:3px 5px;min-height:52px;cursor:' + ((isEditable || canClearOutside) ? 'pointer' : 'default') + ';display:flex;flex-direction:column;gap:1px">' +
         '<div style="font-size:11px;line-height:1.1;opacity:.85">' + dayNames[i] + ' • ' + weekLabel + '</div>' +
         '<div style="font-size:12px;font-weight:700;line-height:1.2">' + dateLabel + '</div>' +
-        '<input type="text" inputmode="decimal" class="hm-day-input" data-date="' + key + '" data-active="' + activeAttr + '" value="' + hoursValue + '" placeholder="h" ' + disabledAttr + ' style="margin-top:1px;height:18px;border:1px solid #cbd5e1;border-radius:6px;padding:1px 6px;background:#fff;color:#111827;font-size:11px" />' +
+        '<input type="text" inputmode="decimal" class="hm-day-input" data-date="' + key + '" data-active="' + activeAttr + '" data-clearable="' + clearableAttr + '" value="' + hoursValue + '" placeholder="h" ' + disabledAttr + ' style="margin-top:1px;height:18px;border:1px solid #cbd5e1;border-radius:6px;padding:1px 6px;background:#fff;color:#111827;font-size:11px" />' +
         '<div class="hm-day-sub" style="font-size:11px;opacity:.92">' + sub + '</div>' +
         '</div>'
       );
@@ -7387,7 +7389,7 @@ function saveHoursTaskModal(){
   const entries = collectHoursTaskCalendarEntries(t);
   const grid = el("hm_calendar");
   const emptyDates = [];
-  (grid ? Array.from(grid.querySelectorAll(".hm-day-input[data-date][data-active='1']")) : []).forEach((input)=>{
+  (grid ? Array.from(grid.querySelectorAll(".hm-day-input[data-date]:not([disabled])")) : []).forEach((input)=>{
     const date = (input.getAttribute("data-date") || "").trim();
     if(!date) return;
     const raw = (input.value || "").toString().replace(",", ".").trim();
@@ -9055,13 +9057,18 @@ function bind(){
     if(!e.target?.closest?.("#hm_calendar")) return;
     const input = e.target?.closest?.("#hm_calendar .hm-day-input[data-date]");
     if(!input) return;
-    if((input.getAttribute("data-active") || "0") !== "1") return;
+    const isActive = (input.getAttribute("data-active") || "0") === "1";
+    const isClearable = (input.getAttribute("data-clearable") || "0") === "1";
+    if(!isActive && !isClearable) return;
+    if(isClearable) input.value = "";
     const day = input.getAttribute("data-date") || "";
     const hmDate = el("hm_date");
     const hmHours = el("hm_hours");
     const dateInput = el("t_time_date_input");
-    if(hmDate) hmDate.value = day;
-    if(dateInput) dateInput.value = day;
+    if(isActive){
+      if(hmDate) hmDate.value = day;
+      if(dateInput) dateInput.value = day;
+    }
     if(hmHours) hmHours.value = input.value || "";
     refreshHoursDayCardVisual(input);
     const t = getSelectedTaskForHoursModal();
