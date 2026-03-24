@@ -7605,6 +7605,16 @@ function saveHoursTaskModal(){
   renderMaster();
   renderProject();
   saveState();
+  if(!_outsideRangeFlow && !_missingHoursFlow){
+    const qualityAfterSave = collectDataQualityIssues(state);
+    if((qualityAfterSave?.counts?.logsOutsideTaskRange || 0) > 0){
+      const launchFlow = window.confirm("Des erreurs de saisie hors période restent présentes.\nVoulez-vous démarrer le parcours de correction maintenant ?");
+      if(launchFlow){
+        startOutsideRangeFlow();
+        return;
+      }
+    }
+  }
   if(_outsideRangeFlow){
     const remainingOutside = countOutsideRangeLogsForTask(t);
     if(remainingOutside > 0){
