@@ -615,6 +615,7 @@ let lastUndoSnapshot = null;
 let _stateVersion = 0;
 let _filteredCache = { key:"", version:-1, tasks:null };
 let _missingHoursFlow = null;
+let _outsideRangeFlow = null;
 
 let isLocked = true; // verrou logique = droits utilisateur (admin = false)
 const isHostedGithubPages = ()=>{
@@ -6772,6 +6773,7 @@ function startMissingHoursFlow(){
     showSaveToast("ok", "A compléter", "Aucune tâche à compléter.");
     return;
   }
+  _outsideRangeFlow = null;
   _missingHoursFlow = { tasks, index: 0 };
   showSaveToast("ok", "Parcours lancé", `${tasks.length} tâche(s) à compléter`);
   openMissingHoursFlowStep();
@@ -6780,6 +6782,85 @@ function advanceMissingHoursFlow(){
   if(!_missingHoursFlow) return;
   _missingHoursFlow.index += 1;
   openMissingHoursFlowStep();
+}
+function countOutsideRangeLogsForTask(t){
+  if(!t) return 0;
+  const logs = getCanonicalTimeLogs().filter(l=> l && l.taskId===t.id);
+  const ts = (t.start || "").toString();
+  const te = (t.end || "").toString();
+  let count = 0;
+  logs.forEach((l)=>{
+    const d = (l?.date || "").toString().slice(0,10);
+    if(!d) return;
+    if(ts && d < ts) count += 1;
+    else if(te && d > te) count += 1;
+  });
+  return count;
+}
+function buildOutsideRangeLogsMap(tasks){
+  const map = new Map();
+  (tasks || []).forEach((t)=> map.set(t.id, countOutsideRangeLogsForTask(t)));
+  return map;
+}
+function getOutsideRangeTasksForMasterFlow(){
+  const sorted = sortTasks((state?.tasks || []), sortMaster);
+  const outsideMap = buildOutsideRangeLogsMap(sorted);
+  return sorted
+    .filter(t=> (outsideMap.get(t.id) || 0) > 0)
+    .map(t=>({ projectId: t.projectId, taskId: t.id }));
+}
+function finishOutsideRangeFlow(){
+  _outsideRangeFlow = null;
+  selectedProjectId = null;
+  selectedTaskId = null;
+  renderMaster();
+}
+function openOutsideRangeFlowStep(){
+  if(!_outsideRangeFlow || !_outsideRangeFlow.tasks.length) return;
+  while(_outsideRangeFlow.index < _outsideRangeFlow.tasks.length){
+    const step = _outsideRangeFlow.tasks[_outsideRangeFlow.index];
+    const t = state?.tasks?.find(x=>x.id===step.taskId && x.projectId===step.projectId);
+    if(!t){
+      _outsideRangeFlow.index += 1;
+      continue;
+    }
+    if(countOutsideRangeLogsForTask(t) <= 0){
+      _outsideRangeFlow.index += 1;
+      continue;
+    }
+    selectedProjectId = step.projectId;
+    selectedTaskId = step.taskId;
+    renderProject();
+    setTimeout(()=>{
+      if(!_outsideRangeFlow) return;
+      const selected = getSelectedTaskForHoursModal();
+      if(!selected){
+        _outsideRangeFlow.index += 1;
+        openOutsideRangeFlowStep();
+        return;
+      }
+      openHoursTaskModal();
+    }, 0);
+    return;
+  }
+  showSaveToast("ok", "Parcours terminé", "Toutes les erreurs de saisie hors période ont été traitées.");
+  finishOutsideRangeFlow();
+}
+function startOutsideRangeFlow(){
+  const tasks = getOutsideRangeTasksForMasterFlow();
+  if(!tasks.length){
+    showSaveToast("ok", "Erreurs de saisie", "Aucune tâche en défaut hors période.");
+    return;
+  }
+  _missingHoursFlow = null;
+  _outsideRangeFlow = { tasks, index: 0 };
+  showSaveToast("error", "Parcours lancé", `${tasks.length} tâche(s) en défaut hors période`);
+  openOutsideRangeFlowStep();
+}
+function advanceOutsideRangeFlow(){
+  if(!_outsideRangeFlow) return;
+  _outsideRangeFlow.index += 1;
+  openOutsideRangeFlowStep();
 }
 function updateTimeLogUI(t, forceAlert=false){
   const dateInput = el("t_time_date_input");
@@ -7350,9 +7431,10 @@ function openHoursTaskModal(){
 function closeHoursTaskModal(stopFlow=true){
   const modal = el("hoursTaskModal");
   hideModalSafely(modal, "#btnOpenHoursModal");
-  if(stopFlow && _missingHoursFlow){
+  if(stopFlow && (_missingHoursFlow || _outsideRangeFlow)){
     _missingHoursFlow = null;
-    showSaveToast("ok", "Parcours arrêté", "Traitement des tâches à compléter interrompu.");
+    _outsideRangeFlow = null;
+    showSaveToast("ok", "Parcours arrêté", "Traitement guidé interrompu.");
   }
 }
 function saveHoursTaskModal(){
@@ -7438,6 +7520,16 @@ function saveHoursTaskModal(){
   renderMaster();
   renderProject();
   saveState();
+  if(_outsideRangeFlow){
+    const remainingOutside = countOutsideRangeLogsForTask(t);
+    if(remainingOutside > 0){
+      showSaveToast("error", "Correction incomplète", `${remainingOutside} log(s) hors période restant(s) pour cette tâche`);
+      setTimeout(()=>{ if(_outsideRangeFlow) openHoursTaskModal(); }, 0);
+    }else{
+      advanceOutsideRangeFlow();
+    }
+    return;
+  }
   if(_missingHoursFlow){
     advanceMissingHoursFlow();
   }
@@ -8947,6 +9039,10 @@ function bind(){
     const quality = collectDataQualityIssues(state);
     if(!quality.ok){
       showSaveToast("error", "Sauvegarde bloquée", formatQualityIssuesForToast(quality));
+      if((quality?.counts?.logsOutsideTaskRange || 0) > 0){
+        const launchFlow = window.confirm("Des erreurs de saisie hors période sont détectées.\nVoulez-vous démarrer le parcours de correction maintenant ?");
+        if(launchFlow) startOutsideRangeFlow();
+      }
       updateDataQualityBanner(false);
       markDirty();
       return;
@@ -10899,6 +10995,10 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
+
+
+
 
 
 
