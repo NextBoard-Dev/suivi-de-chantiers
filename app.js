@@ -7223,28 +7223,111 @@ function computeTaskWeeklySummary(t){
   return { rows: Array.from(rowsMap.values()), totalMinutes };
 }
 
-function renderHoursTaskWeeklySummary(t, draftEntries=null){
-  const box = el("hm_summary");
-  if(!box) return;
-  if(!t){ box.innerHTML = ""; return; }
-  let totalMinutes = 0;
+function computeHoursModalLiveTotals(t, draftEntries=null){
+  if(!t) return null;
+  const taskRoleKey = getTaskRoleKey(t);
+  const taskRoleLabel = roleLabel(taskRoleKey);
+  const projectTasks = (state?.tasks || []).filter(x=>x.projectId === t.projectId);
+  const taskIds = new Set(projectTasks.map(x=>x.id));
+  const roleByTask = new Map(projectTasks.map(x=>[x.id, getTaskRoleKey(x)]));
+  const rangeByTask = new Map(projectTasks.map(x=>[x.id, { start:x.start || "", end:x.end || "" }]));
+
+  const byRole = { interne:0, externe:0, rsg:0, ri:0 };
+  let taskRoleTaskMinutes = 0;
+  let taskRoleProjectMinutes = 0;
+  const existingTaskRoleByDate = new Map();
+
+  getCanonicalTimeLogs().forEach((l)=>{
+    if(!l || !taskIds.has(l.taskId)) return;
+    const date = (l.date || "").toString().slice(0,10);
+    if(!date) return;
+    const range = rangeByTask.get(l.taskId);
+    if(range?.start && date < range.start) return;
+    if(range?.end && date > range.end) return;
+
+    const role = normalizeTimeLogRole(l);
+    const expected = roleByTask.get(l.taskId);
+    if(expected && role !== expected) return;
+
+    const mins = Number(l.minutes || 0);
+    if(!isFinite(mins) || mins <= 0) return;
+    const weighted = Math.round(mins * roleHoursMultiplier(role));
+
+    if(role === "externe") byRole.externe += weighted;
+    else if(role === "rsg") byRole.rsg += weighted;
+    else if(role === "ri") byRole.ri += weighted;
+    else byRole.interne += weighted;
+
+    if(role === taskRoleKey){
+      taskRoleProjectMinutes += weighted;
+      if(l.taskId === t.id){
+        taskRoleTaskMinutes += weighted;
+        existingTaskRoleByDate.set(date, (existingTaskRoleByDate.get(date) || 0) + weighted);
+      }
+    }
+  });
+
   if(Array.isArray(draftEntries)){
-    const roleMultiplier = roleHoursMultiplier(getTaskRoleKey(t));
-    const byDate = new Map();
+    const draftByDate = new Map();
+    const mult = roleHoursMultiplier(taskRoleKey);
     draftEntries.forEach((e)=>{
       const date = (e?.date || "").toString().trim();
       if(!date) return;
       if(!isTaskActiveOn(t, date)) return;
-      const d = new Date(date + "T00:00:00");
-      if(!isWeekday(d)) return;
-      byDate.set(date, Math.round(Math.max(0, Number(e?.minutes || 0)) * roleMultiplier));
+      const mins = Math.max(0, Number(e?.minutes || 0));
+      if(!isFinite(mins)) return;
+      draftByDate.set(date, Math.round(mins * mult));
     });
-    totalMinutes = Array.from(byDate.values()).reduce((a,b)=>a+b,0);
-  }else{
-    const data = computeTaskWeeklySummary(t);
-    totalMinutes = data.totalMinutes || 0;
+
+    const allDates = new Set([...existingTaskRoleByDate.keys(), ...draftByDate.keys()]);
+    let delta = 0;
+    allDates.forEach((date)=>{
+      delta += (draftByDate.get(date) || 0) - (existingTaskRoleByDate.get(date) || 0);
+    });
+
+    taskRoleTaskMinutes += delta;
+    taskRoleProjectMinutes += delta;
+    if(taskRoleKey === "externe") byRole.externe += delta;
+    else if(taskRoleKey === "rsg") byRole.rsg += delta;
+    else if(taskRoleKey === "ri") byRole.ri += delta;
+    else byRole.interne += delta;
   }
-  box.innerHTML = `<div style="margin-top:8px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:10px;color:#0f172a;font-weight:700;font-size:13px">Total tâche : ${formatHoursMinutes(totalMinutes)}</div>`;
+
+  taskRoleTaskMinutes = Math.max(0, Math.round(taskRoleTaskMinutes));
+  taskRoleProjectMinutes = Math.max(0, Math.round(taskRoleProjectMinutes));
+  byRole.interne = Math.max(0, Math.round(byRole.interne));
+  byRole.externe = Math.max(0, Math.round(byRole.externe));
+  byRole.rsg = Math.max(0, Math.round(byRole.rsg));
+  byRole.ri = Math.max(0, Math.round(byRole.ri));
+
+  return { taskRoleKey, taskRoleLabel, taskRoleTaskMinutes, taskRoleProjectMinutes, byRole };
+}
+function renderHoursTaskWeeklySummary(t, draftEntries=null){
+  const box = el("hm_summary");
+  if(!box) return;
+  if(!t){ box.innerHTML = ""; return; }
+
+  const totals = computeHoursModalLiveTotals(t, draftEntries);
+  if(!totals){ box.innerHTML = ""; return; }
+
+  const mainTask = formatHoursMinutes(totals.taskRoleTaskMinutes);
+  const mainProject = formatHoursMinutes(totals.taskRoleProjectMinutes);
+  const rInterne = formatHoursMinutes(totals.byRole.interne || 0);
+  const rExterne = formatHoursMinutes(totals.byRole.externe || 0);
+  const rRsg = formatHoursMinutes(totals.byRole.rsg || 0);
+  const rRi = formatHoursMinutes(totals.byRole.ri || 0);
+
+  box.innerHTML = `
+    <div style="margin-top:8px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:10px;color:#0f172a;font-size:13px;display:flex;flex-direction:column;gap:7px">
+      <div style="font-weight:700">Total tâche (${attrEscape(totals.taskRoleLabel)}) : ${mainTask}</div>
+      <div style="font-weight:700">Total chantier (${attrEscape(totals.taskRoleLabel)}) : ${mainProject}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <span class="chip" style="background:#ecfdf3;border-color:#86efac">INTERNE : ${rInterne}</span>
+        <span class="chip" style="background:#eef2ff;border-color:#93c5fd">RSG : ${rRsg}</span>
+        <span class="chip" style="background:#f5f3ff;border-color:#c4b5fd">RI : ${rRi}</span>
+        <span class="chip" style="background:#fff7ed;border-color:#fdba74">EXTERNE : ${rExterne}</span>
+      </div>
+    </div>`;
 }
 
 function syncHoursTaskStatusFromMain(){
@@ -10995,6 +11078,7 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
 
 
 
