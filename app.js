@@ -5058,7 +5058,7 @@ function computeWorkloadData(tasks, mode="week", rangeStart=null, rangeEnd=null)
     if(!hours) return;
     const mult = (typeof roleHoursMultiplier === "function")
       ? roleHoursMultiplier(role)
-      : (role === "interne" ? 2 : 1);
+      : 1;
     const weightedHours = hours * mult;
     if(role==="rsg") slot.rsg+=weightedHours;
     else if(role==="ri") slot.ri+=weightedHours;
@@ -7248,7 +7248,7 @@ function formatHoursMinutes(totalMinutes){
   return `${h} h ${m} min`;
 }
 function roleHoursMultiplier(roleKey){
-  return roleKey === "interne" ? 2 : 1;
+  return 1;
 }
 function getTaskTimeTotals(taskRef){
   const taskId = (typeof taskRef === "string") ? taskRef : taskRef?.id;
@@ -10567,7 +10567,18 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     }
 
     t.status     = Array.from(selectedStatusSet).join(",");
-    purgeTaskLogsByAssignedRole(t);
+    const expectedRoleKey = getTaskRoleKey(t);
+    const mismatchedLogsCount = getCanonicalTimeLogs().filter((l)=>{
+      if(!l || l.taskId !== t.id) return false;
+      return normalizeTimeLogRole(l) !== expectedRoleKey;
+    }).length;
+    if(mismatchedLogsCount > 0){
+      showSaveToast(
+        "error",
+        "Heures historiques conservées",
+        `${mismatchedLogsCount} log(s) d'un autre rôle sont conservé(s) pour éviter toute suppression automatique.`
+      );
+    }
 
     markDirty();
 

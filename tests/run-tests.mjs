@@ -183,21 +183,21 @@ test("Metriques workload: interne/externe/rsg/ri", () => {
   ]);
   const rows = core.computeWorkloadData(tasks, "week");
   assert.equal(rows.length, 1);
-  assert.equal(rows[0].internal, 4);
+  assert.equal(rows[0].internal, 2);
   assert.equal(rows[0].external, 3);
   assert.equal(rows[0].rsg, 1);
   assert.equal(rows[0].ri, 0.5);
-  assert.equal(rows[0].total, 8.5);
+  assert.equal(rows[0].total, 6.5);
 });
 
-test("Totaux tâche: interne compte double", () => {
+test("Totaux tâche: interne unitaire", () => {
   const task = { id: "ti", start: "2026-02-16", end: "2026-02-20", owner: "Équipe interne", vendor: "" };
   core.setTestLogs([
     { taskId: "ti", date: "2026-02-16", minutes: 60, role: "INTERNE" },
     { taskId: "ti", date: "2026-02-17", minutes: 30, role: "INTERNE" },
   ]);
   const totals = core.getTaskTimeTotals(task);
-  assert.equal(totals.totalMinutes, 180);
+  assert.equal(totals.totalMinutes, 90);
 });
 
 test("Totaux tâche: externe reste unitaire", () => {
