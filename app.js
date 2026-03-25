@@ -3136,7 +3136,6 @@ function normalizeState(raw){
   });
 
   const tasksById = new Map(normTasks.map(t=>[t.id, t]));
-  const sitesByProjectId = new Map(normProjects.map(p=>[p.id, canonSiteKey(p.site || "")]));
   const keptLogs = [];
   const orphanBuffer = [];
   normLogs.forEach(l=>{
@@ -3170,7 +3169,8 @@ function normalizeState(raw){
   });
 
   // Migration de compatibilite: anciens logs INTERNE sans technicien nomme.
-  // Objectif: maintenir l'affichage des heures dans les cartes par technicien/site.
+  // Le split automatique par binome/site est desactive pour eviter toute
+  // distorsion des totaux depuis la repartition explicite par technicien.
   const migratedLogs = [];
   keptLogs.forEach((l)=>{
     const rk = normalizeTimeLogRole(l);
@@ -3183,21 +3183,7 @@ function normalizeState(raw){
       migratedLogs.push(l);
       return;
     }
-
-    const siteKey = sitesByProjectId.get(l.projectId) || "";
-    const pair = siteKey === "LGT"
-      ? ["SEBASTIEN", "PAUL"]
-      : (siteKey === "CDM" ? ["NICOLAS", "OILI"] : null);
-    if(!pair){
-      migratedLogs.push(l);
-      return;
-    }
-
-    const minutes = Math.max(0, Math.round(Number(l.minutes || 0)));
-    const firstMinutes = Math.ceil(minutes / 2);
-    const secondMinutes = Math.max(0, minutes - firstMinutes);
-    migratedLogs.push({ ...l, internalTech: pair[0], minutes: firstMinutes });
-    migratedLogs.push({ ...l, id: uid(), internalTech: pair[1], minutes: secondMinutes });
+    migratedLogs.push(l);
   });
 
   const dedupMap = new Map();
@@ -8488,16 +8474,15 @@ function saveHoursTaskModal(){
   }
 }
 function checkTimeLogReminders(){
-  const userKey = getCurrentUserKey();
-  if(!userKey) return;
   const yKey = getYesterdayKey();
+  const userKey = getCurrentUserKey() || "anonymous";
   const flag = `timeLogReminder_${yKey}_${userKey}`;
   if(sessionStorage.getItem(flag)) return;
   const tasks = (state?.tasks || []).filter(t=>t.start && t.end && isTaskActiveOn(t, yKey));
   if(!tasks.length) return;
   let missing = 0;
   tasks.forEach(t=>{
-    if(!findTimeLog(t.id, yKey, userKey)) missing++;
+    if(!hasAllExpectedLogsForTaskDate(t, yKey)) missing++;
   });
   if(missing > 0){
     showSaveToast("ok", "Rappel temps (veille)", `${missing} tâche(s) à compléter`);
