@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { dataClient } from "@/api/dataClient";
 import ProjectCard from "../components/common/ProjectCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -29,16 +29,16 @@ export default function ProjectsList() {
 
   const { data: projects = [], isLoading: loadingP } = useQuery({
     queryKey: ["projects"],
-    queryFn: () => base44.entities.Project.list("-updated_date", 200),
+    queryFn: () => dataClient.entities.Project.list("-updated_date", 200),
   });
 
   const { data: tasks = [], isLoading: loadingT } = useQuery({
     queryKey: ["tasks"],
-    queryFn: () => base44.entities.Task.list("-updated_date", 500),
+    queryFn: () => dataClient.entities.Task.list("-updated_date", 500),
   });
 
   const createMutation = useMutation({
-    mutationFn: (payload) => base44.entities.Project.create(payload),
+    mutationFn: (payload) => dataClient.entities.Project.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       toast.success("Chantier cree");
@@ -228,3 +228,4 @@ export default function ProjectsList() {
     </div>
   );
 }
+

@@ -1,5 +1,5 @@
 {
-  "name": "base44-app",
+  "name": "suivi-chantiers-smartphone",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,8 +13,6 @@
     "fuzz:business": "node ./tests/businessRules.fuzz.mjs"
   },
   "dependencies": {
-    "@base44/sdk": "^0.8.0",
-    "@base44/vite-plugin": "^1.0.0",
     "@hello-pangea/dnd": "^17.0.0",
     "@hookform/resolvers": "^4.1.2",
     "@radix-ui/react-accordion": "^1.2.3",
@@ -100,3 +98,4 @@
     "vite": "^6.1.0"
   }
 }
+

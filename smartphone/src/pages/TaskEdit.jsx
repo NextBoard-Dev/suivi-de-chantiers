@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { dataClient } from "@/api/dataClient";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ export default function TaskEdit() {
   const { data: task, isLoading } = useQuery({
     queryKey: ["task", taskId],
     queryFn: async () => {
-      const list = await base44.entities.Task.filter({ id: taskId });
+      const list = await dataClient.entities.Task.filter({ id: taskId });
       return list[0] || null;
     },
     enabled: !!taskId,
@@ -43,7 +43,7 @@ export default function TaskEdit() {
   }, [task, form]);
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.Task.update(taskId, data),
+    mutationFn: (data) => dataClient.entities.Task.update(taskId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["task", taskId] });
@@ -199,3 +199,4 @@ export default function TaskEdit() {
     </div>
   );
 }
+

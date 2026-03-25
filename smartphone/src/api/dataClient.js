@@ -163,7 +163,7 @@ function taskPayloadForWrite(normalizedTask) {
   };
 }
 
-export const base44 = {
+export const dataClient = {
   auth: {
     me: async () => null,
     logout: () => {},
@@ -336,3 +336,4 @@ export const base44 = {
     },
   },
 };
+

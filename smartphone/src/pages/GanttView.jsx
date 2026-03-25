@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { dataClient } from "@/api/dataClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MobileGantt from "../components/gantt/MobileGantt";
@@ -11,7 +11,7 @@ export default function GanttView() {
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["tasks"],
-    queryFn: () => base44.entities.Task.list("-updated_date", 500),
+    queryFn: () => dataClient.entities.Task.list("-updated_date", 500),
   });
 
   const sites = useMemo(() => [...new Set(tasks.map((t) => t.site).filter(Boolean))].sort(), [tasks]);

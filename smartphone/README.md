@@ -26,5 +26,6 @@ Optionnel:
 Voir `docs/business-invariants.md`.
 
 ### Notes migration
-- L'app mobile utilise un adaptateur Supabase expose via `src/api/base44Client.js`.
+- L'app mobile utilise un adaptateur Supabase expose via `src/api/dataClient.js`.
 - L'API conserve les methodes `entities.Project/Task` pour limiter les regressions UI.
+

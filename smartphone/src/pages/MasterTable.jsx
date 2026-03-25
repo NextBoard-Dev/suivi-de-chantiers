@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { dataClient } from "@/api/dataClient";
 import TaskCard from "../components/common/TaskCard";
 import FilterSheet, { defaultFilters } from "../components/common/FilterSheet";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -57,7 +57,7 @@ export default function MasterTable() {
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["tasks"],
-    queryFn: () => base44.entities.Task.list("-updated_date", 500),
+    queryFn: () => dataClient.entities.Task.list("-updated_date", 500),
   });
 
   // Listes dynamiques pour les filtres

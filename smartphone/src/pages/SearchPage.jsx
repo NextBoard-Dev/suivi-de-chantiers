@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { dataClient } from "@/api/dataClient";
 import { Input } from "@/components/ui/input";
 import { Search, Folder, ClipboardList } from "lucide-react";
 import TaskCard from "../components/common/TaskCard";
@@ -12,12 +12,12 @@ export default function SearchPage() {
 
   const { data: tasks = [] } = useQuery({
     queryKey: ["tasks"],
-    queryFn: () => base44.entities.Task.list("-updated_date", 500),
+    queryFn: () => dataClient.entities.Task.list("-updated_date", 500),
   });
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
-    queryFn: () => base44.entities.Project.list("-updated_date", 200),
+    queryFn: () => dataClient.entities.Project.list("-updated_date", 200),
   });
 
   const taskCountByProject = useMemo(() => {

@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { dataClient } from "@/api/dataClient";
 import { FolderKanban, ListChecks, CheckCircle2, AlertTriangle, ChevronRight, Clock, Timer, TrendingUp } from "lucide-react";
 import TaskCard from "../components/common/TaskCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,12 +9,12 @@ import { Link } from "react-router-dom";
 export default function Dashboard() {
   const { data: projects = [], isLoading: loadingProjects } = useQuery({
     queryKey: ["projects"],
-    queryFn: () => base44.entities.Project.list("-updated_date", 100),
+    queryFn: () => dataClient.entities.Project.list("-updated_date", 100),
   });
 
   const { data: tasks = [], isLoading: loadingTasks } = useQuery({
     queryKey: ["tasks"],
-    queryFn: () => base44.entities.Task.list("-updated_date", 200),
+    queryFn: () => dataClient.entities.Task.list("-updated_date", 200),
   });
 
   const isLoading = loadingProjects || loadingTasks;

@@ -45,7 +45,19 @@ export default function MobileLayout() {
   const location = useLocation();
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #ebe6dc 0%, #d9e2e7 100%)", display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #ebe6dc 0%, #d9e2e7 100%)", display: "flex", justifyContent: "center" }}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 430,
+          minHeight: "100vh",
+          margin: "0 auto",
+          display: "flex",
+          flexDirection: "column",
+          background: "linear-gradient(180deg, #ebe6dc 0%, #d9e2e7 100%)",
+          boxShadow: "0 0 0 1px rgba(63,97,112,0.15), 0 10px 30px rgba(20,36,44,0.18)",
+        }}
+      >
 
       {/* Header — style Next Bo@rd */}
       <header className="sticky top-0 z-50" style={{ background: HEADER_BG, borderBottom: `1px solid ${BORDER_CLR}` }}>
@@ -81,7 +93,7 @@ export default function MobileLayout() {
       </main>
 
       {/* Bottom nav — style DotationTrack */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50" style={{ background: NAV_BG, borderTop: `1px solid ${BORDER_CLR}` }}>
+      <nav className="sticky bottom-0 z-50" style={{ background: NAV_BG, borderTop: `1px solid ${BORDER_CLR}` }}>
         <div className="flex items-center justify-around px-1" style={{ paddingBottom: "env(safe-area-inset-bottom, 4px)" }}>
           {navItems.map((item) => {
             const isActive = location.pathname === item.path ||
@@ -117,6 +129,7 @@ export default function MobileLayout() {
           })}
         </div>
       </nav>
+      </div>
     </div>
   );
 }

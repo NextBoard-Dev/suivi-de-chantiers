@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { dataClient } from "@/api/dataClient";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, AlertTriangle, ListChecks, CheckCircle2, Timer, TrendingUp, CalendarClock, Pencil, Lock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,7 +39,7 @@ export default function ProjectDetail() {
   const { data: project, isLoading: loadingP } = useQuery({
     queryKey: ["project", projectId],
     queryFn: async () => {
-      const list = await base44.entities.Project.filter({ id: projectId }, "-updated_date", 1);
+      const list = await dataClient.entities.Project.filter({ id: projectId }, "-updated_date", 1);
       return list[0] || null;
     },
     enabled: !!projectId,
@@ -47,7 +47,7 @@ export default function ProjectDetail() {
 
   const { data: tasks = [], isLoading: loadingT } = useQuery({
     queryKey: ["project-tasks", projectId],
-    queryFn: () => base44.entities.Task.filter({ project_id: projectId }, "-updated_date", 200),
+    queryFn: () => dataClient.entities.Task.filter({ project_id: projectId }, "-updated_date", 200),
     enabled: !!projectId,
   });
 
@@ -64,7 +64,7 @@ export default function ProjectDetail() {
   }, [project]);
 
   const updateProjectMutation = useMutation({
-    mutationFn: (payload) => base44.entities.Project.update(projectId, payload),
+    mutationFn: (payload) => dataClient.entities.Project.update(projectId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
@@ -78,7 +78,7 @@ export default function ProjectDetail() {
 
   const closeProjectMutation = useMutation({
     mutationFn: () =>
-      base44.entities.Project.update(projectId, {
+      dataClient.entities.Project.update(projectId, {
         lifecycle_status: "clos",
         progress: 100,
         end_date: TODAY,
@@ -316,3 +316,4 @@ export default function ProjectDetail() {
     </div>
   );
 }
+
