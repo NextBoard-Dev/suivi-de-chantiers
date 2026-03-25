@@ -1,0 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    /* Palette DotationTrack — bleu-gris doux */
+    --background: 200 18% 88%;        /* #d9e2e7 */
+    --foreground: 205 40% 13%;        /* #14242c */
+    --card: 200 22% 91%;              /* cartes légèrement plus claires */
+    --card-foreground: 205 40% 13%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 205 40% 13%;
+    --primary: 200 28% 34%;           /* #3f6170 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 35 28% 87%;          /* #ebe6dc — beige chaud */
+    --secondary-foreground: 205 40% 13%;
+    --muted: 200 20% 82%;             /* #c2d2da */
+    --muted-foreground: 205 20% 40%;  /* #556d79 */
+    --accent: 200 18% 80%;
+    --accent-foreground: 205 40% 13%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 200 18% 75%;
+    --input: 200 18% 75%;
+    --ring: 200 28% 34%;
+    --chart-1: 142 40% 42%;
+    --chart-2: 200 28% 34%;
+    --chart-3: 25 60% 53%;
+    --chart-4: 262 83% 58%;
+    --chart-5: 0 84% 60%;
+    --radius: 0.75rem;
+    --sidebar-background: 200 28% 34%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 200 28% 34%;
+    --sidebar-accent: 200 28% 28%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 200 28% 28%;
+    --sidebar-ring: 0 0% 100%;
+    --success: 142 40% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 25 60% 53%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Mobile-first scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 100px;
+}
+
+/* Safe area for mobile bottom nav */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Header gradient — DotationTrack style */
+.header-gradient {
+  background: linear-gradient(180deg, #c2d2da 0%, #d9e2e7 100%);
+}
+
+/* Page section header */
+.section-header {
+  background: rgba(194, 210, 218, 0.5);
+  border-bottom: 1px solid rgba(63, 97, 112, 0.2);
+}
+
+/* Card hover */
+.card-hover {
+  transition: box-shadow 0.15s ease, transform 0.1s ease;
+}
+.card-hover:active {
+  transform: scale(0.98);
+}

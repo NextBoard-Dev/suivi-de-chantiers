@@ -1,0 +1,155 @@
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
+import { FolderKanban, ListChecks, CheckCircle2, AlertTriangle, ChevronRight, Clock, Timer, TrendingUp } from "lucide-react";
+import TaskCard from "../components/common/TaskCard";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "react-router-dom";
+
+export default function Dashboard() {
+  const { data: projects = [], isLoading: loadingProjects } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => base44.entities.Project.list("-updated_date", 100),
+  });
+
+  const { data: tasks = [], isLoading: loadingTasks } = useQuery({
+    queryKey: ["tasks"],
+    queryFn: () => base44.entities.Task.list("-updated_date", 200),
+  });
+
+  const isLoading = loadingProjects || loadingTasks;
+
+  const totalTasks      = tasks.length;
+  const completedTasks  = tasks.filter((t) => t.progress >= 100).length;
+  const inProgressTasks = tasks.filter((t) => t.progress > 0 && t.progress < 100).length;
+  const overdueTasks    = tasks.filter((t) => {
+    if (!t.end_date || t.progress >= 100) return false;
+    return new Date(t.end_date) < new Date();
+  });
+
+  const globalPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const recentTasks = tasks.slice(0, 6);
+
+  if (isLoading) {
+    return (
+      <div className="p-4 space-y-4">
+        <div className="grid grid-cols-3 gap-2">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
+        </div>
+        <Skeleton className="h-16 rounded-2xl" />
+        {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-0 pb-2">
+
+      {/* Section header */}
+      <div className="px-4 py-2 flex items-center justify-between" style={{ background: "rgba(235,230,220,0.6)" }}>
+        <p className="text-[11px] font-bold text-foreground tracking-widest uppercase">VUE D'ENSEMBLE</p>
+        <p className="text-[9px] text-muted-foreground tracking-widest uppercase font-semibold">{new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"}).toUpperCase()}</p>
+      </div>
+
+      {/* KPI row — cartes arrondies */}
+      <div className="grid grid-cols-3 gap-2 px-3 py-1.5" style={{ background: "rgba(217,226,231,0.4)" }}>
+        <div className="flex flex-col items-center justify-center py-1.5 px-2 gap-0.5 rounded-xl" style={{ background: "rgba(217,226,231,0.85)", border: "1px solid rgba(63,97,112,0.2)" }}>
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "rgba(63,97,112,0.15)" }}>
+            <FolderKanban className="w-3.5 h-3.5" style={{ color: "#3f6170" }} />
+          </div>
+          <p className="text-xl font-black leading-none" style={{ color: "#14242c" }}>{projects.length}</p>
+          <p className="text-[8px] font-bold tracking-widest uppercase" style={{ color: "#556d79" }}>PROJETS</p>
+        </div>
+        <div className="flex flex-col items-center justify-center py-1.5 px-2 gap-0.5 rounded-xl" style={{ background: "rgba(217,226,231,0.85)", border: "1px solid rgba(63,97,112,0.2)" }}>
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "rgba(63,97,112,0.15)" }}>
+            <ListChecks className="w-3.5 h-3.5" style={{ color: "#3f6170" }} />
+          </div>
+          <p className="text-xl font-black leading-none" style={{ color: "#14242c" }}>{totalTasks}</p>
+          <p className="text-[8px] font-bold tracking-widest uppercase" style={{ color: "#556d79" }}>TÂCHES</p>
+          <p className="text-[8px] font-semibold" style={{ color: "#556d79" }}>{completedTasks} term.</p>
+        </div>
+        <div className="flex flex-col items-center justify-center py-1.5 px-2 gap-0.5 rounded-xl" style={{ background: "rgba(234,179,8,0.1)", border: "1px solid rgba(180,83,9,0.2)" }}>
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "rgba(234,179,8,0.15)" }}>
+            <Timer className="w-3.5 h-3.5" style={{ color: "#b45309" }} />
+          </div>
+          <p className="text-xl font-black leading-none" style={{ color: "#b45309" }}>{inProgressTasks}</p>
+          <p className="text-[8px] font-bold tracking-widest uppercase" style={{ color: "#556d79" }}>EN COURS</p>
+          <p className="text-[8px] font-semibold" style={{ color: "#556d79" }}>{overdueTasks.length} en retard</p>
+        </div>
+      </div>
+
+      {/* Barre avancement global */}
+      <div className="border-b px-4 py-3" style={{ background: "rgba(194,210,218,0.4)", borderColor: "rgba(63,97,112,0.2)" }}>
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style={{ background: "rgba(63,97,112,0.15)" }}>
+            <TrendingUp className="w-3.5 h-3.5" style={{ color: "#3f6170" }} />
+          </div>
+          <span className="text-[9px] font-bold tracking-widest uppercase flex-1" style={{ color: "#556d79" }}>AVANCEMENT GLOBAL</span>
+          <span className="text-[13px] font-black" style={{ color: "#3f6170" }}>{globalPct}%</span>
+        </div>
+        <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(63,97,112,0.15)" }}>
+          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${globalPct}%`, background: "linear-gradient(90deg, #3f6170, #5a8a9f)" }} />
+        </div>
+        <div className="flex justify-between mt-2 text-[8px] font-semibold tracking-widest uppercase" style={{ color: "#556d79" }}>
+          <span className="flex items-center gap-0.5"><CheckCircle2 className="w-2.5 h-2.5" style={{ color: "#059669" }} />{completedTasks} TERM.</span>
+          <span className="flex items-center gap-0.5"><Timer className="w-2.5 h-2.5" style={{ color: "#b45309" }} />{inProgressTasks} EN COURS</span>
+          <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" style={{ color: "#556d79" }} />{totalTasks - completedTasks - inProgressTasks} À FAIRE</span>
+        </div>
+      </div>
+
+      {/* Alertes retard */}
+      {overdueTasks.length > 0 && (
+        <div className="px-4 pt-2">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[9px] font-bold text-foreground tracking-widest uppercase">ALERTES</span>
+            <span className="text-[10px] font-bold text-white bg-red-500 rounded-full w-5 h-5 flex items-center justify-center">
+              {overdueTasks.length}
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {overdueTasks.slice(0, 4).map((task) => (
+              <Link
+                key={task.id}
+                to={`/task/${task.id}`}
+                className="flex items-center gap-2.5 bg-red-50 border border-red-200 rounded-xl px-3 py-2"
+              >
+                <div className="w-6 h-6 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-3 h-3 text-red-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-semibold text-red-800 truncate">{task.description}</p>
+                  {task.project_name && (
+                    <p className="text-[10px] text-red-500 truncate">{task.project_name}</p>
+                  )}
+                </div>
+                <span className="text-[9px] font-bold text-red-500 bg-red-100 px-1.5 py-0.5 rounded-md shrink-0 uppercase">
+                  Retard
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tâches récentes */}
+      <div className="px-3 pt-2 pb-4">
+        <div className="flex items-center justify-between mb-1.5">
+          <h2 className="text-[9px] font-bold text-foreground tracking-widest uppercase">TACHES RECENTES</h2>
+          <Link to="/master" className="flex items-center gap-0.5 text-xs text-primary font-semibold">
+            Tout voir <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+        <div className="space-y-2">
+          {recentTasks.map((task) => (
+            <TaskCard key={task.id} task={task} />
+          ))}
+          {recentTasks.length === 0 && (
+            <div className="text-center py-10 text-muted-foreground text-sm">
+              Aucune tâche pour le moment
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
