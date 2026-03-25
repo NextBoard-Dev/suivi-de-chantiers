@@ -1135,12 +1135,10 @@ body{
   display:none;
 }
 .site-photo-corner{
-  position:absolute;
-  right:12px;
-  bottom:12px;
+  position:relative;
   width:180px;
   height:110px;
-  margin:0;
+  margin:8px 0 0 auto;
   background:rgba(255,255,255,0.9);
 }
 .site-photo-corner #sitePhoto{
@@ -1923,6 +1921,7 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 #btnToggleProjectStatus{
   color:#0f172a !important;
   text-shadow:none !important;
+  font-weight:500 !important;
 }
 #btnToggleMasterVendor.btn-ghost,
 #btnToggleMasterStatus.btn-ghost,
@@ -1936,9 +1935,12 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 #btnToggleMasterStatus.btn-primary,
 #btnToggleProjectVendor.btn-primary,
 #btnToggleProjectStatus.btn-primary{
-  background:linear-gradient(180deg,#2563eb 0%,#1d4ed8 100%) !important;
-  border-color:#1d4ed8 !important;
-  color:#ffffff !important;
+  background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%) !important;
+  border-color:#94a3b8 !important;
+  color:#0f172a !important;
+  -webkit-text-fill-color:#0f172a !important;
+  box-shadow:0 4px 10px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.85) !important;
+  font-weight:500 !important;
 }
 #btnToggleMasterVendor.is-disabled,
 #btnToggleMasterStatus.is-disabled,
@@ -2415,20 +2417,21 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 
 /* Champ prestataire custom dropdown */
 .vendor-wrap,
-.desc-wrap{
+.desc-wrap,
+.internal-tech-wrap{
   position:relative;
-  display:flex;
-  align-items:center;
-  gap:6px;
+  display:block;
 }
 .vendor-wrap > .input,
-.desc-wrap > .input{
+.desc-wrap > .input,
+.internal-tech-wrap > .input{
   -webkit-appearance: none;
   appearance: none;
   background-image: none !important;
   position:relative;
   padding-right:28px;
   flex:1 1 auto;
+  width:100%;
   background:linear-gradient(185deg, rgba(248,247,244,0.98) 0%, rgba(232,229,223,0.94) 100%) !important;
   box-shadow:inset 0 1px 2px rgba(255,255,255,0.8), inset 0 -1px 2px rgba(0,0,0,0.04) !important;
   border:1px solid rgba(0,0,0,0.14) !important;
@@ -2459,8 +2462,46 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 .desc-dropdown{
   z-index:999999;
 }
+.internal-tech-listbox{
+  margin-top:0;
+  max-height:220px;
+  border-color:#d1d5db;
+  border-radius:6px;
+  box-shadow:0 6px 16px rgba(0,0,0,0.12);
+  padding:0;
+}
+.vendor-dropdown.internal-tech-listbox{
+  z-index:999999;
+}
+.internal-tech-option{
+  width:100%;
+  text-align:left;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.internal-tech-option:hover{
+  background:#eef2ff;
+}
+.internal-tech-option.selected{
+  background:#eef2ff;
+  font-weight:600;
+}
+.internal-tech-check{
+  width:12px;
+  text-align:center;
+  color:#1d4ed8;
+  font-weight:800;
+}
+.internal-tech-empty{
+  padding:8px 10px;
+  font-size:12px;
+  color:#64748b;
+}
 .vendor-wrap.vendor-open{z-index:200001;position:relative;}
 .desc-wrap.desc-open{z-index:999998;position:relative;}
+.internal-tech-wrap.vendor-open{z-index:200001;position:relative;}
+.internal-tech-open{z-index:200001;position:relative;}
 .card.vendor-panel-open{z-index:200000;position:relative;}
 .card.desc-panel-open{z-index:999998;position:relative;}
 .desc-overlay{
@@ -2575,6 +2616,8 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 .legend-item{color:#0f172a !important;text-shadow:none !important;opacity:1 !important;filter:none !important;}
 .legend-item *{color:inherit !important;-webkit-text-fill-color:inherit !important;text-shadow:none !important;}
 .legend-dot{width:12px;height:12px;border-radius:999px;border:1px solid rgba(0,0,0,.4);}
+#legend{display:none !important;}
+#viewMaster #kpis{display:none !important;}
 
 /* Monitoring erreur utilisateur */
 .app-error-banner{
@@ -5350,4 +5393,206 @@ h3,
 }
 .sidebar .tab:not(.active){
   opacity:.84 !important;
+}
+
+/* Densification forte du haut de la modale de saisie heures */
+#hoursTaskModal .modal-card.hours-modal-compact{
+  width:min(1420px, calc(100vw - 16px)) !important;
+  max-width:min(1420px, calc(100vw - 16px)) !important;
+  max-height:96vh !important;
+  padding:8px 10px 8px !important;
+}
+#hoursTaskModal .modal-title{
+  font-size:13px !important;
+  line-height:1.05 !important;
+  margin:0 0 1px !important;
+}
+#hoursTaskModal .modal-sub{
+  font-size:10px !important;
+  line-height:1.1 !important;
+  margin:0 0 3px !important;
+}
+#hoursTaskModal .label{
+  font-size:10px !important;
+  line-height:1.05 !important;
+  margin:1px 0 1px !important;
+}
+#hoursTaskModal .grid2{
+  gap:4px !important;
+  margin-bottom:4px !important;
+}
+#hoursTaskModal .input,
+#hoursTaskModal select,
+#hoursTaskModal textarea{
+  height:27px !important;
+  min-height:27px !important;
+  padding:3px 8px !important;
+  font-size:12px !important;
+}
+#hoursTaskModal #hm_owner_badge{
+  min-height:27px !important;
+  height:auto !important;
+  padding:2px 6px !important;
+  display:flex !important;
+  align-items:center !important;
+  align-content:center !important;
+  gap:4px !important;
+  flex-wrap:wrap !important;
+  max-width:100% !important;
+  overflow:hidden !important;
+  line-height:1.2 !important;
+}
+#hoursTaskModal #hm_owner_badge .badge.owner{
+  display:inline-flex !important;
+  align-items:center !important;
+  padding:1px 6px !important;
+  font-size:10px !important;
+  line-height:1.15 !important;
+  border-radius:999px !important;
+  max-width:100% !important;
+  vertical-align:middle !important;
+}
+#hoursTaskModal .grid2 > div{
+  min-width:0 !important;
+}
+#hoursTaskModal .modal-actions.spaced{
+  margin-top:2px !important;
+  margin-bottom:2px !important;
+}
+#hoursTaskModal .time-log-status{
+  font-size:11px !important;
+  line-height:1.1 !important;
+  min-height:16px !important;
+}
+#hoursTaskModal #hm_calendarWrap{
+  max-height:60vh !important;
+}
+#hoursTaskModal .btn,
+#hoursTaskModal #btnSaveHoursModal,
+#hoursTaskModal #btnCloseHoursModal{
+  min-height:32px !important;
+  height:32px !important;
+  padding:0 12px !important;
+  border-radius:9px !important;
+  font-size:11px !important;
+}
+
+#hoursTaskModal #hm_project,
+#hoursTaskModal #hm_task{
+  font-size:14px !important;
+  line-height:1.25 !important;
+}
+
+#hoursTaskModal #hm_calendar .hm-day.hm-day-selected{
+  border:2px solid #2563eb !important;
+  box-shadow:0 0 0 1px rgba(37,99,235,0.18) inset !important;
+}
+
+#hoursTaskModal #hm_calendar .hm-day[data-state-base="missing"]{
+  background:#fff1e8 !important;
+  border-color:#f97316 !important;
+  box-shadow:inset 4px 0 0 #f97316;
+}
+
+#hoursTaskModal #hm_calendar .hm-day[data-state-base="filled"]{
+  background:#e9fbef !important;
+  border-color:#22c55e !important;
+  box-shadow:inset 4px 0 0 #16a34a;
+}
+
+#hoursTaskModal #hm_calendar .hm-day[data-state-base="future"]{
+  background:#eef3fb !important;
+  border-color:#94a3b8 !important;
+  box-shadow:inset 4px 0 0 #64748b;
+}
+
+#hoursTaskModal #hm_calendar .hm-week-row{
+  position:relative;
+  border-bottom:2px solid #cbd5e1;
+  padding-bottom:6px;
+  margin-bottom:8px !important;
+}
+
+#hoursTaskModal #hm_calendar .hm-week-row:nth-child(odd){
+  background:linear-gradient(180deg, rgba(248,250,252,0.75) 0%, rgba(248,250,252,0.25) 100%);
+}
+
+#hoursTaskModal #hm_calendar .hm-week-row:nth-child(even){
+  background:linear-gradient(180deg, rgba(239,246,255,0.7) 0%, rgba(239,246,255,0.28) 100%);
+}
+
+#hoursTaskModal #hm_calendar .hm-week-row .hm-week-badge{
+  background:#dbeafe !important;
+  border:1px solid #60a5fa !important;
+  color:#0f172a !important;
+  font-size:13px !important;
+  font-weight:800 !important;
+  letter-spacing:.2px;
+}
+
+#hoursTaskModal #hm_calendar .hm-week-total .hm-week-total-title{
+  background:#e2e8f0;
+  border:1px solid #94a3b8;
+  border-radius:6px;
+  padding:3px 6px;
+  text-transform:uppercase;
+  letter-spacing:.3px;
+  color:#1e293b !important;
+}
+
+
+
+
+
+
+
+
+
+
+
+/* ===================================================== */
+/* ========== TECHNICIENS INTERNES (BLOC UNIQUE) ========= */
+/* ===================================================== */
+#cfg_internal_tech_list{
+  max-height:220px;
+  overflow-y:auto;
+  padding-right:4px;
+}
+
+#cfg_internal_tech_list .config-user-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  padding:1px 4px;
+  min-height:20px;
+  border:none;
+  background:transparent;
+}
+
+#cfg_internal_tech_list .config-user-item > div:first-child{
+  min-width:0;
+  flex:1 1 auto;
+}
+
+#cfg_internal_tech_list .config-user-meta{
+  display:block;
+  font-size:11px;
+  color:#475569;
+  font-weight:700;
+}
+
+#cfg_internal_tech_list .config-user-actions{
+  display:flex;
+  gap:3px;
+  flex-wrap:wrap;
+}
+
+#cfg_internal_tech_list .config-user-actions .btn{
+  height:20px;
+  min-height:20px;
+  line-height:20px;
+  padding:0 4px;
+  font-size:12px;
+  border-radius:6px;
 }

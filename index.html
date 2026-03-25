@@ -473,6 +473,35 @@
           </div>
 
 
+          <div class="cfg-accordion is-open" data-accordion>
+
+            <button type="button" class="cfg-accordion-head">
+
+              <span>Techniciens internes (par sites)</span>
+
+              <span class="cfg-accordion-icon"></span>
+
+            </button>
+
+            <div class="cfg-accordion-body config-users" id="cfg_internal_tech_section">
+
+              <div class="config-users-row">
+
+                <input class="input" id="cfg_internal_tech_name" placeholder="Nom du technicien interne" />
+
+                <select class="input" id="cfg_internal_tech_site" aria-label="Site du technicien interne"></select>
+
+                <button class="btn btn-success" id="btnInternalTechAdd">Ajouter</button>
+
+              </div>
+
+              <div id="cfg_internal_tech_list" class="config-users-list status-list tech-list-like-vendor"></div>
+
+            </div>
+
+          </div>
+
+
 
           <div class="cfg-accordion is-open" data-accordion>
 
@@ -1637,10 +1666,19 @@
               <option value="Prestataire externe">Prestataire externe</option>
 
             </select>
+            <div id="t_internal_tech_group">
+              <label class="label">Technicien interne</label>
+              <div class="internal-tech-wrap">
+                <input class="input" id="t_internal_tech_filter" placeholder="Filtrer techniciens internes" autocomplete="off" aria-label="Filtrer techniciens internes" />
+                <div id="t_internal_tech_listbox" class="vendor-dropdown internal-tech-listbox"></div>
+              </div>
+              <select class="input hidden" id="t_internal_tech" multiple size="5" aria-hidden="true" tabindex="-1"></select>
+            </div>
 
 
 
-            <label class="label">Prestataire externe</label>
+            <div id="t_vendor_group">
+<label class="label">Prestataire externe</label>
 
             <div class="vendor-wrap">
 
@@ -1652,6 +1690,7 @@
 
               <div id="vendorManagerPanel" class="vendor-panel hidden"></div>
 
+            </div>
             </div>
 
 
@@ -1859,18 +1898,18 @@
       <div class="modal-title">Saisie heures tâche</div>
       <div class="modal-sub">Tâche sélectionnée dans Édition tâche</div>
 
-      <div class="grid2" style="margin-bottom:10px">
+      <div class="grid2" style="margin-bottom:4px">
         <div><label class="label">Chantier</label><input class="input hm-strong-field" id="hm_project" readonly /></div>
         <div><label class="label">Tâche</label><input class="input" id="hm_task" readonly /></div>
       </div>
-      <div class="grid2" style="margin-bottom:10px">
+      <div class="grid2" style="margin-bottom:4px">
         <div><label class="label">Intervenant</label><div class="input hm-owner-badge-wrap" id="hm_owner_badge"></div></div>
         <div><label class="label">Période</label><input class="input" id="hm_period" readonly /></div>
       </div>
 
       <input id="hm_date" type="hidden" />
       <input id="hm_hours" type="hidden" />
-      <div class="modal-actions spaced" style="margin-top:4px">
+      <div class="modal-actions spaced" style="margin-top:2px">
         <div class="time-log-status" id="hm_status"></div>
         <button class="btn btn-primary" id="btnSaveHoursModal">Valider</button>
       </div>
@@ -2599,6 +2638,9 @@
 </body>
 
 </html>
+
+
+
 
 
 

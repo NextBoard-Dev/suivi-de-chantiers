@@ -152,7 +152,10 @@ function roleHoursMultiplier(roleKey){
 }
 
 function normalizeTimeLogRole(log){
-  const raw = String(log?.role || log?.roleKey || "").toLowerCase();
+  const rawSource = (typeof log === "string")
+    ? log
+    : (log?.role || log?.roleKey || "");
+  const raw = String(rawSource).toLowerCase();
   if(raw.includes("rsg/ri")) return "rsg";
   if(raw.includes("rsg")) return "rsg";
   if(raw.includes("ri")) return "ri";

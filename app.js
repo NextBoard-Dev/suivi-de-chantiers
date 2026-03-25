@@ -978,9 +978,6 @@ function scrollViewToTop(){
   document.querySelectorAll(".tablewrap").forEach(el=>{
     el.scrollTop = 0;
   });
-  document.querySelectorAll(".tabs-scroll").forEach(el=>{
-    el.scrollTop = 0;
-  });
 }
 
 // verrouille la position de la sidebar une fois la mise en page stabilisée
@@ -1467,6 +1464,7 @@ function renderConfigStatusList(){
       saveStatusConfig();
       renderConfigStatusList();
       setStatusSelection("");
+    syncTaskOwnerDependentFields();
       refreshStatusUi();
     };
   });
@@ -1537,6 +1535,330 @@ function renderConfigVendorsList(){
     };
   });
 }
+function projectSiteById(projectId){
+  const p = (state?.projects || []).find(x=>x.id===projectId);
+  return String(p?.site || "").trim();
+}
+
+function refreshInternalTechsList(){
+  const registry = loadInternalTechRegistry();
+  const fromTasks = (state?.tasks||[])
+    .filter(t=>ownerType(t.owner || "") === "interne")
+    .map(t=> normalizeInternalTech(t.internalTech || ""))
+    .filter(Boolean);
+  internalTechCache = dedupInternalTechs([...registry, ...fromTasks])
+    .sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+  saveInternalTechRegistry(internalTechCache);
+  refreshInternalTechInputOptions();
+}
+
+function getTechSitesMapNormalized(){
+  const map = sanitizeTechSitesMap(loadInternalTechSitesMap());
+  const byLower = new Map();
+  Object.entries(map).forEach(([name, sites])=> byLower.set(name.toLowerCase(), { name, sites }));
+  return { map, byLower };
+}
+
+function getInternalTechsForSite(siteLabel=""){
+  const siteKey = canonSiteKey(siteLabel || "");
+  const { byLower } = getTechSitesMapNormalized();
+  const list = dedupInternalTechs([
+    ...(internalTechCache || []),
+    ...loadInternalTechRegistry(),
+    ...((state?.tasks || [])
+      .filter((t)=>ownerType(t.owner || "") === "interne")
+      .flatMap((t)=>normalizeInternalTechList(t.internalTech || "")))
+  ]);
+  if(!siteKey) return list;
+  return list.filter((name)=>{
+    const row = byLower.get(String(name || "").toLowerCase());
+    if(!row) return true;
+    const sites = Array.isArray(row.sites) ? row.sites : [];
+    if(!sites.length) return true;
+    return sites.some(s=>canonSiteKey(s)===siteKey);
+  });
+}
+
+function getSelectedInternalTechValues(){
+  const node = el("t_internal_tech");
+  if(!node) return [];
+  if(node.tagName === "SELECT"){
+    return dedupInternalTechs(Array.from(node.selectedOptions).map((opt)=>normalizeInternalTech(opt.value || "")).filter(Boolean));
+  }
+  return normalizeInternalTechList(node.value || "");
+}
+
+function setSelectedInternalTechValues(values=[]){
+  const node = el("t_internal_tech");
+  const normalized = dedupInternalTechs(values);
+  const wanted = new Set(normalized.map((v)=>v.toLowerCase()));
+  if(!node) return;
+  if(node.tagName === "SELECT"){
+    Array.from(node.options || []).forEach((opt)=>{
+      const key = normalizeInternalTech(opt.value || "").toLowerCase();
+      opt.selected = wanted.has(key);
+    });
+    return;
+  }
+  node.value = serializeInternalTechList(normalized);
+}
+
+function refreshInternalTechInputOptions(preferredValues=null){
+  const node = el("t_internal_tech");
+  if(!node) return;
+  const site = projectSiteById(selectedProjectId);
+  const available = getInternalTechsForSite(site);
+  const current = Array.isArray(preferredValues)
+    ? dedupInternalTechs(preferredValues)
+    : getSelectedInternalTechValues();
+  if(node.tagName === "SELECT"){
+    const selectedLower = new Set(current.map((v)=>v.toLowerCase()));
+    node.size = Math.max(4, Math.min(8, Math.max(1, available.length)));
+    if(!available.length){
+      node.innerHTML = `<option value="" disabled>Aucun technicien interne pour ce site</option>`;
+      renderInternalTechListbox();
+      return;
+    }
+    node.innerHTML = available.map((name)=>{
+      const lower = name.toLowerCase();
+      const selected = selectedLower.has(lower) ? " selected" : "";
+      return `<option value="${attrEscape(name)}"${selected}>${attrEscape(name)}</option>`;
+    }).join("");
+    renderInternalTechListbox();
+    return;
+  }
+  if(current.length){
+    const allowed = current.filter((name)=>available.some((x)=>x.toLowerCase()===name.toLowerCase()));
+    node.value = serializeInternalTechList(allowed);
+  }
+  renderInternalTechListbox();
+}
+
+function renderInternalTechListbox(){
+  const box = el("t_internal_tech_listbox");
+  const node = el("t_internal_tech");
+  const filterInput = el("t_internal_tech_filter");
+  if(!box || !node) return;
+  if(ownerType(String(el("t_owner")?.value || "")) !== "interne"){
+    showInternalTechDropdown(false);
+    return;
+  }
+  const filter = String(filterInput?.dataset?.filterQuery || filterInput?.value || "").trim().toLowerCase();
+  const selected = new Set(getSelectedInternalTechValues().map((v)=>v.toLowerCase()));
+  const all = Array.from(node.options || [])
+    .map((opt)=>normalizeInternalTech(opt.value || ""))
+    .filter(Boolean);
+  const visible = !filter
+    ? all
+    : all.filter((name)=>name.toLowerCase().includes(filter));
+  if(!all.length){
+    box.innerHTML = `<div class="internal-tech-empty">Aucun technicien interne pour ce site</div>`;
+    return;
+  }
+  if(!visible.length){
+    box.innerHTML = `<div class="internal-tech-empty">Aucun résultat</div>`;
+    return;
+  }
+  box.innerHTML = visible.map((name)=>{
+    const isSel = selected.has(name.toLowerCase());
+    return `<div class="vendor-item internal-tech-option${isSel ? " selected" : ""}" role="option" tabindex="0" data-tech="${attrEscape(name)}"><span class="internal-tech-check">${isSel ? "✓" : ""}</span><span>${attrEscape(name)}</span></div>`;
+  }).join("");
+  box.querySelectorAll(".internal-tech-option").forEach((btn)=>{
+    const toggleSelection = ()=>{
+      const tech = normalizeInternalTech(btn.dataset.tech || "");
+      if(!tech) return;
+      const current = getSelectedInternalTechValues();
+      const lower = tech.toLowerCase();
+      const has = current.some((v)=>v.toLowerCase()===lower);
+      const next = has
+        ? current.filter((v)=>v.toLowerCase()!==lower)
+        : [...current, tech];
+      setSelectedInternalTechValues(next);
+      updateInternalTechFilterDisplay();
+      renderInternalTechListbox();
+      showInternalTechDropdown(true);
+    };
+    btn.addEventListener("click", (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      toggleSelection();
+    });
+    btn.addEventListener("keydown", (e)=>{
+      if(e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      e.stopPropagation();
+      toggleSelection();
+    });
+  });
+}
+
+function getInternalTechSelectionLabel(){
+  return serializeInternalTechList(getSelectedInternalTechValues());
+}
+
+function updateInternalTechFilterDisplay(){
+  const input = el("t_internal_tech_filter");
+  if(!input) return;
+  if(input.dataset.open === "1") return;
+  input.value = getInternalTechSelectionLabel();
+}
+
+function showInternalTechDropdown(show){
+  const box = el("t_internal_tech_listbox");
+  const input = el("t_internal_tech_filter");
+  const wrap = input ? input.closest(".internal-tech-wrap") : null;
+  const group = el("t_internal_tech_group");
+  if(!box) return;
+  box.classList.toggle("open", !!show);
+  box.style.display = show ? "block" : "none";
+  wrap?.classList.toggle("vendor-open", !!show);
+  group?.classList.toggle("internal-tech-open", !!show);
+  if(input){
+    input.dataset.open = show ? "1" : "0";
+    if(show){
+      const currentLabel = getInternalTechSelectionLabel();
+      if((input.value || "") === currentLabel){
+        input.value = "";
+      }
+    }else{
+      input.dataset.filterQuery = "";
+      input.value = getInternalTechSelectionLabel();
+    }
+  }
+}
+
+function refreshInternalTechSiteSelect(){
+  const siteSelect = el("cfg_internal_tech_site");
+  if(!siteSelect) return;
+  const sites = getAllSitesList();
+  if(!sites.length){
+    siteSelect.innerHTML = `<option value="">Aucun site</option>`;
+    siteSelect.value = "";
+    return;
+  }
+  const current = String(siteSelect.value || "").trim();
+  siteSelect.innerHTML = `<option value="">Choisir un site</option>` +
+    sites.map(s=>`<option value="${attrEscape(s)}">${attrEscape(s)}</option>`).join("");
+  if(current && sites.some(s=>s.toLowerCase()===current.toLowerCase())){
+    siteSelect.value = sites.find(s=>s.toLowerCase()===current.toLowerCase()) || "";
+  }else{
+    siteSelect.value = "";
+  }
+}
+function syncTaskOwnerDependentFields(){
+  const owner = String(el("t_owner")?.value || "");
+  const typ = ownerType(owner);
+  const vendorGroup = el("t_vendor_group");
+  const internalGroup = el("t_internal_tech_group");
+  const internalFilter = el("t_internal_tech_filter");
+  if(vendorGroup) vendorGroup.style.display = (typ === "externe") ? "" : "none";
+  if(internalGroup) internalGroup.style.display = (typ === "interne") ? "" : "none";
+  if(typ !== "externe"){
+    const v = el("t_vendor");
+    if(v) v.value = "";
+  }
+  if(typ !== "interne"){
+    setSelectedInternalTechValues([]);
+    if(internalFilter) internalFilter.value = "";
+    showInternalTechDropdown(false);
+  }
+  refreshInternalTechInputOptions();
+  renderInternalTechListbox();
+}
+
+function renderConfigInternalTechList(){
+  const list = el("cfg_internal_tech_list");
+  if(!list) return;
+  refreshInternalTechsList();
+  const techs = dedupInternalTechs(internalTechCache).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+  const map = sanitizeTechSitesMap(loadInternalTechSitesMap());
+  if(!techs.length){
+    list.innerHTML = `<div class="config-user-meta">Aucun technicien interne</div>`;
+    return;
+  }
+
+  const getSiteLabel = (name)=>{
+    const key = Object.keys(map).find(k=>k.toLowerCase()===String(name||"").toLowerCase()) || name;
+    const sites = Array.isArray(map[key]) ? map[key].filter(Boolean) : [];
+    return String(sites[0] || "").trim();
+  };
+
+  list.innerHTML = techs.map((name)=>{
+    const siteLabel = getSiteLabel(name) || "Site non affecté";
+    return `
+      <div class="config-user-item" data-tech-row="${attrEscape(name)}" data-tech-site="${attrEscape(siteLabel)}">
+        <div>
+          <div><strong>${attrEscape(name)}</strong></div>
+          <div class="config-user-meta">${attrEscape(siteLabel)}</div>
+        </div>
+        <div class="config-user-actions">
+          <button class="btn btn-ghost cfg-tech-edit" data-tech="${attrEscape(name)}">Renommer</button>
+          <button class="btn btn-danger cfg-tech-del" data-tech="${attrEscape(name)}">Supprimer</button>
+        </div>
+      </div>`;
+  }).join("");
+
+  list.querySelectorAll('.cfg-tech-edit').forEach(btn=>{
+    btn.onclick = ()=>{
+      const oldName = normalizeInternalTech(btn.dataset.tech || "");
+      if(!oldName) return;
+      const next = prompt("Nouveau nom du technicien interne :", oldName) || "";
+      const trimmed = normalizeInternalTech(next);
+      if(!trimmed) return;
+      if(trimmed.toLowerCase() !== oldName.toLowerCase() && techs.some(x=>x.toLowerCase()===trimmed.toLowerCase())){
+        alert("Ce technicien existe déjà.");
+        return;
+      }
+      let nextList = dedupInternalTechs(internalTechCache.map(x=>x.toLowerCase()===oldName.toLowerCase() ? trimmed : x));
+      nextList = nextList.sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+      saveInternalTechRegistry(nextList);
+
+      const mapNow = sanitizeTechSitesMap(loadInternalTechSitesMap());
+      const oldKey = Object.keys(mapNow).find(k=>k.toLowerCase()===oldName.toLowerCase());
+      if(oldKey){
+        mapNow[trimmed] = mapNow[oldKey];
+        if(oldKey !== trimmed) delete mapNow[oldKey];
+      }
+      saveInternalTechSitesMap(mapNow);
+
+      (state?.tasks||[]).forEach(t=>{
+        if(ownerType(t.owner || "") !== "interne") return;
+        const techs = normalizeInternalTechList(t.internalTech || "");
+        if(!techs.length) return;
+        const updated = techs.map((x)=> x.toLowerCase()===oldName.toLowerCase() ? trimmed : x);
+        t.internalTech = serializeInternalTechList(updated);
+      });
+      saveState();
+      renderConfigInternalTechList();
+      refreshInternalTechsList();
+      renderAll();
+    };
+  });
+
+  list.querySelectorAll('.cfg-tech-del').forEach(btn=>{
+    btn.onclick = ()=>{
+      const name = normalizeInternalTech(btn.dataset.tech || "");
+      if(!name) return;
+      if(!confirm(`Supprimer le technicien interne "${name}" ?`)) return;
+      const nextList = dedupInternalTechs(internalTechCache.filter(x=>x.toLowerCase()!==name.toLowerCase()));
+      saveInternalTechRegistry(nextList);
+      const mapNow = sanitizeTechSitesMap(loadInternalTechSitesMap());
+      const oldKey = Object.keys(mapNow).find(k=>k.toLowerCase()===name.toLowerCase());
+      if(oldKey) delete mapNow[oldKey];
+      saveInternalTechSitesMap(mapNow);
+      (state?.tasks||[]).forEach(t=>{
+        if(ownerType(t.owner || "") !== "interne") return;
+        const techs = normalizeInternalTechList(t.internalTech || "");
+        if(!techs.length) return;
+        t.internalTech = serializeInternalTechList(techs.filter((x)=>x.toLowerCase()!==name.toLowerCase()));
+      });
+      saveState();
+      renderConfigInternalTechList();
+      refreshInternalTechsList();
+      renderAll();
+    };
+  });
+}
 function openConfigModal(){
   if(getCurrentRole()!=="admin") return;
   const modal = el("configModal");
@@ -1600,6 +1922,17 @@ function openConfigModal(){
   if(role==="admin"){
     refreshVendorsList();
     renderConfigVendorsList();
+  }
+  const internalTechSection = el("cfg_internal_tech_section");
+  if(internalTechSection){
+    const wrap = internalTechSection.closest(".cfg-accordion");
+    if(wrap) wrap.style.display = role==="admin" ? "block" : "none";
+    internalTechSection.style.display = "";
+  }
+  if(role==="admin"){
+    refreshInternalTechsList();
+    refreshInternalTechSiteSelect();
+    renderConfigInternalTechList();
   }
   const loginSection = el("cfg_login_section");
   if(loginSection){
@@ -1777,11 +2110,17 @@ function closeFloating(el){
 
 let vendorsCache = [];
 
+let internalTechCache = [];
+
 let descCache = [];
 
 const VENDOR_STORE_KEY = "vendors_registry";
 
 const VENDOR_DELETE_KEY = "vendors_deleted";
+
+const INTERNAL_TECH_STORE_KEY = "internal_techs_registry";
+
+const INTERNAL_TECH_SITES_KEY = "internal_techs_sites_map";
 
 const DESC_STORE_KEY = "descriptions_registry";
 
@@ -1789,7 +2128,20 @@ const DESC_DELETE_KEY = "descriptions_deleted";
 
 const normalizeVendor = (v="")=> v.trim();
 
+const normalizeInternalTech = (v="")=> v.trim();
+
 const normalizeDesc = (v="")=> v.trim();
+
+const normalizeInternalTechList = (raw="")=>
+  dedupInternalTechs(
+    String(raw || "")
+      .split(/[;,]/)
+      .map((v)=>normalizeInternalTech(v))
+      .filter(Boolean)
+  );
+
+const serializeInternalTechList = (values=[])=>
+  dedupInternalTechs((values || []).map((v)=>normalizeInternalTech(v)).filter(Boolean)).join(", ");
 
 const dedupVendors = (arr=[])=>{
 
@@ -1817,6 +2169,60 @@ const dedupVendors = (arr=[])=>{
 
 };
 
+
+const dedupInternalTechs = (arr=[])=>{
+
+  const seen = new Set();
+
+  const out = [];
+
+  arr.forEach(v=>{
+
+    const norm = normalizeInternalTech(v);
+
+    if(!norm) return;
+
+    const key = norm.toLowerCase();
+
+    if(seen.has(key)) return;
+
+    seen.add(key);
+
+    out.push(norm);
+
+  });
+
+  return out;
+
+};
+
+function sanitizeTechSitesMap(mapObj){
+
+  const src = (mapObj && typeof mapObj === "object") ? mapObj : {};
+
+  const out = {};
+
+  Object.keys(src).forEach(name=>{
+
+    const normName = normalizeInternalTech(name);
+
+    if(!normName) return;
+
+    const rawSites = Array.isArray(src[name]) ? src[name] : [];
+
+    const cleanSites = [...new Set(
+      rawSites
+        .map(s=> String(s || "").toUpperCase().trim())
+        .filter(Boolean)
+    )].sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+
+    out[normName] = cleanSites;
+
+  });
+
+  return out;
+
+}
 const dedupDescriptions = (arr=[])=>{
 
   const seen=new Set();
@@ -1893,7 +2299,8 @@ function ownerBadgeForTask(t){
   const typ = ownerType(owner);
   let label = owner;
   if(typ === "interne"){
-    label = "INTERNE";
+    const tech = (t.internalTech || "").trim();
+    label = tech || "INTERNE";
   }
   if(typ === "rsg"){
     label = "RSG";
@@ -2685,16 +3092,25 @@ function normalizeState(raw){
 
   const normTasks = (raw.tasks||[]).map(t=>{
     const ownerNorm = (String(t.owner||"").toUpperCase()==="RSG/RI") ? "RSG" : (t.owner||"");
+    const ownerNormType = ownerType(ownerNorm);
     let vendorNorm = (t.vendor||"").toString().trim();
+    let internalTechNorm = serializeInternalTechList(normalizeInternalTechList(t.internalTech || ""));
     if(String(ownerNorm).toLowerCase().includes("prestataire externe") && !vendorNorm){
       vendorNorm = "PRESTATAIRE NON RENSEIGNE";
+    }
+    if(ownerNormType !== "externe"){
+      vendorNorm = "";
+    }
+    if(ownerNormType !== "interne"){
+      internalTechNorm = "";
     }
     return {
       ...t,
       projectId:normId(t.projectId),
       status: normalizeStatus(t.status),
       owner: ownerNorm,
-      vendor: vendorNorm
+      vendor: vendorNorm,
+      internalTech: internalTechNorm
     };
   });
 
@@ -2706,6 +3122,7 @@ function normalizeState(raw){
     userName: (l.userName || "").toString(),
     userEmail: (l.userEmail || "").toString(),
     role: (l.role || "").toString(),
+    internalTech: normalizeInternalTech(l.internalTech || ""),
     date: (l.date || "").toString().slice(0,10),
     minutes: Number.isFinite(+l.minutes) ? Math.max(0, Math.round(+l.minutes)) : 0,
     note: (l.note || "").toString(),
@@ -2719,6 +3136,7 @@ function normalizeState(raw){
   });
 
   const tasksById = new Map(normTasks.map(t=>[t.id, t]));
+  const sitesByProjectId = new Map(normProjects.map(p=>[p.id, canonSiteKey(p.site || "")]));
   const keptLogs = [];
   const orphanBuffer = [];
   normLogs.forEach(l=>{
@@ -2743,21 +3161,66 @@ function normalizeState(raw){
       fixed.roleKey = expectedRole;
       fixed.role = String(expectedRole).toUpperCase();
     }
+    if(expectedRole !== "interne"){
+      fixed.internalTech = "";
+    }else{
+      fixed.internalTech = normalizeTimeLogInternalTech(fixed, expectedRole);
+    }
     keptLogs.push(fixed);
   });
 
-  const dedupMap = new Map();
-  keptLogs.forEach(l=>{
+  // Migration de compatibilite: anciens logs INTERNE sans technicien nomme.
+  // Objectif: maintenir l'affichage des heures dans les cartes par technicien/site.
+  const migratedLogs = [];
+  keptLogs.forEach((l)=>{
     const rk = normalizeTimeLogRole(l);
-    const key = `${l.taskId}|${l.date}|${rk}`;
-    const prev = dedupMap.get(key);
-    if(!prev){
-      dedupMap.set(key, l);
+    if(rk !== "interne"){
+      migratedLogs.push(l);
       return;
     }
+    const tech = normalizeTimeLogInternalTech(l, rk);
+    if(tech){
+      migratedLogs.push(l);
+      return;
+    }
+
+    const siteKey = sitesByProjectId.get(l.projectId) || "";
+    const pair = siteKey === "LGT"
+      ? ["SEBASTIEN", "PAUL"]
+      : (siteKey === "CDM" ? ["NICOLAS", "OILI"] : null);
+    if(!pair){
+      migratedLogs.push(l);
+      return;
+    }
+
+    const minutes = Math.max(0, Math.round(Number(l.minutes || 0)));
+    const firstMinutes = Math.ceil(minutes / 2);
+    const secondMinutes = Math.max(0, minutes - firstMinutes);
+    migratedLogs.push({ ...l, internalTech: pair[0], minutes: firstMinutes });
+    migratedLogs.push({ ...l, id: uid(), internalTech: pair[1], minutes: secondMinutes });
+  });
+
+  const dedupMap = new Map();
+  migratedLogs.forEach(l=>{
+    const rk = normalizeTimeLogRole(l);
+    const techKey = normalizeTimeLogInternalTech(l, rk);
+    const key = buildTimeLogKey(l.taskId, l.date, rk, techKey);
+    const prev = dedupMap.get(key);
+    if(!prev){
+      dedupMap.set(key, { ...l });
+      return;
+    }
+    prev.minutes = Math.max(0, Math.round(Number(prev.minutes || 0) + Number(l.minutes || 0)));
     const prevTs = new Date(prev.updatedAt || prev.createdAt || 0).getTime();
     const curTs = new Date(l.updatedAt || l.createdAt || 0).getTime();
-    if(curTs >= prevTs) dedupMap.set(key, l);
+    if(curTs >= prevTs){
+      prev.updatedAt = l.updatedAt || prev.updatedAt;
+      prev.note = l.note || prev.note || "";
+      prev.userKey = l.userKey || prev.userKey || "";
+      prev.userName = l.userName || prev.userName || "";
+      prev.userEmail = l.userEmail || prev.userEmail || "";
+    }
+    dedupMap.set(key, prev);
   });
 
   const state = {projects:normProjects, tasks:normTasks, ui: raw.ui||{}, timeLogs: Array.from(dedupMap.values())};
@@ -3074,6 +3537,77 @@ function saveVendorsRegistry(list){
 
 
 
+function loadInternalTechRegistry(){
+
+  try{
+
+    const raw = localStorage.getItem(INTERNAL_TECH_STORE_KEY);
+
+    if(!raw) return [];
+
+    const arr = JSON.parse(raw);
+
+    if(Array.isArray(arr)) return dedupInternalTechs(arr);
+
+    return [];
+
+  }catch(e){
+
+    console.warn("Unable to load internal tech registry", e);
+
+    return [];
+
+  }
+
+}
+
+function saveInternalTechRegistry(list){
+
+  try{
+
+    localStorage.setItem(INTERNAL_TECH_STORE_KEY, JSON.stringify(dedupInternalTechs(list)));
+
+  }catch(e){
+
+    console.warn("Unable to save internal tech registry", e);
+
+  }
+
+}
+
+function loadInternalTechSitesMap(){
+
+  try{
+
+    const raw = localStorage.getItem(INTERNAL_TECH_SITES_KEY);
+
+    if(!raw) return {};
+
+    return sanitizeTechSitesMap(JSON.parse(raw));
+
+  }catch(e){
+
+    console.warn("Unable to load internal tech sites map", e);
+
+    return {};
+
+  }
+
+}
+
+function saveInternalTechSitesMap(mapObj){
+
+  try{
+
+    localStorage.setItem(INTERNAL_TECH_SITES_KEY, JSON.stringify(sanitizeTechSitesMap(mapObj)));
+
+  }catch(e){
+
+    console.warn("Unable to save internal tech sites map", e);
+
+  }
+
+}
 function loadDescriptionsRegistry(){
 
   try{
@@ -4238,7 +4772,6 @@ function ganttLaneTitle(t){
 
   const projectName = (p?.name || "Sans projet").trim() || "Sans projet";
 
-  const desc = (t.roomNumber || "").trim();
 
   return desc ? `${projectName} - ${desc}` : projectName;
 
@@ -5803,6 +6336,8 @@ function renderTabs(){
 
   const tabs = el("tabs");
   const tabsMaster = el("tabsMaster");
+  const prevTabsScrollTop = tabs ? tabs.scrollTop : 0;
+  const prevTabsMasterScrollTop = tabsMaster ? tabsMaster.scrollTop : 0;
   const tabsSortBtn = el("btnTabsSortProgress");
   const tabsSortResetBtn = el("btnTabsSortReset");
 
@@ -5916,6 +6451,13 @@ function renderTabs(){
     };
 
   });
+
+  if(tabs){
+    tabs.scrollTop = prevTabsScrollTop;
+  }
+  if(tabsMaster){
+    tabsMaster.scrollTop = prevTabsMasterScrollTop;
+  }
 
 }
 
@@ -6514,13 +7056,63 @@ function resolveTimeLogRole(name, email){
   return "interne";
 }
 function normalizeTimeLogRole(log){
-  const raw = String(log?.role || log?.roleKey || "").toLowerCase();
+  const rawSource = (typeof log === "string")
+    ? log
+    : (log?.role || log?.roleKey || "");
+  const raw = String(rawSource).toLowerCase();
   if(raw.includes("rsg/ri")) return "rsg";
   if(raw.includes("rsg")) return "rsg";
   if(raw.includes("ri")) return "ri";
   if(raw.includes("externe")) return "externe";
   if(raw.includes("interne")) return "interne";
   return resolveTimeLogRole(log?.userName || "", log?.userEmail || "");
+}
+function normalizeTimeLogInternalTech(log, roleKeyOverride=""){
+  const roleKey = roleKeyOverride || normalizeTimeLogRole(log);
+  if(roleKey !== "interne") return "";
+  return normalizeInternalTech(log?.internalTech || "");
+}
+function buildTimeLogKey(taskId, dateKey, roleKey, internalTech=""){
+  const rk = normalizeTimeLogRole(roleKey);
+  const techKey = rk === "interne" ? normalizeInternalTech(internalTech || "") : "";
+  return `${taskId}|${dateKey}|${rk}|${techKey.toLowerCase()}`;
+}
+function getInternalTechsForTaskHours(task){
+  if(getTaskRoleKey(task) !== "interne") return [];
+  const selected = normalizeInternalTechList(task?.internalTech || "");
+  if(selected.length) return dedupInternalTechs(selected);
+
+  // Compatibilite legacy: si aucune affectation explicite sur la tâche,
+  // on reprend les techniciens internes qui ont deja des logs reels sur cette tâche.
+  const taskId = String(task?.id || "");
+  if(taskId){
+    const fromLogs = dedupInternalTechs(
+      getCanonicalTimeLogs()
+        .filter((l)=>String(l?.taskId || "") === taskId)
+        .filter((l)=>normalizeTimeLogRole(l) === "interne")
+        .map((l)=>normalizeTimeLogInternalTech(l, "interne"))
+        .filter(Boolean)
+    );
+    if(fromLogs.length) return fromLogs;
+  }
+
+  const site = projectSiteById(task?.projectId || "");
+  const siteKey = canonSiteKey(site || "");
+  const map = sanitizeTechSitesMap(loadInternalTechSitesMap());
+  const all = dedupInternalTechs([
+    ...loadInternalTechRegistry(),
+    ...Object.keys(map || {})
+  ]).map((x)=>normalizeInternalTech(x)).filter(Boolean);
+  const bySite = !siteKey
+    ? all
+    : all.filter((name)=>{
+        const key = Object.keys(map).find((k)=>k.toLowerCase()===name.toLowerCase()) || name;
+        const sites = Array.isArray(map[key]) ? map[key].filter(Boolean) : [];
+        if(!sites.length) return true;
+        return sites.some((s)=>canonSiteKey(s)===siteKey);
+      });
+  if(bySite.length) return bySite;
+  return [];
 }
 function getTaskRoleKey(t){
   const hasVendor = (t?.vendor || "").trim();
@@ -6539,19 +7131,29 @@ function roleLabel(roleKey){
 }
 function getCanonicalTimeLogs(){
   const logs = getTimeLogs();
-  const map = new Map(); // taskId|date|roleKey -> log
+  const map = new Map(); // taskId|date|roleKey|internalTech -> merged log
   logs.forEach(l=>{
     if(!l || !l.taskId || !l.date) return;
     const roleKey = normalizeTimeLogRole(l);
-    const key = `${l.taskId}|${l.date}|${roleKey}`;
+    const techKey = normalizeTimeLogInternalTech(l, roleKey);
+    const key = buildTimeLogKey(l.taskId, l.date, roleKey, techKey);
     const existing = map.get(key);
     if(!existing){
-      map.set(key, l);
+      map.set(key, { ...l });
       return;
     }
+    existing.minutes = Math.max(0, Math.round(Number(existing.minutes || 0) + Number(l.minutes || 0)));
     const prevTs = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
     const curTs = new Date(l.updatedAt || l.createdAt || 0).getTime();
-    if(curTs >= prevTs) map.set(key, l);
+    if(curTs >= prevTs){
+      existing.updatedAt = l.updatedAt || existing.updatedAt;
+      existing.note = l.note || existing.note || "";
+      existing.userKey = l.userKey || existing.userKey || "";
+      existing.userName = l.userName || existing.userName || "";
+      existing.userEmail = l.userEmail || existing.userEmail || "";
+      existing.id = l.id || existing.id;
+    }
+    map.set(key, existing);
   });
   return Array.from(map.values());
 }
@@ -6566,19 +7168,34 @@ function findTimeLog(taskId, dateKey, userKey, userEmail="", userName=""){
     )
   ) || null;
 }
-function findTimeLogByRole(taskId, dateKey, roleKey){
+function findTimeLogByRole(taskId, dateKey, roleKey, internalTech=""){
   const logs = getCanonicalTimeLogs();
-  return logs.find(l=>l.taskId===taskId && l.date===dateKey && normalizeTimeLogRole(l)===roleKey) || null;
+  const targetRole = normalizeTimeLogRole(roleKey);
+  const targetTech = targetRole === "interne" ? normalizeInternalTech(internalTech || "") : "";
+  const matchAnyInternalTech = targetRole === "interne" && !targetTech;
+  return logs.find((l)=>{
+    if(l.taskId!==taskId || l.date!==dateKey) return false;
+    const rk = normalizeTimeLogRole(l);
+    if(rk!==targetRole) return false;
+    if(matchAnyInternalTech) return true;
+    const tk = rk === "interne" ? normalizeTimeLogInternalTech(l, rk) : "";
+    return tk.toLowerCase() === targetTech.toLowerCase();
+  }) || null;
 }
-function upsertTimeLog(taskId, projectId, minutes, note="", dateKeyOverride=null, roleKeyOverride=""){
+function upsertTimeLog(taskId, projectId, minutes, note="", dateKeyOverride=null, roleKeyOverride="", internalTechOverride=""){
   const userKey = getCurrentUserKey();
   const userName = getCurrentUserName();
   const userEmail = getCurrentUserEmail();
   const role = roleKeyOverride || resolveTimeLogRole(userName, userEmail);
+  const internalTech = role === "interne" ? normalizeInternalTech(internalTechOverride || "") : "";
   const dateKey = dateKeyOverride || getSelectedLogDate();
   if(!userKey) return null;
   const logs = getTimeLogs();
-  const duplicates = logs.filter(l=>l.taskId===taskId && l.date===dateKey && normalizeTimeLogRole(l)===role);
+  const duplicates = logs.filter((l)=>{
+    if(l.taskId!==taskId || l.date!==dateKey || normalizeTimeLogRole(l)!==role) return false;
+    const tk = role === "interne" ? normalizeTimeLogInternalTech(l, role) : "";
+    return tk.toLowerCase() === internalTech.toLowerCase();
+  });
   const existing = duplicates[0] || null;
   const now = new Date().toISOString();
   if(existing){
@@ -6587,6 +7204,7 @@ function upsertTimeLog(taskId, projectId, minutes, note="", dateKeyOverride=null
     existing.updatedAt = now;
     existing.role = String(role || "").toUpperCase();
     existing.roleKey = role;
+    existing.internalTech = internalTech;
     for(let i=duplicates.length-1;i>=1;i--){
       const idx = logs.indexOf(duplicates[i]);
       if(idx>=0) logs.splice(idx,1);
@@ -6602,6 +7220,7 @@ function upsertTimeLog(taskId, projectId, minutes, note="", dateKeyOverride=null
     userEmail,
     role: String(role || "").toUpperCase(),
     roleKey: role,
+    internalTech,
     date: dateKey,
     minutes,
     note: note || "",
@@ -6684,7 +7303,6 @@ function getRealMinutesForTasks(tasks){
 }
 function countMissingDaysForUser(t, userKey){
   if(!t || !t.start || !t.end || !userKey) return 0;
-  const roleKey = getTaskRoleKey(t);
   const start = new Date(t.start+"T00:00:00");
   const end = new Date(t.end+"T00:00:00");
   if(isNaN(start) || isNaN(end) || end < start) return 0;
@@ -6694,16 +7312,32 @@ function countMissingDaysForUser(t, userKey){
   for(let d=new Date(start); d<=end && d<=limit; d.setDate(d.getDate()+1)){
     if(!isWeekday(d)) continue;
     const key = toLocalDateKey(d);
-    if(!findTimeLogByRole(t.id, key, roleKey)) missing++;
+    if(!hasAllExpectedLogsForTaskDate(t, key)) missing++;
   }
   return missing;
 }
 function countMissingDaysForTask(t){
   return getMissingDaysList(t).length;
 }
+function getExpectedLogSpecsForTask(t){
+  if(!t) return [];
+  const roleKey = getTaskRoleKey(t);
+  if(roleKey !== "interne"){
+    return [{ roleKey, internalTech:"" }];
+  }
+  const techs = getInternalTechsForTaskHours(t);
+  if(!techs.length){
+    return [{ roleKey:"interne", internalTech:"" }];
+  }
+  return techs.map((name)=>({ roleKey:"interne", internalTech:normalizeInternalTech(name) }));
+}
+function hasAllExpectedLogsForTaskDate(t, dateKey){
+  const specs = getExpectedLogSpecsForTask(t);
+  if(!specs.length) return true;
+  return specs.every((spec)=> !!findTimeLogByRole(t.id, dateKey, spec.roleKey, spec.internalTech));
+}
 function getMissingDaysList(t){
   if(!t || !t.start || !t.end) return [];
-  const roleKey = getTaskRoleKey(t);
   const start = new Date(t.start+"T00:00:00");
   const end = new Date(t.end+"T00:00:00");
   if(isNaN(start) || isNaN(end) || end < start) return [];
@@ -6713,7 +7347,7 @@ function getMissingDaysList(t){
     if(!isWeekday(d)) continue;
     const key = toLocalDateKey(d);
     if(key >= todayKey) continue;
-    if(!findTimeLogByRole(t.id, key, roleKey)) out.push(key);
+    if(!hasAllExpectedLogsForTaskDate(t, key)) out.push(key);
   }
   return out;
 }
@@ -7006,29 +7640,153 @@ function ensureHoursModalCalendarDom(){
   }
   return wrap;
 }
+
+function buildHoursWeekTotalsHtml(rowsMeta, totalsByKey){
+  const totalGlobalMinutes = rowsMeta.reduce((sum, meta)=> sum + (totalsByKey.get(meta.key) || 0), 0);
+  const globalCard =
+    "<div class=\"hm-week-total-item hm-week-total-global\" style=\"display:flex;align-items:center;justify-content:space-between;gap:6px;padding:2px 4px;border:1px solid #cbd5e1;border-radius:6px;background:#eef2ff\">" +
+    "<strong style=\"font-size:11px;color:#1e293b;white-space:nowrap\">TOTAL GLOBAL</strong>" +
+    "<strong style=\"font-size:11px;color:#0f172a;white-space:nowrap\">" + formatHoursMinutes(totalGlobalMinutes) + "</strong>" +
+    "</div>";
+  if(!rowsMeta.length){
+    return (
+      "<div style=\"font-size:11px;color:#64748b\">Aucun intervenant</div>" +
+      globalCard
+    );
+  }
+  const rowsHtml = rowsMeta.map((meta)=>{
+    const minutes = totalsByKey.get(meta.key) || 0;
+    return (
+      "<div class=\"hm-week-total-item\" style=\"display:flex;align-items:center;justify-content:space-between;gap:6px;padding:2px 4px;border:1px solid #dbe2ea;border-radius:6px;background:#ffffff\">" +
+      "<span style=\"display:inline-flex;min-width:0\">" + meta.badgeHtml + "</span>" +
+      "<strong style=\"font-size:11px;color:#0f172a;white-space:nowrap\">" + formatHoursMinutes(minutes) + "</strong>" +
+      "</div>"
+    );
+  }).join("");
+  return rowsHtml + globalCard;
+}
+
+function refreshHoursWeeklyTotalsColumn(){
+  const grid = el("hm_calendar");
+  if(!grid) return;
+  grid.querySelectorAll(".hm-week-row").forEach((weekRow)=>{
+    const target = weekRow.querySelector(".hm-week-total-list");
+    if(!target) return;
+    const totalsByKey = new Map();
+    const rowsMeta = [];
+    weekRow.querySelectorAll(".hm-task-row").forEach((taskRow)=>{
+      const roleKey = normalizeTimeLogRole(taskRow.getAttribute("data-role-key") || "");
+      if(!roleKey) return;
+      const internalTech = normalizeInternalTech(taskRow.getAttribute("data-internal-tech") || "");
+      const badge = taskRow.querySelector(".badge.owner");
+      const ownerLabel = (badge?.textContent || roleLabel(roleKey) || "INTERVENANT").trim().toUpperCase();
+      const key = roleKey + "|" + ownerLabel + "|" + internalTech;
+      if(!totalsByKey.has(key)){
+        rowsMeta.push({ key, badgeHtml: ownerBadge(roleKey, ownerLabel) });
+      }
+      const input = taskRow.querySelector(".hm-day-input");
+      const raw = (input?.value || "").toString().replace(",", ".").trim();
+      const hours = parseFloat(raw);
+      const minutes = (raw !== "" && isFinite(hours) && hours >= 0) ? Math.round(hours * 60) : 0;
+      totalsByKey.set(key, (totalsByKey.get(key) || 0) + minutes);
+    });
+    target.innerHTML = buildHoursWeekTotalsHtml(rowsMeta, totalsByKey);
+  });
+}
+
+function refreshHoursCalendarSelectedCard(selectedDate){
+  const grid = el("hm_calendar");
+  if(!grid) return;
+  const targetDate = (selectedDate || "").trim();
+  grid.querySelectorAll(".hm-day[data-date]").forEach((day)=>{
+    const dateKey = (day.getAttribute("data-date") || "").trim();
+    const isActive = (day.getAttribute("data-active") || "0") === "1";
+    day.classList.toggle("hm-day-selected", !!targetDate && isActive && dateKey === targetDate);
+  });
+}
+
+function getHoursCalendarOrderedInputs(taskId=""){
+  const grid = el("hm_calendar");
+  if(!grid) return [];
+  const all = Array.from(grid.querySelectorAll(".hm-week-row .hm-day[data-active='1'] .hm-day-input[data-active='1']"));
+  const scopedTaskId = (taskId || "").trim();
+  if(!scopedTaskId) return all;
+  return all.filter((input)=> (input.getAttribute("data-task-id") || "").trim() === scopedTaskId);
+}
+
+function isHoursCalendarInputMissing(input){
+  const raw = (input?.value || "").toString().trim();
+  return raw === "";
+}
+
+function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missingOnly=true){
+  const ordered = getHoursCalendarOrderedInputs(taskId);
+  if(!ordered.length) return null;
+  const missing = ordered.filter(isHoursCalendarInputMissing);
+  const list = (missingOnly && missing.length) ? missing : (missingOnly ? [] : ordered);
+  if(!list.length) return null;
+  const step = direction < 0 ? -1 : 1;
+  const idx = list.indexOf(currentInput);
+  if(idx < 0){
+    return step > 0 ? (list[0] || null) : (list[list.length - 1] || null);
+  }
+  return list[idx + step] || null;
+}
+function findFirstHoursInputTarget(taskId="", preferMissing=true){
+  const ordered = getHoursCalendarOrderedInputs(taskId);
+  if(!ordered.length) return null;
+  if(preferMissing){
+    const miss = ordered.find(isHoursCalendarInputMissing);
+    if(miss) return miss;
+  }
+  return ordered[0] || null;
+}
+
 function renderHoursTaskCalendar(t){
   const wrap = ensureHoursModalCalendarDom();
   const grid = el("hm_calendar");
   if(!wrap || !grid) return;
-  if(!t || !t.start || !t.end){
+  if(!t || !t.projectId){
     grid.innerHTML = "";
     return;
   }
 
-  const roleKey = getTaskRoleKey(t);
   const todayKey = toLocalDateKey(new Date());
-  const logs = getCanonicalTimeLogs().filter(l=>l.taskId===t.id && normalizeTimeLogRole(l)===roleKey);
-  const byDate = new Map();
-  logs.forEach(l=>byDate.set(l.date, l));
+  const projectTasks = sortTasks((state?.tasks || []).filter(x=>x.projectId===t.projectId), sortProject);
+  if(!projectTasks.length){
+    grid.innerHTML = "";
+    return;
+  }
 
-  const start = new Date(t.start + "T00:00:00");
-  const end = new Date(t.end + "T00:00:00");
+  const startList = projectTasks.map(x=>(x.start || "")).filter(Boolean).sort();
+  const endList = projectTasks.map(x=>(x.end || "")).filter(Boolean).sort();
+  if(!startList.length || !endList.length){
+    grid.innerHTML = "";
+    return;
+  }
+  const projectStart = startList[0];
+  const projectEnd = endList[endList.length-1];
+  const start = new Date(projectStart + "T00:00:00");
+  const end = new Date(projectEnd + "T00:00:00");
   if(isNaN(start) || isNaN(end) || end < start){
     grid.innerHTML = "";
     return;
   }
 
-  const startDayIdx = (start.getDay() + 6) % 7; // lundi=0
+  const roleByTask = new Map(projectTasks.map(x=>[x.id, getTaskRoleKey(x)]));
+  const logsByKey = new Map();
+  getCanonicalTimeLogs().forEach((l)=>{
+    if(!l || !l.taskId || !roleByTask.has(l.taskId)) return;
+    const role = normalizeTimeLogRole(l);
+    if(role !== roleByTask.get(l.taskId)) return;
+    const techKey = normalizeTimeLogInternalTech(l, role);
+    const date = (l.date || "").toString().slice(0,10);
+    if(!date) return;
+    const key = buildTimeLogKey(l.taskId, date, role, techKey);
+    logsByKey.set(key, l);
+  });
+
+  const startDayIdx = (start.getDay() + 6) % 7;
   const endDayIdx = (end.getDay() + 6) % 7;
   const firstMonday = new Date(start);
   firstMonday.setDate(start.getDate() - startDayIdx);
@@ -7043,93 +7801,170 @@ function renderHoursTaskCalendar(t){
     const weekNo = String(isoWeekInfo(ws).week).padStart(2, "0");
     const weekLabel = "S" + weekNo;
     const cards = [];
+    const weekTotalsByKey = new Map();
+    const weekRowsMeta = [];
 
     for(let i=0; i<5; i++){
       const d = new Date(ws);
       d.setDate(ws.getDate() + i);
-      const key = toLocalDateKey(d);
-      const log = byDate.get(key) || null;
-      const inTaskRange = key >= t.start && key <= t.end;
-      const stateType = inTaskRange ? (log ? "filled" : (key < todayKey ? "missing" : "future")) : "outside";
+      const dateKey = toLocalDateKey(d);
       const dateLabel = d.toLocaleDateString("fr-FR", { day:"2-digit", month:"2-digit" });
-      const hoursValue = log ? String(Math.round(((log.minutes || 0) / 60) * 100) / 100).replace(".", ",") : "";
 
-      let bg = "#ffffff";
-      let border = "#d0d7e2";
-      let text = "#0f172a";
-      if(stateType === "filled"){
-        bg = "#ecfdf3";
-        border = "#7dd3a3";
-      }else if(stateType === "missing"){
-        bg = "#fff7ed";
-        border = "#fdba74";
-      }else if(stateType === "outside"){
-        bg = "#e5e7eb";
-        border = "#cbd5e1";
-        text = "#64748b";
+      const activeTasks = projectTasks.filter((task)=> task.start && task.end && dateKey >= task.start && dateKey <= task.end);
+
+      const taskMap = new Map();
+      activeTasks.forEach((task)=> taskMap.set(task.id, task));
+      const cardTasks = Array.from(taskMap.values());
+
+      const rowHtml = cardTasks.map((task)=>{
+        const roleKey = roleByTask.get(task.id) || getTaskRoleKey(task);
+        const roleName = roleLabel(roleKey);
+        const vendorName = (task.vendor || "").trim();
+        const taskText = ((task.status || "").trim() + " - " + (task.roomNumber || "").trim()).replace(/^\s*-\s*/, "").trim() || "Tâche";
+        const inTaskRange = task.start && task.end && dateKey >= task.start && dateKey <= task.end;
+
+        const rowsForTask = [];
+        if(roleKey === "interne"){
+          const internalTechs = getInternalTechsForTaskHours(task);
+          if(internalTechs.length){
+            internalTechs.forEach((techName)=>{
+              rowsForTask.push({ roleKey, ownerLabel: techName.toUpperCase(), internalTech: techName });
+            });
+          }else{
+            rowsForTask.push({ roleKey, ownerLabel: "INTERNE", internalTech: "" });
+          }
+        }else if(roleKey === "externe"){
+          rowsForTask.push({ roleKey, ownerLabel: (vendorName || "EXTERNE").toUpperCase(), internalTech: "" });
+        }else{
+          rowsForTask.push({ roleKey, ownerLabel: roleName, internalTech: "" });
+        }
+
+        return rowsForTask.map((rowSpec)=>{
+          const rowOwnerHtml = ownerBadge(rowSpec.roleKey, rowSpec.ownerLabel);
+          const logKey = buildTimeLogKey(task.id, dateKey, rowSpec.roleKey, rowSpec.internalTech);
+          const log = logsByKey.get(logKey) || null;
+          const weekRowKey = rowSpec.roleKey + "|" + rowSpec.ownerLabel + "|" + normalizeInternalTech(rowSpec.internalTech || "");
+          if(!weekTotalsByKey.has(weekRowKey)){
+            weekRowsMeta.push({ key: weekRowKey, badgeHtml: rowOwnerHtml });
+          }
+          weekTotalsByKey.set(weekRowKey, (weekTotalsByKey.get(weekRowKey) || 0) + (log?.minutes || 0));
+          const stateType = inTaskRange ? (log ? "filled" : (dateKey < todayKey ? "missing" : "future")) : "outside";
+          const isEditable = inTaskRange && dateKey <= todayKey;
+          const canClearOutside = !isEditable && stateType === "outside" && !!log;
+          const activeAttr = isEditable ? "1" : "0";
+          const clearableAttr = canClearOutside ? "1" : "0";
+          const disabledAttr = (isEditable || canClearOutside) ? "" : "disabled";
+          const hoursValue = log ? String(Math.round(((log.minutes || 0) / 60) * 100) / 100).replace(".", ",") : "";
+
+          let bg = "#ffffff";
+          let border = "#d0d7e2";
+          let text = "#0f172a";
+          if(stateType === "filled"){ bg = "#ecfdf3"; border = "#7dd3a3"; }
+          else if(stateType === "missing"){ bg = "#fff7ed"; border = "#fdba74"; }
+          else if(stateType === "outside"){ bg = "#e5e7eb"; border = "#cbd5e1"; text = "#64748b"; }
+
+          const internalTechAttr = attrEscape(rowSpec.internalTech || "");
+          return (
+            "<div class=\"hm-task-row\" data-date=\"" + dateKey + "\" data-task-id=\"" + task.id + "\" data-role-key=\"" + rowSpec.roleKey + "\" data-internal-tech=\"" + internalTechAttr + "\" data-state-base=\"" + stateType + "\" style=\"border:1px solid " + border + ";background:" + bg + ";color:" + text + ";border-radius:7px;padding:3px;display:flex;flex-direction:column;gap:2px\">" +
+            "<div style=\"font-size:10px;line-height:1.2;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis\">" + rowOwnerHtml + " · " + attrEscape(taskText) + "</div>" +
+            "<input type=\"text\" inputmode=\"decimal\" class=\"hm-day-input\" data-date=\"" + dateKey + "\" data-task-id=\"" + task.id + "\" data-project-id=\"" + task.projectId + "\" data-role-key=\"" + rowSpec.roleKey + "\" data-internal-tech=\"" + internalTechAttr + "\" data-active=\"" + activeAttr + "\" data-clearable=\"" + clearableAttr + "\" value=\"" + hoursValue + "\" placeholder=\"h\" " + disabledAttr + " style=\"height:18px;border:1px solid #cbd5e1;border-radius:6px;padding:1px 6px;background:#fff;color:#111827;font-size:11px\" />" +
+            "</div>");
+        }).join("");
+      }).join("");
+
+      const hasEditable = cardTasks.some((task)=>{
+        const inTaskRange = task.start && task.end && dateKey >= task.start && dateKey <= task.end;
+        return inTaskRange && dateKey <= todayKey;
+      });
+      const hasMissing = cardTasks.some((task)=>{
+        const roleKey = roleByTask.get(task.id) || getTaskRoleKey(task);
+        const rowKeys = (roleKey === "interne")
+          ? (getInternalTechsForTaskHours(task).length
+              ? getInternalTechsForTaskHours(task).map((tech)=>buildTimeLogKey(task.id, dateKey, roleKey, tech))
+              : [buildTimeLogKey(task.id, dateKey, roleKey, "")])
+          : [buildTimeLogKey(task.id, dateKey, roleKey, "")];
+        const inTaskRange = task.start && task.end && dateKey >= task.start && dateKey <= task.end;
+        return inTaskRange && dateKey < todayKey && rowKeys.some((k)=>!logsByKey.get(k));
+      });
+      const hasFilled = cardTasks.some((task)=>{
+        const roleKey = roleByTask.get(task.id) || getTaskRoleKey(task);
+        const rowKeys = (roleKey === "interne")
+          ? (getInternalTechsForTaskHours(task).length
+              ? getInternalTechsForTaskHours(task).map((tech)=>buildTimeLogKey(task.id, dateKey, roleKey, tech))
+              : [buildTimeLogKey(task.id, dateKey, roleKey, "")])
+          : [buildTimeLogKey(task.id, dateKey, roleKey, "")];
+        return rowKeys.some((k)=>!!logsByKey.get(k));
+      });
+
+      let cardBg = "#ffffff";
+      let cardBorder = "#d0d7e2";
+      if(hasMissing){ cardBg = "#fff7ed"; cardBorder = "#fdba74"; }
+      else if(hasFilled){ cardBg = "#ecfdf3"; cardBorder = "#7dd3a3"; }
+      else if(!cardTasks.length){ cardBg = "#f8fafc"; cardBorder = "#e2e8f0"; }
+
+      const isSelected = selectedDate === dateKey && hasEditable;
+      const cardContent = rowHtml || "";
+
+      if(!cardTasks.length){
+        cards.push("<div class=\"hm-day-empty\" style=\"min-height:72px\"></div>");
+        continue;
       }
-
-      const isEditable = inTaskRange && key <= todayKey;
-      const canClearOutside = !isEditable && stateType === "outside" && !!log;
-      const selectedBorder = (selectedDate === key && isEditable) ? "2px solid #2563eb" : ("1px solid " + border);
-      const sub = hoursValue ? (hoursValue + "h") : (stateType === "missing" ? "manquant" : (stateType === "outside" ? "hors tâche" : "—"));
-      const activeAttr = isEditable ? "1" : "0";
-      const clearableAttr = canClearOutside ? "1" : "0";
-      const disabledAttr = (isEditable || canClearOutside) ? "" : "disabled";
-
       cards.push(
-        '<div class="hm-day" data-date="' + key + '" data-active="' + activeAttr + '" data-clearable="' + clearableAttr + '" data-state-base="' + stateType + '" style="text-align:left;border:' + selectedBorder + ';background:' + bg + ';color:' + text + ';border-radius:8px;padding:3px 5px;min-height:52px;cursor:' + ((isEditable || canClearOutside) ? 'pointer' : 'default') + ';display:flex;flex-direction:column;gap:1px">' +
-        '<div style="font-size:11px;line-height:1.1;opacity:.85">' + dayNames[i] + ' • ' + weekLabel + '</div>' +
-        '<div style="font-size:12px;font-weight:700;line-height:1.2">' + dateLabel + '</div>' +
-        '<input type="text" inputmode="decimal" class="hm-day-input" data-date="' + key + '" data-active="' + activeAttr + '" data-clearable="' + clearableAttr + '" value="' + hoursValue + '" placeholder="h" ' + disabledAttr + ' style="margin-top:1px;height:18px;border:1px solid #cbd5e1;border-radius:6px;padding:1px 6px;background:#fff;color:#111827;font-size:11px" />' +
-        '<div class="hm-day-sub" style="font-size:11px;opacity:.92">' + sub + '</div>' +
-        '</div>'
+        "<div class=\"hm-day" + (isSelected ? " hm-day-selected" : "") + "\" data-date=\"" + dateKey + "\" data-active=\"" + (hasEditable ? "1" : "0") + "\" data-state-base=\"" + (hasMissing ? "missing" : (hasFilled ? "filled" : "future")) + "\" style=\"text-align:left;border:1px solid " + cardBorder + ";background:" + cardBg + ";color:#0f172a;border-radius:8px;padding:3px 5px;min-height:72px;cursor:" + (hasEditable ? "pointer" : "default") + ";display:flex;flex-direction:column;gap:3px\">" +
+        "<div style=\"font-size:11px;line-height:1.1;opacity:.85\">" + dayNames[i] + " • " + weekLabel + "</div>" +
+        "<div style=\"font-size:12px;font-weight:700;line-height:1.2\">" + dateLabel + "</div>" +
+        "<div style=\"display:flex;flex-direction:column;gap:3px\">" + cardContent + "</div>" +
+        "</div>"
       );
     }
 
-    let weekDays = 0;
-    const weekTotalMinutes = cards.reduce((acc, _c, idx)=>{
-      const d2 = new Date(ws);
-      d2.setDate(ws.getDate() + idx);
-      const k2 = toLocalDateKey(d2);
-      const inTask2 = k2 >= t.start && k2 <= t.end;
-      if(!inTask2) return acc;
-      weekDays += 1;
-      const l2 = byDate.get(k2) || null;
-      return acc + ((l2 && l2.minutes) ? l2.minutes : 0);
-    }, 0);
-    const weekAvgMinutes = weekDays > 0 ? Math.round(weekTotalMinutes / weekDays) : 0;
+    const weekTotalsHtml = buildHoursWeekTotalsHtml(weekRowsMeta, weekTotalsByKey);
+    const weekTotalCol =
+      "<div class=\"hm-week-total\" style=\"border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;padding:4px;display:flex;flex-direction:column;gap:4px;min-height:72px\">" +
+      "<div class=\"hm-week-total-title\" style=\"font-size:11px;font-weight:700;line-height:1.1;color:#334155\">Total semaine</div>" +
+      "<div class=\"hm-week-total-list\" style=\"display:flex;flex-direction:column;gap:3px\">" + weekTotalsHtml + "</div>" +
+      "</div>";
 
     rows.push(
-      '<div class="hm-week-row" style="display:grid;grid-template-columns:64px repeat(5, minmax(82px,1fr)) 156px;gap:5px;align-items:stretch;margin-bottom:4px">' +
-      '<div style="border:1px solid #cbd5e1;border-radius:8px;background:#eef2ff;color:#1e293b;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">' + weekLabel + '</div>' +
+      "<div class=\"hm-week-row\" style=\"display:grid;grid-template-columns:64px repeat(5, minmax(82px,1fr)) minmax(180px,1.25fr);gap:5px;align-items:stretch;margin-bottom:4px\">" +
+      "<div class=\"hm-week-badge\" style=\"border:1px solid #cbd5e1;border-radius:8px;background:#eef2ff;color:#1e293b;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px\">" + weekLabel + "</div>" +
       cards.join("") +
-      '<div style="border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;color:#0f172a;padding:5px 7px;display:flex;flex-direction:column;justify-content:center;gap:2px">' +
-      '<div style="font-size:11px;color:#475569">Total semaine</div>' +
-      '<div style="font-size:12px;font-weight:700">' + formatHoursMinutes(weekTotalMinutes) + '</div>' +
-      '<div style="font-size:11px;color:#475569">Moyenne semaine</div>' +
-      '<div style="font-size:12px;font-weight:700">' + formatHoursMinutes(weekAvgMinutes) + '</div>' +
-      '</div>' +
-      '</div>'
+      weekTotalCol +
+      "</div>"
     );
   }
 
   grid.innerHTML = rows.join("");
+  refreshHoursCalendarSelectedCard(selectedDate);
+  refreshHoursWeeklyTotalsColumn();
+  const taskIdSet = new Set(projectTasks.map(x=>x.id));
+  const prevCtx = (grid.dataset.currentTaskId || "").trim();
+  if(!prevCtx || !taskIdSet.has(prevCtx)) grid.dataset.currentTaskId = t.id;
 }
-
 function collectHoursTaskCalendarEntries(t){
   const grid = el("hm_calendar");
   if(!t || !grid) return [];
   const todayKey = toLocalDateKey(new Date());
   const entries = [];
-  grid.querySelectorAll(".hm-day-input[data-date][data-active='1']").forEach((input)=>{
+  grid.querySelectorAll(".hm-day-input[data-task-id][data-date]").forEach((input)=>{
     const date = (input.getAttribute("data-date") || "").trim();
+    const taskId = (input.getAttribute("data-task-id") || "").trim();
+    const projectId = (input.getAttribute("data-project-id") || "").trim();
+    const roleKey = normalizeTimeLogRole(input.getAttribute("data-role-key") || "");
+    const internalTech = normalizeInternalTech(input.getAttribute("data-internal-tech") || "");
+    if(!date || !taskId || !projectId || !roleKey) return;
+    const isActive = (input.getAttribute("data-active") || "0") === "1";
+    const isClearable = (input.getAttribute("data-clearable") || "0") === "1";
+    if(!isActive && !isClearable) return;
+    if(date > todayKey && !isClearable) return;
     const raw = (input.value || "").toString().replace(",", ".").trim();
-    if(!date || raw === "") return;
-    if(date > todayKey) return;
+    if(raw === ""){
+      entries.push({ taskId, projectId, roleKey, internalTech, date, empty:true, minutes:0, hours:0 });
+      return;
+    }
     const hours = parseFloat(raw);
     if(!isFinite(hours) || hours < 0) return;
-    entries.push({ date, hours, minutes: Math.round(hours * 60) });
+    entries.push({ taskId, projectId, roleKey, internalTech, date, empty:false, hours, minutes:Math.round(hours * 60) });
   });
   return entries;
 }
@@ -7137,22 +7972,15 @@ function getHoursDraftForDate(dateKey){
   if(!dateKey) return "";
   const grid = el("hm_calendar");
   if(!grid) return "";
-  const input = grid.querySelector(`.hm-day-input[data-date="${dateKey}"]`);
+  const input = grid.querySelector(`.hm-day-input[data-date="${dateKey}"][data-active="1"]`) || grid.querySelector(`.hm-day-input[data-date="${dateKey}"]`);
   return (input?.value || "").toString();
 }
-
 function refreshHoursDayCardVisual(input){
-  const dayInput = input?.closest?.(".hm-day-input[data-date]");
+  const dayInput = input?.closest?.(".hm-day-input[data-date][data-task-id]");
   if(!dayInput) return;
-  const card = dayInput.closest(".hm-day[data-date]");
-  if(!card) return;
-  const day = (dayInput.getAttribute("data-date") || "").trim();
-  const active = (dayInput.getAttribute("data-active") || card.getAttribute("data-active") || "0") === "1";
-  const baseState = (card.getAttribute("data-state-base") || "future").toLowerCase();
-  const hmDate = el("hm_date");
-  const selectedDay = (hmDate?.value || "").trim();
-  const isSelected = !!day && day === selectedDay && active;
-
+  const row = dayInput.closest(".hm-task-row[data-date][data-task-id]");
+  if(!row) return;
+  const baseState = (row.getAttribute("data-state-base") || "future").toLowerCase();
   const raw = (dayInput.value || "").toString().replace(",", ".").trim();
   const parsed = parseFloat(raw);
   const hasValidHours = raw !== "" && isFinite(parsed) && parsed >= 0;
@@ -7161,38 +7989,15 @@ function refreshHoursDayCardVisual(input){
   let bg = "#ffffff";
   let border = "#d0d7e2";
   let text = "#0f172a";
-  if(state === "filled"){
-    bg = "#ecfdf3";
-    border = "#7dd3a3";
-  }else if(state === "missing"){
-    bg = "#fff7ed";
-    border = "#fdba74";
-  }else if(state === "outside"){
-    bg = "#e5e7eb";
-    border = "#cbd5e1";
-    text = "#64748b";
-  }
+  if(state === "filled"){ bg = "#ecfdf3"; border = "#7dd3a3"; }
+  else if(state === "missing"){ bg = "#fff7ed"; border = "#fdba74"; }
+  else if(state === "outside"){ bg = "#e5e7eb"; border = "#cbd5e1"; text = "#64748b"; }
 
-  card.style.background = bg;
-  card.style.color = text;
-  card.style.border = isSelected ? "2px solid #2563eb" : ("1px solid " + border);
+  row.style.background = bg;
+  row.style.color = text;
+  row.style.border = "1px solid " + border;
 
-  const sub = card.querySelector(".hm-day-sub");
-  if(sub){
-    if(hasValidHours){
-      const shown = String(Math.round(parsed * 100) / 100).replace(".", ",");
-      sub.textContent = shown + "h";
-    }else if(state === "missing"){
-      sub.textContent = "manquant";
-    }else if(state === "outside"){
-      sub.textContent = "hors tâche";
-    }else{
-      sub.textContent = "—";
-    }
-  }
 }
-
-
 function computeTaskWeeklySummary(t){
   if(!t || !t.start || !t.end) return { rows: [], totalMinutes: 0 };
   const roleKey = getTaskRoleKey(t);
@@ -7223,74 +8028,98 @@ function computeTaskWeeklySummary(t){
   return { rows: Array.from(rowsMap.values()), totalMinutes };
 }
 
-function computeHoursModalLiveTotals(t, draftEntries=null){
+function computeHoursModalLiveTotals(t, draftEntries=null, contextTaskId=""){
   if(!t) return null;
-  const taskRoleKey = getTaskRoleKey(t);
-  const taskRoleLabel = roleLabel(taskRoleKey);
   const projectTasks = (state?.tasks || []).filter(x=>x.projectId === t.projectId);
+  const contextTask = projectTasks.find(x=>x.id===contextTaskId) || t;
+  const taskRoleKey = getTaskRoleKey(contextTask);
+  const taskRoleLabel = roleLabel(taskRoleKey);
   const taskIds = new Set(projectTasks.map(x=>x.id));
   const roleByTask = new Map(projectTasks.map(x=>[x.id, getTaskRoleKey(x)]));
   const rangeByTask = new Map(projectTasks.map(x=>[x.id, { start:x.start || "", end:x.end || "" }]));
 
   const byRole = { interne:0, externe:0, rsg:0, ri:0 };
+  const byInternalTech = new Map();
   let taskRoleTaskMinutes = 0;
   let taskRoleProjectMinutes = 0;
-  const existingTaskRoleByDate = new Map();
+  const baseByKey = new Map();
+  const metaByKey = new Map();
 
   getCanonicalTimeLogs().forEach((l)=>{
     if(!l || !taskIds.has(l.taskId)) return;
+    const role = normalizeTimeLogRole(l);
+    const expected = roleByTask.get(l.taskId);
+    if(expected && role !== expected) return;
     const date = (l.date || "").toString().slice(0,10);
     if(!date) return;
     const range = rangeByTask.get(l.taskId);
     if(range?.start && date < range.start) return;
     if(range?.end && date > range.end) return;
-
-    const role = normalizeTimeLogRole(l);
-    const expected = roleByTask.get(l.taskId);
-    if(expected && role !== expected) return;
-
     const mins = Number(l.minutes || 0);
     if(!isFinite(mins) || mins <= 0) return;
     const weighted = Math.round(mins * roleHoursMultiplier(role));
+    const internalTech = normalizeTimeLogInternalTech(l, role);
+    const key = buildTimeLogKey(l.taskId, date, role, internalTech);
+    baseByKey.set(key, (baseByKey.get(key) || 0) + weighted);
+    metaByKey.set(key, { taskId:l.taskId, roleKey:role, internalTech });
 
     if(role === "externe") byRole.externe += weighted;
     else if(role === "rsg") byRole.rsg += weighted;
     else if(role === "ri") byRole.ri += weighted;
-    else byRole.interne += weighted;
+    else{
+      byRole.interne += weighted;
+      const techLabel = normalizeTimeLogInternalTech(l, role) || "INTERNE";
+      byInternalTech.set(techLabel, (byInternalTech.get(techLabel) || 0) + weighted);
+    }
 
     if(role === taskRoleKey){
       taskRoleProjectMinutes += weighted;
-      if(l.taskId === t.id){
-        taskRoleTaskMinutes += weighted;
-        existingTaskRoleByDate.set(date, (existingTaskRoleByDate.get(date) || 0) + weighted);
-      }
+      if(l.taskId === contextTask.id) taskRoleTaskMinutes += weighted;
     }
   });
 
   if(Array.isArray(draftEntries)){
-    const draftByDate = new Map();
-    const mult = roleHoursMultiplier(taskRoleKey);
+    const draftByKey = new Map();
     draftEntries.forEach((e)=>{
+      const taskId = (e?.taskId || "").toString().trim();
       const date = (e?.date || "").toString().trim();
-      if(!date) return;
-      if(!isTaskActiveOn(t, date)) return;
+      const role = normalizeTimeLogRole(e?.roleKey || "");
+      if(!taskId || !date || !role || !taskIds.has(taskId)) return;
+      const expected = roleByTask.get(taskId);
+      if(expected && role !== expected) return;
+      const internalTech = normalizeInternalTech(e?.internalTech || "");
+      const key = buildTimeLogKey(taskId, date, role, internalTech);
+      metaByKey.set(key, { taskId, roleKey:role, internalTech });
+      if(e.empty){
+        draftByKey.set(key, 0);
+        return;
+      }
       const mins = Math.max(0, Number(e?.minutes || 0));
       if(!isFinite(mins)) return;
-      draftByDate.set(date, Math.round(mins * mult));
+      draftByKey.set(key, Math.round(mins * roleHoursMultiplier(role)));
     });
 
-    const allDates = new Set([...existingTaskRoleByDate.keys(), ...draftByDate.keys()]);
-    let delta = 0;
-    allDates.forEach((date)=>{
-      delta += (draftByDate.get(date) || 0) - (existingTaskRoleByDate.get(date) || 0);
-    });
+    draftByKey.forEach((draftVal, key)=>{
+      const baseVal = baseByKey.get(key) || 0;
+      const delta = draftVal - baseVal;
+      if(!delta) return;
+      const meta = metaByKey.get(key);
+      if(!meta) return;
+      const role = meta.roleKey;
+      if(role === "externe") byRole.externe += delta;
+      else if(role === "rsg") byRole.rsg += delta;
+      else if(role === "ri") byRole.ri += delta;
+      else{
+        byRole.interne += delta;
+        const techLabel = normalizeInternalTech(meta.internalTech || "") || "INTERNE";
+        byInternalTech.set(techLabel, (byInternalTech.get(techLabel) || 0) + delta);
+      }
 
-    taskRoleTaskMinutes += delta;
-    taskRoleProjectMinutes += delta;
-    if(taskRoleKey === "externe") byRole.externe += delta;
-    else if(taskRoleKey === "rsg") byRole.rsg += delta;
-    else if(taskRoleKey === "ri") byRole.ri += delta;
-    else byRole.interne += delta;
+      if(role === taskRoleKey){
+        taskRoleProjectMinutes += delta;
+        if(meta.taskId === contextTask.id) taskRoleTaskMinutes += delta;
+      }
+    });
   }
 
   taskRoleTaskMinutes = Math.max(0, Math.round(taskRoleTaskMinutes));
@@ -7299,33 +8128,48 @@ function computeHoursModalLiveTotals(t, draftEntries=null){
   byRole.externe = Math.max(0, Math.round(byRole.externe));
   byRole.rsg = Math.max(0, Math.round(byRole.rsg));
   byRole.ri = Math.max(0, Math.round(byRole.ri));
+  const internalTechItems = Array.from(byInternalTech.entries())
+    .map(([name, minutes])=>({ name, minutes: Math.max(0, Math.round(minutes || 0)) }))
+    .filter((x)=>x.minutes > 0)
+    .sort((a,b)=> b.minutes - a.minutes || a.name.localeCompare(b.name, "fr", { sensitivity:"base" }));
 
-  return { taskRoleKey, taskRoleLabel, taskRoleTaskMinutes, taskRoleProjectMinutes, byRole };
+  return { taskRoleKey, taskRoleLabel, taskRoleTaskMinutes, taskRoleProjectMinutes, byRole, internalTechItems, contextTaskId: contextTask.id };
 }
 function renderHoursTaskWeeklySummary(t, draftEntries=null){
   const box = el("hm_summary");
   if(!box) return;
   if(!t){ box.innerHTML = ""; return; }
 
-  const totals = computeHoursModalLiveTotals(t, draftEntries);
+  const contextTaskId = (el("hm_calendar")?.dataset?.currentTaskId || "").trim();
+  const totals = computeHoursModalLiveTotals(t, draftEntries, contextTaskId);
   if(!totals){ box.innerHTML = ""; return; }
 
-  const mainTask = formatHoursMinutes(totals.taskRoleTaskMinutes);
-  const mainProject = formatHoursMinutes(totals.taskRoleProjectMinutes);
-  const rInterne = formatHoursMinutes(totals.byRole.interne || 0);
-  const rExterne = formatHoursMinutes(totals.byRole.externe || 0);
-  const rRsg = formatHoursMinutes(totals.byRole.rsg || 0);
-  const rRi = formatHoursMinutes(totals.byRole.ri || 0);
+  const rInterneMins = Math.max(0, Math.round(totals.byRole.interne || 0));
+  const rExterneMins = Math.max(0, Math.round(totals.byRole.externe || 0));
+  const rRsgMins = Math.max(0, Math.round(totals.byRole.rsg || 0));
+  const rRiMins = Math.max(0, Math.round(totals.byRole.ri || 0));
+  const totalChantierMins = rInterneMins + rExterneMins + rRsgMins + rRiMins;
+
+  const rInterne = formatHoursMinutes(rInterneMins);
+  const rExterne = formatHoursMinutes(rExterneMins);
+  const rRsg = formatHoursMinutes(rRsgMins);
+  const rRi = formatHoursMinutes(rRiMins);
+  const totalChantier = formatHoursMinutes(totalChantierMins);
+  const internalTechChips = (totals.internalTechItems || []).map((it)=>{
+    const label = (it.name || "INTERNE").toUpperCase();
+    return `<span class="chip" style="background:#ecfdf3;border-color:#86efac;min-width:0;padding:3px 8px;line-height:1.2;font-size:12px">${attrEscape(label)}: ${formatHoursMinutes(it.minutes)}</span>`;
+  }).join("");
 
   box.innerHTML = `
-    <div style="margin-top:8px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:10px;color:#0f172a;font-size:13px;display:flex;flex-direction:column;gap:7px">
-      <div style="font-weight:700">Total tâche (${attrEscape(totals.taskRoleLabel)}) : ${mainTask}</div>
-      <div style="font-weight:700">Total chantier (${attrEscape(totals.taskRoleLabel)}) : ${mainProject}</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">
-        <span class="chip" style="background:#ecfdf3;border-color:#86efac">INTERNE : ${rInterne}</span>
-        <span class="chip" style="background:#eef2ff;border-color:#93c5fd">RSG : ${rRsg}</span>
-        <span class="chip" style="background:#f5f3ff;border-color:#c4b5fd">RI : ${rRi}</span>
-        <span class="chip" style="background:#fff7ed;border-color:#fdba74">EXTERNE : ${rExterne}</span>
+    <div style="margin-top:2px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;padding:6px 8px;color:#0f172a;font-size:12px;overflow-x:auto;overflow-y:hidden">
+      <div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;white-space:nowrap;min-width:max-content">
+        <span class="chip" style="background:#eef2ff;border-color:#93c5fd;min-width:0;padding:3px 8px;line-height:1.2;font-size:12px">RSG: ${rRsg}</span>
+        <span class="chip" style="background:#f5f3ff;border-color:#c4b5fd;min-width:0;padding:3px 8px;line-height:1.2;font-size:12px">RI: ${rRi}</span>
+        ${internalTechChips}
+        <span class="chip" style="background:#ecfdf3;border-color:#86efac;min-width:0;padding:3px 8px;line-height:1.2;font-size:12px">INTERNE: ${rInterne}</span>
+        <span class="chip" style="background:#fff7ed;border-color:#fdba74;min-width:0;padding:3px 8px;line-height:1.2;font-size:12px">EXTERNES: ${rExterne}</span>
+        <span class="chip" style="background:#e2e8f0;border-color:#94a3b8;min-width:0;padding:3px 8px;line-height:1.2;font-size:12px">TOTAL CHANTIER</span>
+        <strong style="line-height:1.2;font-size:14px">${totalChantier}</strong>
       </div>
     </div>`;
 }
@@ -7351,7 +8195,7 @@ function syncHoursTaskStatusFromCalendarDraft(t, dayKey, rawValue){
   }
   const inRange = isTaskActiveOn(t, dayKey);
   if(!inRange){
-    hmStatus.textContent = "Hors période";
+    hmStatus.textContent = "";
     return;
   }
   const dateObj = new Date(dayKey + "T00:00:00");
@@ -7441,16 +8285,50 @@ function syncHoursTaskModal(taskOverride=null){
   const hoursInput = el("t_time_hours");
   const statusInput = el("t_time_status");
   const desc = (t.roomNumber || "").trim();
-  const owner = roleLabel(getTaskRoleKey(t));
-  const vendor = (t.vendor || "").trim();
 
   if(hmProject) hmProject.value = (p?.name || "").trim();
-  if(hmTask) hmTask.value = desc ? (((t.status || "").trim()) + " - " + desc) : ((t.status || "").trim() || "Tâche");
+  const projectTasksForModal = (state?.tasks || []).filter(x=>x.projectId===t.projectId);
+  const taskLabels = projectTasksForModal.map((x)=>{
+    const label = ((x.status || "").trim() + " - " + (x.roomNumber || "").trim()).replace(/^\s*-\s*/, "").trim();
+    return label || "Tâche";
+  });
+  if(hmTask) hmTask.value = taskLabels.join(" | ");
+
   if(hmOwnerBadge){
-    const badgeHtml = ownerBadgeForTask(t) || ownerBadge(owner, vendor ? `${owner} - ${vendor}` : owner);
-    hmOwnerBadge.innerHTML = badgeHtml || `<span>${attrEscape(vendor ? `${owner} - ${vendor}` : owner)}</span>`;
+    const ownerSet = new Set();
+    const ownerRows = [];
+    projectTasksForModal.forEach((x)=>{
+      const rk = getTaskRoleKey(x);
+      if(rk === "externe"){
+        const ext = (x.vendor || "").trim().toUpperCase();
+        const label = ext || "EXTERNE";
+        if(ownerSet.has("externe::"+label)) return;
+        ownerSet.add("externe::"+label);
+        ownerRows.push({ rk:"externe", label });
+      }else if(rk === "interne"){
+        const techs = getInternalTechsForTaskHours(x);
+        const rows = techs.length ? techs : [""];
+        rows.forEach((techRaw)=>{
+          const label = (techRaw || "").trim().toUpperCase() || "INTERNE";
+          if(ownerSet.has("interne::"+label)) return;
+          ownerSet.add("interne::"+label);
+          ownerRows.push({ rk:"interne", label });
+        });
+      }else{
+        const label = roleLabel(rk);
+        if(ownerSet.has(rk+"::"+label)) return;
+        ownerSet.add(rk+"::"+label);
+        ownerRows.push({ rk, label });
+      }
+    });
+    hmOwnerBadge.innerHTML = ownerRows.map((r)=> ownerBadge(r.rk, r.label)).join(" ");
   }
-  if(hmPeriod) hmPeriod.value = (formatDate(t.start || "") + " -> " + formatDate(t.end || ""));
+  if(hmPeriod){
+    const datedProjectTasksForModal = projectTasksForModal.filter(x=>x.start && x.end);
+    const pStart = datedProjectTasksForModal.length ? datedProjectTasksForModal.map(x=>x.start).sort()[0] : (t.start || "");
+    const pEnd = datedProjectTasksForModal.length ? datedProjectTasksForModal.map(x=>x.end).sort().slice(-1)[0] : (t.end || "");
+    hmPeriod.value = formatDate(pStart || "") + " -> " + formatDate(pEnd || "");
+  }
   if(hmDate){
     const todayKey = toLocalDateKey(new Date());
     const maxAllowed = (!t.end || t.end > todayKey) ? todayKey : t.end;
@@ -7469,27 +8347,40 @@ function syncHoursTaskModal(taskOverride=null){
   renderHoursTaskCalendar(t);
 }
 function scrollHoursTaskModalToFirstMissing(){
-  const grid = el("hm_calendar");
+  let grid = el("hm_calendar");
   if(!grid) return;
+  const selectedTaskId = (getSelectedTaskForHoursModal()?.id || "").trim();
+  const todayKey = toLocalDateKey(new Date());
   const initialTargetInput =
-    grid.querySelector(".hm-day[data-active='1'][data-state-base='missing'] .hm-day-input[data-active='1']") ||
-    grid.querySelector(".hm-day[data-active='1'] .hm-day-input[data-active='1']");
+    findFirstHoursInputTarget(selectedTaskId, true) ||
+    Array.from(grid.querySelectorAll(`.hm-day[data-active='1'][data-date='${todayKey}'] .hm-day-input[data-active='1']`))
+      .find((input)=> !selectedTaskId || ((input.getAttribute("data-task-id") || "").trim() === selectedTaskId)) ||
+    findFirstHoursInputTarget(selectedTaskId, false) ||
+    findFirstHoursInputTarget("", true) ||
+    findFirstHoursInputTarget("", false);
   if(!initialTargetInput) return;
   const targetDate = (initialTargetInput.getAttribute("data-date") || "").trim();
   const hmDate = el("hm_date");
   const dateInput = el("t_time_date_input");
+  let selectedDate = targetDate;
   if(targetDate){
     if(hmDate) hmDate.value = targetDate;
     if(dateInput) dateInput.value = targetDate;
     const t = getSelectedTaskForHoursModal();
-    if(t) renderHoursTaskCalendar(t);
+    if(t){
+      renderHoursTaskCalendar(t);
+      grid = el("hm_calendar") || grid;
+    }
+  }else{
+    selectedDate = (hmDate?.value || "").trim();
   }
-  const targetInput = targetDate
-    ? grid.querySelector(`.hm-day-input[data-date="${targetDate}"][data-active='1']`)
+  const targetInput = selectedDate
+    ? grid.querySelector(`.hm-day-input[data-date="${selectedDate}"][data-active='1']`)
     : initialTargetInput;
   if(!targetInput) return;
   const targetCard = targetInput.closest(".hm-day");
   if(!targetCard) return;
+  refreshHoursCalendarSelectedCard(selectedDate);
   targetCard.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
   try{ targetInput.focus({ preventScroll: true }); }
   catch(_){ targetInput.focus(); }
@@ -7526,81 +8417,48 @@ function saveHoursTaskModal(){
     alert("Sélectionne une tâche.");
     return;
   }
-  const hmDate = el("hm_date");
-  const hmHours = el("hm_hours");
   const dateInput = el("t_time_date_input");
   const hoursInput = el("t_time_hours");
-  if(!dateInput || !hoursInput || !hmDate || !hmHours){
+  if(!dateInput || !hoursInput){
     alert("Saisie des heures indisponible.");
     return;
   }
 
-  const selectedDate = (hmDate.value || "").trim();
-  const rawHours = (hmHours.value || "").toString().replace(",", ".").trim();
-  if(rawHours){
-    if(!selectedDate || !isTaskActiveOn(t, selectedDate)){
-      alert("La date est hors période de la tâche.");
-      return;
-    }
-    const dateObj = new Date(selectedDate + "T00:00:00");
-    if(!isWeekday(dateObj)){
-      alert("La date tombe un week-end.");
-      return;
-    }
-    const todayKey = toLocalDateKey(new Date());
-    if(selectedDate > todayKey){
-      alert("La date est dans le futur.");
-      return;
-    }
-  }
-
-  const entries = collectHoursTaskCalendarEntries(t);
-  const grid = el("hm_calendar");
-  const emptyDates = [];
-  (grid ? Array.from(grid.querySelectorAll(".hm-day-input[data-date]:not([disabled])")) : []).forEach((input)=>{
-    const date = (input.getAttribute("data-date") || "").trim();
-    if(!date) return;
-    const raw = (input.value || "").toString().replace(",", ".").trim();
-    if(raw === "") emptyDates.push(date);
-  });
-
-  if(rawHours){
-    const hours = parseFloat(rawHours);
-    if(!isFinite(hours) || hours < 0){
-      alert("Temps invalide.");
-      return;
-    }
-    if(!entries.some((x)=>x.date === selectedDate)){
-      entries.push({ date: selectedDate, hours, minutes: Math.round(hours * 60) });
-    }
-  }
-  if(!entries.length && !emptyDates.length){
+  const draftEntries = collectHoursTaskCalendarEntries(t);
+  const filledEntries = draftEntries.filter(e=>!e.empty);
+  const emptyEntries = draftEntries.filter(e=>!!e.empty);
+  if(!filledEntries.length && !emptyEntries.length){
     alert("Saisis le temps passé (heures).");
     return;
   }
 
   saveUndoSnapshot();
-  const roleKey = getTaskRoleKey(t);
-  entries.forEach((entry)=>{
-    if(!isTaskActiveOn(t, entry.date)) return;
+  const todayKey = toLocalDateKey(new Date());
+  filledEntries.forEach((entry)=>{
+    const taskRef = (state?.tasks || []).find(x=>x.id===entry.taskId && x.projectId===entry.projectId);
+    if(!taskRef || !taskRef.start || !taskRef.end) return;
+    if(entry.date < taskRef.start || entry.date > taskRef.end) return;
+    if(entry.date > todayKey) return;
     const dObj = new Date(entry.date + "T00:00:00");
     if(!isWeekday(dObj)) return;
-    upsertTimeLog(t.id, t.projectId, entry.minutes, "", entry.date, roleKey);
+    upsertTimeLog(entry.taskId, entry.projectId, entry.minutes, "", entry.date, entry.roleKey, entry.internalTech || "");
   });
-  if(emptyDates.length){
+
+  if(emptyEntries.length){
+    const emptySet = new Set(emptyEntries.map((e)=>buildTimeLogKey(e.taskId, e.date, normalizeTimeLogRole(e.roleKey), e.internalTech || "")));
     const logs = getTimeLogs();
     for(let i = logs.length - 1; i >= 0; i--){
       const l = logs[i];
-      if(!l || l.taskId !== t.id) continue;
-      if(!emptyDates.includes(l.date)) continue;
-      if(normalizeTimeLogRole(l) !== roleKey) continue;
+      if(!l) continue;
+      const role = normalizeTimeLogRole(l);
+      const key = buildTimeLogKey(l.taskId, l.date, role, normalizeTimeLogInternalTech(l, role));
+      if(!emptySet.has(key)) continue;
       logs.splice(i, 1);
     }
   }
+
   closeHoursTaskModal(false);
   markDirty();
-  dateInput.value = selectedDate;
-  hoursInput.value = rawHours;
   updateTimeLogUI(t, true);
   renderMaster();
   renderProject();
@@ -7885,6 +8743,10 @@ function renderProject(){
     setInputValue("t_owner", ownerVal.toUpperCase()==="RSG/RI" ? "RSG" : ownerVal);
 
     setInputValue("t_vendor", t.vendor||"");
+    setInputValue("t_internal_tech_filter", "");
+
+    const taskInternalTechs = normalizeInternalTechList(t.internalTech || "");
+    setSelectedInternalTechValues(taskInternalTechs);
 
     const startVal = toInputDate(t.start);
     const endVal = toInputDate(t.end);
@@ -7897,16 +8759,22 @@ function renderProject(){
     if(window.__fpEnd){ try{ window.__fpEnd.setDate(endVal || null, true, "Y-m-d"); }catch(e){ softCatch(e); } }
 
     setStatusSelection(t.status||"");
+    syncTaskOwnerDependentFields();
+    refreshInternalTechInputOptions(taskInternalTechs);
+    setSelectedInternalTechValues(taskInternalTechs);
 
   }else{
 
-    setInputValue("t_room", ""); setInputValue("t_owner", ""); setInputValue("t_vendor", ""); setInputValue("t_start", ""); setInputValue("t_end", "");
+    setInputValue("t_room", ""); setInputValue("t_owner", ""); setInputValue("t_vendor", ""); setInputValue("t_internal_tech_filter", ""); setSelectedInternalTechValues([]); setInputValue("t_start", ""); setInputValue("t_end", "");
     setTaskProgressUI(0);
     updateTimeLogUI(null);
     if(window.__fpStart){ try{ window.__fpStart.setDate(null); }catch(e){ softCatch(e); } }
     if(window.__fpEnd){ try{ window.__fpEnd.setDate(null); }catch(e){ softCatch(e); } }
 
     setStatusSelection("");
+    syncTaskOwnerDependentFields();
+    refreshInternalTechInputOptions([]);
+    setSelectedInternalTechValues([]);
 
   }
 
@@ -8874,6 +9742,7 @@ function bind(){
   buildStatusMenu();
 
   setStatusSelection("");
+    syncTaskOwnerDependentFields();
 
   el("t_status_display")?.addEventListener("click",(e)=>{ e.stopPropagation(); toggleStatusMenu(true); });
 
@@ -8969,6 +9838,37 @@ function bind(){
     if(input) input.value = "";
     refreshVendorsList();
     renderConfigVendorsList();
+    renderAll();
+  });
+el("btnInternalTechAdd")?.addEventListener("click", ()=>{
+    if(getCurrentRole()!=="admin") return;
+    const input = el("cfg_internal_tech_name");
+    const siteSelect = el("cfg_internal_tech_site");
+    const name = normalizeInternalTech(input?.value || "");
+    const site = String(siteSelect?.value || "").trim();
+    if(!name){
+      alert("Renseigne le nom du technicien interne.");
+      return;
+    }
+    if(!site){
+      alert("Choisis un site pour ce technicien.");
+      return;
+    }
+    const registry = loadInternalTechRegistry();
+    if(registry.some(v=>v.toLowerCase()===name.toLowerCase())){
+      alert("Technicien déjà existant.");
+      return;
+    }
+    const next = dedupInternalTechs([...registry, name]).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+    saveInternalTechRegistry(next);
+    const mapNow = sanitizeTechSitesMap(loadInternalTechSitesMap());
+    mapNow[name] = [site];
+    saveInternalTechSitesMap(mapNow);
+    if(input) input.value = "";
+    if(siteSelect) siteSelect.value = "";
+    refreshInternalTechsList();
+    refreshInternalTechSiteSelect();
+    renderConfigInternalTechList();
     renderAll();
   });
   el("cfg_vac_year")?.addEventListener("change", ()=>{
@@ -9211,6 +10111,7 @@ function bind(){
     updateTimeLogUI(t, true);
     syncHoursTaskStatusFromCalendarDraft(t, hmDate.value || "", hmHours?.value || "");
     renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+    refreshHoursCalendarSelectedCard(hmDate.value || "");
     });
     el("hm_date")?.addEventListener("input", ()=>{
     const t = getSelectedTaskForHoursModal();
@@ -9223,6 +10124,7 @@ function bind(){
     updateTimeLogUI(t, true);
     syncHoursTaskStatusFromCalendarDraft(t, hmDate.value || "", hmHours?.value || "");
     renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+    refreshHoursCalendarSelectedCard(hmDate.value || "");
     });
 
     el("hoursTaskModal")?.addEventListener("click", (e)=>{
@@ -9240,9 +10142,13 @@ function bind(){
     const hmHours = el("hm_hours");
     updateTimeLogUI(t, true);
     const dayInput = btn.querySelector(".hm-day-input[data-date]");
+    const grid = el("hm_calendar");
+    const clickTaskId = (dayInput?.getAttribute("data-task-id") || "").trim();
+    if(grid && clickTaskId) grid.dataset.currentTaskId = clickTaskId;
     if(hmHours) hmHours.value = dayInput ? (dayInput.value || "") : "";
     syncHoursTaskStatusFromCalendarDraft(t, day, dayInput ? dayInput.value : "");
     renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+    refreshHoursCalendarSelectedCard(day);
     });
     el("hoursTaskModal")?.addEventListener("input", (e)=>{
     if(!e.target?.closest?.("#hm_calendar")) return;
@@ -9253,6 +10159,9 @@ function bind(){
     if(!isActive && !isClearable) return;
     if(isClearable) input.value = "";
     const day = input.getAttribute("data-date") || "";
+    const grid = el("hm_calendar");
+    const inputTaskId = (input.getAttribute("data-task-id") || "").trim();
+    if(grid && inputTaskId) grid.dataset.currentTaskId = inputTaskId;
     const hmDate = el("hm_date");
     const hmHours = el("hm_hours");
     const dateInput = el("t_time_date_input");
@@ -9262,6 +10171,7 @@ function bind(){
     }
     if(hmHours) hmHours.value = input.value || "";
     refreshHoursDayCardVisual(input);
+    refreshHoursWeeklyTotalsColumn();
     const t = getSelectedTaskForHoursModal();
     if(t){
       syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
@@ -9274,6 +10184,9 @@ function bind(){
     if(!input) return;
     const t = getSelectedTaskForHoursModal();
     const day = input.getAttribute("data-date") || "";
+    const grid = el("hm_calendar");
+    const inputTaskId = (input.getAttribute("data-task-id") || "").trim();
+    if(grid && inputTaskId) grid.dataset.currentTaskId = inputTaskId;
     const hmDate = el("hm_date");
     const dateInput = el("t_time_date_input");
     if(!t || !day) return;
@@ -9284,13 +10197,18 @@ function bind(){
     updateTimeLogUI(t, true);
     syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
     renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+    refreshHoursCalendarSelectedCard(day);
     });
     el("hoursTaskModal")?.addEventListener("keydown", (e)=>{
-    if(e.key !== "Enter" || e.isComposing) return;
+    if(e.isComposing) return;
+    if(e.key !== "Enter" && e.key !== "Tab") return;
     const input = e.target?.closest?.("#hm_calendar .hm-day-input[data-date][data-active='1']");
     if(!input) return;
     e.preventDefault();
     const day = input.getAttribute("data-date") || "";
+    const grid = el("hm_calendar");
+    const inputTaskId = (input.getAttribute("data-task-id") || "").trim();
+    if(grid && inputTaskId) grid.dataset.currentTaskId = inputTaskId;
     const hmDate = el("hm_date");
     const hmHours = el("hm_hours");
     const dateInput = el("t_time_date_input");
@@ -9302,7 +10220,30 @@ function bind(){
       syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
       renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
     }
-    saveHoursTaskModal();
+    const scopeTaskId = _missingHoursFlow ? ((t?.id || "").trim()) : "";
+    const nextInput = (e.key === "Tab" && e.shiftKey)
+      ? getHoursCalendarNextInput(input, -1, scopeTaskId, true)
+      : getHoursCalendarNextInput(input, 1, scopeTaskId, true);
+    if(nextInput){
+      const nextDay = (nextInput.getAttribute("data-date") || "").trim();
+      refreshHoursCalendarSelectedCard(nextDay);
+      const nextCard = nextInput.closest(".hm-day");
+      if(nextCard) nextCard.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
+      try{ nextInput.focus({ preventScroll: true }); }
+      catch(_){ nextInput.focus(); }
+      try{ nextInput.select(); }catch(_){}
+      return;
+    }
+    if(_missingHoursFlow){
+      saveHoursTaskModal();
+      return;
+    }
+    if(e.key === "Enter"){
+      saveHoursTaskModal();
+      return;
+    }
+    const btnSave = el("btnSaveHoursModal");
+    if(btnSave) btnSave.focus();
     });
   }
   // bouton impression PDF (utilise print.css)
@@ -9436,7 +10377,7 @@ function bind(){
 
     const id=uid();
 
-    state.tasks.push({id,projectId:selectedProjectId,roomNumber:"",status:"",owner:"",vendor:"",start:"",end:"",notes:""});
+    state.tasks.push({id,projectId:selectedProjectId,roomNumber:"",status:"",owner:"",vendor:"",internalTech:"",start:"",end:"",notes:""});
 
     selectedTaskId=id;
 
@@ -9460,12 +10401,14 @@ function bind(){
     const tRoom = el("t_room"); if(tRoom) tRoom.value = "";
     const tOwner = el("t_owner"); if(tOwner) tOwner.value = "";
     const tVendor = el("t_vendor"); if(tVendor) tVendor.value = "";
+    setSelectedInternalTechValues([]);
     const tStart = el("t_start"); if(tStart) tStart.value = todayVal;
     const tEnd = el("t_end"); if(tEnd) tEnd.value = "";
     if(window.__fpStart){ try{ window.__fpStart.setDate(todayVal || null, true, "Y-m-d"); }catch(e){ softCatch(e); } }
     if(window.__fpEnd){ try{ window.__fpEnd.setDate(null, true, "Y-m-d"); }catch(e){ softCatch(e); } }
 
     setStatusSelection("");
+    syncTaskOwnerDependentFields();
 
   });
 
@@ -9564,13 +10507,21 @@ function bind(){
     t.owner      = String(el("t_owner").value || "").toUpperCase();
 
     t.vendor     = el("t_vendor").value.trim();
+    t.internalTech = serializeInternalTechList(getSelectedInternalTechValues());
     const taskOwnerType = ownerType(t.owner);
     if(taskOwnerType === "externe" && !t.vendor){
       alert("Prestataire externe requis : renseignez le nom du prestataire.");
       return;
     }
+    if(taskOwnerType === "interne" && !normalizeInternalTechList(t.internalTech || "").length){
+      alert("Technicien interne requis : sélectionnez au moins un technicien.");
+      return;
+    }
     if(taskOwnerType !== "externe"){
       t.vendor = "";
+    }
+    if(taskOwnerType !== "interne"){
+      t.internalTech = "";
     }
 
     t.start      = unformatDate(el("t_start").value);
@@ -9715,6 +10666,59 @@ function bind(){
   });
 
   setupVendorPicker();
+
+  const ownerSelect = el("t_owner");
+  ownerSelect?.addEventListener("change", ()=>{
+    syncTaskOwnerDependentFields();
+  });
+  ownerSelect?.addEventListener("input", ()=>{
+    syncTaskOwnerDependentFields();
+  });
+  const tInternalFilter = el("t_internal_tech_filter");
+  const tInternalBox = el("t_internal_tech_listbox");
+  const openInternalTechList = ()=>{
+    refreshInternalTechInputOptions();
+    renderInternalTechListbox();
+    showInternalTechDropdown(true);
+  };
+  tInternalFilter?.addEventListener("click", openInternalTechList);
+  tInternalFilter?.addEventListener("focus", openInternalTechList);
+  tInternalFilter?.addEventListener("keydown", (e)=>{
+    if(e.key === "ArrowDown" || e.key === "F4"){
+      e.preventDefault();
+      openInternalTechList();
+      return;
+    }
+    if(e.key === "Escape"){
+      showInternalTechDropdown(false);
+    }
+  });
+  tInternalFilter?.addEventListener("input", ()=>{
+    tInternalFilter.dataset.filterQuery = tInternalFilter.value || "";
+    renderInternalTechListbox();
+    showInternalTechDropdown(true);
+  });
+  if(tInternalBox){
+    tInternalBox.addEventListener("mousedown", (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    tInternalBox.addEventListener("click", (e)=>{
+      e.stopPropagation();
+    });
+  }
+  document.addEventListener("click", (e)=>{
+    const box = el("t_internal_tech_listbox");
+    const input = el("t_internal_tech_filter");
+    const group = el("t_internal_tech_group");
+    if(!box || !input) return;
+    if(group?.contains(e.target)) return;
+    if(!box.contains(e.target) && e.target !== input){
+      showInternalTechDropdown(false);
+    }
+  });
+  updateInternalTechFilterDisplay();
+  syncTaskOwnerDependentFields();
 
   setupDescriptionPicker();
 
@@ -11090,6 +12094,40 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
