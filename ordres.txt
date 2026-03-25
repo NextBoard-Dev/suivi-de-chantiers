@@ -1,7 +1,0 @@
-ok. maintenant on a une logique complète et précise des exports pour les projet. tu vas devoir appliquer cette même logique pour l'ongle "Tableau maitre". cet onglet comporte des tableaux et gantt avec beaucoup plus de données, lignes de taches et colonnes de semaines). la pagination, les sauts de pages… sera beaucoup plus difficile. tu devras faire extrêmement attention a tout ces aspects. valides tous les anciens snapshots et crée en un nouveau bien identifié avant d'entamer cette partie. tu ne dois rien casser 
-
-Maintenant fais un check complet du code pour le consolider, éliminer les redondances, les patchs sur patchs. Donne moi tes résultats. Et si je dis go, tu fais d'abord un snapshot complet bien identifié.
-
-Maintenant fais un check complet métier pour le consolider, éliminer les redondances, les patchs sur patchs. Donne moi tes résultats. Et si je dis go, tu fais d'abord un snapshot complet bien identifié.
-
-
