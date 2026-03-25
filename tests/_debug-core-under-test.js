@@ -164,6 +164,31 @@ function normalizeTimeLogRole(log){
   return resolveTimeLogRole(log?.userName || "", log?.userEmail || "");
 }
 
+function normalizeTimeLogInternalTech(log, roleKeyOverride=""){
+  const roleKey = roleKeyOverride || normalizeTimeLogRole(log);
+  if(roleKey !== "interne") return "";
+  return normalizeInternalTech(log?.internalTech || "");
+}
+
+function getExpectedLogSpecsForTask(t){
+  if(!t) return [];
+  const roleKey = getTaskRoleKey(t);
+  if(roleKey !== "interne"){
+    return [{ roleKey, internalTech:"" }];
+  }
+  const techs = getInternalTechsForTaskHours(t);
+  if(!techs.length){
+    return [{ roleKey:"interne", internalTech:"" }];
+  }
+  return techs.map((name)=>({ roleKey:"interne", internalTech:normalizeInternalTech(name) }));
+}
+
+function hasAllExpectedLogsForTaskDate(t, dateKey){
+  const specs = getExpectedLogSpecsForTask(t);
+  if(!specs.length) return true;
+  return specs.every((spec)=> !!findTimeLogByRole(t.id, dateKey, spec.roleKey, spec.internalTech));
+}
+
 function getTaskTimeTotals(taskRef){
   const taskId = (typeof taskRef === "string") ? taskRef : taskRef?.id;
   const roleKey = (typeof taskRef === "object" && taskRef) ? getTaskRoleKey(taskRef) : "";
@@ -235,10 +260,56 @@ function computeWorkloadData(tasks, mode="week", rangeStart=null, rangeEnd=null)
 
 }
 let __testLogs = [];
+const normalizeInternalTech = (v="") => (v || "").toString().trim();
+const dedupInternalTechs = (arr=[]) => {
+  const seen = new Set();
+  const out = [];
+  (arr || []).forEach((v)=>{
+    const norm = normalizeInternalTech(v);
+    if(!norm) return;
+    const key = norm.toLowerCase();
+    if(seen.has(key)) return;
+    seen.add(key);
+    out.push(norm);
+  });
+  return out;
+};
+const normalizeInternalTechList = (raw="") =>
+  dedupInternalTechs(
+    String(raw || "")
+      .split(/[;,]/)
+      .map((v)=>normalizeInternalTech(v))
+      .filter(Boolean)
+  );
+function resolveTimeLogRole(){ return "interne"; }
 function getCanonicalTimeLogs(){ return __testLogs; }
 function setTestLogs(logs){ __testLogs = Array.isArray(logs) ? logs : []; }
+function buildTimeLogKey(taskId, dateKey, roleKey, internalTech=""){
+  const rk = normalizeTimeLogRole(roleKey);
+  const techKey = rk === "interne" ? normalizeInternalTech(internalTech || "") : "";
+  return [taskId, dateKey, rk, techKey.toLowerCase()].join("|");
+}
+function findTimeLogByRole(taskId, dateKey, roleKey, internalTech=""){
+  const logs = getCanonicalTimeLogs();
+  const targetRole = normalizeTimeLogRole(roleKey);
+  const targetTech = targetRole === "interne" ? normalizeInternalTech(internalTech || "") : "";
+  const matchAnyInternalTech = targetRole === "interne" && !targetTech;
+  return logs.find((l)=>{
+    if(l.taskId!==taskId || l.date!==dateKey) return false;
+    const rk = normalizeTimeLogRole(l);
+    if(rk!==targetRole) return false;
+    if(matchAnyInternalTech) return true;
+    const tk = rk === "interne" ? normalizeTimeLogInternalTech(l, rk) : "";
+    return tk.toLowerCase() === targetTech.toLowerCase();
+  }) || null;
+}
+function getInternalTechsForTaskHours(task){
+  const selected = normalizeInternalTechList(task?.internalTech || "");
+  if(selected.length) return dedupInternalTechs(selected);
+  return [];
+}
 function weekKey(d){
   const info=isoWeekInfo(d);
   return `${info.year}-S${String(info.week).padStart(2,"0")}`;
 }
-module.exports={ownerType,isWeekday,countWeekdays,durationDays,startOfWeek,addDays,isoWeekInfo,weekKey,barGeometry,getTaskRoleKey,roleLabel,roleHoursMultiplier,normalizeTimeLogRole,getTaskTimeTotals,computeWorkloadData,setTestLogs};
+module.exports={ownerType,normalizeInternalTech,dedupInternalTechs,normalizeInternalTechList,isWeekday,countWeekdays,durationDays,startOfWeek,addDays,isoWeekInfo,weekKey,barGeometry,getTaskRoleKey,roleLabel,roleHoursMultiplier,normalizeTimeLogRole,normalizeTimeLogInternalTech,buildTimeLogKey,findTimeLogByRole,getExpectedLogSpecsForTask,hasAllExpectedLogsForTaskDate,getTaskTimeTotals,computeWorkloadData,setTestLogs};
