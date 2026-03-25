@@ -7217,15 +7217,9 @@ function upsertTimeLog(taskId, projectId, minutes, note="", dateKeyOverride=null
   return entry;
 }
 function purgeTaskLogsByAssignedRole(task){
-  if(!task || !task.id) return 0;
-  const roleKey = getTaskRoleKey(task);
-  const logs = getTimeLogs();
-  const before = logs.length;
-  state.timeLogs = logs.filter(l=>{
-    if(!l || l.taskId !== task.id) return true;
-    return normalizeTimeLogRole(l) === roleKey;
-  });
-  return before - state.timeLogs.length;
+  // Désactivé volontairement: conserver l'historique des heures,
+  // même en cas de changement de rôle/propriétaire de tâche.
+  return 0;
 }
 function formatHoursMinutes(totalMinutes){
   const h = Math.floor(totalMinutes / 60);
