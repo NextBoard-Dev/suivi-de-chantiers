@@ -3808,7 +3808,7 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
   grid-template-areas:
     "topbar-main topbar-user"
     "topbar-controls topbar-controls" !important;
-  align-items:end !important;
+  align-items:baseline !important;
   column-gap:10px !important;
   row-gap:8px !important;
   background:linear-gradient(180deg, rgba(245,242,235,0.97) 0%, rgba(236,233,226,0.94) 100%) !important;
@@ -3821,7 +3821,7 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
   grid-area:topbar-main !important;
   min-width:0 !important;
   display:flex !important;
-  align-items:flex-end !important;
+  align-items:baseline !important;
   gap:10px !important;
   white-space:nowrap !important;
 }
@@ -3838,7 +3838,7 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
   min-width:0 !important;
   margin:0 0 1px 0 !important;
   font-size:12px !important;
-  line-height:1.15 !important;
+  line-height:1.1 !important;
   color:#556d79 !important;
   white-space:nowrap !important;
   overflow:hidden !important;
@@ -3848,11 +3848,12 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
 .topbar-user{
   grid-area:topbar-user !important;
   justify-self:end !important;
-  align-self:end !important;
+  align-self:baseline !important;
   max-width:none !important;
   min-width:0 !important;
   text-align:right !important;
   font-size:12px !important;
+  line-height:1.1 !important;
   font-weight:700 !important;
   color:#1f313b !important;
   white-space:nowrap !important;
@@ -3864,9 +3865,23 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
   grid-area:topbar-controls !important;
   display:flex !important;
   justify-content:flex-end !important;
-  align-items:flex-end !important;
+  align-items:baseline !important;
   gap:6px !important;
   min-width:0 !important;
+}
+
+.topbar .brand .copyright,
+.topbar .subtitle .brand-date,
+.topbar .subtitle #dataQualityBadge{
+  vertical-align:baseline !important;
+}
+.topbar .subtitle .brand-date{
+  display:inline-block !important;
+  line-height:1.1 !important;
+}
+.topbar .subtitle #dataQualityBadge{
+  display:inline-block !important;
+  line-height:1.1 !important;
 }
 .topbar-controls .actions{
   display:flex !important;
