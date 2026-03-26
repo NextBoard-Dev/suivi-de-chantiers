@@ -5371,6 +5371,21 @@ h3,
 
 
 /* Verrou cible: opacite uniquement de l'entete colonne Tache (entre Nom et Prestataire) */
+#btnToggleMasterVendor,
+#btnToggleMasterStatus,
+#btnToggleProjectVendor,
+#btnToggleProjectStatus{
+  font-family:"Segoe UI", Arial, sans-serif !important;
+  font-weight:300 !important;
+  letter-spacing:0 !important;
+  text-shadow:none !important;
+  -webkit-text-stroke:0 !important;
+  -webkit-font-smoothing:antialiased !important;
+  -moz-osx-font-smoothing:grayscale !important;
+  font-variant:normal !important;
+  font-variant-caps:normal !important;
+  text-transform:uppercase !important;
+}
 .gantt-table table thead th.gantt-col-task,
 .gantt-table .table thead th.gantt-col-task,
 .gantt-table table thead th.gantt-task-col-project,
