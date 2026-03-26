@@ -7702,15 +7702,43 @@ function isHoursCalendarInputMissing(input){
 function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missingOnly=true){
   const ordered = getHoursCalendarOrderedInputs(taskId);
   if(!ordered.length) return null;
-  const missing = ordered.filter(isHoursCalendarInputMissing);
-  const list = (missingOnly && missing.length) ? missing : (missingOnly ? [] : ordered);
-  if(!list.length) return null;
   const step = direction < 0 ? -1 : 1;
-  const idx = list.indexOf(currentInput);
-  if(idx < 0){
-    return step > 0 ? (list[0] || null) : (list[list.length - 1] || null);
+  if(!missingOnly){
+    const idx = ordered.indexOf(currentInput);
+    if(idx < 0){
+      return step > 0 ? (ordered[0] || null) : (ordered[ordered.length - 1] || null);
+    }
+    return ordered[idx + step] || null;
   }
-  return list[idx + step] || null;
+
+  const missing = ordered.filter(isHoursCalendarInputMissing);
+  if(!missing.length) return null;
+
+  const orderedIdx = ordered.indexOf(currentInput);
+  if(orderedIdx < 0){
+    return step > 0 ? (missing[0] || null) : (missing[missing.length - 1] || null);
+  }
+
+  // Priorite: terminer d'abord toutes les saisies manquantes dans la carte jour courante.
+  const currentCard = currentInput?.closest?.(".hm-day[data-active='1']");
+  if(currentCard){
+    const cardInputs = ordered.filter((input)=> input.closest(".hm-day[data-active='1']") === currentCard);
+    const cardIdx = cardInputs.indexOf(currentInput);
+    if(cardIdx >= 0){
+      for(let i = cardIdx + step; i >= 0 && i < cardInputs.length; i += step){
+        if(isHoursCalendarInputMissing(cardInputs[i])) return cardInputs[i];
+      }
+    }else{
+      for(let i = (step > 0 ? 0 : cardInputs.length - 1); i >= 0 && i < cardInputs.length; i += step){
+        if(isHoursCalendarInputMissing(cardInputs[i])) return cardInputs[i];
+      }
+    }
+  }
+
+  for(let i = orderedIdx + step; i >= 0 && i < ordered.length; i += step){
+    if(isHoursCalendarInputMissing(ordered[i])) return ordered[i];
+  }
+  return null;
 }
 function findFirstHoursInputTarget(taskId="", preferMissing=true){
   const ordered = getHoursCalendarOrderedInputs(taskId);
