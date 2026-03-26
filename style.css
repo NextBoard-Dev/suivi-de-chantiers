@@ -1003,11 +1003,19 @@ body{
   background:linear-gradient(180deg, rgba(255,255,255,0.97) 0%, rgba(240,238,233,0.9) 100%);
   box-shadow:0 10px 22px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.65);
 }
-.tablewrap.project-tasks{
-  max-height:280px; /* ~10 lignes */
-  overflow:auto;
-  scrollbar-width:none;
-  overscroll-behavior:contain;
+@media screen{
+  .tablewrap.project-tasks{
+    max-height:280px; /* ~10 lignes en affichage */
+    overflow:auto;
+    scrollbar-width:none;
+    overscroll-behavior:contain;
+  }
+  #viewMaster .tablewrap{
+    max-height:280px; /* ~10 lignes en affichage */
+    overflow:auto;
+    scrollbar-width:none;
+    overscroll-behavior:contain;
+  }
 }
 .sidebar::-webkit-scrollbar{width:8px;height:8px;}
 .sidebar::-webkit-scrollbar-thumb{

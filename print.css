@@ -259,6 +259,31 @@ body {
   border-bottom: 1px solid #e2e8f0 !important;
   color:#0f172a !important;
 }
+/* Export PDF: ne jamais couper une ligne de tableau entre 2 pages */
+body.print-mode .table{
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  page-break-inside: auto !important;
+}
+body.print-mode .table thead{
+  display: table-header-group !important;
+}
+body.print-mode .table tfoot{
+  display: table-footer-group !important;
+}
+body.print-mode .table tbody{
+  page-break-inside: auto !important;
+  break-inside: auto !important;
+}
+body.print-mode .table tr{
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+body.print-mode .table th,
+body.print-mode .table td{
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
 .legend-item {
   border: 1px solid #d1d5db !important;
   background: #f8fafc !important;

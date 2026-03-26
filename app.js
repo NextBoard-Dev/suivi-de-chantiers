@@ -11205,7 +11205,7 @@ function computeRowAwareSliceHeights(block, canvas, maxSlicePx){
   const out = [];
   const maxPx = Math.max(1, Math.floor(maxSlicePx || 1));
   try{
-    const rows = Array.from(block?.querySelectorAll?.('.gantt-table .table tbody tr') || []);
+    const rows = Array.from(block?.querySelectorAll?.('.table tbody tr, .report-table tbody tr') || []);
     const blockHeight = Number(block?.scrollHeight || block?.offsetHeight || 0);
     if(!rows.length || !blockHeight || !canvas?.height) return out;
 
