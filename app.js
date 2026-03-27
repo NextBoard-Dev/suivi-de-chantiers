@@ -1544,7 +1544,7 @@ function refreshInternalTechsList(){
   const registry = loadInternalTechRegistry();
   const fromTasks = (state?.tasks||[])
     .filter(t=>ownerType(t.owner || "") === "interne")
-    .map(t=> normalizeInternalTech(t.internalTech || ""))
+    .flatMap(t=> normalizeInternalTechList(t.internalTech || ""))
     .filter(Boolean);
   internalTechCache = dedupInternalTechs([...registry, ...fromTasks])
     .sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
@@ -2128,20 +2128,78 @@ const DESC_DELETE_KEY = "descriptions_deleted";
 
 const normalizeVendor = (v="")=> v.trim();
 
-const normalizeInternalTech = (v="")=> v.trim();
+const normalizeInternalTech = (v="")=>
+  String(v || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
 
 const normalizeDesc = (v="")=> v.trim();
 
 const normalizeInternalTechList = (raw="")=>
   dedupInternalTechs(
     String(raw || "")
-      .split(/[;,]/)
+      .split(/[;,/|]+/)
       .map((v)=>normalizeInternalTech(v))
       .filter(Boolean)
   );
 
 const serializeInternalTechList = (values=[])=>
   dedupInternalTechs((values || []).map((v)=>normalizeInternalTech(v)).filter(Boolean)).join(", ");
+
+function getAuthoritativeInternalTechs(){
+  return dedupInternalTechs(loadInternalTechRegistry())
+    .map((v)=>normalizeInternalTech(v))
+    .filter(Boolean)
+    .sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+}
+
+function resolveInternalTechAgainstList(rawTech="", candidates=[]){
+  const clean = normalizeInternalTech(rawTech || "");
+  const list = dedupInternalTechs(candidates).map((v)=>normalizeInternalTech(v)).filter(Boolean);
+  if(!clean || !list.length) return "";
+
+  const byLower = new Map(list.map((name)=>[name.toLowerCase(), name]));
+  if(byLower.has(clean.toLowerCase())) return byLower.get(clean.toLowerCase());
+
+  const splitValues = dedupInternalTechs([clean]);
+  if(splitValues.length > 1){
+    const mapped = dedupInternalTechs(splitValues.map((v)=>resolveInternalTechAgainstList(v, list)).filter(Boolean));
+    if(mapped.length === 1) return mapped[0];
+    return "";
+  }
+
+  const low = clean.toLowerCase();
+  const fuzzy = list.filter((name)=>{
+    const n = name.toLowerCase();
+    if(n.startsWith(low + " ") || low.startsWith(n + " ")) return true;
+    const firstN = n.split(/\s+/)[0] || "";
+    const firstL = low.split(/\s+/)[0] || "";
+    return firstN && firstN === firstL;
+  });
+  if(fuzzy.length === 1) return fuzzy[0];
+  return "";
+}
+
+function canonicalizeInternalTechForTask(rawTech="", taskObj=null){
+  const clean = normalizeInternalTech(rawTech || "");
+  if(!clean) return "";
+  const expected = normalizeInternalTechList(taskObj?.internalTech || "");
+  const authoritative = getAuthoritativeInternalTechs();
+
+  if(expected.length){
+    const mappedExpected = resolveInternalTechAgainstList(clean, expected);
+    if(mappedExpected) return mappedExpected;
+  }
+
+  const mappedAuthoritative = resolveInternalTechAgainstList(clean, authoritative);
+  if(mappedAuthoritative) return mappedAuthoritative;
+
+  if(expected.length === 1) return expected[0];
+  return authoritative.length ? "" : clean;
+}
 
 const dedupVendors = (arr=[])=>{
 
@@ -2177,18 +2235,16 @@ const dedupInternalTechs = (arr=[])=>{
   const out = [];
 
   arr.forEach(v=>{
-
-    const norm = normalizeInternalTech(v);
-
-    if(!norm) return;
-
-    const key = norm.toLowerCase();
-
-    if(seen.has(key)) return;
-
-    seen.add(key);
-
-    out.push(norm);
+    const parts = String(v || "")
+      .split(/[;,/|]+/)
+      .map((x)=>normalizeInternalTech(x))
+      .filter(Boolean);
+    parts.forEach((norm)=>{
+      const key = norm.toLowerCase();
+      if(seen.has(key)) return;
+      seen.add(key);
+      out.push(norm);
+    });
 
   });
 
@@ -2204,9 +2260,8 @@ function sanitizeTechSitesMap(mapObj){
 
   Object.keys(src).forEach(name=>{
 
-    const normName = normalizeInternalTech(name);
-
-    if(!normName) return;
+    const names = dedupInternalTechs([name]);
+    if(!names.length) return;
 
     const rawSites = Array.isArray(src[name]) ? src[name] : [];
 
@@ -2216,7 +2271,9 @@ function sanitizeTechSitesMap(mapObj){
         .filter(Boolean)
     )].sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
 
-    out[normName] = cleanSites;
+    names.forEach((normName)=>{
+      out[normName] = cleanSites;
+    });
 
   });
 
@@ -3094,7 +3151,11 @@ function normalizeState(raw){
     const ownerNorm = (String(t.owner||"").toUpperCase()==="RSG/RI") ? "RSG" : (t.owner||"");
     const ownerNormType = ownerType(ownerNorm);
     let vendorNorm = (t.vendor||"").toString().trim();
-    let internalTechNorm = serializeInternalTechList(normalizeInternalTechList(t.internalTech || ""));
+    let internalTechNorm = serializeInternalTechList(
+      normalizeInternalTechList(t.internalTech || "")
+        .map((name)=>canonicalizeInternalTechForTask(name, null))
+        .filter(Boolean)
+    );
     if(String(ownerNorm).toLowerCase().includes("prestataire externe") && !vendorNorm){
       vendorNorm = "PRESTATAIRE NON RENSEIGNE";
     }
@@ -3163,7 +3224,8 @@ function normalizeState(raw){
     if(expectedRole !== "interne"){
       fixed.internalTech = "";
     }else{
-      fixed.internalTech = normalizeTimeLogInternalTech(fixed, expectedRole);
+      const techRaw = normalizeTimeLogInternalTech(fixed, expectedRole);
+      fixed.internalTech = canonicalizeInternalTechForTask(techRaw, task);
     }
     keptLogs.push(fixed);
   });
@@ -3810,6 +3872,7 @@ function showSaveToast(type, title, detail){
 }
 
 let _lastDataQualityReport = null;
+let _lastCloudAlignmentReport = null;
 
 function collectDataQualityIssues(currentState=state){
   const s = currentState || {};
@@ -3819,6 +3882,7 @@ function collectDataQualityIssues(currentState=state){
 
   let invalidDates = 0;
   let externalWithoutVendor = 0;
+  let internalWithoutTech = 0;
   let legacyStatus = 0;
   let orphanLogs = 0;
   let logsOutsideTaskRange = 0;
@@ -3830,7 +3894,10 @@ function collectDataQualityIssues(currentState=state){
 
     const owner = (t?.owner || "").toString().toLowerCase();
     const vendor = (t?.vendor || "").toString().trim();
+    const ownerTyp = ownerType(t?.owner || "");
+    const internalTechCount = normalizeInternalTechList(t?.internalTech || "").length;
     if(owner.includes("prestataire externe") && !vendor) externalWithoutVendor += 1;
+    if(ownerTyp === "interne" && internalTechCount <= 0) internalWithoutTech += 1;
 
     const statuses = String(t?.status || "").split(",").map(x=>x.trim().toUpperCase()).filter(Boolean);
     if(statuses.includes("HUIS_SER")) legacyStatus += 1;
@@ -3850,6 +3917,7 @@ function collectDataQualityIssues(currentState=state){
   const issues = [];
   if(invalidDates > 0) issues.push(`${invalidDates} tâche(s) avec dates invalides`);
   if(externalWithoutVendor > 0) issues.push(`${externalWithoutVendor} tâche(s) externes sans prestataire`);
+  if(internalWithoutTech > 0) issues.push(`${internalWithoutTech} tâche(s) internes sans technicien`);
   if(legacyStatus > 0) issues.push(`${legacyStatus} tâche(s) en statut obsolète HUIS_SER`);
   if(orphanLogs > 0) issues.push(`${orphanLogs} log(s) orphelins`);
   if(logsOutsideTaskRange > 0) issues.push(`${logsOutsideTaskRange} log(s) hors période de tâche`);
@@ -3857,7 +3925,7 @@ function collectDataQualityIssues(currentState=state){
   return {
     ok: issues.length === 0,
     issues,
-    counts: { invalidDates, externalWithoutVendor, legacyStatus, orphanLogs, logsOutsideTaskRange }
+    counts: { invalidDates, externalWithoutVendor, internalWithoutTech, legacyStatus, orphanLogs, logsOutsideTaskRange }
   };
 }
 
@@ -3866,6 +3934,92 @@ function formatQualityIssuesForToast(report){
   const base = report.issues.slice(0,3).join(" | ");
   if(report.issues.length <= 3) return base;
   return `${base} | +${report.issues.length - 3} autre(s)`;
+}
+
+function normalizeComparableField(v){
+  if(v === null || v === undefined) return "";
+  if(typeof v === "number") return String(Math.round(v));
+  return String(v).trim();
+}
+
+function buildComparableTimeLogMap(logs, includeUpdatedAt){
+  const map = new Map();
+  (logs || []).forEach((l)=>{
+    if(!l || !l.taskId || !l.date) return;
+    const roleKey = normalizeTimeLogRole(l);
+    const internalTech = normalizeTimeLogInternalTech(l, roleKey);
+    const key = buildTimeLogKey(l.taskId, l.date, roleKey, internalTech);
+    const entry = {
+      minutes: normalizeComparableField(l.minutes || 0),
+      roleKey: normalizeComparableField(roleKey),
+      internalTech: normalizeComparableField(internalTech),
+      note: normalizeComparableField(l.note),
+      userKey: normalizeComparableField(l.userKey),
+      userName: normalizeComparableField(l.userName),
+      userEmail: normalizeComparableField(l.userEmail),
+      createdAt: normalizeComparableField(l.createdAt)
+    };
+    if(includeUpdatedAt){
+      entry.updatedAt = normalizeComparableField(l.updatedAt);
+    }
+    map.set(key, JSON.stringify(entry));
+  });
+  return map;
+}
+
+function computeMapDiffStats(localMap, remoteMap){
+  const keys = new Set([...localMap.keys(), ...remoteMap.keys()]);
+  let onlyLocal = 0;
+  let onlyRemote = 0;
+  let valueDiff = 0;
+  keys.forEach((k)=>{
+    const l = localMap.get(k);
+    const r = remoteMap.get(k);
+    if(l === undefined){ onlyRemote += 1; return; }
+    if(r === undefined){ onlyLocal += 1; return; }
+    if(l !== r) valueDiff += 1;
+  });
+  return {
+    onlyLocal,
+    onlyRemote,
+    valueDiff,
+    total: onlyLocal + onlyRemote + valueDiff
+  };
+}
+
+async function collectCloudAlignmentReport(currentState=state){
+  try{
+    const sb = _getSupabaseClient();
+    if(!sb) return { available:false, okBusiness:false, reason:"supabase_unavailable" };
+    const session = await _ensureSession();
+    if(!session || !session.user) return { available:false, okBusiness:false, reason:"session_unavailable" };
+    const { data, error } = await sb
+      .from(SUPABASE_TABLE)
+      .select("state_json, updated_at")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    if(error || !data || !data.state_json){
+      return { available:false, okBusiness:false, reason:"state_unavailable" };
+    }
+    const localNormalized = normalizeState(deepClone(currentState || {}));
+    const remoteNormalized = normalizeState(data.state_json || {});
+    const localStrict = buildComparableTimeLogMap(localNormalized.timeLogs || [], true);
+    const remoteStrict = buildComparableTimeLogMap(remoteNormalized.timeLogs || [], true);
+    const localBusiness = buildComparableTimeLogMap(localNormalized.timeLogs || [], false);
+    const remoteBusiness = buildComparableTimeLogMap(remoteNormalized.timeLogs || [], false);
+    const strict = computeMapDiffStats(localStrict, remoteStrict);
+    const business = computeMapDiffStats(localBusiness, remoteBusiness);
+    return {
+      available:true,
+      okBusiness: business.total === 0,
+      strict,
+      business,
+      remoteUpdatedAt: data.updated_at || ""
+    };
+  }catch(e){
+    softCatch(e);
+    return { available:false, okBusiness:false, reason:"exception" };
+  }
 }
 
 function updateDataQualityBanner(notify=false){
@@ -3877,7 +4031,12 @@ function updateDataQualityBanner(notify=false){
   const report = collectDataQualityIssues(state);
   _lastDataQualityReport = report;
 
-  const badgeLabel = report.ok ? "Qualité données: OK" : `Qualité données: ${report.issues.length} incohérence(s)`;
+  const cloudSuffix = _lastCloudAlignmentReport?.available
+    ? (_lastCloudAlignmentReport.okBusiness ? " · Cloud OK" : ` · Cloud ${_lastCloudAlignmentReport.business.total} écart(s)`)
+    : "";
+  const badgeLabel = report.ok
+    ? `Qualité données: OK${cloudSuffix}`
+    : `Qualité données: ${report.issues.length} incohérence(s)${cloudSuffix}`;
   const badgeStyle = report.ok
     ? "color:#16a34a;border:1px solid #16a34a33;background:#16a34a14;padding:2px 8px;border-radius:10px;cursor:pointer;"
     : "color:#b91c1c;border:1px solid #b91c1c33;background:#b91c1c14;padding:2px 8px;border-radius:10px;cursor:pointer;";
@@ -3885,9 +4044,19 @@ function updateDataQualityBanner(notify=false){
   brandSub.innerHTML = `Tableau maître  Projets  Gantt  <span class="brand-date">${fmt}</span>  <span id="dataQualityBadge" style="${badgeStyle}">${badgeLabel}</span>`;
   const badge = el("dataQualityBadge");
   if(badge){
-    badge.onclick = ()=>{
+    badge.onclick = async ()=>{
       const r = _lastDataQualityReport || collectDataQualityIssues(state);
-      showSaveToast(r.ok ? "ok" : "error", "Contrôle qualité", formatQualityIssuesForToast(r));
+      const cloud = await collectCloudAlignmentReport(state);
+      _lastCloudAlignmentReport = cloud;
+      const cloudMsg = !cloud.available
+        ? "Cloud: contrôle indisponible"
+        : (cloud.okBusiness
+            ? `Cloud: OK (seul updatedAt peut différer, ${cloud.strict.total} écart(s) technique(s))`
+            : `Cloud: ${cloud.business.total} écart(s) métier`);
+      const detail = `${formatQualityIssuesForToast(r)} | ${cloudMsg}`;
+      const isOk = r.ok && (!cloud.available || cloud.okBusiness);
+      showSaveToast(isOk ? "ok" : "error", "Contrôle qualité", detail);
+      updateDataQualityBanner(false);
     };
   }
 
@@ -4031,8 +4200,10 @@ function animateCardsInView(viewId){
 function saveState(opts={}){
 
   try{
+    const normalized = normalizeState(state || {});
+    state = normalized;
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
 
     clearDirty();
 
@@ -4040,7 +4211,7 @@ function saveState(opts={}){
 
     const skipSupabase = !!opts.skipSupabase || _suppressSupabaseSave;
     if(!skipSupabase){
-      try{ if(window.saveAppStateToSupabase) window.saveAppStateToSupabase(state); }catch(e){ softCatch(e); }
+      try{ if(window.saveAppStateToSupabase) window.saveAppStateToSupabase(normalized); }catch(e){ softCatch(e); }
     }
 
   }catch(e){
@@ -5059,6 +5230,76 @@ function computeWorkloadData(tasks, mode="week", rangeStart=null, rangeEnd=null)
 
 }
 
+function computeWorkloadPieSegments(tasks, rangeStart=null, rangeEnd=null){
+  const ids = new Set((tasks || []).map((t)=>t.id));
+  const roleByTask = new Map((tasks || []).map((t)=>[t.id, getTaskRoleKey(t)]));
+  const rangeByTask = new Map((tasks || []).map((t)=>[t.id, { start:t.start || "", end:t.end || "" }]));
+  if(ids.size === 0) return [];
+
+  const internalByName = new Map();
+  let totalExternal = 0;
+  let totalRsg = 0;
+  let totalRi = 0;
+
+  getCanonicalTimeLogs().forEach((l)=>{
+    if(!ids.has(l.taskId)) return;
+    if(!l.date) return;
+    const d = new Date(l.date + "T00:00:00");
+    if(isNaN(d)) return;
+
+    const range = rangeByTask.get(l.taskId);
+    if(range?.start && l.date < range.start) return;
+    if(range?.end && l.date > range.end) return;
+    if(rangeStart && d < rangeStart) return;
+    if(rangeEnd && d > rangeEnd) return;
+
+    const roleExpected = roleByTask.get(l.taskId);
+    const role = normalizeTimeLogRole(l);
+    if(roleExpected && role !== roleExpected) return;
+
+    const minutes = Number(l.minutes || 0);
+    if(!minutes) return;
+    const weightedHours = (minutes / 60) * roleHoursMultiplier(role);
+    if(!weightedHours) return;
+
+    if(role === "interne"){
+      const techName = (normalizeTimeLogInternalTech(l, role) || "INTERNE").toUpperCase();
+      internalByName.set(techName, (internalByName.get(techName) || 0) + weightedHours);
+    }else if(role === "rsg"){
+      totalRsg += weightedHours;
+    }else if(role === "ri"){
+      totalRi += weightedHours;
+    }else{
+      totalExternal += weightedHours;
+    }
+  });
+
+  const internalPalette = ["#6fbe8c","#64b580","#58ab75","#4ca069","#42965f","#3a8a56","#2f7f4c","#277243"];
+  const segments = [];
+  Array.from(internalByName.entries())
+    .sort((a,b)=>a[0].localeCompare(b[0], "fr", { sensitivity:"base" }))
+    .forEach(([name, value], idx)=>{
+      if(!value) return;
+      segments.push({
+        key: `interne_${idx}`,
+        label: name,
+        value,
+        color: internalPalette[idx % internalPalette.length]
+      });
+    });
+
+  if(totalExternal > 0){
+    segments.push({ key:"externe", label:"EXTERNE", value:totalExternal, color:"#d6b27b" });
+  }
+  if(totalRsg > 0){
+    segments.push({ key:"rsg", label:"RSG", value:totalRsg, color:"#93abc7" });
+  }
+  if(totalRi > 0){
+    segments.push({ key:"ri", label:"RI", value:totalRi, color:"#b7a6ca" });
+  }
+  return segments;
+}
+
 
 
 function niceMax(v){
@@ -5328,7 +5569,6 @@ function renderProjectTasks(projectId){
   }
 
   let h="";
-  const includeChantierCol = (new Set(sorted.map(t=>String(t.projectId||""))).size > 1);
   const missingMap = buildMissingDaysMap(sorted);
 
   sorted.forEach(t=>{
@@ -5840,6 +6080,35 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
   const pieSvg = pieId ? el(pieId) : null;
 
+  const renderPieLegendInCard = (segments, formatter)=>{
+    if(!pieSvg) return;
+    const wrap = pieSvg.parentElement;
+    if(!wrap) return;
+    wrap.classList.add("workload-pie-card");
+    pieSvg.classList.add("workload-pie-svg");
+    let legendCol = wrap.querySelector(".workload-pie-legend");
+    if(!legendCol){
+      legendCol = document.createElement("div");
+      legendCol.className = "workload-pie-legend";
+      wrap.insertBefore(legendCol, pieSvg);
+    }
+    const safe = (segments || []).filter((s)=>(Number(s?.value) || 0) > 0);
+    wrap.classList.toggle("workload-pie-single", safe.length === 1);
+    if(!safe.length){
+      legendCol.innerHTML = "";
+      legendCol.style.display = "none";
+      return;
+    }
+    legendCol.style.display = "flex";
+    const fmt = (typeof formatter === "function") ? formatter : ((v)=>String(v||0));
+    legendCol.innerHTML = safe.map((seg)=>`
+      <div class="workload-pie-legend-item">
+        <span class="workload-pie-legend-dot" style="background:${attrEscape(seg.color || "#6fbe8c")}"></span>
+        <span>${attrEscape(seg.label)} ${fmt(seg.value)} h</span>
+      </div>
+    `).join("");
+  };
+
   const idPrefix = (chartId || "workload").replace(/[^a-zA-Z0-9_-]/g,"");
 
   const gradIntId = `${idPrefix}-grad-int`;
@@ -5878,6 +6147,7 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
       pieSvg.setAttribute("viewBox", "0 0 720 360");
 
       pieSvg.innerHTML = `<text x="360" y="180" text-anchor="middle" fill="#6b7280" font-size="12">Aucune donnée</text>`;
+      renderPieLegendInCard([], null);
 
     }
 
@@ -6135,23 +6405,26 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
   if(pieSvg){
 
-    const pw=720, ph=360;
+    const pw=720;
+    const pieSegments = computeWorkloadPieSegments(tasks, range.start, range.end);
+    const titleBaseY = 286;
+    const ph = 360;
 
     pieSvg.setAttribute("viewBox", `0 0 ${pw} ${ph}`);
+    pieSvg.setAttribute("height", String(ph));
+    pieSvg.style.height = `${ph}px`;
 
     pieSvg.style.fontFamily = fontFamily;
 
     pieSvg.setAttribute("font-family", fontFamily);
 
-    const pieTotal = Math.max(1, totalInt + totalExt + totalRsg + totalRi);
+    const pieTotal = Math.max(1, pieSegments.reduce((s, seg)=>s + (Number(seg.value) || 0), 0));
+    renderPieLegendInCard(pieSegments, fmtHours);
 
     const cx = pw/2;
     const cy = 148;
     const r = 104;
-    const titleY = ph - 56;
-    const legendY = ph - 36;
-    const minLabelY = 24;
-    const maxLabelY = ph - 96;
+    const titleY = titleBaseY;
 
     const polar = (cx, cy, r, a)=>{
 
@@ -6175,27 +6448,21 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 
     let pieMarkup = `<rect class="wl-bg" x="0" y="0" width="${pw}" height="${ph}" fill="url(#${brushedId})"></rect>`;
 
-    if(totalInt + totalExt + totalRsg + totalRi > 0){
+    if(pieSegments.length > 0){
 
       const gap = 8;
-      const segments = [
-        { key:"interne", label:"Interne", value: totalInt, grad: gradIntId },
-        { key:"externe", label:"Externe", value: totalExt, grad: gradExtId },
-        { key:"rsg", label:"RSG", value: totalRsg, grad: gradRsgId },
-        { key:"ri", label:"RI", value: totalRi, grad: gradRiId },
-      ].filter(s=>s.value>0);
+      const segments = pieSegments.filter((s)=>(Number(s?.value) || 0) > 0);
+      const labelConnectors = [];
+      const labelTexts = [];
 
       if(segments.length === 1){
         const s = segments[0];
-          const labelPos = polar(cx, cy, r * 1.14, 90);
         pieMarkup += `
-          <circle class="wl-anim-pie-seg" style="--pie-delay:0.02s" cx="${cx}" cy="${cy}" r="${r}" fill="url(#${s.grad})" filter="url(#${pieShadowId})"></circle>
-          <line x1="${cx}" y1="${cy - r * 0.95}" x2="${cx}" y2="${cy - r * 1.06}" stroke="#94a3b8" stroke-width="1" />
-          <text class="wl-axis wl-anim-pie-label" style="--pie-delay:0.12s" x="${labelPos.x}" y="${labelPos.y}" text-anchor="middle">${s.label}</text>
-          <text class="wl-value wl-anim-pie-label" style="--pie-delay:0.18s" x="${labelPos.x}" y="${labelPos.y + 14}" text-anchor="middle">${fmtHours(s.value)} h</text>
+          <circle class="wl-anim-pie-seg" style="--pie-delay:0.02s" cx="${cx}" cy="${cy}" r="${r}" fill="${attrEscape(s.color || "#6fbe8c")}" filter="url(#${pieShadowId})"></circle>
         `;
       }else{
         let cursor = 0;
+        const labelCandidates = [];
         segments.forEach((seg,segIdx)=>{
           const angle = (seg.value / pieTotal) * 360;
           const startA = cursor;
@@ -6203,35 +6470,72 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
           const midA = startA + angle / 2;
           const off = polar(0,0,gap,midA);
           const path = arcPath(cx+off.x, cy+off.y, r, startA, endA);
-          const innerPos = polar(cx+off.x, cy+off.y, r*0.95, midA);
-          const outerPos = polar(cx+off.x, cy+off.y, r*1.14, midA);
-          const labelY = Math.max(minLabelY, Math.min(maxLabelY, outerPos.y));
-          const anchor = outerPos.x < cx ? "end" : "start";
           const segDelay = (segIdx * 0.12 + 0.02).toFixed(2);
-          const labDelay = (segIdx * 0.12 + 0.14).toFixed(2);
           pieMarkup += `
-            <path class="wl-anim-pie-seg" style="--pie-delay:${segDelay}s" d="${path}" fill="url(#${seg.grad})" filter="url(#${pieShadowId})"></path>
-            <line x1="${innerPos.x}" y1="${innerPos.y}" x2="${outerPos.x}" y2="${outerPos.y}" stroke="#94a3b8" stroke-width="1" />
-            <text class="wl-axis wl-anim-pie-label" style="--pie-delay:${labDelay}s" x="${outerPos.x}" y="${labelY}" text-anchor="${anchor}">${seg.label}</text>
-            <text class="wl-value wl-anim-pie-label" style="--pie-delay:${(Number(labDelay)+0.04).toFixed(2)}s" x="${outerPos.x}" y="${labelY + 14}" text-anchor="${anchor}">${fmtHours(seg.value)} h</text>
+            <path class="wl-anim-pie-seg" style="--pie-delay:${segDelay}s" d="${path}" fill="${attrEscape(seg.color || "#6fbe8c")}" filter="url(#${pieShadowId})"></path>
           `;
+          labelCandidates.push({
+            seg,
+            segIdx,
+            midA,
+            side: Math.cos((midA - 90) * Math.PI / 180) >= 0 ? 1 : -1
+          });
           cursor = endA;
+        });
+
+        const topY = cy - r - 8;
+        const bottomY = cy + r + 8;
+        const minGap = 14;
+        [-1, 1].forEach((side)=>{
+          const items = labelCandidates
+            .filter((c)=>c.side === side)
+            .map((c)=>{
+              const outer = polar(cx, cy, r + 8, c.midA);
+              const elbow = polar(cx, cy, r + 22, c.midA);
+              return {
+                ...c,
+                outer,
+                elbow,
+                y: elbow.y
+              };
+            })
+            .sort((a,b)=>a.y-b.y);
+          if(!items.length) return;
+          for(let i=1; i<items.length; i++){
+            items[i].y = Math.max(items[i].y, items[i-1].y + minGap);
+          }
+          const overflowBottom = items[items.length-1].y - bottomY;
+          if(overflowBottom > 0){
+            for(let i=items.length-1; i>=0; i--){
+              items[i].y -= overflowBottom;
+            }
+          }
+          for(let i=items.length-2; i>=0; i--){
+            items[i].y = Math.min(items[i].y, items[i+1].y - minGap);
+          }
+          const overflowTop = topY - items[0].y;
+          if(overflowTop > 0){
+            for(let i=0; i<items.length; i++){
+              items[i].y += overflowTop;
+            }
+          }
+          items.forEach((it)=>{
+            const endX = cx + (side > 0 ? r + 62 : -(r + 62));
+            const textX = endX + (side > 0 ? 6 : -6);
+            const anchor = side > 0 ? "start" : "end";
+            const delay = (it.segIdx * 0.12 + 0.14).toFixed(2);
+            labelConnectors.push(
+              `<polyline class="wl-anim-pie-label" style="--pie-delay:${delay}s" points="${it.outer.x},${it.outer.y} ${it.elbow.x},${it.elbow.y} ${endX},${it.y}" fill="none" stroke="#64748b" stroke-width="1.4"></polyline>`
+            );
+            labelTexts.push(
+              `<text class="wl-axis wl-anim-pie-label" style="--pie-delay:${delay}s" x="${textX}" y="${it.y + 4}" text-anchor="${anchor}">${attrEscape(it.seg?.label || "Intervenant")} ${(((Number(it.seg?.value) || 0) / pieTotal) * 100).toFixed(1).replace(".", ",")} %</text>`
+            );
+          });
         });
       }
 
-      pieMarkup += `
-        <text class="wl-axis" x="${cx}" y="${titleY}" text-anchor="middle">Répartition Interne / Externe / RSG / RI</text>
-        <g transform="translate(${cx-250},${legendY})">
-          <rect x="0" y="0" width="12" height="12" rx="3" fill="url(#${gradIntId})"></rect>
-          <text class="wl-axis" x="18" y="11">Interne ${fmtHours(totalInt)} h</text>
-          <rect x="150" y="0" width="12" height="12" rx="3" fill="url(#${gradExtId})"></rect>
-          <text class="wl-axis" x="168" y="11">Externe ${fmtHours(totalExt)} h</text>
-          <rect x="300" y="0" width="12" height="12" rx="3" fill="url(#${gradRsgId})"></rect>
-          <text class="wl-axis" x="318" y="11">RSG ${fmtHours(totalRsg)} h</text>
-          <rect x="420" y="0" width="12" height="12" rx="3" fill="url(#${gradRiId})"></rect>
-          <text class="wl-axis" x="438" y="11">RI ${fmtHours(totalRi)} h</text>
-        </g>
-      `;
+      pieMarkup += `<g>${labelConnectors.join("")}${labelTexts.join("")}</g>`;
+
     }
 
     pieSvg.innerHTML = `${defs}${pieMarkup}`;
@@ -6891,6 +7195,7 @@ function renderMaster(){
   const allTasks = Array.isArray(state?.tasks) ? state.tasks : [];
   const missingMapAll = buildMissingDaysMap(allTasks);
   const missingHoursCount = allTasks.reduce((acc, t)=> acc + ((missingMapAll.get(t.id) || 0) > 0 ? 1 : 0), 0);
+  const missingLogEntriesCount = allTasks.reduce((acc, t)=> acc + countMissingLogEntriesForTask(t), 0);
   const onlyMissingEnabled = !!el("toggleMissingOnly")?.checked;
   const visibleTasks = onlyMissingEnabled
     ? sorted.filter(t=> (missingMap.get(t.id) || 0) > 0)
@@ -6904,7 +7209,7 @@ function renderMaster(){
     updateBadge(
       missingHoursBadge,
       missingHoursCount > 0,
-      `${missingHoursCount} tâche(s) à compléter`,
+      `${missingHoursCount} tâche(s) à compléter · ${missingLogEntriesCount} saisie(s) manquante(s)`,
       "Heures réelles: OK"
     );
   }
@@ -6959,8 +7264,6 @@ function renderMaster(){
     h+=`<tr class="${rowClass}" data-project="${t.projectId}" data-task="${t.id}" style="--site-bg:${rowBg};background:var(--site-bg);">
 
       <td>${p?.site||""}</td>
-      ${includeChantierCol ? `<td>${attrEscape(chantierLabel)}</td>` : ""}
-
       <td>${projLabel}</td>
 
       <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskLabel}</td>
@@ -7103,10 +7406,19 @@ function getInternalTechsForTaskHours(task){
 function getTaskRoleKey(t){
   const hasVendor = (t?.vendor || "").trim();
   if(hasVendor) return "externe";
+  const hasInternalTechCsv = normalizeInternalTechList(t?.internalTech || "").length > 0;
+  const hasInternalTechArray = Array.isArray(t?.internalTechs) && t.internalTechs.some((x)=>!!normalizeInternalTech(x || ""));
+  if(hasInternalTechCsv || hasInternalTechArray) return "interne";
   const typ = ownerType(t?.owner);
   if(typ === "rsg") return "rsg";
   if(typ === "ri") return "ri";
-  if(typ === "externe" || typ === "inconnu") return "externe";
+  if(typ === "externe") return "externe";
+  if(typ === "inconnu"){
+    const hasInternalTechCsv = normalizeInternalTechList(t?.internalTech || "").length > 0;
+    const hasInternalTechArray = Array.isArray(t?.internalTechs) && t.internalTechs.some((x)=>!!normalizeInternalTech(x || ""));
+    if(hasInternalTechCsv || hasInternalTechArray) return "interne";
+    return "externe";
+  }
   return "interne";
 }
 function roleLabel(roleKey){
@@ -7307,7 +7619,8 @@ function getExpectedLogSpecsForTask(t){
   }
   const techs = getInternalTechsForTaskHours(t);
   if(!techs.length){
-    return [{ roleKey:"interne", internalTech:"" }];
+    // Plus de mode générique "INTERNE" : sans technicien explicite, aucune saisie attendue.
+    return [];
   }
   return techs.map((name)=>({ roleKey:"interne", internalTech:normalizeInternalTech(name) }));
 }
@@ -7315,6 +7628,26 @@ function hasAllExpectedLogsForTaskDate(t, dateKey){
   const specs = getExpectedLogSpecsForTask(t);
   if(!specs.length) return true;
   return specs.every((spec)=> !!findTimeLogByRole(t.id, dateKey, spec.roleKey, spec.internalTech));
+}
+function countMissingLogEntriesForTaskDate(t, dateKey){
+  const specs = getExpectedLogSpecsForTask(t);
+  if(!specs.length) return 0;
+  return specs.reduce((acc, spec)=> acc + (findTimeLogByRole(t.id, dateKey, spec.roleKey, spec.internalTech) ? 0 : 1), 0);
+}
+function countMissingLogEntriesForTask(t){
+  if(!t || !t.start || !t.end) return 0;
+  const start = new Date(t.start+"T00:00:00");
+  const end = new Date(t.end+"T00:00:00");
+  if(isNaN(start) || isNaN(end) || end < start) return 0;
+  const todayKey = toLocalDateKey(new Date());
+  let count = 0;
+  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    if(!isWeekday(d)) continue;
+    const key = toLocalDateKey(d);
+    if(key > todayKey) continue;
+    count += countMissingLogEntriesForTaskDate(t, key);
+  }
+  return count;
 }
 function getMissingDaysList(t){
   if(!t || !t.start || !t.end) return [];
@@ -7326,7 +7659,7 @@ function getMissingDaysList(t){
   for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
     if(!isWeekday(d)) continue;
     const key = toLocalDateKey(d);
-    if(key >= todayKey) continue;
+    if(key > todayKey) continue;
     if(!hasAllExpectedLogsForTaskDate(t, key)) out.push(key);
   }
   return out;
@@ -7856,7 +8189,7 @@ function renderHoursTaskCalendar(t){
             weekRowsMeta.push({ key: weekRowKey, badgeHtml: rowOwnerHtml });
           }
           weekTotalsByKey.set(weekRowKey, (weekTotalsByKey.get(weekRowKey) || 0) + (log?.minutes || 0));
-          const stateType = inTaskRange ? (log ? "filled" : (dateKey < todayKey ? "missing" : "future")) : "outside";
+          const stateType = inTaskRange ? (log ? "filled" : (dateKey <= todayKey ? "missing" : "future")) : "outside";
           const isEditable = inTaskRange && dateKey <= todayKey;
           const canClearOutside = !isEditable && stateType === "outside" && !!log;
           const activeAttr = isEditable ? "1" : "0";
@@ -7874,7 +8207,8 @@ function renderHoursTaskCalendar(t){
           const internalTechAttr = attrEscape(rowSpec.internalTech || "");
           return (
             "<div class=\"hm-task-row\" data-date=\"" + dateKey + "\" data-task-id=\"" + task.id + "\" data-role-key=\"" + rowSpec.roleKey + "\" data-internal-tech=\"" + internalTechAttr + "\" data-state-base=\"" + stateType + "\" style=\"border:1px solid " + border + ";background:" + bg + ";color:" + text + ";border-radius:7px;padding:3px;display:flex;flex-direction:column;gap:2px\">" +
-            "<div style=\"font-size:10px;line-height:1.2;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis\">" + rowOwnerHtml + " · " + attrEscape(taskText) + "</div>" +
+            "<div style=\"font-size:10px;line-height:1.15;opacity:.95\">" + rowOwnerHtml + "</div>" +
+            "<div style=\"font-size:10px;line-height:1.2;opacity:.92;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;white-space:normal\">" + attrEscape(taskText) + "</div>" +
             "<input type=\"text\" inputmode=\"decimal\" class=\"hm-day-input\" data-date=\"" + dateKey + "\" data-task-id=\"" + task.id + "\" data-project-id=\"" + task.projectId + "\" data-role-key=\"" + rowSpec.roleKey + "\" data-internal-tech=\"" + internalTechAttr + "\" data-active=\"" + activeAttr + "\" data-clearable=\"" + clearableAttr + "\" value=\"" + hoursValue + "\" placeholder=\"h\" " + disabledAttr + " style=\"height:18px;border:1px solid #cbd5e1;border-radius:6px;padding:1px 6px;background:#fff;color:#111827;font-size:11px\" />" +
             "</div>");
         }).join("");
@@ -7892,7 +8226,7 @@ function renderHoursTaskCalendar(t){
               : [buildTimeLogKey(task.id, dateKey, roleKey, "")])
           : [buildTimeLogKey(task.id, dateKey, roleKey, "")];
         const inTaskRange = task.start && task.end && dateKey >= task.start && dateKey <= task.end;
-        return inTaskRange && dateKey < todayKey && rowKeys.some((k)=>!logsByKey.get(k));
+        return inTaskRange && dateKey <= todayKey && rowKeys.some((k)=>!logsByKey.get(k));
       });
       const hasFilled = cardTasks.some((task)=>{
         const roleKey = roleByTask.get(task.id) || getTaskRoleKey(task);
@@ -9851,7 +10185,12 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     if(getCurrentRole()!=="admin") return;
     const input = el("cfg_internal_tech_name");
     const siteSelect = el("cfg_internal_tech_site");
-    const name = normalizeInternalTech(input?.value || "");
+    const rawName = String(input?.value || "");
+    if(/[;,]/.test(rawName)){
+      alert("Ajout Configuration : 1 seul technicien à la fois. Pour plusieurs techniciens, utilise la liste déroulante multi-sélection dans la tâche.");
+      return;
+    }
+    const name = normalizeInternalTech(rawName);
     const site = String(siteSelect?.value || "").trim();
     if(!name){
       alert("Renseigne le nom du technicien interne.");
@@ -10227,7 +10566,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
       syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
       renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
     }
-    const scopeTaskId = _missingHoursFlow ? ((t?.id || "").trim()) : "";
+    const scopeTaskId = "";
     const nextInput = (e.key === "Tab" && e.shiftKey)
       ? getHoursCalendarNextInput(input, -1, scopeTaskId, true)
       : getHoursCalendarNextInput(input, 1, scopeTaskId, true);
@@ -10516,6 +10855,10 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     t.vendor     = el("t_vendor").value.trim();
     t.internalTech = serializeInternalTechList(getSelectedInternalTechValues());
     const taskOwnerType = ownerType(t.owner);
+    if(taskOwnerType === "inconnu"){
+      alert("Responsable requis : choisissez INTERNE (avec technicien), RSG, RI ou PRESTATAIRE EXTERNE.");
+      return;
+    }
     if(taskOwnerType === "externe" && !t.vendor){
       alert("Prestataire externe requis : renseignez le nom du prestataire.");
       return;
@@ -11651,7 +11994,7 @@ function buildRealHoursReportForTasks(tasksInput){
       l.date >= t.start &&
       l.date <= t.end
     );
-    const perRole = new Map();
+    const perInterv = new Map();
     taskLogs.forEach(l=>{
       const logRole = normalizeTimeLogRole(l);
       if(isExternalTask && logRole !== "externe") return;
@@ -11660,25 +12003,34 @@ function buildRealHoursReportForTasks(tasksInput){
       const mins = Number(l.minutes)||0;
       if(!mins) return;
       const weightedMinutes = Math.round(mins * roleHoursMultiplier(rk));
-      const prev = perRole.get(rk) || 0;
-      perRole.set(rk, prev + weightedMinutes);
+      if(roleTotals[rk] !== undefined) roleTotals[rk] += weightedMinutes;
+
+      let intervLabel = roleLabel(rk);
 
       if(isExternalTask || rk==="externe"){
         externalByName.set(extName, (externalByName.get(extName) || 0) + weightedMinutes);
         vendorTotals.set(extName, (vendorTotals.get(extName) || 0) + weightedMinutes);
+        intervLabel = extName;
       }else{
-        const intName = roleLabel(rk);
-        internalByName.set(intName, (internalByName.get(intName) || 0) + weightedMinutes);
+        if(rk === "interne"){
+          const techName = normalizeTimeLogInternalTech(l, rk) || "INTERNE";
+          intervLabel = techName.toUpperCase();
+        }
+        internalByName.set(intervLabel, (internalByName.get(intervLabel) || 0) + weightedMinutes);
       }
+      const interKey = `${rk}|${intervLabel}`;
+      perInterv.set(interKey, (perInterv.get(interKey) || 0) + weightedMinutes);
     });
-    perRole.forEach((mins, rk)=>{
+    perInterv.forEach((mins, interKey)=>{
       if(!mins) return;
-      if(roleTotals[rk] !== undefined) roleTotals[rk] += mins;
+      const sep = interKey.indexOf("|");
+      const rk = sep >= 0 ? interKey.slice(0, sep) : interKey;
+      const interv = sep >= 0 ? interKey.slice(sep + 1) : roleLabel(rk);
       detailRows.push({
         num: taskOrderMap[t.id] || "",
         task: taskTitleProjectView(t),
         role: rk,
-        interv: rk==="externe" ? extName : roleLabel(rk),
+        interv,
         mins
       });
     });
@@ -11750,9 +12102,17 @@ function filterRealHoursReportExternal(rep, includeExternal=true){
 
 function buildRealHoursReportInnerHTML(rep, title, reportMode="master", includeExternal=true){
   const report = filterRealHoursReportExternal(rep, includeExternal);
-  const summary = report.summaryRows.map(r=>
-    `<tr class="report-internal-priority"><td>${r.label}</td><td style="text-align:right">${formatHoursMinutes(r.mins)}</td></tr>`
-  ).join("");
+  const summaryRowsUi = [
+    ...(report.internalByNameRows || []).map(([name, mins])=>({ label:name, mins })),
+    ...(includeExternal && (report.externalTotalMinutes || 0) > 0
+      ? [{ label:"EXTERNE", mins: report.externalTotalMinutes || 0 }]
+      : [])
+  ];
+  const summary = summaryRowsUi.length
+    ? summaryRowsUi.map((r)=>
+        `<tr class="report-internal-priority"><td>${attrEscape(r.label)}</td><td style="text-align:right">${formatHoursMinutes(r.mins)}</td></tr>`
+      ).join("")
+    : `<tr><td colspan="2" class="text-muted">Aucune donnée.</td></tr>`;
   const vendors = report.externalVendors.length
     ? report.externalVendors.map(([name, mins])=>
         `<tr><td>${attrEscape(name)}</td><td style="text-align:right">${formatHoursMinutes(mins)}</td></tr>`
@@ -11804,7 +12164,7 @@ function buildRealHoursReportInnerHTML(rep, title, reportMode="master", includeE
         <table class="report-table report-table-summary">
           <thead><tr><th>Intervenant</th><th>Heures</th></tr></thead>
           <tbody>${summary}</tbody>
-          <tfoot><tr><th>Total</th><th style="text-align:right">${formatHoursMinutes(report.internalTotalMinutes)}</th></tr></tfoot>
+          <tfoot><tr><th>Total</th><th style="text-align:right">${formatHoursMinutes(includeExternal ? report.totalMinutes : report.internalTotalMinutes)}</th></tr></tfoot>
         </table>
       </div>
       ${vendorsBlock}
@@ -11838,65 +12198,93 @@ function buildGroupedProjectsRealHoursReportInnerHTML(projectIds, includeExterna
   return buildRealHoursReportInnerHTML(rep, title, "project", includeExternal);
 }
 
+function buildRepartitionRowsByIntervenant(rep, includeExternal=true){
+  const rows = [];
+  (rep?.internalByNameRows || []).forEach(([name, mins])=>{
+    const m = Number(mins) || 0;
+    if(m <= 0) return;
+    rows.push({
+      category: "Interne",
+      label: String(name || "INTERNE"),
+      mins: m
+    });
+  });
+  if(includeExternal){
+    (rep?.externalByNameRows || []).forEach(([name, mins])=>{
+      const m = Number(mins) || 0;
+      if(m <= 0) return;
+      rows.push({
+        category: "Externe",
+        label: String(name || "Prestataire"),
+        mins: m
+      });
+    });
+  }
+  return rows;
+}
+
 function buildProjectRepartitionExportInnerHTML(projectId, includeExternal=true, title="Répartition Interne / Externe / RSG / RI (projet)"){
   const rep = filterRealHoursReportExternal(buildProjectRealHoursReport(projectId), includeExternal);
+  const rows = buildRepartitionRowsByIntervenant(rep, includeExternal);
   const totalMinutes = Number(rep.totalMinutes) || 0;
-  const rowsHtml = (rep.summaryRows || []).map((r)=>{
+  const rowsHtml = rows.map((r)=>{
     const label = String(r?.label || "");
     const mins = Number(r?.mins) || 0;
     const part = totalMinutes > 0 ? ((mins / totalMinutes) * 100) : 0;
     const partTxt = `${part.toFixed(1).replace(".", ",")} %`;
-    return `<tr><td>${attrEscape(label)}</td><td style="text-align:right">${formatHoursMinutes(mins)}</td><td style="text-align:right">${partTxt}</td></tr>`;
-  }).join("") || `<tr><td colspan="3" style="text-align:center;color:#64748b;">Aucune donnée</td></tr>`;
+    return `<tr><td>${attrEscape(r.category)}</td><td>${attrEscape(label)}</td><td style="text-align:right">${formatHoursMinutes(mins)}</td><td style="text-align:right">${partTxt}</td></tr>`;
+  }).join("") || `<tr><td colspan="4" style="text-align:center;color:#64748b;">Aucune donnée</td></tr>`;
   const total = formatHoursMinutes(rep.totalMinutes || 0);
   return `
     <div class="card-title">${attrEscape(title)}</div>
     <table class="report-table report-table-summary" style="margin-top:6px">
-      <thead><tr><th>Catégorie</th><th>Heures</th><th>Part</th></tr></thead>
+      <thead><tr><th>Catégorie</th><th>Intervenant</th><th>Heures</th><th>Part</th></tr></thead>
       <tbody>${rowsHtml}</tbody>
-      <tfoot><tr><th>Total</th><th style="text-align:right">${total}</th><th style="text-align:right">100,0 %</th></tr></tfoot>
+      <tfoot><tr><th colspan="2">Total</th><th style="text-align:right">${total}</th><th style="text-align:right">100,0 %</th></tr></tfoot>
     </table>
   `;
 }
 
 function buildGroupedProjectsRepartitionExportInnerHTML(projectIds, includeExternal=true, title="Répartition Interne / Externe / RSG / RI (chantiers regroupés)"){
   const rep = filterRealHoursReportExternal(buildGroupedProjectsRealHoursReport(projectIds), includeExternal);
+  const rows = buildRepartitionRowsByIntervenant(rep, includeExternal);
   const totalMinutes = Number(rep.totalMinutes) || 0;
-  const rowsHtml = (rep.summaryRows || []).map((r)=>{
+  const rowsHtml = rows.map((r)=>{
     const label = String(r?.label || "");
     const mins = Number(r?.mins) || 0;
     const part = totalMinutes > 0 ? ((mins / totalMinutes) * 100) : 0;
     const partTxt = `${part.toFixed(1).replace(".", ",")} %`;
-    return `<tr><td>${attrEscape(label)}</td><td style="text-align:right">${formatHoursMinutes(mins)}</td><td style="text-align:right">${partTxt}</td></tr>`;
-  }).join("") || `<tr><td colspan="3" style="text-align:center;color:#64748b;">Aucune donnée</td></tr>`;
+    return `<tr><td>${attrEscape(r.category)}</td><td>${attrEscape(label)}</td><td style="text-align:right">${formatHoursMinutes(mins)}</td><td style="text-align:right">${partTxt}</td></tr>`;
+  }).join("") || `<tr><td colspan="4" style="text-align:center;color:#64748b;">Aucune donnée</td></tr>`;
   const total = formatHoursMinutes(rep.totalMinutes || 0);
   return `
     <div class="card-title">${attrEscape(title)}</div>
     <table class="report-table report-table-summary" style="margin-top:6px">
-      <thead><tr><th>Catégorie</th><th>Heures</th><th>Part</th></tr></thead>
+      <thead><tr><th>Catégorie</th><th>Intervenant</th><th>Heures</th><th>Part</th></tr></thead>
       <tbody>${rowsHtml}</tbody>
-      <tfoot><tr><th>Total</th><th style="text-align:right">${total}</th><th style="text-align:right">100,0 %</th></tr></tfoot>
+      <tfoot><tr><th colspan="2">Total</th><th style="text-align:right">${total}</th><th style="text-align:right">100,0 %</th></tr></tfoot>
     </table>
   `;
 }
 
 function buildMasterRepartitionExportInnerHTML(title="Répartition Interne / Externe / RSG / RI (tableau maître)"){
   const rep = filterRealHoursReportExternal(buildMasterRealHoursReport(), true);
+  const rows = buildRepartitionRowsByIntervenant(rep, true);
   const totalMinutes = Number(rep.totalMinutes) || 0;
-  const rowsHtml = (rep.summaryRows || []).map((r)=>{
+  const rowsHtml = rows.map((r)=>{
     const label = String(r?.label || "");
     const mins = Number(r?.mins) || 0;
     const part = totalMinutes > 0 ? ((mins / totalMinutes) * 100) : 0;
     const partTxt = `${part.toFixed(1).replace(".", ",")} %`;
-    return `<tr><td>${attrEscape(label)}</td><td style="text-align:right">${formatHoursMinutes(mins)}</td><td style="text-align:right">${partTxt}</td></tr>`;
-  }).join("") || `<tr><td colspan="3" style="text-align:center;color:#64748b;">Aucune donnée</td></tr>`;
+    return `<tr><td>${attrEscape(r.category)}</td><td>${attrEscape(label)}</td><td style="text-align:right">${formatHoursMinutes(mins)}</td><td style="text-align:right">${partTxt}</td></tr>`;
+  }).join("") || `<tr><td colspan="4" style="text-align:center;color:#64748b;">Aucune donnée</td></tr>`;
   const total = formatHoursMinutes(rep.totalMinutes || 0);
   return `
     <div class="card-title">${attrEscape(title)}</div>
     <table class="report-table report-table-summary" style="margin-top:6px">
-      <thead><tr><th>Catégorie</th><th>Heures</th><th>Part</th></tr></thead>
+      <thead><tr><th>Catégorie</th><th>Intervenant</th><th>Heures</th><th>Part</th></tr></thead>
       <tbody>${rowsHtml}</tbody>
-      <tfoot><tr><th>Total</th><th style="text-align:right">${total}</th><th style="text-align:right">100,0 %</th></tr></tfoot>
+      <tfoot><tr><th colspan="2">Total</th><th style="text-align:right">${total}</th><th style="text-align:right">100,0 %</th></tr></tfoot>
     </table>
   `;
 }

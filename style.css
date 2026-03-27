@@ -1005,17 +1005,33 @@ body{
 }
 @media screen{
   .tablewrap.project-tasks{
-    max-height:280px; /* ~10 lignes en affichage */
+    max-height:560px; /* ~20 lignes en affichage */
     overflow:auto;
-    scrollbar-width:none;
-    overscroll-behavior:contain;
+    scrollbar-width:auto;
+    overscroll-behavior:auto;
   }
   #viewMaster .tablewrap{
-    max-height:280px; /* ~10 lignes en affichage */
+    max-height:560px; /* ~20 lignes en affichage */
     overflow:auto;
-    scrollbar-width:none;
-    overscroll-behavior:contain;
+    scrollbar-width:auto;
+    overscroll-behavior:auto;
   }
+}
+.tablewrap{
+  scrollbar-gutter:stable both-edges;
+}
+.tablewrap::-webkit-scrollbar{
+  width:11px;
+  height:11px;
+}
+.tablewrap::-webkit-scrollbar-thumb{
+  background:rgba(100,116,139,0.55);
+  border-radius:999px;
+  border:2px solid rgba(255,255,255,0.6);
+}
+.tablewrap::-webkit-scrollbar-track{
+  background:rgba(148,163,184,0.14);
+  border-radius:999px;
 }
 .sidebar::-webkit-scrollbar{width:8px;height:8px;}
 .sidebar::-webkit-scrollbar-thumb{
@@ -2150,10 +2166,14 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   z-index:60;
   background-clip:padding-box;
 }
-.gantt-table table td.gantt-cell,
-.gantt-table table th.week-cell{
+.gantt-table table td.gantt-cell{
   position:relative;
   z-index:1;
+}
+.gantt-table table th.week-cell{
+  position:sticky;
+  top:0;
+  z-index:45;
 }
 .gantt-table table td.gantt-cell{
   z-index:0;
@@ -2198,7 +2218,17 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 .gantt-table table{
   border-collapse:collapse;
   table-layout:fixed;
-  width:100%;
+  width:max-content;
+  min-width:100%;
+}
+.tablewrap.gantt-table{
+  overflow-x:auto !important;
+  overflow-y:auto !important;
+  scrollbar-width:auto !important;
+}
+#viewMaster .tablewrap.gantt-table,
+#viewProject .tablewrap.gantt-table{
+  scrollbar-width:auto !important;
 }
 .gantt-table .table td,
 .gantt-table .table th,
@@ -2269,6 +2299,48 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 
 /* Charge de travail */
 #workloadChart{min-height:200px;}
+.workload-pie-card{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+.workload-pie-card.workload-pie-single{
+  justify-content:center;
+  gap:10px;
+}
+.workload-pie-legend{
+  min-width:240px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding:6px 4px;
+}
+.workload-pie-card.workload-pie-single .workload-pie-legend{
+  min-width:140px;
+  max-width:180px;
+}
+.workload-pie-legend-item{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  color:#0f172a;
+  white-space:nowrap;
+}
+.workload-pie-legend-dot{
+  width:12px;
+  height:12px;
+  border-radius:4px;
+  flex:0 0 12px;
+}
+.workload-pie-svg{
+  flex:1 1 auto;
+  min-width:520px;
+}
+.workload-pie-card.workload-pie-single .workload-pie-svg{
+  flex:0 1 520px;
+  min-width:420px;
+}
 .wl-axis text{font-size:11px;fill:#0f172a;font-family:var(--sans);}
 .wl-bg{fill:#ffffff;}
 .wl-bar-internal{filter:var(--wl-shadow);}
@@ -2545,11 +2617,13 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   align-items:center;
   gap:8px;
   flex-wrap:nowrap;
+  background:inherit !important;
 }
 .status-left{
   display:flex;
   align-items:center;
   gap:6px;
+  background:transparent !important;
 }
 .status-cell .badge.owner{
   margin-left:auto;
@@ -3573,7 +3647,7 @@ html[data-theme] #btnToggleMasterVendor,
 html[data-theme] #btnToggleMasterStatus,
 html[data-theme] #btnToggleProjectVendor,
 html[data-theme] #btnToggleProjectStatus{
-  font-weight:800 !important;
+  font-weight:400 !important;
   text-shadow:none !important;
   mix-blend-mode:normal !important;
 }
@@ -5371,21 +5445,6 @@ h3,
 
 
 /* Verrou cible: opacite uniquement de l'entete colonne Tache (entre Nom et Prestataire) */
-#btnToggleMasterVendor,
-#btnToggleMasterStatus,
-#btnToggleProjectVendor,
-#btnToggleProjectStatus{
-  font-family:"Segoe UI", Arial, sans-serif !important;
-  font-weight:300 !important;
-  letter-spacing:0 !important;
-  text-shadow:none !important;
-  -webkit-text-stroke:0 !important;
-  -webkit-font-smoothing:antialiased !important;
-  -moz-osx-font-smoothing:grayscale !important;
-  font-variant:normal !important;
-  font-variant-caps:normal !important;
-  text-transform:uppercase !important;
-}
 .gantt-table table thead th.gantt-col-task,
 .gantt-table .table thead th.gantt-col-task,
 .gantt-table table thead th.gantt-task-col-project,
@@ -5653,4 +5712,90 @@ h3,
   padding:0 4px;
   font-size:12px;
   border-radius:6px;
+}
+
+/* Verrou final: boutons toggles Gantt conformes au style UI */
+#btnToggleMasterVendor,
+#btnToggleMasterStatus,
+#btnToggleProjectVendor,
+#btnToggleProjectStatus{
+  border-radius:8px !important;
+  min-height:28px !important;
+  height:28px !important;
+  padding:0 10px !important;
+  font-size:11px !important;
+  font-weight:400 !important;
+  letter-spacing:0 !important;
+  text-transform:none !important;
+  box-shadow:none !important;
+}
+#btnToggleMasterVendor.btn-ghost,
+#btnToggleMasterStatus.btn-ghost,
+#btnToggleProjectVendor.btn-ghost,
+#btnToggleProjectStatus.btn-ghost{
+  background:var(--ui-btn-neutral-bg) !important;
+  background-image:none !important;
+  color:var(--ui-btn-neutral-text) !important;
+  -webkit-text-fill-color:var(--ui-btn-neutral-text) !important;
+  border:1px solid var(--ui-btn-neutral-border) !important;
+  box-shadow:none !important;
+  text-shadow:none !important;
+}
+#btnToggleMasterVendor.btn-primary,
+#btnToggleMasterStatus.btn-primary,
+#btnToggleProjectVendor.btn-primary,
+#btnToggleProjectStatus.btn-primary{
+  background:var(--ui-btn-active-bg) !important;
+  background-image:none !important;
+  color:var(--ui-btn-active-text) !important;
+  -webkit-text-fill-color:var(--ui-btn-active-text) !important;
+  border:1px solid var(--ui-btn-active-border) !important;
+  box-shadow:none !important;
+  text-shadow:none !important;
+}
+
+/* Verrou ultime: texte des toggles Gantt non gras */
+#btnToggleMasterVendor,
+#btnToggleMasterStatus,
+#btnToggleProjectVendor,
+#btnToggleProjectStatus,
+#btnToggleMasterVendor *,
+#btnToggleMasterStatus *,
+#btnToggleProjectVendor *,
+#btnToggleProjectStatus *{
+  font-family:var(--sans) !important;
+  font-weight:400 !important;
+  font-variation-settings:normal !important;
+  text-transform:none !important;
+}
+
+/* Verrou ultime couleurs: alignement exact sur bouton Sauvegarder */
+#btnToggleMasterVendor.btn-ghost,
+#btnToggleMasterStatus.btn-ghost,
+#btnToggleProjectVendor.btn-ghost,
+#btnToggleProjectStatus.btn-ghost{
+  background:rgba(63,97,112,0.18) !important;
+  border:1px solid rgba(63,97,112,0.28) !important;
+  color:#213b48 !important;
+  -webkit-text-fill-color:#213b48 !important;
+}
+#btnToggleMasterVendor.btn-primary,
+#btnToggleMasterStatus.btn-primary,
+#btnToggleProjectVendor.btn-primary,
+#btnToggleProjectStatus.btn-primary{
+  background:#3f6170 !important;
+  border:1px solid #365563 !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+}
+#btnToggleMasterVendor.btn-primary:hover,
+#btnToggleMasterStatus.btn-primary:hover,
+#btnToggleProjectVendor.btn-primary:hover,
+#btnToggleProjectStatus.btn-primary:hover,
+#btnToggleMasterVendor.btn-primary:focus-visible,
+#btnToggleMasterStatus.btn-primary:focus-visible,
+#btnToggleProjectVendor.btn-primary:focus-visible,
+#btnToggleProjectStatus.btn-primary:focus-visible{
+  background:#365563 !important;
+  border-color:#2f4b57 !important;
 }
