@@ -5,6 +5,7 @@ import {
   normalizeFiniteNumber,
   normalizeIsoDate,
   normalizeStatuses,
+  computeTaskProgressAuto,
 } from "@/lib/businessRules";
 
 const { projectsTable, tasksTable, taskProjectIdColumn } = supabaseConfig;
@@ -76,15 +77,17 @@ function mapProjectRow(row) {
 
 function mapTaskRow(row) {
   const statuses = normalizeStatuses(row.statuses ?? row.status ?? []);
+  const startDate = pickDate(row.start_date || row.start);
+  const endDate = pickDate(row.end_date || row.end);
   return {
     id: toStringId(row.id),
     project_id: toStringId(row[taskProjectIdColumn] ?? row.project_id ?? row.chantier_id),
     description: row.description || row.name || "",
     owner_type: row.owner_type || row.owner || "",
     vendor: row.vendor || "",
-    start_date: pickDate(row.start_date || row.start),
-    end_date: pickDate(row.end_date || row.end),
-    progress: safeProgress(row.progress),
+    start_date: startDate,
+    end_date: endDate,
+    progress: computeTaskProgressAuto(startDate, endDate),
     statuses,
     duration_days: Number.isFinite(Number(row.duration_days)) ? Number(row.duration_days) : 0,
     updated_date: row.updated_date || row.updated_at || "",

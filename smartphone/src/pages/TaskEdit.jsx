@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import StatusBadge from "../components/common/StatusBadge";
 import ProgressBar from "../components/common/ProgressBar";
+import { computeTaskProgressAuto } from "@/lib/businessRules";
 import { toast } from "sonner";
 
 export default function TaskEdit() {
@@ -37,7 +37,6 @@ export default function TaskEdit() {
         vendor: task.vendor || "",
         start_date: task.start_date || "",
         end_date: task.end_date || "",
-        progress: task.progress || 0,
       });
     }
   }, [task, form]);
@@ -68,6 +67,8 @@ export default function TaskEdit() {
         : 0;
     updateMutation.mutate({ ...form, duration_days: duration });
   };
+
+  const computedProgress = computeTaskProgressAuto(form?.start_date || "", form?.end_date || "");
 
   if (isLoading) {
     return (
@@ -175,16 +176,10 @@ export default function TaskEdit() {
 
         <div>
           <Label className="text-xs font-semibold text-muted-foreground mb-2 block">
-            Avancement: {form.progress}%
+            Avancement automatique: {computedProgress}%
           </Label>
-          <ProgressBar value={form.progress} className="mb-3" />
-          <Slider
-            value={[form.progress]}
-            onValueChange={([v]) => setForm({ ...form, progress: v })}
-            max={100}
-            step={5}
-            className="mt-2"
-          />
+          <ProgressBar value={computedProgress} className="mb-1" />
+          <p className="text-[10px] text-muted-foreground">Calcule automatiquement selon les dates de la tache (meme regle que PC).</p>
         </div>
 
         <Button

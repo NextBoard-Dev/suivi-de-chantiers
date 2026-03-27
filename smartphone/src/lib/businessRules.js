@@ -97,6 +97,51 @@ export function validateDateOrder(startDate, endDate) {
   }
 }
 
+function toLocalMidnight(isoDate) {
+  return new Date(`${isoDate}T00:00:00`);
+}
+
+function countWeekdaysInclusive(startDate, endDate) {
+  if (!(startDate instanceof Date) || !(endDate instanceof Date)) return 0;
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) return 0;
+
+  let count = 0;
+  const cursor = new Date(startDate);
+  cursor.setHours(0, 0, 0, 0);
+
+  const last = new Date(endDate);
+  last.setHours(0, 0, 0, 0);
+
+  while (cursor <= last) {
+    const day = cursor.getDay();
+    if (day >= 1 && day <= 5) count += 1;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return count;
+}
+
+export function computeTaskProgressAuto(startDate, endDate, now = new Date()) {
+  if (!startDate || !endDate) return 0;
+
+  const start = toLocalMidnight(startDate);
+  const end = toLocalMidnight(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return 0;
+
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+
+  if (today <= start) return 0;
+  if (today >= end) return 100;
+
+  const totalWeekdays = countWeekdaysInclusive(start, end);
+  if (!totalWeekdays) return 0;
+
+  const elapsedWeekdays = countWeekdaysInclusive(start, today);
+  const pct = Math.round((elapsedWeekdays / totalWeekdays) * 100);
+  return Math.max(0, Math.min(100, pct));
+}
+
 export function ensureValidChantierTransition(previousStatus, nextStatus) {
   if (!previousStatus || previousStatus === nextStatus) return;
   const allowed = CHANTIER_STATUS_TRANSITIONS[previousStatus] || [];
@@ -133,13 +178,7 @@ export function normalizeChantierInput(input = {}, { existing = null } = {}) {
     allowEmpty: false,
   });
 
-  const progress = normalizeFiniteNumber(input.progress ?? existing?.progress ?? 0, {
-    field: "progress",
-    min: 0,
-    max: 100,
-    decimals: 0,
-    allowEmpty: false,
-  });
+  const progress = computeTaskProgressAuto(startDate, endDate);
 
   const payload = {
     name,
