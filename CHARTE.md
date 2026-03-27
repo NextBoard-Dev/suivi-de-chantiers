@@ -49,4 +49,10 @@
 - Procéder par lots courts et réversibles.
 - Après chaque lot: exécuter les tests et fournir la phrase de commit.
 
+## 9) Mise à jour 2026-03-27
+- Smartphone gelé: aucune modification smartphone sans demande explicite.
+- Commit/push: sélectif PC uniquement (jamais smartphone par défaut).
+- Contrôle cloud: considérer "OK métier" si les seuls écarts sont des `updatedAt`.
+- Heures manquantes: la règle inclut aujourd’hui (`date <= date du jour`).
+
 

@@ -15,7 +15,7 @@ Ce journal sert de compteur manuel global des heures de developpement (tous proj
 - Reference actuelle a utiliser: 500 h (plage de prudence: 300-700 h)
 
 ## Total cumule
-- 502.1 h
+- 506.0 h
 
 ## Historique des increments
 | Date       | Projet | Lot / Objet | Delta (h) | Total apres (h) | Note |
@@ -25,4 +25,8 @@ Ce journal sert de compteur manuel global des heures de developpement (tous proj
 | 2026-03-25 | Suivi de Chantiers | Alignement rappel heures manquantes (veille) | +0.6 | 501.3 | Rappel base sur specs attendues |
 | 2026-03-25 | Suivi de Chantiers | Ajout test rappel veille multi-techniciens internes | +0.5 | 501.8 | Couverture test auto scenario attendu |
 | 2026-03-25 | Suivi de Chantiers | Neutralisation definitive fonction purge logs | +0.3 | 502.1 | Protection anti-reactivation suppression historique |
+| 2026-03-27 | Suivi de Chantiers | Correction compteur heures manquantes (<= aujourd'hui) | +0.8 | 502.9 | Logique metier heures manquantes |
+| 2026-03-27 | Suivi de Chantiers | Stabilisation Gantt (scroll/entetes/boutons) | +1.1 | 504.0 | Correctifs UI PC |
+| 2026-03-27 | Suivi de Chantiers | Qualité cloud local vs Supabase + normalisation roleKey | +1.4 | 505.4 | Alignement metier et controle cloud |
+| 2026-03-27 | Suivi de Chantiers | Audit complet + fuzzing + archivage securise phase 1 | +0.6 | 506.0 | Verifications et hygiene dossier |
 

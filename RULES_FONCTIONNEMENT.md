@@ -105,3 +105,9 @@ Ce document est la référence à suivre pour toute modification du dashboard.
   - accès au bouton "Completer Heures Réelles"
   - accès à la modale de saisie d’heures
   - lisibilité du tableau maître (entêtes + lignes).
+
+17) Mise à jour 2026-03-27
+- Détection "heures manquantes": inclure la date du jour (`<= today`).
+- Qualité cloud: divergence tolérée si limitée au champ technique `updatedAt`.
+- Commit/push: sélectif PC; smartphone exclu tant que la branche mobile est gelée.
+- Lanceurs `.url` et `.bat` (PC + smartphone) conservés en racine.
