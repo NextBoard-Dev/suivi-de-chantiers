@@ -1,0 +1,27 @@
+RAPPORT CONTRAT JSON (PC + SMARTPHONE)
+Date: 2026-03-28T18:36:22.653Z
+Fichier: suivi_chantiers_backup.json
+
+Projects: 11
+Tasks: 58
+TimeLogs: 615
+
+Repartition owner:
+- INTERNE: 21
+- EXTERNE: 18
+- RI: 12
+- RSG: 7
+
+Controles metier:
+- INTERNE sans technicien: 0
+- EXTERNE sans prestataire: 0
+- Owner invalide: 0
+- Logs invalides: 0
+
+Compat smartphone:
+- owner_type derivable: OK
+- start_date/end_date derivables: OK
+- statuses derivables: OK
+
+Conclusion:
+- OK: contrat valide
