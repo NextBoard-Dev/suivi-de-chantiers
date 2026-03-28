@@ -26,6 +26,11 @@
     return days > 0 ? days : "";
   }
 
+  function isTaskActiveOn(task, dateKey){
+    if(!task || !task.start || !task.end || !dateKey) return false;
+    return task.start <= dateKey && task.end >= dateKey;
+  }
+
   function startOfWeek(d){
     const x = new Date(d.getTime());
     const day = (x.getDay()+6)%7; // lundi=0
@@ -43,6 +48,7 @@
   windowRef.isWeekday = windowRef.isWeekday || isWeekday;
   windowRef.countWeekdays = windowRef.countWeekdays || countWeekdays;
   windowRef.durationDays = windowRef.durationDays || durationDays;
+  windowRef.isTaskActiveOn = windowRef.isTaskActiveOn || isTaskActiveOn;
   windowRef.startOfWeek = windowRef.startOfWeek || startOfWeek;
   windowRef.isTodayInWeek = windowRef.isTodayInWeek || isTodayInWeek;
 })(window);

@@ -3309,6 +3309,9 @@ function getSelectedLogDate(){
   return getYesterdayKey();
 }
 function isTaskActiveOn(t, dateKey){
+  if(typeof window.isTaskActiveOn === "function" && window.isTaskActiveOn !== isTaskActiveOn){
+    return window.isTaskActiveOn(t, dateKey);
+  }
   if(!t || !t.start || !t.end || !dateKey) return false;
   return t.start <= dateKey && t.end >= dateKey;
 }
