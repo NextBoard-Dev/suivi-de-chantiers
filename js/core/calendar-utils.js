@@ -39,6 +39,13 @@
     return x;
   }
 
+  function endOfWeek(d){
+    const x = startOfWeek(d);
+    x.setDate(x.getDate()+6);
+    x.setHours(23,59,59,999);
+    return x;
+  }
+
   function isTodayInWeek(weekStart){
     const today = new Date();
     const s = startOfWeek(today);
@@ -50,5 +57,6 @@
   windowRef.durationDays = windowRef.durationDays || durationDays;
   windowRef.isTaskActiveOn = windowRef.isTaskActiveOn || isTaskActiveOn;
   windowRef.startOfWeek = windowRef.startOfWeek || startOfWeek;
+  windowRef.endOfWeek = windowRef.endOfWeek || endOfWeek;
   windowRef.isTodayInWeek = windowRef.isTodayInWeek || isTodayInWeek;
 })(window);

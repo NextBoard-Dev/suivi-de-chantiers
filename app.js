@@ -5067,6 +5067,9 @@ function endOfWorkWeek(d){
 }
 
 function endOfWeek(d){
+  if(typeof window.endOfWeek === "function" && window.endOfWeek !== endOfWeek){
+    return window.endOfWeek(d);
+  }
   const x = startOfWeek(d);
   x.setDate(x.getDate()+6);
   x.setHours(23,59,59,999);
