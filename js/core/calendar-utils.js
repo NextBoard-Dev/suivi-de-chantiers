@@ -31,6 +31,14 @@
     return task.start <= dateKey && task.end >= dateKey;
   }
 
+  function overlapDays(aStart, aEnd, bStart, bEnd){
+    const start = Math.max(aStart.getTime(), bStart.getTime());
+    const end = Math.min(aEnd.getTime(), bEnd.getTime());
+    if(end < start) return 0;
+    const diff = (end - start) / (1000*60*60*24);
+    return Math.floor(diff) + 1;
+  }
+
   function startOfWeek(d){
     const x = new Date(d.getTime());
     const day = (x.getDay()+6)%7; // lundi=0
@@ -63,6 +71,7 @@
   windowRef.countWeekdays = windowRef.countWeekdays || countWeekdays;
   windowRef.durationDays = windowRef.durationDays || durationDays;
   windowRef.isTaskActiveOn = windowRef.isTaskActiveOn || isTaskActiveOn;
+  windowRef.overlapDays = windowRef.overlapDays || overlapDays;
   windowRef.startOfWeek = windowRef.startOfWeek || startOfWeek;
   windowRef.endOfWeek = windowRef.endOfWeek || endOfWeek;
   windowRef.endOfWorkWeek = windowRef.endOfWorkWeek || endOfWorkWeek;

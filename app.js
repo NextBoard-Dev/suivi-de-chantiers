@@ -5152,15 +5152,13 @@ function getVacationYears(){
 }
 
 function overlapDays(aStart,aEnd,bStart,bEnd){
-
+  if(typeof window.overlapDays === "function" && window.overlapDays !== overlapDays){
+    return window.overlapDays(aStart, aEnd, bStart, bEnd);
+  }
   const start = Math.max(aStart.getTime(), bStart.getTime());
-
   const end   = Math.min(aEnd.getTime(), bEnd.getTime());
-
   if(end < start) return 0;
-
   const diff = (end - start)/(1000*60*60*24);
-
   return Math.floor(diff)+1;
 
 }
