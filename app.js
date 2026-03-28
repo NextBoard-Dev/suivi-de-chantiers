@@ -7523,12 +7523,12 @@ function purgeTaskLogsByAssignedRole(task){
   // même en cas de changement de rôle/propriétaire de tâche.
   return 0;
 }
-function formatHoursMinutes(totalMinutes){
+const formatHoursMinutes = window.formatHoursMinutes || ((totalMinutes)=>{
   const h = Math.floor(totalMinutes / 60);
   const m = totalMinutes % 60;
   if(m === 0) return `${h} h`;
   return `${h} h ${m} min`;
-}
+});
 function roleHoursMultiplier(roleKey){
   return 1;
 }
@@ -7890,10 +7890,10 @@ function isHoursTaskModalOpen(){
   return !!(modal && !modal.classList.contains("hidden"));
 }
 
-function formatHoursDecimal(minutes){
+const formatHoursDecimal = window.formatHoursDecimal || ((minutes)=>{
   const v = Math.round(((minutes || 0) / 60) * 100) / 100;
   return String(v).replace(".", ",") + "h";
-}
+});
 function ensureHoursModalCalendarDom(){
   const modalCard = document.querySelector("#hoursTaskModal .modal-card");
   if(!modalCard) return null;
