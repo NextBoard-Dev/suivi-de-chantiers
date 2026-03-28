@@ -540,6 +540,8 @@ let _filteredCache = { key:"", version:-1, tasks:null };
 let _missingHoursFlow = null;
 let _outsideRangeFlow = null;
 let _lastScalabilityReport = null;
+let _lastScaleAlertSig = "";
+let _lastScaleAlertAt = 0;
 const SCALE_GUARDS = {
   warnTasks: 1000,
   warnTimeLogs: 20000,
@@ -3998,6 +4000,25 @@ function collectScalabilityReport(currentState=state){
   };
 }
 
+function notifyScalabilityIfNeeded(scaleReport, source="runtime"){
+  try{
+    if(!scaleReport || scaleReport.ok) return;
+    const warnings = Array.isArray(scaleReport.warnings) ? scaleReport.warnings : [];
+    if(!warnings.length) return;
+    const sig = `${source}|${warnings.join("|")}`;
+    const now = Date.now();
+    // anti-spam: meme alerte ignoree pendant 2 minutes
+    if(sig === _lastScaleAlertSig && (now - _lastScaleAlertAt) < 120000) return;
+    _lastScaleAlertSig = sig;
+    _lastScaleAlertAt = now;
+    const summary = warnings.slice(0,2).join(" | ");
+    const extra = warnings.length > 2 ? ` | +${warnings.length - 2} autre(s)` : "";
+    showSaveToast("error", "Alerte charge", `${summary}${extra}`);
+  }catch(e){
+    softCatch(e);
+  }
+}
+
 async function collectCloudAlignmentReport(currentState=state){
   try{
     const sb = _getSupabaseClient();
@@ -4239,6 +4260,7 @@ function saveState(opts={}){
     runtimePerf.lastSaveMs = Math.max(0, performance.now() - t0);
     runtimePerf.lastSaveAt = new Date().toISOString();
     refreshStateSegmentationDiagnostics(normalized);
+    notifyScalabilityIfNeeded(collectScalabilityReport(normalized), "save");
     if(getCurrentRole() === "admin"){
       updateRoleUI();
     }
