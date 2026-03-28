@@ -2239,6 +2239,21 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 #viewProject .tablewrap.gantt-table{
   scrollbar-width:auto !important;
 }
+#viewMaster .tablewrap.gantt-table::-webkit-scrollbar,
+#viewProject .tablewrap.gantt-table::-webkit-scrollbar{
+  height:16px !important;
+}
+#viewMaster .tablewrap.gantt-table::-webkit-scrollbar-thumb,
+#viewProject .tablewrap.gantt-table::-webkit-scrollbar-thumb{
+  background:rgba(100,116,139,0.72) !important;
+  border-radius:999px !important;
+  border:2px solid rgba(255,255,255,0.55) !important;
+}
+#viewMaster .tablewrap.gantt-table::-webkit-scrollbar-track,
+#viewProject .tablewrap.gantt-table::-webkit-scrollbar-track{
+  background:rgba(148,163,184,0.22) !important;
+  border-radius:999px !important;
+}
 .gantt-table .table td,
 .gantt-table .table th,
 .gantt-table table td,
