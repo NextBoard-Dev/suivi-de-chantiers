@@ -1081,13 +1081,13 @@ function saveConfig(cfg){
     localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg||{}));
   }catch(e){ softCatch(e); }
 }
-function normalizeStatusId(label){
+const normalizeStatusId = window.normalizeStatusId || ((label)=>{
   const base = (label||"").trim();
   if(!base) return "";
   const ascii = base.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   return ascii.toUpperCase().replace(/[^A-Z0-9]+/g,"_").replace(/^_+|_+$/g,"");
-}
-function normalizeStatusList(list){
+});
+const normalizeStatusList = window.normalizeStatusList || ((list)=>{
   const out=[];
   const seen=new Set();
   (list||[]).forEach(item=>{
@@ -1102,7 +1102,7 @@ function normalizeStatusList(list){
     out.push({v, label});
   });
   return out;
-}
+});
 function loadStatusConfig(){
   const cfg = loadConfig();
   if(Array.isArray(cfg.statuses) && cfg.statuses.length){
