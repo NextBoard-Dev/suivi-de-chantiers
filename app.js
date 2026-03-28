@@ -4397,25 +4397,17 @@ function statusLabels(values){
 
 }
 
-function toDateInput(d){
-
+const toDateInput = window.toDateInput || ((d)=>{
   if(!d) return "";
-
   const x = new Date(d.getTime());
-
   return x.toISOString().slice(0,10);
+});
 
-}
-
-function parseInputDate(v){
-
+const parseInputDate = window.parseInputDate || ((v)=>{
   if(!v) return null;
-
   const d = new Date(v+"T00:00:00");
-
   return isNaN(d) ? null : d;
-
-}
+});
 
 function getTasksDateBounds(tasks){
 
@@ -4484,25 +4476,25 @@ let loginRangeEnd = "";
 let loginLogSortKey = "ts";
 let loginLogSortDir = "desc";
 
-function toISODateStart(d){
+const toISODateStart = window.toISODateStart || ((d)=>{
   if(!d) return "";
   const x = new Date(d.getTime());
   x.setHours(0,0,0,0);
   return x.toISOString();
-}
-function toISODateEnd(d){
+});
+const toISODateEnd = window.toISODateEnd || ((d)=>{
   if(!d) return "";
   const x = new Date(d.getTime());
   x.setHours(23,59,59,999);
   return x.toISOString();
-}
-function toLocalISODate(d){
+});
+const toLocalISODate = window.toLocalISODate || ((d)=>{
   if(!d || isNaN(d)) return "";
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,"0");
   const day = String(d.getDate()).padStart(2,"0");
   return `${y}-${m}-${day}`;
-}
+});
 
 function hexToRgba(hex, alpha){
   const v = (hex || "").replace("#","").trim();
@@ -4513,7 +4505,7 @@ function hexToRgba(hex, alpha){
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-function clampLoginRange(start, end, maxDays=35){
+const clampLoginRange = window.clampLoginRange || ((start, end, maxDays=35)=>{
   const s = new Date(start.getTime());
   const e = new Date(end.getTime());
   const diff = Math.floor((e - s) / 86400000);
@@ -4521,7 +4513,7 @@ function clampLoginRange(start, end, maxDays=35){
   const ns = new Date(e.getTime());
   ns.setDate(ns.getDate() - maxDays);
   return {start:ns, end:e, clamped:true};
-}
+});
 
 function buildLoginHeatmap(container, events, rangeStart, rangeEnd){
   if(!container) return;
