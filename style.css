@@ -2864,6 +2864,12 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
     max-height:38vh;
   }
 }
+
+/* Masquage badges de legendes (pastilles projet/statut en bandeau live) */
+#masterLive.panel-live .live-item,
+#projectLive.panel-live .live-item{
+  display:none !important;
+}
 @media (max-width:640px){
   .layout{padding:10px;}
   .panel{padding:6px;}
@@ -5848,4 +5854,10 @@ h3,
 #btnToggleProjectStatus.btn-primary:focus-visible{
   background:#365563 !important;
   border-color:#2f4b57 !important;
+}
+
+/* Verrou final definitif: suppression badges de legendes live */
+#masterLive .live-item,
+#projectLive .live-item{
+  display:none !important;
 }
