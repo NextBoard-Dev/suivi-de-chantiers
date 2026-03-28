@@ -7489,12 +7489,12 @@ function getTaskRoleKey(t){
   }
   return "interne";
 }
-function roleLabel(roleKey){
+const roleLabel = window.roleLabel || ((roleKey)=>{
   if(roleKey==="rsg") return "RSG";
   if(roleKey==="ri") return "RI";
   if(roleKey==="externe") return "EXTERNE";
   return "INTERNE";
-}
+});
 function getCanonicalTimeLogs(){
   const logs = getTimeLogs();
   const map = new Map(); // taskId|date|roleKey|internalTech -> merged log
@@ -7607,9 +7607,7 @@ const formatHoursMinutes = window.formatHoursMinutes || ((totalMinutes)=>{
   if(m === 0) return `${h} h`;
   return `${h} h ${m} min`;
 });
-function roleHoursMultiplier(roleKey){
-  return 1;
-}
+const roleHoursMultiplier = window.roleHoursMultiplier || (()=>1);
 function getTaskTimeTotals(taskRef){
   const taskId = (typeof taskRef === "string") ? taskRef : taskRef?.id;
   const roleKey = (typeof taskRef === "object" && taskRef) ? getTaskRoleKey(taskRef) : "";
