@@ -616,6 +616,21 @@ let _stateVersion = 0;
 let _filteredCache = { key:"", version:-1, tasks:null };
 let _missingHoursFlow = null;
 let _outsideRangeFlow = null;
+let _lastScalabilityReport = null;
+const SCALE_GUARDS = {
+  warnTasks: 1000,
+  warnTimeLogs: 20000,
+  warnStateBytes: 3_500_000,
+  warnRenderMs: 180,
+  warnSaveMs: 220
+};
+const runtimePerf = {
+  lastRenderMs: 0,
+  lastSaveMs: 0,
+  lastStateBytes: 0,
+  lastRenderAt: "",
+  lastSaveAt: ""
+};
 
 let isLocked = true; // verrou logique = droits utilisateur (admin = false)
 const isHostedGithubPages = ()=>{
@@ -3987,6 +4002,52 @@ function computeMapDiffStats(localMap, remoteMap){
   };
 }
 
+function estimateStateBytes(obj){
+  try{
+    const txt = JSON.stringify(obj || {});
+    return new Blob([txt]).size;
+  }catch(e){
+    softCatch(e);
+    return 0;
+  }
+}
+
+function collectScalabilityReport(currentState=state){
+  const tasksCount = Array.isArray(currentState?.tasks) ? currentState.tasks.length : 0;
+  const timeLogsCount = Array.isArray(currentState?.timeLogs) ? currentState.timeLogs.length : 0;
+  const stateBytes = runtimePerf.lastStateBytes || estimateStateBytes(currentState || {});
+  const warnings = [];
+
+  if(tasksCount >= SCALE_GUARDS.warnTasks){
+    warnings.push(`Volume tâches élevé (${tasksCount} >= ${SCALE_GUARDS.warnTasks})`);
+  }
+  if(timeLogsCount >= SCALE_GUARDS.warnTimeLogs){
+    warnings.push(`Volume saisies heures élevé (${timeLogsCount} >= ${SCALE_GUARDS.warnTimeLogs})`);
+  }
+  if(stateBytes >= SCALE_GUARDS.warnStateBytes){
+    warnings.push(`Taille état importante (${Math.round(stateBytes/1024)} Ko)`);
+  }
+  if((runtimePerf.lastRenderMs || 0) >= SCALE_GUARDS.warnRenderMs){
+    warnings.push(`Rendu UI lent (${runtimePerf.lastRenderMs.toFixed(1)} ms)`);
+  }
+  if((runtimePerf.lastSaveMs || 0) >= SCALE_GUARDS.warnSaveMs){
+    warnings.push(`Sauvegarde lente (${runtimePerf.lastSaveMs.toFixed(1)} ms)`);
+  }
+
+  return {
+    ok: warnings.length === 0,
+    warnings,
+    tasksCount,
+    timeLogsCount,
+    stateBytes,
+    stateKb: Math.round(stateBytes/1024),
+    lastRenderMs: runtimePerf.lastRenderMs || 0,
+    lastSaveMs: runtimePerf.lastSaveMs || 0,
+    lastRenderAt: runtimePerf.lastRenderAt || "",
+    lastSaveAt: runtimePerf.lastSaveAt || ""
+  };
+}
+
 async function collectCloudAlignmentReport(currentState=state){
   try{
     const sb = _getSupabaseClient();
@@ -4029,17 +4090,22 @@ function updateDataQualityBanner(notify=false){
   const today = new Date();
   const fmt = today.toLocaleDateString("fr-FR",{weekday:"long", day:"2-digit", month:"long", year:"numeric"});
   const report = collectDataQualityIssues(state);
+  const scale = collectScalabilityReport(state);
   _lastDataQualityReport = report;
+  _lastScalabilityReport = scale;
 
   const cloudSuffix = _lastCloudAlignmentReport?.available
     ? (_lastCloudAlignmentReport.okBusiness ? " · Cloud OK" : ` · Cloud ${_lastCloudAlignmentReport.business.total} écart(s)`)
     : "";
+  const scaleSuffix = scale.ok ? " · Charge OK" : ` · Charge ${scale.warnings.length} alerte(s)`;
   const badgeLabel = report.ok
-    ? `Qualité données: OK${cloudSuffix}`
-    : `Qualité données: ${report.issues.length} incohérence(s)${cloudSuffix}`;
-  const badgeStyle = report.ok
-    ? "color:#16a34a;border:1px solid #16a34a33;background:#16a34a14;padding:2px 8px;border-radius:10px;cursor:pointer;"
-    : "color:#b91c1c;border:1px solid #b91c1c33;background:#b91c1c14;padding:2px 8px;border-radius:10px;cursor:pointer;";
+    ? `Qualité données: OK${cloudSuffix}${scaleSuffix}`
+    : `Qualité données: ${report.issues.length} incohérence(s)${cloudSuffix}${scaleSuffix}`;
+  const badgeStyle = (!report.ok)
+    ? "color:#b91c1c;border:1px solid #b91c1c33;background:#b91c1c14;padding:2px 8px;border-radius:10px;cursor:pointer;"
+    : (!scale.ok
+        ? "color:#c2410c;border:1px solid #c2410c33;background:#c2410c14;padding:2px 8px;border-radius:10px;cursor:pointer;"
+        : "color:#16a34a;border:1px solid #16a34a33;background:#16a34a14;padding:2px 8px;border-radius:10px;cursor:pointer;");
 
   brandSub.innerHTML = `Tableau maître  Projets  Gantt  <span class="brand-date">${fmt}</span>  <span id="dataQualityBadge" style="${badgeStyle}">${badgeLabel}</span>`;
   const badge = el("dataQualityBadge");
@@ -4053,8 +4119,13 @@ function updateDataQualityBanner(notify=false){
         : (cloud.okBusiness
             ? `Cloud: OK (seul updatedAt peut différer, ${cloud.strict.total} écart(s) technique(s))`
             : `Cloud: ${cloud.business.total} écart(s) métier`);
-      const detail = `${formatQualityIssuesForToast(r)} | ${cloudMsg}`;
-      const isOk = r.ok && (!cloud.available || cloud.okBusiness);
+      const scaleNow = collectScalabilityReport(state);
+      _lastScalabilityReport = scaleNow;
+      const scaleMsg = scaleNow.ok
+        ? `Charge: OK (${scaleNow.tasksCount} tâches, ${scaleNow.timeLogsCount} logs, ${scaleNow.stateKb} Ko)`
+        : `Charge: ${scaleNow.warnings.join(" ; ")}`;
+      const detail = `${formatQualityIssuesForToast(r)} | ${cloudMsg} | ${scaleMsg}`;
+      const isOk = r.ok && (!cloud.available || cloud.okBusiness) && scaleNow.ok;
       showSaveToast(isOk ? "ok" : "error", "Contrôle qualité", detail);
       updateDataQualityBanner(false);
     };
@@ -4085,6 +4156,7 @@ function applyDataQualityCleanup(){
 
 function exportDataQualityReportPdf(){
   const report = collectDataQualityIssues(state);
+  const scale = collectScalabilityReport(state);
   const today = new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});
 
   setPrintPageFormat("A4 portrait", "6mm");
@@ -4114,7 +4186,10 @@ function exportDataQualityReportPdf(){
       ["État", report.ok ? "OK" : "Incohérences détectées"],
       ["Nombre d'anomalies", String(report.issues.length)],
       ["Tâches", String((state?.tasks || []).length)],
-      ["Logs temps", String((state?.timeLogs || []).length)]
+      ["Logs temps", String((state?.timeLogs || []).length)],
+      ["Charge", scale.ok ? "OK" : `${scale.warnings.length} alerte(s)`],
+      ["Dernier rendu UI", `${scale.lastRenderMs.toFixed(1)} ms`],
+      ["Dernière sauvegarde", `${scale.lastSaveMs.toFixed(1)} ms`]
     ];
     meta.innerHTML = rows.map(([k,v])=>`<div><strong>${k}</strong><br>${attrEscape(v)}</div>`).join("");
   }
@@ -4128,7 +4203,12 @@ function exportDataQualityReportPdf(){
 
   const lines = report.ok
     ? ["Aucune incohérence métier détectée."]
-    : report.issues;
+    : report.issues.slice();
+  if(scale.ok){
+    lines.push(`Charge données: OK (${scale.tasksCount} tâches, ${scale.timeLogsCount} logs, ${scale.stateKb} Ko).`);
+  }else{
+    lines.push(`Charge données: ${scale.warnings.join(" ; ")}`);
+  }
 
   const listHtml = lines.map((x,i)=>`<li>${attrEscape(String(i+1))}. ${attrEscape(x)}</li>`).join("");
   card.innerHTML = `
@@ -4200,10 +4280,14 @@ function animateCardsInView(viewId){
 function saveState(opts={}){
 
   try{
+    const t0 = performance.now();
     const normalized = normalizeState(state || {});
     state = normalized;
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+    const serialized = JSON.stringify(normalized);
+    localStorage.setItem(STORAGE_KEY, serialized);
+    runtimePerf.lastStateBytes = new Blob([serialized]).size;
+    runtimePerf.lastSaveMs = Math.max(0, performance.now() - t0);
+    runtimePerf.lastSaveAt = new Date().toISOString();
 
     clearDirty();
 
@@ -9143,6 +9227,7 @@ function renderProject(){
 
 
 function renderAll(){
+  const renderT0 = performance.now();
   // filet de sécurité : si localStorage est vide (ex : fichier ouvert en navigation privée), on recharge l'état par défaut
   if(!state || !Array.isArray(state.projects) || state.projects.length===0){
     state = defaultState();
@@ -9177,6 +9262,8 @@ function renderAll(){
 
   applySidebarTopLock();
   checkTimeLogReminders();
+  runtimePerf.lastRenderMs = Math.max(0, performance.now() - renderT0);
+  runtimePerf.lastRenderAt = new Date().toISOString();
   updateDataQualityBanner(false);
   applyUiUpperNoAccent();
   ensureUiUpperNoAccentObserver();
