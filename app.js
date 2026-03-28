@@ -5473,7 +5473,13 @@ function renderGantt(projectId){
         const vacClass = vacWeeks[i] ? " vac-week" : "";
         const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
         const barDelay = (rowIdx * 0.03 + i * 0.015).toFixed(3);
-        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
+        const progressValue = taskProgress(t);
+        const weekEnd = addDays(w, 6);
+        const isLabelWeek = sDate >= w && sDate <= weekEnd;
+        const useOutsideLabel = geo.width < 42;
+        const progressInside = (isLabelWeek && !useOutsideLabel) ? `<span class="gantt-progress">${progressValue}%</span>` : "";
+        const progressOutside = (isLabelWeek && useOutsideLabel) ? `<span class="gantt-progress-out">${progressValue}%</span>` : "";
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s">${progressInside}</div>${progressOutside}</div></div></td>`;
 
       }else{
 
@@ -5990,7 +5996,13 @@ function renderMasterGantt(){
         const vacClass = vacWeeks[i] ? " vac-week" : "";
         const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
         const barDelay = (rowIdx * 0.03 + i * 0.015).toFixed(3);
-        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
+        const progressValue = taskProgress(t);
+        const weekEnd = addDays(w, 6);
+        const isLabelWeek = sDate >= w && sDate <= weekEnd;
+        const useOutsideLabel = geo.width < 42;
+        const progressInside = (isLabelWeek && !useOutsideLabel) ? `<span class="gantt-progress">${progressValue}%</span>` : "";
+        const progressOutside = (isLabelWeek && useOutsideLabel) ? `<span class="gantt-progress-out">${progressValue}%</span>` : "";
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s">${progressInside}</div>${progressOutside}</div></div></td>`;
 
       }else{
 
@@ -7240,6 +7252,9 @@ function renderMaster(){
     const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
     const isLate = !!(t.end && t.end < todayKey);
     const rowClass = `${isToday ? "today-row " : ""}${isLate ? "late-row" : ""}`.trim();
+    const statusCellBg = isToday
+      ? "rgba(254,243,199,0.7)"
+      : (isLate ? "rgba(254,226,226,0.55)" : rowBg);
     const miss = missingMap.get(t.id) || 0;
     const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
     h+=`<tr class="${rowClass}" data-project="${t.projectId}" data-task="${t.id}" style="--site-bg:${rowBg};background:var(--site-bg);">
@@ -7249,7 +7264,7 @@ function renderMaster(){
 
       <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskLabel}</td>
 
-      <td class="status-cell"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${t.owner?ownerBadgeForTask(t):""}</td>
+      <td class="status-cell" style="background:${statusCellBg};background-color:${statusCellBg};"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${t.owner?ownerBadgeForTask(t):""}</td>
 
       <td>${formatDate(t.start)||""}${isToday ? `<span class="today-dot" title="En cours aujourd'hui"></span>` : ""}</td>
 
@@ -11823,11 +11838,6 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
       const block = targets[i];
       const loopStartPct = 24 + Math.round((i / totalTargets) * 60);
       updateViewerProgress(loopStartPct, `Rendu du module ${i+1}/${totalTargets}...`, "Rendu des pages");
-      if(i>0 && block.classList && block.classList.contains("force-new-page")){
-        pdf.addPage();
-        yCursor = margin;
-        hasContentOnPage = false;
-      }
       const canvas = await window.html2canvas(block, {
         scale: 2,
         backgroundColor: "#ffffff",
@@ -11837,6 +11847,17 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
         windowWidth: Math.max(block.scrollWidth || block.clientWidth || 1800, 1800),
         windowHeight: Math.max(block.scrollHeight || block.clientHeight || 300, 300)
       });
+
+      // Evite les pages blanches: si un bloc est vide/non rendu, on le saute.
+      if(!canvas || canvas.width < 2 || canvas.height < 2){
+        continue;
+      }
+
+      if(i>0 && block.classList && block.classList.contains("force-new-page") && hasContentOnPage){
+        pdf.addPage();
+        yCursor = margin;
+        hasContentOnPage = false;
+      }
 
       const imgData = canvas.toDataURL("image/jpeg", 0.95);
       const imgH = canvas.height * drawW / canvas.width;
