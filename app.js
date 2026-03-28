@@ -2280,6 +2280,18 @@ const ownerType = (o="")=>{
 
 };
 
+const normalizeOwnerValue = (o="")=>{
+  const raw = String(o || "").trim();
+  const up = raw.toUpperCase();
+  if(!up) return "";
+  if(up === "RSG/RI") return "RSG";
+  if(up === "RSG") return "RSG";
+  if(up === "RI") return "RI";
+  if(up === "EXTERNE" || up === "PRESTATAIRE EXTERNE" || up === "PRESTATAIRE") return "EXTERNE";
+  if(up === "INTERNE" || up === "EQUIPE INTERNE" || up === "ÉQUIPE INTERNE") return "INTERNE";
+  return raw;
+};
+
 const ownerBadge = (o="", labelOverride="")=>{
 
   const k = o.toLowerCase();
@@ -3100,7 +3112,7 @@ function normalizeState(raw){
   const normProjects = (raw.projects||[]).map(p=>({...p, id:normId(p.id)}));
 
   const normTasks = (raw.tasks||[]).map(t=>{
-    const ownerNorm = (String(t.owner||"").toUpperCase()==="RSG/RI") ? "RSG" : (t.owner||"");
+    const ownerNorm = normalizeOwnerValue(t.owner || "");
     const ownerNormType = ownerType(ownerNorm);
     let vendorNorm = (t.vendor||"").toString().trim();
     let internalTechNorm = serializeInternalTechList(
@@ -3108,7 +3120,7 @@ function normalizeState(raw){
         .map((name)=>canonicalizeInternalTechForTask(name, null))
         .filter(Boolean)
     );
-    if(String(ownerNorm).toLowerCase().includes("prestataire externe") && !vendorNorm){
+    if(ownerNormType === "externe" && !vendorNorm){
       vendorNorm = "PRESTATAIRE NON RENSEIGNE";
     }
     if(ownerNormType !== "externe"){
@@ -3722,6 +3734,7 @@ function load(){
       if(data){
 
         state = normalizeState(data);
+        _lastStateLoadSource = "backup_json";
 
         renderAll();
 
@@ -3742,6 +3755,7 @@ function load(){
         if(raw){
 
           state = normalizeState(JSON.parse(raw));
+          _lastStateLoadSource = "local_storage";
 
           renderAll();
 
@@ -3758,6 +3772,7 @@ function load(){
       // 3) fallback état embarqu
 
       state = normalizeState(defaultState());
+      _lastStateLoadSource = "default_state";
 
       renderAll();
 
@@ -3778,6 +3793,7 @@ function load(){
         if(raw){
 
           state = normalizeState(JSON.parse(raw));
+          _lastStateLoadSource = "local_storage";
 
           renderAll();
 
@@ -3792,6 +3808,7 @@ function load(){
       }catch(e){ softCatch(e); }
 
       state = normalizeState(defaultState());
+      _lastStateLoadSource = "default_state";
 
       renderAll();
 
@@ -3834,6 +3851,16 @@ function showSaveToast(type, title, detail){
 
 let _lastDataQualityReport = null;
 let _lastCloudAlignmentReport = null;
+let _lastStateLoadSource = "inconnu";
+
+function stateLoadSourceLabel(src){
+  const k = String(src || "").toLowerCase();
+  if(k === "supabase_cloud") return "Cloud";
+  if(k === "backup_json") return "JSON disque";
+  if(k === "local_storage") return "LocalStorage";
+  if(k === "default_state") return "Etat par défaut";
+  return "Inconnue";
+}
 
 function collectDataQualityIssues(currentState=state){
   const s = currentState || {};
@@ -3844,6 +3871,7 @@ function collectDataQualityIssues(currentState=state){
   let invalidDates = 0;
   let externalWithoutVendor = 0;
   let internalWithoutTech = 0;
+  let invalidOwnerAssignment = 0;
   let legacyStatus = 0;
   let orphanLogs = 0;
   let logsOutsideTaskRange = 0;
@@ -3853,12 +3881,13 @@ function collectDataQualityIssues(currentState=state){
     const end = (t?.end || "").toString();
     if(!start || !end || end < start) invalidDates += 1;
 
-    const owner = (t?.owner || "").toString().toLowerCase();
+    const owner = normalizeOwnerValue(t?.owner || "");
     const vendor = (t?.vendor || "").toString().trim();
-    const ownerTyp = ownerType(t?.owner || "");
+    const ownerTyp = ownerType(owner);
     const internalTechCount = normalizeInternalTechList(t?.internalTech || "").length;
-    if(owner.includes("prestataire externe") && !vendor) externalWithoutVendor += 1;
+    if(ownerTyp === "externe" && !vendor) externalWithoutVendor += 1;
     if(ownerTyp === "interne" && internalTechCount <= 0) internalWithoutTech += 1;
+    if(ownerTyp === "inconnu") invalidOwnerAssignment += 1;
 
     const statuses = String(t?.status || "").split(",").map(x=>x.trim().toUpperCase()).filter(Boolean);
     if(statuses.includes("HUIS_SER")) legacyStatus += 1;
@@ -3879,6 +3908,7 @@ function collectDataQualityIssues(currentState=state){
   if(invalidDates > 0) issues.push(`${invalidDates} tâche(s) avec dates invalides`);
   if(externalWithoutVendor > 0) issues.push(`${externalWithoutVendor} tâche(s) externes sans prestataire`);
   if(internalWithoutTech > 0) issues.push(`${internalWithoutTech} tâche(s) internes sans technicien`);
+  if(invalidOwnerAssignment > 0) issues.push(`${invalidOwnerAssignment} tâche(s) sans responsable valide`);
   if(legacyStatus > 0) issues.push(`${legacyStatus} tâche(s) en statut obsolète HUIS_SER`);
   if(orphanLogs > 0) issues.push(`${orphanLogs} log(s) orphelins`);
   if(logsOutsideTaskRange > 0) issues.push(`${logsOutsideTaskRange} log(s) hors période de tâche`);
@@ -3886,7 +3916,7 @@ function collectDataQualityIssues(currentState=state){
   return {
     ok: issues.length === 0,
     issues,
-    counts: { invalidDates, externalWithoutVendor, internalWithoutTech, legacyStatus, orphanLogs, logsOutsideTaskRange }
+    counts: { invalidDates, externalWithoutVendor, internalWithoutTech, invalidOwnerAssignment, legacyStatus, orphanLogs, logsOutsideTaskRange }
   };
 }
 
