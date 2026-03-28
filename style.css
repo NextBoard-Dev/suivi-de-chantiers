@@ -3118,11 +3118,6 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   justify-content:space-between;
 }
 
-/* Indicateurs de tri visibles en permanence */
-.table th[data-sort]::after{content:" ";font-size:11px;color:#64748b;margin-left:6px;opacity:1;}
-.table th.sorted-asc::after{content:" ";color:#0f172a;opacity:1;}
-.table th.sorted-desc::after{content:" ";color:#0f172a;opacity:1;}
-
 /* Surbrillance onglet Tableau maître (doit rester visible malgré les overrides) */
 .tab.tab-master{
   background:linear-gradient(180deg, rgba(215,238,255,0.98) 0%, rgba(185,224,248,0.92) 100%) !important;
