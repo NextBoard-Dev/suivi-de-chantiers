@@ -9,6 +9,19 @@
     return x.toISOString().slice(0,10);
   }
 
+  function toInputDate(val){
+    if(!val) return "";
+    if(val instanceof Date){
+      return val.toISOString().slice(0,10);
+    }
+    const s = String(val).trim();
+    if(!s) return "";
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if(m) return `${m[3]}-${m[2]}-${m[1]}`;
+    return s;
+  }
+
   function parseInputDate(v){
     if(!v) return null;
     const d = new Date(v+"T00:00:00");
@@ -31,6 +44,13 @@
 
   function toLocalISODate(d){
     if(!d || isNaN(d)) return "";
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function toLocalDateKey(d){
     const y = d.getFullYear();
     const m = String(d.getMonth()+1).padStart(2,"0");
     const day = String(d.getDate()).padStart(2,"0");
@@ -63,10 +83,12 @@
   }
 
   windowRef.toDateInput = windowRef.toDateInput || toDateInput;
+  windowRef.toInputDate = windowRef.toInputDate || toInputDate;
   windowRef.parseInputDate = windowRef.parseInputDate || parseInputDate;
   windowRef.toISODateStart = windowRef.toISODateStart || toISODateStart;
   windowRef.toISODateEnd = windowRef.toISODateEnd || toISODateEnd;
   windowRef.toLocalISODate = windowRef.toLocalISODate || toLocalISODate;
+  windowRef.toLocalDateKey = windowRef.toLocalDateKey || toLocalDateKey;
   windowRef.clampLoginRange = windowRef.clampLoginRange || clampLoginRange;
   windowRef.formatShortDate = windowRef.formatShortDate || formatShortDate;
   windowRef.formatShortDateTwoLinesHTML = windowRef.formatShortDateTwoLinesHTML || formatShortDateTwoLinesHTML;

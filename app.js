@@ -3256,7 +3256,7 @@ const unformatDate = (fr)=>{
 
 };
 
-function toInputDate(val){
+const toInputDate = window.toInputDate || ((val)=>{
   if(!val) return "";
   if(val instanceof Date){
     return val.toISOString().slice(0,10);
@@ -3267,14 +3267,14 @@ function toInputDate(val){
   const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if(m) return `${m[3]}-${m[2]}-${m[1]}`;
   return s;
-}
+});
 
-function toLocalDateKey(d){
+const toLocalDateKey = window.toLocalDateKey || ((d)=>{
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,"0");
   const day = String(d.getDate()).padStart(2,"0");
   return `${y}-${m}-${day}`;
-}
+});
 function getYesterdayKey(){
   const d = new Date();
   d.setDate(d.getDate()-1);
