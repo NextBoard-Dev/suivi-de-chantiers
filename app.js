@@ -4914,11 +4914,8 @@ function syncWorkloadFilterUI(tasks, boundsTasks=tasks, uiIds=null, stateRef=nul
 }
 
 function isWeekday(d){
-
   const day = d.getDay();
-
   return day >= 1 && day <= 5; // lundi-vendredi
-
 }
 
 function countWeekdays(start, end){
@@ -5045,17 +5042,11 @@ function computeTaskOrderMap(){
 // Gantt helpers
 
 function startOfWeek(d){
-
   const x=new Date(d.getTime());
-
   const day=(x.getDay()+6)%7; // lundi=0
-
   x.setDate(x.getDate()-day);
-
   x.setHours(0,0,0,0);
-
   return x;
-
 }
 
 function endOfWorkWeek(d){
