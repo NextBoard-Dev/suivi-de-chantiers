@@ -1177,6 +1177,18 @@ function initThemePicker(){
 function getCurrentRole(){
   return sessionStorage.getItem("current_role") || "user";
 }
+function buildAdminMiniDiagText(){
+  try{
+    const m = runtimePerf?.lastSegmentSizes;
+    if(!m) return "";
+    const seg = m.segmentsBytes || {};
+    const kb = (v)=>`${Math.round((Number(v||0))/1024)} Ko`;
+    return ` | Diag: etat ${kb(m.totalBytes)} | projets ${kb(seg.projects)} | taches ${kb(seg.tasks)} | logs ${kb(seg.timeLogs)}`;
+  }catch(e){
+    softCatch(e);
+    return "";
+  }
+}
 function updateRoleUI(){
   const role = getCurrentRole();
   const cfgBtn = el("btnConfig");
@@ -1187,7 +1199,8 @@ function updateRoleUI(){
     const email = sessionStorage.getItem("current_email") || "";
     const roleLabel = role==="admin" ? "Admin" : "Utilisateur";
     const emailPart = email ? ` - ${email}` : "";
-    topUser.textContent = `Utilisateur connecté: ${name}${emailPart} - ${roleLabel}`;
+    const diagPart = role==="admin" ? buildAdminMiniDiagText() : "";
+    topUser.textContent = `Utilisateur connecté: ${name}${emailPart} - ${roleLabel}${diagPart}`;
   }
   applyThemeForCurrentUser();
 }
@@ -4226,6 +4239,9 @@ function saveState(opts={}){
     runtimePerf.lastSaveMs = Math.max(0, performance.now() - t0);
     runtimePerf.lastSaveAt = new Date().toISOString();
     refreshStateSegmentationDiagnostics(normalized);
+    if(getCurrentRole() === "admin"){
+      updateRoleUI();
+    }
 
     clearDirty();
 
