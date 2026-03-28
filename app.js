@@ -11551,6 +11551,82 @@ function computeRowAwareSliceHeights(block, canvas, maxSlicePx){
   }catch(e){ softCatch(e); }
   return out;
 }
+
+function trimCanvasWhitespace(canvas){
+  if(!canvas || !canvas.width || !canvas.height) return null;
+  try{
+    const ctx = canvas.getContext("2d", { willReadFrequently:true });
+    if(!ctx) return canvas;
+    const { width, height } = canvas;
+    const img = ctx.getImageData(0, 0, width, height);
+    const data = img.data;
+    const step = Math.max(1, Math.floor(Math.min(width, height) / 900));
+    const isVisible = (i)=>{
+      const a = data[i + 3];
+      if(a < 16) return false;
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      return !(r > 248 && g > 248 && b > 248);
+    };
+
+    let top = -1;
+    for(let y = 0; y < height && top < 0; y += step){
+      for(let x = 0; x < width; x += step){
+        const i = ((y * width) + x) * 4;
+        if(isVisible(i)){ top = y; break; }
+      }
+    }
+    if(top < 0) return null;
+
+    let bottom = height - 1;
+    for(let y = height - 1; y >= 0; y -= step){
+      let hit = false;
+      for(let x = 0; x < width; x += step){
+        const i = ((y * width) + x) * 4;
+        if(isVisible(i)){ hit = true; break; }
+      }
+      if(hit){ bottom = y; break; }
+    }
+
+    let left = 0;
+    for(let x = 0; x < width; x += step){
+      let hit = false;
+      for(let y = top; y <= bottom; y += step){
+        const i = ((y * width) + x) * 4;
+        if(isVisible(i)){ hit = true; break; }
+      }
+      if(hit){ left = x; break; }
+    }
+
+    let right = width - 1;
+    for(let x = width - 1; x >= 0; x -= step){
+      let hit = false;
+      for(let y = top; y <= bottom; y += step){
+        const i = ((y * width) + x) * 4;
+        if(isVisible(i)){ hit = true; break; }
+      }
+      if(hit){ right = x; break; }
+    }
+
+    const pad = 6;
+    const cropX = Math.max(0, left - pad);
+    const cropY = Math.max(0, top - pad);
+    const cropW = Math.max(1, Math.min(width - cropX, (right - left + 1) + pad * 2));
+    const cropH = Math.max(1, Math.min(height - cropY, (bottom - top + 1) + pad * 2));
+    if(cropW >= width && cropH >= height) return canvas;
+
+    const out = document.createElement("canvas");
+    out.width = cropW;
+    out.height = cropH;
+    const octx = out.getContext("2d");
+    octx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+    return out;
+  }catch(e){
+    softCatch(e);
+    return canvas;
+  }
+}
 async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
   const container = document.getElementById("printInjection");
   if(!container || !container.innerHTML.trim()){
@@ -11838,7 +11914,7 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
       const block = targets[i];
       const loopStartPct = 24 + Math.round((i / totalTargets) * 60);
       updateViewerProgress(loopStartPct, `Rendu du module ${i+1}/${totalTargets}...`, "Rendu des pages");
-      const canvas = await window.html2canvas(block, {
+      const renderedCanvas = await window.html2canvas(block, {
         scale: 2,
         backgroundColor: "#ffffff",
         useCORS: true,
@@ -11848,7 +11924,7 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
         windowHeight: Math.max(block.scrollHeight || block.clientHeight || 300, 300)
       });
 
-      // Evite les pages blanches: si un bloc est vide/non rendu, on le saute.
+      const canvas = trimCanvasWhitespace(renderedCanvas);
       if(!canvas || canvas.width < 2 || canvas.height < 2){
         continue;
       }
@@ -11882,7 +11958,7 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
       }
 
       const slicePx = Math.floor((drawH * canvas.width) / drawW);
-      const plannedHeights = computeRowAwareSliceHeights(block, canvas, slicePx);
+      const plannedHeights = (canvas === renderedCanvas) ? computeRowAwareSliceHeights(block, canvas, slicePx) : [];
       let offsetPx = 0;
       let sliceIdx = 0;
       while(offsetPx < canvas.height){
