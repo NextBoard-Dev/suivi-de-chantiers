@@ -4922,33 +4922,27 @@ function isWeekday(d){
 }
 
 function countWeekdays(start, end){
-
-  if(!start || !end || end < start) return 0;
-
-  let count = 0;
-
-  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
-
-    if(isWeekday(d)) count += 1;
-
+  if(typeof window.countWeekdays === "function" && window.countWeekdays !== countWeekdays){
+    return window.countWeekdays(start, end);
   }
-
+  if(!start || !end || end < start) return 0;
+  let count = 0;
+  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    if(isWeekday(d)) count += 1;
+  }
   return count;
 
 }
 
 function durationDays(start,end){
-
+  if(typeof window.durationDays === "function" && window.durationDays !== durationDays){
+    return window.durationDays(start, end);
+  }
   if(!start || !end) return "";
-
   const s=new Date(start+"T00:00:00");
-
   const e=new Date(end+"T00:00:00");
-
   if(isNaN(s) || isNaN(e) || e<s) return "";
-
   const days = countWeekdays(s, e);
-
   return days>0 ? days : "";
 
 }
