@@ -5845,23 +5845,6 @@ h3,
 #btnToggleMasterStatus.btn-ghost,
 #btnToggleProjectVendor.btn-ghost,
 #btnToggleProjectStatus.btn-ghost{
-  background:var(--ui-btn-neutral-bg) !important;
-  background-image:none !important;
-  color:var(--ui-btn-neutral-text) !important;
-  -webkit-text-fill-color:var(--ui-btn-neutral-text) !important;
-  border:1px solid var(--ui-btn-neutral-border) !important;
-  box-shadow:none !important;
-  text-shadow:none !important;
-}
-#btnToggleMasterVendor.btn-primary,
-#btnToggleMasterStatus.btn-primary,
-#btnToggleProjectVendor.btn-primary,
-#btnToggleProjectStatus.btn-primary{
-  background:var(--ui-btn-active-bg) !important;
-  background-image:none !important;
-  color:var(--ui-btn-active-text) !important;
-  -webkit-text-fill-color:var(--ui-btn-active-text) !important;
-  border:1px solid var(--ui-btn-active-border) !important;
   box-shadow:none !important;
   text-shadow:none !important;
 }
@@ -5887,18 +5870,24 @@ h3,
 #btnToggleProjectVendor.btn-ghost,
 #btnToggleProjectStatus.btn-ghost{
   background:rgba(63,97,112,0.18) !important;
+  background-image:none !important;
   border:1px solid rgba(63,97,112,0.28) !important;
   color:#213b48 !important;
   -webkit-text-fill-color:#213b48 !important;
+  box-shadow:none !important;
+  text-shadow:none !important;
 }
 #btnToggleMasterVendor.btn-primary,
 #btnToggleMasterStatus.btn-primary,
 #btnToggleProjectVendor.btn-primary,
 #btnToggleProjectStatus.btn-primary{
   background:#3f6170 !important;
+  background-image:none !important;
   border:1px solid #365563 !important;
   color:#ffffff !important;
   -webkit-text-fill-color:#ffffff !important;
+  box-shadow:none !important;
+  text-shadow:none !important;
 }
 #btnToggleMasterVendor.btn-primary:hover,
 #btnToggleMasterStatus.btn-primary:hover,
