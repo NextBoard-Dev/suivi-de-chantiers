@@ -994,11 +994,11 @@ const formatShortDateTwoLinesHTML = window.formatShortDateTwoLinesHTML || ((d)=>
 });
 
 function isTodayInWeek(weekStart){
-
+  if(typeof window.isTodayInWeek === "function" && window.isTodayInWeek !== isTodayInWeek){
+    return window.isTodayInWeek(weekStart);
+  }
   const today = new Date();
-
   const s = startOfWeek(today);
-
   return +s === +weekStart;
 
 }

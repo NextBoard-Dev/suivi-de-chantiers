@@ -16,7 +16,13 @@
     return x;
   }
 
+  function isTodayInWeek(weekStart){
+    const today = new Date();
+    const s = startOfWeek(today);
+    return +s === +weekStart;
+  }
+
   windowRef.isWeekday = windowRef.isWeekday || isWeekday;
   windowRef.startOfWeek = windowRef.startOfWeek || startOfWeek;
+  windowRef.isTodayInWeek = windowRef.isTodayInWeek || isTodayInWeek;
 })(window);
-
