@@ -19,6 +19,182 @@ const {
   readOnlyMode,
   allowTaskWrites,
 } = supabaseConfig;
+const READ_PAGE_SIZE = 500;
+const ID_BATCH_SIZE = 200;
+
+const PROJECT_SELECT_COLUMNS = [
+  "id",
+  "name",
+  "project_name",
+  "site",
+  "site_name",
+  "subproject",
+  "sub_project",
+  "progress",
+  "lifecycle_status",
+  "status",
+  "start_date",
+  "start",
+  "end_date",
+  "end",
+  "updated_date",
+  "updated_at",
+  "created_date",
+  "created_at",
+  "budget_estimated",
+  "budget_actual",
+  "penalty_amount",
+].join(",");
+
+const TASK_SELECT_COLUMNS = [
+  "id",
+  "project_id",
+  "chantier_id",
+  "description",
+  "name",
+  "owner_type",
+  "owner",
+  "vendor",
+  "start_date",
+  "start",
+  "end_date",
+  "end",
+  "progress",
+  "statuses",
+  "status",
+  "duration_days",
+  "updated_date",
+  "updated_at",
+  "created_date",
+  "created_at",
+  "estimated_cost",
+  "actual_cost",
+  "penalty_amount",
+].join(",");
+
+const TIME_LOG_SELECT_COLUMNS = [
+  "id",
+  "task_id",
+  "tache_id",
+  "taskId",
+  "project_id",
+  "chantier_id",
+  "projectId",
+  "date",
+  "log_date",
+  "day",
+  "role",
+  "owner_type",
+  "owner",
+  "technician",
+  "tech",
+  "internal_tech",
+  "vendor",
+  "minutes",
+  "hours",
+  "note",
+  "comment",
+  "updated_date",
+  "updated_at",
+  "created_date",
+  "created_at",
+].join(",");
+
+function applyDbFilters(query, filters = {}) {
+  let next = query;
+  Object.entries(filters || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      next = next.eq(key, value);
+    }
+  });
+  return next;
+}
+
+function isMissingColumnError(error) {
+  const msg = String(error?.message || "").toLowerCase();
+  return String(error?.code || "") === "42703" || (msg.includes("column") && msg.includes("does not exist"));
+}
+
+function chunkArray(values, size = ID_BATCH_SIZE) {
+  const out = [];
+  for (let i = 0; i < values.length; i += size) {
+    out.push(values.slice(i, i + size));
+  }
+  return out;
+}
+
+async function fetchPagedRows(tableName, {
+  filters = {},
+  selectColumns = "*",
+  pageSize = READ_PAGE_SIZE,
+  tolerateMissingTable = false,
+  errorScope = "Lecture Supabase impossible",
+} = {}) {
+  const readChunk = async (columns) => {
+    let offset = 0;
+    const out = [];
+    while (true) {
+      let query = supabase.from(tableName).select(columns);
+      query = applyDbFilters(query, filters).range(offset, offset + pageSize - 1);
+      const { data, error } = await query;
+      if (error) {
+        if (tolerateMissingTable && isMissingOptionalTableError(error)) return [];
+        throw error;
+      }
+      const chunk = data || [];
+      out.push(...chunk);
+      if (chunk.length < pageSize) break;
+      offset += pageSize;
+    }
+    return out;
+  };
+
+  try {
+    if (selectColumns && selectColumns !== "*") {
+      try {
+        return await readChunk(selectColumns);
+      } catch (selectError) {
+        const missingColumn = isMissingColumnError(selectError);
+        if (!missingColumn) throw selectError;
+      }
+    }
+    return await readChunk("*");
+  } catch (error) {
+    throw buildError(errorScope, error);
+  }
+}
+
+async function fetchProjectsByIds(projectIds = []) {
+  const ids = [...new Set((projectIds || []).filter(Boolean).map((id) => String(id)))];
+  if (!ids.length) return [];
+
+  const chunks = chunkArray(ids, ID_BATCH_SIZE);
+  const rows = [];
+
+  for (const chunk of chunks) {
+    const readChunk = async (columns) => {
+      const { data, error } = await supabase
+        .from(projectsTable)
+        .select(columns)
+        .in("id", chunk);
+      if (error) throw error;
+      return data || [];
+    };
+
+    try {
+      try {
+        rows.push(...(await readChunk(PROJECT_SELECT_COLUMNS)));
+      } catch (errorColumns) {
+        if (!isMissingColumnError(errorColumns)) throw errorColumns;
+        rows.push(...(await readChunk("*")));
+      }
+    } catch (error) {
+      throw buildError("Lecture projets par lots impossible", error);
+    }
+  }
+
+  return rows.map(mapProjectRow);
+}
 
 function toComparable(value) {
   if (value === null || value === undefined) return "";
@@ -186,65 +362,45 @@ function isMissingOptionalTableError(error) {
 }
 
 async function fetchProjects(filters = {}) {
-  let query = supabase.from(projectsTable).select("*");
-
-  Object.entries(filters || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      query = query.eq(key, value);
-    }
+  const rows = await fetchPagedRows(projectsTable, {
+    filters,
+    selectColumns: PROJECT_SELECT_COLUMNS,
+    pageSize: READ_PAGE_SIZE,
+    errorScope: "Lecture projets Supabase impossible",
   });
-
-  const { data, error } = await query;
-  if (error) throw buildError("Lecture projets Supabase impossible", error);
-  return (data || []).map(mapProjectRow);
+  return rows.map(mapProjectRow);
 }
 
 async function fetchTasks(filters = {}) {
-  let query = supabase.from(tasksTable).select("*");
-
-  Object.entries(filters || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      query = query.eq(key, value);
-    }
+  const rows = await fetchPagedRows(tasksTable, {
+    filters,
+    selectColumns: TASK_SELECT_COLUMNS,
+    pageSize: READ_PAGE_SIZE,
+    errorScope: "Lecture taches Supabase impossible",
   });
-
-  const { data, error } = await query;
-  if (error) throw buildError("Lecture taches Supabase impossible", error);
-  return (data || []).map(mapTaskRow);
+  return rows.map(mapTaskRow);
 }
 
 async function fetchTimeLogs(filters = {}) {
-  let query = supabase.from(timeLogsTable).select("*");
-
-  Object.entries(filters || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      query = query.eq(key, value);
-    }
+  const rows = await fetchPagedRows(timeLogsTable, {
+    filters,
+    selectColumns: TIME_LOG_SELECT_COLUMNS,
+    pageSize: READ_PAGE_SIZE,
+    tolerateMissingTable: true,
+    errorScope: "Lecture time logs Supabase impossible",
   });
-
-  const { data, error } = await query;
-  if (error) {
-    if (isMissingOptionalTableError(error)) return [];
-    throw buildError("Lecture time logs Supabase impossible", error);
-  }
-  return (data || []).map(mapTimeLogRow);
+  return rows.map(mapTimeLogRow);
 }
 
 async function fetchReferential(tableName, kind, filters = {}) {
-  let query = supabase.from(tableName).select("*");
-
-  Object.entries(filters || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      query = query.eq(key, value);
-    }
+  const rows = await fetchPagedRows(tableName, {
+    filters,
+    selectColumns: "*",
+    pageSize: READ_PAGE_SIZE,
+    tolerateMissingTable: true,
+    errorScope: `Lecture referentiel ${kind} impossible`,
   });
-
-  const { data, error } = await query;
-  if (error) {
-    if (isMissingOptionalTableError(error)) return [];
-    throw buildError(`Lecture referentiel ${kind} impossible`, error);
-  }
-  return (data || [])
+  return rows
     .map((row) => mapReferentialItemRow(row, kind))
     .filter((item) => !!item.name);
 }
@@ -381,12 +537,8 @@ export const dataClient = {
 
         let projectMap = new Map();
         if (projectIds.length > 0) {
-          const { data, error } = await supabase.from(projectsTable).select("*").in("id", projectIds);
-          if (error) throw buildError("Lecture projets pour taches impossible", error);
-          projectMap = new Map((data || []).map((row) => {
-            const mapped = mapProjectRow(row);
-            return [mapped.id, mapped];
-          }));
+          const projectRows = await fetchProjectsByIds(projectIds);
+          projectMap = new Map(projectRows.map((mapped) => [mapped.id, mapped]));
         }
 
         const enriched = enrichTasks(tasks, projectMap);
