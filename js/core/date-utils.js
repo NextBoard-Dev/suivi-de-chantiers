@@ -57,6 +57,12 @@
     return `${y}-${m}-${day}`;
   }
 
+  function getYesterdayKey(){
+    const d = new Date();
+    d.setDate(d.getDate()-1);
+    return toLocalDateKey(d);
+  }
+
   function clampLoginRange(start, end, maxDays){
     const safeMaxDays = Number.isFinite(maxDays) ? maxDays : 35;
     const s = new Date(start.getTime());
@@ -89,6 +95,7 @@
   windowRef.toISODateEnd = windowRef.toISODateEnd || toISODateEnd;
   windowRef.toLocalISODate = windowRef.toLocalISODate || toLocalISODate;
   windowRef.toLocalDateKey = windowRef.toLocalDateKey || toLocalDateKey;
+  windowRef.getYesterdayKey = windowRef.getYesterdayKey || getYesterdayKey;
   windowRef.clampLoginRange = windowRef.clampLoginRange || clampLoginRange;
   windowRef.formatShortDate = windowRef.formatShortDate || formatShortDate;
   windowRef.formatShortDateTwoLinesHTML = windowRef.formatShortDateTwoLinesHTML || formatShortDateTwoLinesHTML;

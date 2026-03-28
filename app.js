@@ -3295,6 +3295,9 @@ const toLocalDateKey = window.toLocalDateKey || ((d)=>{
   return `${y}-${m}-${day}`;
 });
 function getYesterdayKey(){
+  if(typeof window.getYesterdayKey === "function" && window.getYesterdayKey !== getYesterdayKey){
+    return window.getYesterdayKey();
+  }
   const d = new Date();
   d.setDate(d.getDate()-1);
   return toLocalDateKey(d);
