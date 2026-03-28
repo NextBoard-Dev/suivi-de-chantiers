@@ -1,0 +1,93 @@
+Rapport doublons CSS - 2026-03-28 12:33:45
+Total selecteurs: 762
+Doublons detectes: 89
+
+[9x] #btnToggleProjectStatus.btn-primary
+[6x] #btnToggleProjectStatus.btn-ghost
+[6x] .cfg-accordion-head
+[5x] .theme-toggle
+[4x] :root
+[4x] #projectLive.panel-live .live-item
+[4x] #btnToggleProjectStatus
+[4x] .topbar
+[4x] .sidebar #btnTabsSortProgress
+[4x] .sidebar #btnTabsSortReset
+[3x] .sidebar .section-title
+[3x] .sidebar .tab
+[3x] .sidebar .tabs-master .tab:not(.tab-master)
+[3x] .sidebar .tabs-sort-tools
+[3x] .sidebar-logo-img
+[3x] .theme-toggle::after
+[3x] .tablewrap
+[3x] .sidebar
+[3x] .theme-toggle:hover
+[3x] .topbar .btn
+[3x] .topbar-user
+[3x] #btnAddTask
+[3x] #hoursTaskModal #btnCloseHoursModal
+[3x] .tab
+[3x] .save-toast
+[3x] html[data-theme] #btnToggleProjectStatus.btn-primary
+[2x] .help-tag
+[2x] .table th
+[2x] .gantt-table table td.gantt-cell
+[2x] .tabs-scroll
+[2x] .gantt-table table tbody tr
+[2x] .gantt-table table
+[2x] .theme-toggle:focus-visible::after
+[2x] .gantt-table .table thead th
+[2x] .gantt-status-stack
+[2x] .config-users
+[2x] .topbar .subtitle #dataQualityBadge
+[2x] .topbar .theme-toggle
+[2x] .topbar-main
+[2x] .config-user-item
+[2x] .table td
+[2x] .wl-anim-pie-label
+[2x] #btnExportMasterGanttRun:hover::after
+[2x] .card
+[2x] #btnToggleProjectStatus *
+[2x] .btn.btn-success
+[2x] .btn.btn-save-idle
+[2x] #exportPdfModal #btnExportPdfRun.btn-success
+[2x] #hoursTaskModal .label
+[2x] #hoursTaskModal .modal-card.hours-modal-compact
+[2x] #hoursTaskModal .modal-title
+[2x] .btn.btn-danger
+[2x] #hoursTaskModal textarea
+[2x] #projectLive.panel-live
+[2x] .badge.site
+[2x] .config-header
+[2x] .help-btn
+[2x] .tab.tab-master.active
+[2x] .tab.active
+[2x] .help-toolbar .help-btn
+[2x] .help-toolbar .help-btn.primary
+[2x] .hours-modal-compact #hm_calendarWrap
+[2x] .input, textarea, select
+[2x] .input:focus, textarea:focus, select:focus
+[2x] .legend-item
+[2x] .login-status
+[2x] .modal-card.config-card
+[2x] .multiselect-display
+[2x] .multiselect-menu
+[2x] .pwd-toggle
+[2x] .pwd-toggle::before
+[2x] .report-table-summary tfoot th
+[2x] .tab.tab-master
+[2x] .gantt-vendor-cell .vendor-stack
+[2x] .gantt-vendor-cell .badge.owner
+[2x] .gantt-vendor-cell
+[2x] #projectLive.panel-live .live-title
+[2x] .sidebar .tab.active::before
+[2x] .gantt-table tbody tr
+[2x] .gantt-table table td.gantt-col-vendor
+[2x] .sidebar #btnAddTask
+[2x] .gantt-table table td.gantt-col-task
+[2x] .gantt-table table td.gantt-col-status
+[2x] .sidebar #filterEndBefore
+[2x] .gantt-table table td.gantt-col-site
+[2x] .sidebar.sidebar-scroll
+[2x] .gantt-table table td.gantt-col-project
+[2x] .gantt-vendor-cell .text-muted
+[2x] .sidebar .tab.active
