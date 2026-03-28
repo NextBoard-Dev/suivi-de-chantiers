@@ -24,89 +24,12 @@ function ensureProjectHeaderNodes(){
 
 const STORAGE_KEY = "suivi_chantiers_state_v1";
 
-// Monitoring simple: capture des erreurs + message utilisateur lisible.
-const APP_ERROR_BUFFER_MAX = 50;
-let __lastErrorSig = "";
-let __lastErrorTs = 0;
-window.__appErrors = window.__appErrors || [];
-
-function _formatErrorMessage(errLike){
-  if(!errLike) return "Erreur inconnue";
-  if(typeof errLike === "string") return errLike;
-  if(errLike.message) return String(errLike.message);
-  try{ return JSON.stringify(errLike); }catch(e){ return String(errLike); }
-}
-
-function showAppErrorBanner(message){
-  const banner = el("appErrorBanner");
-  const text = el("appErrorText");
-  if(!banner || !text) return;
-  text.textContent = message || "Une erreur technique est survenue.";
-  banner.classList.remove("hidden");
-}
-
-function reportAppError(errLike, context="runtime"){
-  const msg = _formatErrorMessage(errLike);
-  const sig = `${context}|${msg}`;
-  const now = Date.now();
-  // anti-spam: ignore la meme erreur pendant 2 secondes
-  if(sig === __lastErrorSig && (now - __lastErrorTs) < 2000) return;
-  __lastErrorSig = sig;
-  __lastErrorTs = now;
-
-  const item = { ts: new Date().toISOString(), context, message: msg };
-  window.__appErrors.push(item);
-  if(window.__appErrors.length > APP_ERROR_BUFFER_MAX){
-    window.__appErrors.splice(0, window.__appErrors.length - APP_ERROR_BUFFER_MAX);
-  }
-
-  console.error("[app-error]", context, msg, errLike);
-  showAppErrorBanner(`Une erreur est survenue (${context}). ${msg}`);
-}
-
-function softCatch(errLike, context="soft"){
-  try{
-    const msg = _formatErrorMessage(errLike);
-    console.warn(`[soft-error] ${context}: ${msg}`);
-  }catch(_e){
-    // no-op volontaire: ne jamais casser l'UI pour une remontée d'erreur
-  }
-}
-
-function bindGlobalButtonClickFeedback(){
-  const selector = "button, .btn, .tab, .help-btn, .login-log-sort, .cfg-accordion-head";
-  document.addEventListener("click", (e)=>{
-    const btn = e.target?.closest?.(selector);
-    if(!btn) return;
-    if(btn.disabled || btn.classList.contains("is-disabled")) return;
-    btn.classList.remove("btn-click-ack");
-    // restart animation if user clicks quickly several times
-    void btn.offsetWidth;
-    btn.classList.add("btn-click-ack");
-    window.setTimeout(()=> btn.classList.remove("btn-click-ack"), 170);
-  }, true);
-}
-window.reportAppError = reportAppError;
-window.addEventListener("error", (ev)=>{
-  const msg = String(ev?.message || "").trim();
-  const src = String(ev?.filename || "").trim();
-  // "Script error." vient souvent d'un script cross-origin sans détail exploitable.
-  // On l'ignore pour ne pas polluer l'UI avec une fausse alerte bloquante.
-  if(msg === "Script error." && !ev?.error && !src){
-    console.warn("[window.error] Script error cross-origin ignorée");
-    return;
-  }
-  const details = ev?.error || `${msg}${src ? ` @ ${src}:${ev?.lineno||0}:${ev?.colno||0}` : ""}` || "Erreur JavaScript";
-  reportAppError(details, "window.error");
+// Lot B: extraction monitoring erreurs vers js/core/error-monitoring.js
+const reportAppError = window.reportAppError || ((errLike, context="runtime")=>{
+  console.error("[app-error:fallback]", context, errLike);
 });
-window.addEventListener("unhandledrejection", (ev)=>{
-  reportAppError(ev?.reason || "Promesse rejetee", "promise");
-});
-
-document.addEventListener("DOMContentLoaded", ()=>{
-  el("appErrorClose")?.addEventListener("click", ()=> el("appErrorBanner")?.classList.add("hidden"));
-  el("appErrorReload")?.addEventListener("click", ()=> window.location.reload());
-  bindGlobalButtonClickFeedback();
+const softCatch = window.softCatch || ((errLike, context="soft")=>{
+  console.warn("[soft-error:fallback]", context, errLike);
 });
 
 
