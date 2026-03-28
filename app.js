@@ -7636,33 +7636,27 @@ function countMissingLogEntriesForTaskDate(t, dateKey){
 }
 function countMissingLogEntriesForTask(t){
   if(!t || !t.start || !t.end) return 0;
+  const today = new Date();
+  today.setHours(0,0,0,0);
   const start = new Date(t.start+"T00:00:00");
   const end = new Date(t.end+"T00:00:00");
   if(isNaN(start) || isNaN(end) || end < start) return 0;
-  const todayKey = toLocalDateKey(new Date());
-  let count = 0;
-  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
-    if(!isWeekday(d)) continue;
-    const key = toLocalDateKey(d);
-    if(key > todayKey) continue;
-    count += countMissingLogEntriesForTaskDate(t, key);
-  }
-  return count;
+  if(today < start || today > end) return 0;
+  if(!isWeekday(today)) return 0;
+  const todayKey = toLocalDateKey(today);
+  return countMissingLogEntriesForTaskDate(t, todayKey);
 }
 function getMissingDaysList(t){
   if(!t || !t.start || !t.end) return [];
+  const today = new Date();
+  today.setHours(0,0,0,0);
   const start = new Date(t.start+"T00:00:00");
   const end = new Date(t.end+"T00:00:00");
   if(isNaN(start) || isNaN(end) || end < start) return [];
-  const todayKey = toLocalDateKey(new Date());
-  const out = [];
-  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
-    if(!isWeekday(d)) continue;
-    const key = toLocalDateKey(d);
-    if(key > todayKey) continue;
-    if(!hasAllExpectedLogsForTaskDate(t, key)) out.push(key);
-  }
-  return out;
+  if(today < start || today > end) return [];
+  if(!isWeekday(today)) return [];
+  const todayKey = toLocalDateKey(today);
+  return hasAllExpectedLogsForTaskDate(t, todayKey) ? [] : [todayKey];
 }
 function buildMissingDaysMap(tasks){
   const map = new Map();

@@ -8,7 +8,17 @@ import {
   computeTaskProgressAuto,
 } from "@/lib/businessRules";
 
-const { projectsTable, tasksTable, taskProjectIdColumn } = supabaseConfig;
+const {
+  projectsTable,
+  tasksTable,
+  taskProjectIdColumn,
+  timeLogsTable,
+  internalTechsTable,
+  vendorsTable,
+  refsSiteColumn,
+  readOnlyMode,
+  allowTaskWrites,
+} = supabaseConfig;
 
 function toComparable(value) {
   if (value === null || value === undefined) return "";
@@ -56,6 +66,25 @@ function toStringId(value) {
   return value === undefined || value === null ? "" : String(value);
 }
 
+function toBool(value) {
+  return value === true || String(value || "").toLowerCase() === "true";
+}
+
+function assertProjectWriteAllowed() {
+  if (toBool(readOnlyMode)) {
+    throw new Error("Mode lecture seule actif: ecriture projet desactivee.");
+  }
+}
+
+function assertTaskWriteAllowed() {
+  if (toBool(readOnlyMode)) {
+    throw new Error("Mode lecture seule actif: ecriture tache desactivee.");
+  }
+  if (!toBool(allowTaskWrites)) {
+    throw new Error("Ecriture tache desactivee (VITE_ALLOW_TASK_WRITES=false).");
+  }
+}
+
 function mapProjectRow(row) {
   return {
     id: toStringId(row.id),
@@ -98,6 +127,36 @@ function mapTaskRow(row) {
   };
 }
 
+function mapTimeLogRow(row) {
+  return {
+    id: toStringId(row.id),
+    task_id: toStringId(row.task_id ?? row.tache_id ?? row.taskId),
+    project_id: toStringId(row.project_id ?? row.chantier_id ?? row.projectId),
+    date: pickDate(row.date ?? row.log_date ?? row.day ?? ""),
+    role: String(row.role ?? row.owner_type ?? row.owner ?? "").trim(),
+    technician: String(row.technician ?? row.tech ?? row.internal_tech ?? "").trim(),
+    vendor: String(row.vendor ?? "").trim(),
+    minutes: Number.isFinite(Number(row.minutes)) ? Number(row.minutes) : 0,
+    hours: Number.isFinite(Number(row.hours)) ? Number(row.hours) : null,
+    note: String(row.note ?? row.comment ?? "").trim(),
+    updated_date: row.updated_date || row.updated_at || "",
+    created_date: row.created_date || row.created_at || "",
+  };
+}
+
+function mapReferentialItemRow(row, kind) {
+  const source = row?.name ?? row?.label ?? row?.value ?? row?.technician ?? row?.vendor ?? "";
+  return {
+    id: toStringId(row?.id),
+    kind,
+    name: String(source || "").trim(),
+    site: String(row?.[refsSiteColumn] ?? row?.site ?? "").trim(),
+    active: row?.active === undefined ? true : Boolean(row.active),
+    updated_date: row?.updated_date || row?.updated_at || "",
+    created_date: row?.created_date || row?.created_at || "",
+  };
+}
+
 function enrichTasks(tasks, projectsById) {
   return tasks.map((task) => {
     const project = projectsById.get(task.project_id);
@@ -118,6 +177,12 @@ function computeProjectProgress(project, tasks) {
 function buildError(scope, error) {
   const message = error?.message || "Erreur inconnue";
   return new Error(`${scope}: ${message}`);
+}
+
+function isMissingOptionalTableError(error) {
+  const code = String(error?.code || "");
+  const message = String(error?.message || "").toLowerCase();
+  return code === "42P01" || message.includes("does not exist");
 }
 
 async function fetchProjects(filters = {}) {
@@ -146,6 +211,42 @@ async function fetchTasks(filters = {}) {
   const { data, error } = await query;
   if (error) throw buildError("Lecture taches Supabase impossible", error);
   return (data || []).map(mapTaskRow);
+}
+
+async function fetchTimeLogs(filters = {}) {
+  let query = supabase.from(timeLogsTable).select("*");
+
+  Object.entries(filters || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query = query.eq(key, value);
+    }
+  });
+
+  const { data, error } = await query;
+  if (error) {
+    if (isMissingOptionalTableError(error)) return [];
+    throw buildError("Lecture time logs Supabase impossible", error);
+  }
+  return (data || []).map(mapTimeLogRow);
+}
+
+async function fetchReferential(tableName, kind, filters = {}) {
+  let query = supabase.from(tableName).select("*");
+
+  Object.entries(filters || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query = query.eq(key, value);
+    }
+  });
+
+  const { data, error } = await query;
+  if (error) {
+    if (isMissingOptionalTableError(error)) return [];
+    throw buildError(`Lecture referentiel ${kind} impossible`, error);
+  }
+  return (data || [])
+    .map((row) => mapReferentialItemRow(row, kind))
+    .filter((item) => !!item.name);
 }
 
 function taskPayloadForWrite(normalizedTask) {
@@ -211,6 +312,7 @@ export const dataClient = {
       },
 
       create: async (input) => {
+        assertProjectWriteAllowed();
         const payload = normalizeChantierInput(input);
 
         const { data, error } = await supabase.from(projectsTable).insert(payload).select("*").single();
@@ -220,6 +322,7 @@ export const dataClient = {
       },
 
       update: async (id, input) => {
+        assertProjectWriteAllowed();
         const { data: current, error: readError } = await supabase
           .from(projectsTable)
           .select("*")
@@ -244,6 +347,7 @@ export const dataClient = {
       },
 
       delete: async (id) => {
+        assertProjectWriteAllowed();
         const { error: tasksError } = await supabase
           .from(tasksTable)
           .delete()
@@ -290,6 +394,7 @@ export const dataClient = {
       },
 
       create: async (input) => {
+        assertTaskWriteAllowed();
         const normalized = normalizeTaskInput(input);
         const payload = taskPayloadForWrite(normalized);
 
@@ -303,6 +408,7 @@ export const dataClient = {
       },
 
       update: async (id, input) => {
+        assertTaskWriteAllowed();
         const { data: current, error: readError } = await supabase
           .from(tasksTable)
           .select("*")
@@ -332,9 +438,32 @@ export const dataClient = {
       },
 
       delete: async (id) => {
+        assertTaskWriteAllowed();
         const { error } = await supabase.from(tasksTable).delete().eq("id", id);
         if (error) throw buildError("Suppression tache impossible", error);
         return { id };
+      },
+    },
+
+    TimeLog: {
+      list: async (sort = "-date", limit = 1000) => {
+        const logs = await fetchTimeLogs();
+        return applySort(logs, sort).slice(0, limit);
+      },
+      filter: async (filters = {}, sort = "-date", limit = 1000) => {
+        const logs = await fetchTimeLogs(filters);
+        return applySort(logs, sort).slice(0, limit);
+      },
+    },
+
+    Referential: {
+      listInternalTechs: async (filters = {}, sort = "name", limit = 500) => {
+        const rows = await fetchReferential(internalTechsTable, "internal_tech", filters);
+        return applySort(rows, sort).slice(0, limit);
+      },
+      listVendors: async (filters = {}, sort = "name", limit = 500) => {
+        const rows = await fetchReferential(vendorsTable, "vendor", filters);
+        return applySort(rows, sort).slice(0, limit);
       },
     },
   },
