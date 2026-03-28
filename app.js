@@ -5053,15 +5053,13 @@ function startOfWeek(d){
 }
 
 function endOfWorkWeek(d){
-
+  if(typeof window.endOfWorkWeek === "function" && window.endOfWorkWeek !== endOfWorkWeek){
+    return window.endOfWorkWeek(d);
+  }
   const x=new Date(d.getTime());
-
   // vendredi = lundi + 4 jours
-
   x.setDate(x.getDate()+4);
-
   x.setHours(23,59,59,999);
-
   return x;
 
 }
