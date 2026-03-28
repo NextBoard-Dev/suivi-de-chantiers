@@ -1073,7 +1073,6 @@ body{
 .table tbody tr.late-row td{
   background:rgba(254,226,226,0.55);
 }
-.gantt-table tbody tr:hover td{background:inherit;}
 .gantt-table table tbody tr{
   cursor:pointer;
   background:var(--site-bg, transparent) !important;
@@ -2434,10 +2433,6 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   justify-content:center;
   align-items:flex-start;
   min-height:16px;
-}
-.gantt-vendor-cell .text-muted{
-  color:#6b7280;
-  font-size:11px;
 }
 .gantt-task-col-project{
   width:200px;
