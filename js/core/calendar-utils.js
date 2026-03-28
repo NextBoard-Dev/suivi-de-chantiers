@@ -39,6 +39,12 @@
     return Math.floor(diff) + 1;
   }
 
+  function addDays(d, n){
+    const x = new Date(d.getTime());
+    x.setDate(x.getDate()+n);
+    return x;
+  }
+
   function startOfWeek(d){
     const x = new Date(d.getTime());
     const day = (x.getDay()+6)%7; // lundi=0
@@ -72,6 +78,7 @@
   windowRef.durationDays = windowRef.durationDays || durationDays;
   windowRef.isTaskActiveOn = windowRef.isTaskActiveOn || isTaskActiveOn;
   windowRef.overlapDays = windowRef.overlapDays || overlapDays;
+  windowRef.addDays = windowRef.addDays || addDays;
   windowRef.startOfWeek = windowRef.startOfWeek || startOfWeek;
   windowRef.endOfWeek = windowRef.endOfWeek || endOfWeek;
   windowRef.endOfWorkWeek = windowRef.endOfWorkWeek || endOfWorkWeek;

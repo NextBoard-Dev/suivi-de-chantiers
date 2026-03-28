@@ -5077,7 +5077,14 @@ function endOfWeek(d){
   return x;
 }
 
-function addDays(d,n){ const x=new Date(d.getTime()); x.setDate(x.getDate()+n); return x; }
+function addDays(d,n){
+  if(typeof window.addDays === "function" && window.addDays !== addDays){
+    return window.addDays(d,n);
+  }
+  const x=new Date(d.getTime());
+  x.setDate(x.getDate()+n);
+  return x;
+}
 
 // --- Vacances scolaires (Zone B) par NUMÉROS de semaines ---
 // Format : { "2025-2026": [8,9,16,17,28,29,30,31,32,33,34,35,43,44,52] }
