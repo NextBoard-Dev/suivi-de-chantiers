@@ -37,4 +37,8 @@ Voir `docs/business-invariants.md`.
 - Integration lecture etendue:
   - `entities.TimeLog.list/filter`
   - `entities.Referential.listInternalTechs/listVendors`
+- Optimisations lecture Supabase (scalabilite):
+  - pagination de lecture
+  - selection ciblee des colonnes avec fallback
+  - chargement par lots des `project_id`
 

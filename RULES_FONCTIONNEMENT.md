@@ -69,6 +69,7 @@ Ce document est la référence à suivre pour toute modification du dashboard.
 - Stockage obligatoire: `snapshots_ok/`, dans un dossier de lot `YYYYMMDD_HHMMSS_ContexteCourt/` si plusieurs fichiers sont liés à la même action.
 - Inclure au minimum selon le besoin: `app.js`, `index.html`, `style.css` (+ fichiers docs si modifiés).
 - Les snapshots ne doivent jamais être commit/push sur GitHub (`snapshots_ok/` exclu).
+- Les dossiers d'archives de snapshots (`archives/snapshots_old/`, `archives/backup_copies/`) ne doivent jamais etre commit/push.
 - Conserver un fichier `LATEST_MAJOR_SNAPSHOT.txt` pour pointer le dernier snapshot majeur.
 
 16) Méthode harmonisation (obligatoire)
@@ -109,5 +110,9 @@ Ce document est la référence à suivre pour toute modification du dashboard.
 17) Mise à jour 2026-03-27
 - Détection "heures manquantes": inclure la date du jour (`<= today`).
 - Qualité cloud: divergence tolérée si limitée au champ technique `updatedAt`.
-- Commit/push: sélectif PC; smartphone exclu tant que la branche mobile est gelée.
+- Commit/push: sélectif selon lot valide (PC ou smartphone), avec verification UI locale avant push.
 - Lanceurs `.url` et `.bat` (PC + smartphone) conservés en racine.
+
+18) Commit (obligatoire)
+- A chaque commit decide, fournir une phrase de commit claire avant execution.
+- Push uniquement apres verification UI locale validee.

@@ -18,6 +18,7 @@
 - Format recommandé: `YYYYMMDD_HHMMSS_ContexteCourt`
 - Les snapshots sont rangés dans `snapshots_ok/` (dossier de lot si plusieurs fichiers)
 - Les snapshots ne sont jamais commit/push (`snapshots_ok/` exclu)
+- Les archives de snapshots (`archives/snapshots_old/`, `archives/backup_copies/`) ne sont jamais commit/push
 - Inclure au minimum les fichiers réellement touchés (`app.js`, `index.html`, `style.css` + docs si modifiées)
 
 ## 4) Règles UI / produit demandées
@@ -50,9 +51,12 @@
 - Après chaque lot: exécuter les tests et fournir la phrase de commit.
 
 ## 9) Mise à jour 2026-03-27
-- Smartphone gelé: aucune modification smartphone sans demande explicite.
-- Commit/push: sélectif PC uniquement (jamais smartphone par défaut).
+- Smartphone: modifications autorisées sur demande explicite.
+- Commit/push: sélectif par lot validé (PC ou smartphone), puis push après vérification UI locale.
 - Contrôle cloud: considérer "OK métier" si les seuls écarts sont des `updatedAt`.
 - Heures manquantes: la règle inclut aujourd’hui (`date <= date du jour`).
+
+## 10) Commit (obligatoire)
+- Fournir la phrase de commit à chaque commit décidé.
 
 
