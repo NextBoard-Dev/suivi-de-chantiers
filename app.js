@@ -4568,6 +4568,9 @@ const toLocalISODate = window.toLocalISODate || ((d)=>{
 });
 
 function hexToRgba(hex, alpha){
+  if(typeof window.hexToRgba === "function" && window.hexToRgba !== hexToRgba){
+    return window.hexToRgba(hex, alpha);
+  }
   const v = (hex || "").replace("#","").trim();
   if(v.length !== 6) return `rgba(15,23,42,${alpha})`;
   const r = parseInt(v.slice(0,2),16);
