@@ -3304,6 +3304,9 @@ function getYesterdayKey(){
 }
 function getSelectedLogDate(){
   const input = el("t_time_date_input");
+  if(typeof window.resolveSelectedLogDate === "function"){
+    return window.resolveSelectedLogDate(input?.value || "", getYesterdayKey());
+  }
   const raw = (input?.value || "").trim();
   if(raw) return raw;
   return getYesterdayKey();

@@ -63,6 +63,12 @@
     return toLocalDateKey(d);
   }
 
+  function resolveSelectedLogDate(rawValue, fallbackKey){
+    const raw = String(rawValue || "").trim();
+    if(raw) return raw;
+    return String(fallbackKey || "").trim();
+  }
+
   function clampLoginRange(start, end, maxDays){
     const safeMaxDays = Number.isFinite(maxDays) ? maxDays : 35;
     const s = new Date(start.getTime());
@@ -96,6 +102,7 @@
   windowRef.toLocalISODate = windowRef.toLocalISODate || toLocalISODate;
   windowRef.toLocalDateKey = windowRef.toLocalDateKey || toLocalDateKey;
   windowRef.getYesterdayKey = windowRef.getYesterdayKey || getYesterdayKey;
+  windowRef.resolveSelectedLogDate = windowRef.resolveSelectedLogDate || resolveSelectedLogDate;
   windowRef.clampLoginRange = windowRef.clampLoginRange || clampLoginRange;
   windowRef.formatShortDate = windowRef.formatShortDate || formatShortDate;
   windowRef.formatShortDateTwoLinesHTML = windowRef.formatShortDateTwoLinesHTML || formatShortDateTwoLinesHTML;
