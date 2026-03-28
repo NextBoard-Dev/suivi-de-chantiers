@@ -556,7 +556,9 @@ const runtimePerf = {
   lastRenderAt: "",
   lastSaveAt: "",
   lastSegmentSizes: null,
-  lastSegmentationAt: ""
+  lastSegmentationAt: "",
+  degradedMode: false,
+  degradedReason: ""
 };
 
 let isLocked = true; // verrou logique = droits utilisateur (admin = false)
@@ -3886,11 +3888,11 @@ function formatQualityIssuesForToast(report){
   return `${base} | +${report.issues.length - 3} autre(s)`;
 }
 
-function normalizeComparableField(v){
+const normalizeComparableField = window.normalizeComparableField || ((v)=>{
   if(v === null || v === undefined) return "";
   if(typeof v === "number") return String(Math.round(v));
   return String(v).trim();
-}
+});
 
 function buildComparableTimeLogMap(logs, includeUpdatedAt){
   const map = new Map();
@@ -3917,7 +3919,7 @@ function buildComparableTimeLogMap(logs, includeUpdatedAt){
   return map;
 }
 
-function computeMapDiffStats(localMap, remoteMap){
+const computeMapDiffStats = window.computeMapDiffStats || ((localMap, remoteMap)=>{
   const keys = new Set([...localMap.keys(), ...remoteMap.keys()]);
   let onlyLocal = 0;
   let onlyRemote = 0;
@@ -3935,15 +3937,27 @@ function computeMapDiffStats(localMap, remoteMap){
     valueDiff,
     total: onlyLocal + onlyRemote + valueDiff
   };
-}
+});
 
-function estimateStateBytes(obj){
+const estimateStateBytes = window.estimateStateBytes || ((obj)=>{
   try{
     const txt = JSON.stringify(obj || {});
     return new Blob([txt]).size;
   }catch(e){
     softCatch(e);
     return 0;
+  }
+});
+
+function updateDegradedMode(scaleReport){
+  try{
+    const shouldDegrade = !!(scaleReport && !scaleReport.ok);
+    runtimePerf.degradedMode = shouldDegrade;
+    runtimePerf.degradedReason = shouldDegrade
+      ? String((scaleReport.warnings || []).slice(0,2).join(" | "))
+      : "";
+  }catch(e){
+    softCatch(e);
   }
 }
 
@@ -4062,6 +4076,7 @@ function updateDataQualityBanner(notify=false){
   const fmt = today.toLocaleDateString("fr-FR",{weekday:"long", day:"2-digit", month:"long", year:"numeric"});
   const report = collectDataQualityIssues(state);
   const scale = collectScalabilityReport(state);
+  updateDegradedMode(scale);
   _lastDataQualityReport = report;
   _lastScalabilityReport = scale;
 
@@ -4069,9 +4084,10 @@ function updateDataQualityBanner(notify=false){
     ? (_lastCloudAlignmentReport.okBusiness ? " · Cloud OK" : ` · Cloud ${_lastCloudAlignmentReport.business.total} écart(s)`)
     : "";
   const scaleSuffix = scale.ok ? " · Charge OK" : ` · Charge ${scale.warnings.length} alerte(s)`;
+  const degradedSuffix = runtimePerf.degradedMode ? " · Mode allégé" : "";
   const badgeLabel = report.ok
-    ? `Qualité données: OK${cloudSuffix}${scaleSuffix}`
-    : `Qualité données: ${report.issues.length} incohérence(s)${cloudSuffix}${scaleSuffix}`;
+    ? `Qualité données: OK${cloudSuffix}${scaleSuffix}${degradedSuffix}`
+    : `Qualité données: ${report.issues.length} incohérence(s)${cloudSuffix}${scaleSuffix}${degradedSuffix}`;
   const badgeStyle = (!report.ok)
     ? "color:#b91c1c;border:1px solid #b91c1c33;background:#b91c1c14;padding:2px 8px;border-radius:10px;cursor:pointer;"
     : (!scale.ok
@@ -4260,7 +4276,9 @@ function saveState(opts={}){
     runtimePerf.lastSaveMs = Math.max(0, performance.now() - t0);
     runtimePerf.lastSaveAt = new Date().toISOString();
     refreshStateSegmentationDiagnostics(normalized);
-    notifyScalabilityIfNeeded(collectScalabilityReport(normalized), "save");
+    const scaleOnSave = collectScalabilityReport(normalized);
+    updateDegradedMode(scaleOnSave);
+    notifyScalabilityIfNeeded(scaleOnSave, "save");
     if(getCurrentRole() === "admin"){
       updateRoleUI();
     }
@@ -7370,8 +7388,10 @@ function renderMaster(){
     masterHoursReport.innerHTML = buildMasterRealHoursReportInnerHTML();
   }
 
-  animateBadgeChanges(el("viewMaster"));
-  animateCardsInView("viewMaster");
+  if(!runtimePerf.degradedMode){
+    animateBadgeChanges(el("viewMaster"));
+    animateCardsInView("viewMaster");
+  }
 
 }
 
@@ -9187,8 +9207,10 @@ function renderProject(){
   if(projectHoursReport){
     projectHoursReport.innerHTML = buildProjectRealHoursReportInnerHTML(p.id);
   }
-  animateBadgeChanges(el("viewProject"));
-  animateCardsInView("viewProject");
+  if(!runtimePerf.degradedMode){
+    animateBadgeChanges(el("viewProject"));
+    animateCardsInView("viewProject");
+  }
 
 }
 
