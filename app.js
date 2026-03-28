@@ -552,7 +552,9 @@ const runtimePerf = {
   lastSaveMs: 0,
   lastStateBytes: 0,
   lastRenderAt: "",
-  lastSaveAt: ""
+  lastSaveAt: "",
+  lastSegmentSizes: null,
+  lastSegmentationAt: ""
 };
 
 let isLocked = true; // verrou logique = droits utilisateur (admin = false)
@@ -3930,10 +3932,25 @@ function estimateStateBytes(obj){
   }
 }
 
+function refreshStateSegmentationDiagnostics(currentState=state){
+  try{
+    if(typeof window.estimateSegmentSizes !== "function") return null;
+    const metrics = window.estimateSegmentSizes(currentState || {});
+    runtimePerf.lastSegmentSizes = metrics;
+    runtimePerf.lastSegmentationAt = new Date().toISOString();
+    window.__stateSegmentationDiag = metrics;
+    return metrics;
+  }catch(e){
+    softCatch(e);
+    return null;
+  }
+}
+
 function collectScalabilityReport(currentState=state){
   const tasksCount = Array.isArray(currentState?.tasks) ? currentState.tasks.length : 0;
   const timeLogsCount = Array.isArray(currentState?.timeLogs) ? currentState.timeLogs.length : 0;
   const stateBytes = runtimePerf.lastStateBytes || estimateStateBytes(currentState || {});
+  const segmentMetrics = runtimePerf.lastSegmentSizes || refreshStateSegmentationDiagnostics(currentState);
   const warnings = [];
 
   if(tasksCount >= SCALE_GUARDS.warnTasks){
@@ -3959,6 +3976,8 @@ function collectScalabilityReport(currentState=state){
     timeLogsCount,
     stateBytes,
     stateKb: Math.round(stateBytes/1024),
+    segmentMetrics: segmentMetrics || null,
+    lastSegmentationAt: runtimePerf.lastSegmentationAt || "",
     lastRenderMs: runtimePerf.lastRenderMs || 0,
     lastSaveMs: runtimePerf.lastSaveMs || 0,
     lastRenderAt: runtimePerf.lastRenderAt || "",
@@ -4206,6 +4225,7 @@ function saveState(opts={}){
     runtimePerf.lastStateBytes = new Blob([serialized]).size;
     runtimePerf.lastSaveMs = Math.max(0, performance.now() - t0);
     runtimePerf.lastSaveAt = new Date().toISOString();
+    refreshStateSegmentationDiagnostics(normalized);
 
     clearDirty();
 
