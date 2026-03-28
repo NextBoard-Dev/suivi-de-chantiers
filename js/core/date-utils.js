@@ -48,11 +48,26 @@
     return {start:ns, end:e, clamped:true};
   }
 
+  function formatShortDate(d){
+    const dd = String(d.getDate()).padStart(2,"0");
+    const mm = String(d.getMonth()+1).padStart(2,"0");
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${dd}-${mm}-${yy}`;
+  }
+
+  function formatShortDateTwoLinesHTML(d){
+    const dd = String(d.getDate()).padStart(2,"0");
+    const mm = String(d.getMonth()+1).padStart(2,"0");
+    const yy = String(d.getFullYear()).slice(-2);
+    return `<span class="wk-date-top">${dd}-${mm}</span><span class="wk-date-bottom">${yy}</span>`;
+  }
+
   windowRef.toDateInput = windowRef.toDateInput || toDateInput;
   windowRef.parseInputDate = windowRef.parseInputDate || parseInputDate;
   windowRef.toISODateStart = windowRef.toISODateStart || toISODateStart;
   windowRef.toISODateEnd = windowRef.toISODateEnd || toISODateEnd;
   windowRef.toLocalISODate = windowRef.toLocalISODate || toLocalISODate;
   windowRef.clampLoginRange = windowRef.clampLoginRange || clampLoginRange;
+  windowRef.formatShortDate = windowRef.formatShortDate || formatShortDate;
+  windowRef.formatShortDateTwoLinesHTML = windowRef.formatShortDateTwoLinesHTML || formatShortDateTwoLinesHTML;
 })(window);
-

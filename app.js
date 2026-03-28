@@ -973,24 +973,19 @@ function updateTaskDatesWarning(){
 
 }
 
-function formatShortDate(d){
-
+const formatShortDate = window.formatShortDate || ((d)=>{
   const dd = String(d.getDate()).padStart(2,"0");
-
   const mm = String(d.getMonth()+1).padStart(2,"0");
-
   const yy = String(d.getFullYear()).slice(-2);
-
   return `${dd}-${mm}-${yy}`;
+});
 
-}
-
-function formatShortDateTwoLinesHTML(d){
+const formatShortDateTwoLinesHTML = window.formatShortDateTwoLinesHTML || ((d)=>{
   const dd = String(d.getDate()).padStart(2,"0");
   const mm = String(d.getMonth()+1).padStart(2,"0");
   const yy = String(d.getFullYear()).slice(-2);
   return `<span class="wk-date-top">${dd}-${mm}</span><span class="wk-date-bottom">${yy}</span>`;
-}
+});
 
 function isTodayInWeek(weekStart){
 
