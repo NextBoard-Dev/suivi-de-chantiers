@@ -133,10 +133,19 @@ function barGeometry(taskStart, taskEnd, weekStart){
 function getTaskRoleKey(t){
   const hasVendor = (t?.vendor || "").trim();
   if(hasVendor) return "externe";
+  const hasInternalTechCsv = normalizeInternalTechList(t?.internalTech || "").length > 0;
+  const hasInternalTechArray = Array.isArray(t?.internalTechs) && t.internalTechs.some((x)=>!!normalizeInternalTech(x || ""));
+  if(hasInternalTechCsv || hasInternalTechArray) return "interne";
   const typ = ownerType(t?.owner);
   if(typ === "rsg") return "rsg";
   if(typ === "ri") return "ri";
-  if(typ === "externe" || typ === "inconnu") return "externe";
+  if(typ === "externe") return "externe";
+  if(typ === "inconnu"){
+    const hasInternalTechCsv = normalizeInternalTechList(t?.internalTech || "").length > 0;
+    const hasInternalTechArray = Array.isArray(t?.internalTechs) && t.internalTechs.some((x)=>!!normalizeInternalTech(x || ""));
+    if(hasInternalTechCsv || hasInternalTechArray) return "interne";
+    return "externe";
+  }
   return "interne";
 }
 
@@ -178,7 +187,8 @@ function getExpectedLogSpecsForTask(t){
   }
   const techs = getInternalTechsForTaskHours(t);
   if(!techs.length){
-    return [{ roleKey:"interne", internalTech:"" }];
+    // Plus de mode générique "INTERNE" : sans technicien explicite, aucune saisie attendue.
+    return [];
   }
   return techs.map((name)=>({ roleKey:"interne", internalTech:normalizeInternalTech(name) }));
 }
