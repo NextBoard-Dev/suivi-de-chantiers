@@ -151,10 +151,6 @@
   }
   body.print-gantt-master .card,
   body.print-gantt-project .card{ margin-bottom: 2mm; }
-  body.print-gantt-master #printInjection,
-  body.print-gantt-project #printInjection{
-    width: 100%;
-  }
   body.print-gantt-master .gantt-table,
   body.print-gantt-project .gantt-table{
     overflow: visible !important;
@@ -481,6 +477,53 @@ body.print-mode .badge.owner{
   body.print-gantt-master .pdf-gantt-table tr{
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+  }
+  body.print-gantt-project .gantt-print-plain tr,
+  body.print-gantt-master .gantt-print-plain tr,
+  body.print-gantt-project .gantt-export-plain tr,
+  body.print-gantt-master .gantt-export-plain tr{
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  body.print-gantt-project .pdf-gantt-table,
+  body.print-gantt-master .pdf-gantt-table{
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+  body.print-gantt-project .pdf-gantt-table thead,
+  body.print-gantt-master .pdf-gantt-table thead{
+    display: table-header-group !important;
+  }
+  body.print-gantt-project .pdf-gantt-table tfoot,
+  body.print-gantt-master .pdf-gantt-table tfoot{
+    display: table-footer-group !important;
+  }
+  body.print-gantt-project .pdf-gantt-table tbody,
+  body.print-gantt-master .pdf-gantt-table tbody{
+    display: table-row-group !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+  body.print-gantt-project .pdf-gantt-table td,
+  body.print-gantt-project .pdf-gantt-table th,
+  body.print-gantt-master .pdf-gantt-table td,
+  body.print-gantt-master .pdf-gantt-table th{
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  body.print-gantt-project .gantt-print-plain,
+  body.print-gantt-master .gantt-print-plain,
+  body.print-gantt-project .gantt-export-plain,
+  body.print-gantt-master .gantt-export-plain{
+    overflow: visible !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+  body.print-gantt-project .print-block,
+  body.print-gantt-master .print-block{
+    margin-bottom: 0 !important;
   }
 }
 

@@ -11599,7 +11599,11 @@ function computeRowAwareSliceHeights(block, canvas, maxSlicePx){
   const out = [];
   const maxPx = Math.max(1, Math.floor(maxSlicePx || 1));
   try{
-    const rows = Array.from(block?.querySelectorAll?.('.table tbody tr, .report-table tbody tr') || []);
+    const rows = Array.from(
+      block?.querySelectorAll?.(
+        '.table tbody tr, .report-table tbody tr, .pdf-gantt-table tbody tr, .gantt-export-plain tbody tr'
+      ) || []
+    );
     const blockHeight = Number(block?.scrollHeight || block?.offsetHeight || 0);
     if(!rows.length || !blockHeight || !canvas?.height) return out;
 
@@ -12002,7 +12006,11 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
         windowHeight: Math.max(block.scrollHeight || block.clientHeight || 300, 300)
       });
 
-      const canvas = trimCanvasWhitespace(renderedCanvas);
+      const hasRowAwareTable = !!block.querySelector(
+        ".pdf-gantt-table tbody tr, .gantt-export-plain tbody tr"
+      );
+      // Important: garder le canvas source pour préserver les coordonnées de lignes.
+      const canvas = hasRowAwareTable ? renderedCanvas : trimCanvasWhitespace(renderedCanvas);
       if(!canvas || canvas.width < 2 || canvas.height < 2){
         continue;
       }
@@ -12036,16 +12044,10 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
       }
 
       const slicePx = Math.floor((drawH * canvas.width) / drawW);
-      const plannedHeights = (canvas === renderedCanvas) ? computeRowAwareSliceHeights(block, canvas, slicePx) : [];
+      const plannedHeights = hasRowAwareTable ? computeRowAwareSliceHeights(block, canvas, slicePx) : [];
       let offsetPx = 0;
       let sliceIdx = 0;
       while(offsetPx < canvas.height){
-        if(hasContentOnPage){
-          pdf.addPage();
-          yCursor = margin;
-          hasContentOnPage = false;
-        }
-
         const nextPlanned = plannedHeights[sliceIdx];
         const hPx = Math.min(
           Math.max(1, Number.isFinite(nextPlanned) ? nextPlanned : slicePx),
@@ -12057,13 +12059,23 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
         const sctx = slice.getContext('2d');
         sctx.drawImage(canvas, 0, offsetPx, canvas.width, hPx, 0, 0, canvas.width, hPx);
 
-        const sliceData = slice.toDataURL('image/jpeg', 0.95);
-        const sliceH = hPx * drawW / canvas.width;
-        pdf.addImage(sliceData, 'JPEG', margin, yCursor, drawW, sliceH, undefined, 'FAST');
-        hasContentOnPage = true;
-
+        const effectiveSlice = trimCanvasWhitespace(slice);
         offsetPx += hPx;
         sliceIdx += 1;
+        if(!effectiveSlice || effectiveSlice.width < 2 || effectiveSlice.height < 2){
+          continue;
+        }
+
+        if(hasContentOnPage){
+          pdf.addPage();
+          yCursor = margin;
+          hasContentOnPage = false;
+        }
+
+        const sliceData = effectiveSlice.toDataURL('image/jpeg', 0.95);
+        const sliceH = effectiveSlice.height * drawW / effectiveSlice.width;
+        pdf.addImage(sliceData, 'JPEG', margin, yCursor, drawW, sliceH, undefined, 'FAST');
+        hasContentOnPage = true;
       }
       yCursor = margin;
       const loopEndPct = 24 + Math.round(((i + 1) / totalTargets) * 60);
