@@ -59,11 +59,24 @@ export default function MasterTable() {
     queryKey: ["tasks"],
     queryFn: () => dataClient.entities.Task.list("-updated_date", 500),
   });
+  const { data: projectsList = [] } = useQuery({
+    queryKey: ["projects-master-filter-sites"],
+    queryFn: () => dataClient.entities.Project.list("-updated_date", 500),
+  });
+  const { data: sitesRef = [] } = useQuery({
+    queryKey: ["sites-master-filter-ref"],
+    queryFn: () => dataClient.entities.Referential.listSites({}, "name", 500),
+  });
 
   // Listes dynamiques pour les filtres
   const sites = useMemo(
-    () => [...new Set(tasks.map((t) => t.site).filter(Boolean))].sort(),
-    [tasks]
+    () => {
+      const fromRef = sitesRef.map((s) => s.name).filter(Boolean);
+      const fromProjects = projectsList.map((p) => p.site).filter(Boolean);
+      const fromTasks = tasks.map((t) => t.site).filter(Boolean);
+      return [...new Set([...fromRef, ...fromProjects, ...fromTasks])].sort();
+    },
+    [sitesRef, projectsList, tasks]
   );
 
   const projects = useMemo(() => {

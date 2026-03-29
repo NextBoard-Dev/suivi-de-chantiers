@@ -9,6 +9,8 @@ import MobileGantt from "../components/gantt/MobileGantt";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "react-router-dom";
 
+const TODAY = new Date().toISOString().slice(0, 10);
+
 function isLate(task) {
   return !!task.end_date && (task.progress || 0) < 100 && task.end_date < TODAY;
 }

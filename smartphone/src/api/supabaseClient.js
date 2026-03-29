@@ -16,6 +16,7 @@ export const supabaseConfig = {
   timeLogsTable: import.meta.env.VITE_SUPABASE_TIME_LOGS_TABLE || "chantier_time_logs",
   internalTechsTable: import.meta.env.VITE_SUPABASE_INTERNAL_TECHS_TABLE || "chantier_internal_techs",
   vendorsTable: import.meta.env.VITE_SUPABASE_VENDORS_TABLE || "chantier_vendors",
+  sitesTable: import.meta.env.VITE_SUPABASE_SITES_TABLE || "sites",
   refsSiteColumn: import.meta.env.VITE_SUPABASE_REFS_SITE_COLUMN || "site",
   readOnlyMode: String(import.meta.env.VITE_READ_ONLY_MODE || "true").toLowerCase() === "true",
   allowTaskWrites: String(import.meta.env.VITE_ALLOW_TASK_WRITES || "false").toLowerCase() === "true",

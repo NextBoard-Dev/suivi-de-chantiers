@@ -43,7 +43,10 @@ export default function FilterSheet({
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto">
+      <SheetContent
+        side="bottom"
+        className="left-1/2 right-auto top-auto bottom-2 -translate-x-1/2 w-[430px] max-w-[96vw] h-[80svh] max-h-[80svh] rounded-2xl overflow-y-auto p-4"
+      >
         <SheetHeader className="pb-4">
           <SheetTitle className="text-base">Filtres</SheetTitle>
         </SheetHeader>

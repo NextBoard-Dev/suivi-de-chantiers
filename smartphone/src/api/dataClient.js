@@ -15,6 +15,7 @@ const {
   timeLogsTable,
   internalTechsTable,
   vendorsTable,
+  sitesTable,
   refsSiteColumn,
   readOnlyMode,
   allowTaskWrites,
@@ -738,6 +739,10 @@ export const dataClient = {
     },
 
     Referential: {
+      listSites: async (filters = {}, sort = "name", limit = 500) => {
+        const rows = await fetchReferential(sitesTable, "site", filters);
+        return applySort(rows, sort).slice(0, limit);
+      },
       listInternalTechs: async (filters = {}, sort = "name", limit = 500) => {
         const rows = await fetchReferential(internalTechsTable, "internal_tech", filters);
         return applySort(rows, sort).slice(0, limit);
