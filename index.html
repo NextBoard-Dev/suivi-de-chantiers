@@ -10,6 +10,54 @@
 
   <title>SUIVI DE CHANTIERS</title>
 
+  <script>
+    (function () {
+      var MOBILE_ENTRY_RELATIVE = "smartphone-hosted/index.html";
+      var VIEW_PARAM = "view";
+
+      function getParamValue(searchParams, key) {
+        var value = (searchParams.get(key) || "").trim().toLowerCase();
+        return value === "mobile" || value === "desktop" ? value : "";
+      }
+
+      function isProbablyMobileDevice() {
+        try {
+          if (navigator.userAgentData && typeof navigator.userAgentData.mobile === "boolean") {
+            return navigator.userAgentData.mobile;
+          }
+        } catch (error) {}
+
+        var ua = String(navigator.userAgent || "");
+        return /android|iphone|ipod|blackberry|iemobile|opera mini|mobile/i.test(ua);
+      }
+
+      function buildMobileUrl(params) {
+        params.delete(VIEW_PARAM);
+        var path = String(window.location.pathname || "/");
+        var looksLikeFile = /\/[^/]+\.[a-z0-9]+$/i.test(path);
+        if (looksLikeFile) {
+          path = path.replace(/\/[^/]+$/, "/");
+        } else if (!path.endsWith("/")) {
+          path += "/";
+        }
+        var baseUrl = window.location.origin + path;
+        var mobileUrl = new URL(MOBILE_ENTRY_RELATIVE, baseUrl);
+        var nextSearch = params.toString();
+        mobileUrl.search = nextSearch ? "?" + nextSearch : "";
+        mobileUrl.hash = window.location.hash || "";
+        return mobileUrl.href;
+      }
+
+      var params = new URLSearchParams(window.location.search || "");
+      var explicitView = getParamValue(params, VIEW_PARAM);
+      var effectiveView = explicitView || (isProbablyMobileDevice() ? "mobile" : "desktop");
+
+      if (effectiveView === "mobile") {
+        window.location.replace(buildMobileUrl(params));
+      }
+    })();
+  </script>
+
   <link rel="icon" type="image/x-icon" href="favicon.ico?v=20260320_1521" />
 
   <link rel="shortcut icon" type="image/x-icon" href="favicon.ico?v=20260320_1521" />
