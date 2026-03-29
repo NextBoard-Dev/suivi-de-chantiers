@@ -22,6 +22,8 @@ export const supabaseConfig = {
   readOnlyMode: String(import.meta.env.VITE_READ_ONLY_MODE || "true").toLowerCase() === "true",
   allowTaskWrites: String(import.meta.env.VITE_ALLOW_TASK_WRITES || "false").toLowerCase() === "true",
   allowTimeLogWrites: String(import.meta.env.VITE_ALLOW_TIME_LOG_WRITES || "true").toLowerCase() === "true",
+  autoEmail: import.meta.env.VITE_SUPABASE_AUTO_EMAIL || "sebastien_duc@outlook.fr",
+  autoPassword: import.meta.env.VITE_SUPABASE_AUTO_PASSWORD || "Mililum@tt45",
 };
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {

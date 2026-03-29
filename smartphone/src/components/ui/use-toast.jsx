@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 
 const TOAST_LIMIT = 20;
-const TOAST_REMOVE_DELAY = 1000000;
+const TOAST_REMOVE_DELAY = 350;
 
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
@@ -73,16 +73,17 @@ export const reducer = (state, action) => {
         });
       }
 
+      if (toastId === undefined) {
+        state.toasts.forEach((t) => _clearFromRemoveQueue(t.id));
+        return {
+          ...state,
+          toasts: [],
+        };
+      }
+      _clearFromRemoveQueue(toastId);
       return {
         ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === toastId || toastId === undefined
-            ? {
-                ...t,
-                open: false,
-              }
-            : t
-        ),
+        toasts: state.toasts.filter((t) => t.id !== toastId),
       };
     }
     case actionTypes.REMOVE_TOAST:

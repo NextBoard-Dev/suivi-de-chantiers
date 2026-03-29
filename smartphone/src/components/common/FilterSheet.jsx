@@ -69,17 +69,17 @@ export default function FilterSheet({
             </Select>
           </div>
 
-          {/* Projet */}
+          {/* Chantier */}
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
-              Projet
+              Chantier
             </label>
             <Select value={filters.project || "all"} onValueChange={(v) => onFilterChange({ ...filters, project: v })}>
               <SelectTrigger className="h-11">
-                <SelectValue placeholder="Tous les projets" />
+                <SelectValue placeholder="Tous les chantiers" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tous les projets</SelectItem>
+                <SelectItem value="all">Tous les chantiers</SelectItem>
                 {projects.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
               </SelectContent>
             </Select>

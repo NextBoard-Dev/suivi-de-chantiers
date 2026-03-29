@@ -52,9 +52,9 @@ export default function ProjectDetail() {
   if (!project) {
     return (
       <div className="p-4 text-center py-20">
-        <p className="text-muted-foreground mb-4">Projet non trouve</p>
+        <p className="text-muted-foreground mb-4">Chantier non trouve</p>
         <button onClick={() => navigate("/projects")} className="text-primary text-sm font-semibold underline">
-          Retour aux projets
+          Retour aux chantiers
         </button>
       </div>
     );
@@ -175,7 +175,7 @@ export default function ProjectDetail() {
             ))}
             {tasks.length === 0 && (
               <div className="text-center py-8 text-muted-foreground text-sm">
-                Aucune tache dans ce projet
+                Aucune tache dans ce chantier
               </div>
             )}
           </TabsContent>

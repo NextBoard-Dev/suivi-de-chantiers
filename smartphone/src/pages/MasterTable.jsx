@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const SORT_OPTIONS = [
-  { key: "site_project", label: "Par défaut (Site + Projet)" },
+  { key: "site_project", label: "Par défaut (Site + Chantier)" },
   { key: "start_asc",    label: "Début ↑ (plus ancien)" },
   { key: "start_desc",   label: "Début ↓ (plus récent)" },
   { key: "end_asc",      label: "Fin ↑ (plus tôt)" },
@@ -205,7 +205,7 @@ export default function MasterTable() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input
-            placeholder="Tâche, projet, site, prestataire..."
+            placeholder="Tâche, chantier, site, prestataire..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-8 h-8 text-[12px] bg-white"

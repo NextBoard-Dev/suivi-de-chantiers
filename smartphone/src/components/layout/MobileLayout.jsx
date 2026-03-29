@@ -5,7 +5,7 @@ import { LayoutDashboard, ClipboardList, FolderKanban, BarChart3, Search } from 
 const sectionLabels = {
   "/":        { sub: "VUE D'ENSEMBLE",  main: "TABLEAU DE BORD" },
   "/master":  { sub: "LISTE DES TÂCHES", main: "TABLEAU" },
-  "/projects":{ sub: "LISTE DES PROJETS", main: "PROJETS" },
+  "/projects":{ sub: "LISTE DES CHANTIERS", main: "CHANTIERS" },
   "/gantt":   { sub: "PLANNING",        main: "GANTT" },
   "/search":  { sub: "RECHERCHE",       main: "CHERCHER" },
 };
@@ -27,7 +27,7 @@ function ActiveSectionLabel() {
 const navItems = [
   { path: "/",         icon: LayoutDashboard, label: "Accueil",  color: "#3f6170", bg: "rgba(63,97,112,0.15)" },
   { path: "/master",   icon: ClipboardList,   label: "Tableau",  color: "#b45309", bg: "rgba(234,179,8,0.15)" },
-  { path: "/projects", icon: FolderKanban,    label: "Projets",  color: "#0e7490", bg: "rgba(14,116,144,0.15)" },
+  { path: "/projects", icon: FolderKanban,    label: "Chantiers",  color: "#0e7490", bg: "rgba(14,116,144,0.15)" },
   { path: "/gantt",    icon: BarChart3,        label: "Gantt",    color: "#7c3aed", bg: "rgba(124,58,237,0.15)" },
   { path: "/search",   icon: Search,           label: "Chercher", color: "#059669", bg: "rgba(5,150,105,0.15)" },
 ];

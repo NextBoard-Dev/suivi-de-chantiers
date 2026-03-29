@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { computeProjectHoursById } from "@/lib/projectHours";
 
 export default function ProjectsList() {
   const [search, setSearch] = useState("");
@@ -20,8 +21,12 @@ export default function ProjectsList() {
     queryKey: ["tasks"],
     queryFn: () => dataClient.entities.Task.list("-updated_date", 500),
   });
+  const { data: timeLogs = [], isLoading: loadingL } = useQuery({
+    queryKey: ["time-logs", "project-hours-list"],
+    queryFn: () => dataClient.entities.TimeLog.list("-date", 0),
+  });
 
-  const isLoading = loadingP || loadingT;
+  const isLoading = loadingP || loadingT || loadingL;
 
   const taskCountByProject = useMemo(() => {
     const map = {};
@@ -32,6 +37,10 @@ export default function ProjectsList() {
     });
     return map;
   }, [tasks]);
+  const projectHoursById = useMemo(
+    () => computeProjectHoursById(projects, tasks, timeLogs),
+    [projects, tasks, timeLogs]
+  );
 
   const sites = useMemo(
     () => [...new Set(projects.map((p) => p.site).filter(Boolean))].sort(),
@@ -58,9 +67,9 @@ export default function ProjectsList() {
   return (
     <div className="space-y-0">
       <div className="px-4 py-2 flex items-center justify-between" style={{ background: "rgba(235,230,220,0.6)" }}>
-        <p className="text-[11px] font-bold text-foreground tracking-widest uppercase">PROJETS</p>
+        <p className="text-[11px] font-bold text-foreground tracking-widest uppercase">CHANTIERS</p>
         <div className="flex items-center gap-2">
-          <p className="text-[9px] text-muted-foreground font-semibold">{filtered.length} projet{filtered.length !== 1 ? "s" : ""}</p>
+          <p className="text-[9px] text-muted-foreground font-semibold">{filtered.length} chantier{filtered.length !== 1 ? "s" : ""}</p>
         </div>
       </div>
 
@@ -101,11 +110,12 @@ export default function ProjectsList() {
               key={project.id}
               project={project}
               taskCount={taskCountByProject[project.id] || 0}
+              totalHoursMinutes={projectHoursById[project.id] || 0}
             />
           ))}
           {filtered.length === 0 && (
             <div className="text-center py-10 text-muted-foreground text-sm">
-              Aucun projet trouve
+              Aucun chantier trouve
             </div>
           )}
         </div>

@@ -5,6 +5,7 @@ import { FolderKanban, ListChecks, CheckCircle2, AlertTriangle, ChevronRight, Cl
 import ProjectCard from "../components/common/ProjectCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
+import { computeProjectHoursById } from "@/lib/projectHours";
 
 export default function Dashboard() {
   const { data: projects = [], isLoading: loadingProjects } = useQuery({
@@ -16,8 +17,12 @@ export default function Dashboard() {
     queryKey: ["tasks"],
     queryFn: () => dataClient.entities.Task.list("-updated_date", 200),
   });
+  const { data: timeLogs = [], isLoading: loadingLogs } = useQuery({
+    queryKey: ["time-logs", "project-hours-dashboard"],
+    queryFn: () => dataClient.entities.TimeLog.list("-date", 0),
+  });
 
-  const isLoading = loadingProjects || loadingTasks;
+  const isLoading = loadingProjects || loadingTasks || loadingLogs;
 
   const totalTasks      = tasks.length;
   const completedTasks  = tasks.filter((t) => t.progress >= 100).length;
@@ -39,6 +44,10 @@ export default function Dashboard() {
     });
     return map;
   }, [tasks]);
+  const projectHoursById = React.useMemo(
+    () => computeProjectHoursById(projects, tasks, timeLogs),
+    [projects, tasks, timeLogs]
+  );
 
   if (isLoading) {
     return (
@@ -68,7 +77,7 @@ export default function Dashboard() {
             <FolderKanban className="w-3.5 h-3.5" style={{ color: "#3f6170" }} />
           </div>
           <p className="text-xl font-black leading-none" style={{ color: "#14242c" }}>{projects.length}</p>
-          <p className="text-[8px] font-bold tracking-widest uppercase" style={{ color: "#556d79" }}>PROJETS</p>
+          <p className="text-[8px] font-bold tracking-widest uppercase" style={{ color: "#556d79" }}>CHANTIERS</p>
         </div>
         <div className="flex flex-col items-center justify-center py-1.5 px-2 gap-0.5 rounded-xl" style={{ background: "rgba(217,226,231,0.85)", border: "1px solid rgba(63,97,112,0.2)" }}>
           <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "rgba(63,97,112,0.15)" }}>
@@ -141,10 +150,10 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Projets récents */}
+      {/* Chantiers récents */}
       <div className="px-3 pt-2 pb-4">
         <div className="flex items-center justify-between mb-1.5">
-          <h2 className="text-[9px] font-bold text-foreground tracking-widest uppercase">PROJETS RECENTS</h2>
+          <h2 className="text-[9px] font-bold text-foreground tracking-widest uppercase">CHANTIERS RECENTS</h2>
           <Link to="/projects" className="flex items-center gap-0.5 text-xs text-primary font-semibold">
             Tout voir <ChevronRight className="w-3.5 h-3.5" />
           </Link>
@@ -155,11 +164,12 @@ export default function Dashboard() {
               key={project.id}
               project={project}
               taskCount={taskCountByProject[project.id] || 0}
+              totalHoursMinutes={projectHoursById[project.id] || 0}
             />
           ))}
           {recentProjects.length === 0 && (
             <div className="text-center py-10 text-muted-foreground text-sm">
-              Aucun projet pour le moment
+              Aucun chantier pour le moment
             </div>
           )}
         </div>

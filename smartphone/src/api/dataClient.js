@@ -15,6 +15,8 @@ const {
   taskProjectIdColumn,
   timeLogsTable,
   appStatesTable,
+  autoEmail,
+  autoPassword,
   internalTechsTable,
   vendorsTable,
   sitesTable,
@@ -26,6 +28,7 @@ const {
 const READ_PAGE_SIZE = 500;
 const ID_BATCH_SIZE = 200;
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+let legacyAutoLoginAttempted = false;
 
 const PROJECT_SELECT_COLUMNS = [
   "id",
@@ -206,7 +209,7 @@ async function fetchProjectsByIds(projectIds = []) {
         rows.push(...(await readChunk("*")));
       }
     } catch (error) {
-      throw buildError("Lecture projets par lots impossible", error);
+      throw buildError("Lecture chantiers par lots impossible", error);
     }
   }
 
@@ -324,6 +327,22 @@ function normalizeSigText(value) {
     .toUpperCase();
 }
 
+function normalizeProjectKeyText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function buildProjectNaturalKey(projectLike = {}) {
+  const site = normalizeProjectKeyText(projectLike.site ?? projectLike.site_name ?? "");
+  const name = normalizeProjectKeyText(projectLike.name ?? projectLike.project_name ?? "");
+  const sub = normalizeProjectKeyText(projectLike.subproject ?? projectLike.sub_project ?? "");
+  return [site, name, sub].join("|");
+}
+
 function buildTaskSignature(taskLike = {}) {
   const ownerType = normalizeMobileOwnerType(taskLike.owner_type ?? taskLike.owner ?? "");
   const projectId = toStringId(taskLike.project_id ?? taskLike.projectId ?? taskLike.chantier_id);
@@ -333,6 +352,16 @@ function buildTaskSignature(taskLike = {}) {
   const internalTech = normalizeSigText(taskLike.internal_tech ?? taskLike.internalTech ?? taskLike.technician ?? "");
   const vendor = normalizeSigText(taskLike.vendor ?? "");
   return [projectId, description, ownerType, internalTech, vendor, startDate, endDate].join("|");
+}
+
+function buildTaskSignatureLoose(taskLike = {}) {
+  const ownerType = normalizeMobileOwnerType(taskLike.owner_type ?? taskLike.owner ?? "");
+  const description = normalizeSigText(taskLike.description ?? taskLike.roomNumber ?? taskLike.name ?? "");
+  const startDate = pickDate(taskLike.start_date ?? taskLike.start ?? "");
+  const endDate = pickDate(taskLike.end_date ?? taskLike.end ?? "");
+  const internalTech = normalizeSigText(taskLike.internal_tech ?? taskLike.internalTech ?? taskLike.technician ?? "");
+  const vendor = normalizeSigText(taskLike.vendor ?? "");
+  return [description, ownerType, internalTech, vendor, startDate, endDate].join("|");
 }
 
 function splitInternalTechList(value) {
@@ -384,7 +413,7 @@ function sanitizeTaskInternalTechBySite(task, internalTechAllowBySite) {
 
 function assertProjectWriteAllowed() {
   if (toBool(readOnlyMode)) {
-    throw new Error("Mode lecture seule actif: ecriture projet desactivee.");
+    throw new Error("Mode lecture seule actif: ecriture chantier desactivee.");
   }
 }
 
@@ -478,6 +507,15 @@ function mapTaskRow(row) {
 }
 
 function mapTimeLogRow(row) {
+  const parseDecimalLike = (value) => {
+    if (value === null || value === undefined) return NaN;
+    if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
+    const normalized = String(value).trim().replace(",", ".");
+    if (!normalized) return NaN;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : NaN;
+  };
+
   const roleFromColumns = String(row.role ?? row.owner_type ?? row.owner ?? "").trim();
   const roleFromKey = ownerTypeFromRoleKey(row.role_key);
   const resolvedRole = roleFromColumns || roleFromKey;
@@ -491,8 +529,8 @@ function mapTimeLogRow(row) {
       technician,
       vendor,
     });
-  const minutesRaw = Number(row.minutes);
-  const hoursRaw = Number(row.hours);
+  const minutesRaw = parseDecimalLike(row.minutes);
+  const hoursRaw = parseDecimalLike(row.hours);
   const resolvedMinutes = Number.isFinite(minutesRaw)
     ? minutesRaw
     : (Number.isFinite(hoursRaw) ? Math.round(hoursRaw * 60) : 0);
@@ -512,6 +550,8 @@ function mapTimeLogRow(row) {
     updated_date: row.updated_date || row.updated_at || "",
     created_date: row.created_date || row.created_at || "",
     legacy_task_signature: String(row.legacy_task_signature ?? "").trim(),
+    legacy_task_signature_loose: String(row.legacy_task_signature_loose ?? "").trim(),
+    legacy_project_key: String(row.legacy_project_key ?? "").trim(),
   };
 }
 
@@ -562,7 +602,7 @@ async function fetchProjects(filters = {}) {
     filters,
     selectColumns: PROJECT_SELECT_COLUMNS,
     pageSize: READ_PAGE_SIZE,
-    errorScope: "Lecture projets Supabase impossible",
+    errorScope: "Lecture chantiers Supabase impossible",
   });
   return rows.map(mapProjectRow);
 }
@@ -596,22 +636,99 @@ function matchesFiltersInMemory(row, filters = {}) {
 }
 
 function mergeTimeLogSources(primaryLogs = [], legacyLogs = []) {
+  const mergeRow = (base = {}, incoming = {}) => {
+    const baseMinutes = Number(base?.minutes);
+    const inMinutes = Number(incoming?.minutes);
+    const sumMinutes =
+      (Number.isFinite(baseMinutes) ? baseMinutes : 0) +
+      (Number.isFinite(inMinutes) ? inMinutes : 0);
+    const baseTs = new Date(base?.updated_date || base?.created_date || 0).getTime();
+    const inTs = new Date(incoming?.updated_date || incoming?.created_date || 0).getTime();
+    const latest = inTs >= baseTs ? incoming : base;
+    return {
+      ...base,
+      ...incoming,
+      ...latest,
+      minutes: Math.max(0, Math.round(sumMinutes)),
+      hours: Math.round((Math.max(0, Math.round(sumMinutes)) / 60) * 100) / 100,
+    };
+  };
+
   const out = new Map();
   (legacyLogs || []).forEach((log) => {
-    out.set(buildTimeLogIdentityKey(log), log);
+    const key = buildTimeLogIdentityKey(log);
+    const prev = out.get(key);
+    out.set(key, prev ? mergeRow(prev, log) : log);
   });
   (primaryLogs || []).forEach((log) => {
-    out.set(buildTimeLogIdentityKey(log), log);
+    const key = buildTimeLogIdentityKey(log);
+    const prev = out.get(key);
+    out.set(key, prev ? mergeRow(prev, log) : log);
   });
   return Array.from(out.values());
+}
+
+function dedupeTimeLogs(logs = []) {
+  const mergeRow = (base = {}, incoming = {}) => {
+    const baseMinutes = Number(base?.minutes);
+    const inMinutes = Number(incoming?.minutes);
+    const sumMinutes =
+      (Number.isFinite(baseMinutes) ? baseMinutes : 0) +
+      (Number.isFinite(inMinutes) ? inMinutes : 0);
+    const baseTs = new Date(base?.updated_date || base?.created_date || 0).getTime();
+    const inTs = new Date(incoming?.updated_date || incoming?.created_date || 0).getTime();
+    const latest = inTs >= baseTs ? incoming : base;
+    return {
+      ...base,
+      ...incoming,
+      ...latest,
+      minutes: Math.max(0, Math.round(sumMinutes)),
+      hours: Math.round((Math.max(0, Math.round(sumMinutes)) / 60) * 100) / 100,
+    };
+  };
+
+  const out = new Map();
+  (logs || []).forEach((log) => {
+    const key = buildTimeLogIdentityKey(log);
+    const prev = out.get(key);
+    out.set(key, prev ? mergeRow(prev, log) : log);
+  });
+  return Array.from(out.values());
+}
+
+function applyLimit(items = [], limit = 0) {
+  const max = Number(limit);
+  if (!Number.isFinite(max) || max <= 0) return [...items];
+  return items.slice(0, max);
 }
 
 async function fetchLegacyStateTimeLogs(filters = {}) {
   if (!appStatesTable) return [];
   try {
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    let { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     if (sessionError) return [];
-    const userId = sessionData?.session?.user?.id || "";
+    let sessionUser = sessionData?.session?.user || null;
+    const expectedEmail = String(autoEmail || "").trim().toLowerCase();
+    const currentEmail = String(sessionUser?.email || "").trim().toLowerCase();
+    const shouldAutoLogin = !sessionUser || (expectedEmail && currentEmail !== expectedEmail);
+    if (shouldAutoLogin && !legacyAutoLoginAttempted) {
+      legacyAutoLoginAttempted = true;
+      const email = String(autoEmail || "").trim();
+      const password = String(autoPassword || "").trim();
+      if (email && password) {
+        try {
+          await supabase.auth.signInWithPassword({ email, password });
+          const next = await supabase.auth.getSession();
+          if (!next.error) {
+            sessionData = next.data;
+            sessionUser = sessionData?.session?.user || null;
+          }
+        } catch {
+          // keep current session
+        }
+      }
+    }
+    let userId = sessionUser?.id || "";
 
     let stateRows = [];
     if (userId) {
@@ -644,15 +761,19 @@ async function fetchLegacyStateTimeLogs(filters = {}) {
       const stateJson = row?.state_json;
       const rawLogs = Array.isArray(stateJson?.timeLogs) ? stateJson.timeLogs : [];
       const legacyTasks = Array.isArray(stateJson?.tasks) ? stateJson.tasks : [];
+      const legacyProjects = Array.isArray(stateJson?.projects) ? stateJson.projects : [];
       const taskById = new Map(legacyTasks.map((t) => [toStringId(t?.id), t]));
+      const projectById = new Map(legacyProjects.map((p) => [toStringId(p?.id), p]));
       rawLogs.forEach((log, idx) => {
         const taskId = toStringId(log?.taskId ?? log?.task_id ?? log?.tache_id);
         const dateVal = pickDate(log?.date ?? log?.date_key ?? log?.log_date ?? log?.day ?? "");
         const linkedTask = taskById.get(taskId) || null;
+        const legacyProjectId = toStringId(log?.projectId ?? log?.project_id ?? log?.chantier_id ?? linkedTask?.projectId);
+        const linkedProject = projectById.get(legacyProjectId) || null;
         mapped.push(mapTimeLogRow({
           id: toStringId(log?.id) || `legacy_${rowIdx}_${taskId}_${dateVal}_${idx}`,
           task_id: taskId,
-          project_id: toStringId(log?.projectId ?? log?.project_id ?? log?.chantier_id),
+          project_id: legacyProjectId,
           date_key: log?.date_key ?? dateVal,
           date: log?.date ?? dateVal,
           log_date: log?.log_date ?? dateVal,
@@ -672,6 +793,8 @@ async function fetchLegacyStateTimeLogs(filters = {}) {
           updated_at: log?.updatedAt ?? log?.updated_at ?? row?.updated_at ?? "",
           created_at: log?.createdAt ?? log?.created_at ?? "",
           legacy_task_signature: linkedTask ? buildTaskSignature(linkedTask) : "",
+          legacy_task_signature_loose: linkedTask ? buildTaskSignatureLoose(linkedTask) : "",
+          legacy_project_key: linkedProject ? buildProjectNaturalKey(linkedProject) : "",
         }));
       });
     });
@@ -1127,14 +1250,14 @@ export const dataClient = {
           fetchTimeLogs(),
           fetchLegacyStateTimeLogs(),
         ]);
-        return applySort(mergeTimeLogSources(logs, legacyLogs), sort).slice(0, limit);
+        return applyLimit(applySort(mergeTimeLogSources(logs, legacyLogs), sort), limit);
       },
       filter: async (filters = {}, sort = "-date", limit = 1000) => {
         const [logs, legacyLogs] = await Promise.all([
           fetchTimeLogs(filters),
           fetchLegacyStateTimeLogs(filters),
         ]);
-        return applySort(mergeTimeLogSources(logs, legacyLogs), sort).slice(0, limit);
+        return applyLimit(applySort(mergeTimeLogSources(logs, legacyLogs), sort), limit);
       },
       listForTask: async (taskRef = {}, sort = "-date", limit = 1000) => {
         const [logs, legacyLogs] = await Promise.all([
@@ -1144,12 +1267,13 @@ export const dataClient = {
         const merged = mergeTimeLogSources(logs, legacyLogs);
         const taskId = toStringId(taskRef?.id ?? taskRef?.task_id ?? taskRef?.taskId);
         const exact = merged.filter((log) => toStringId(log?.task_id) === taskId);
-        if (exact.length > 0) return applySort(exact, sort).slice(0, limit);
 
         const signature = buildTaskSignature(taskRef);
-        if (!signature) return [];
         const bySignature = merged.filter((log) => String(log?.legacy_task_signature || "") === signature);
-        if (bySignature.length > 0) return applySort(bySignature, sort).slice(0, limit);
+        const signatureLoose = buildTaskSignatureLoose(taskRef);
+        const bySignatureLoose = merged.filter((log) => String(log?.legacy_task_signature_loose || "") === signatureLoose);
+
+        const directMatches = dedupeTimeLogs([...exact, ...bySignature, ...bySignatureLoose]);
 
         const projectId = toStringId(taskRef?.project_id ?? taskRef?.projectId ?? taskRef?.chantier_id);
         const startDate = pickDate(taskRef?.start_date ?? taskRef?.start ?? "");
@@ -1162,7 +1286,8 @@ export const dataClient = {
           ""
         );
         const byProjectHeuristic = merged.filter((log) => {
-          if (projectId && toStringId(log?.project_id) !== projectId) return false;
+          const logProjectId = toStringId(log?.project_id);
+          if (projectId && logProjectId && logProjectId !== projectId) return false;
           const d = pickDate(log?.date ?? "");
           if (startDate && d && d < startDate) return false;
           if (endDate && d && d > endDate) return false;
@@ -1176,7 +1301,8 @@ export const dataClient = {
           }
           return true;
         });
-        return applySort(byProjectHeuristic, sort).slice(0, limit);
+        const mergedMatches = dedupeTimeLogs([...directMatches, ...byProjectHeuristic]);
+        return applyLimit(applySort(mergedMatches, sort), limit);
       },
       saveForTask: async (input) => {
         assertTimeLogWriteAllowed();

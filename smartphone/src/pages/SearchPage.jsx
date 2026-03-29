@@ -6,6 +6,7 @@ import { Search, Folder, ClipboardList } from "lucide-react";
 import TaskCard from "../components/common/TaskCard";
 import ProjectCard from "../components/common/ProjectCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { computeProjectHoursById } from "@/lib/projectHours";
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -19,6 +20,10 @@ export default function SearchPage() {
     queryKey: ["projects"],
     queryFn: () => dataClient.entities.Project.list("-updated_date", 200),
   });
+  const { data: timeLogs = [] } = useQuery({
+    queryKey: ["time-logs", "project-hours-search"],
+    queryFn: () => dataClient.entities.TimeLog.list("-date", 0),
+  });
 
   const taskCountByProject = useMemo(() => {
     const map = {};
@@ -27,6 +32,10 @@ export default function SearchPage() {
     });
     return map;
   }, [tasks]);
+  const projectHoursById = useMemo(
+    () => computeProjectHoursById(projects, tasks, timeLogs),
+    [projects, tasks, timeLogs]
+  );
 
   const q = query.toLowerCase().trim();
 
@@ -69,7 +78,7 @@ export default function SearchPage() {
         <div className="text-center py-16">
           <Search className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">
-            Tapez pour rechercher parmi les projets et tâches
+            Tapez pour rechercher parmi les chantiers et taches
           </p>
         </div>
       ) : (
@@ -81,7 +90,7 @@ export default function SearchPage() {
             </TabsTrigger>
             <TabsTrigger value="projects" className="flex-1 text-xs gap-1.5">
               <Folder className="w-3.5 h-3.5" />
-              Projets ({filteredProjects.length})
+              Chantiers ({filteredProjects.length})
             </TabsTrigger>
           </TabsList>
 
@@ -102,11 +111,12 @@ export default function SearchPage() {
                 key={project.id}
                 project={project}
                 taskCount={taskCountByProject[project.id] || 0}
+                totalHoursMinutes={projectHoursById[project.id] || 0}
               />
             ))}
             {filteredProjects.length === 0 && (
               <p className="text-center py-8 text-sm text-muted-foreground">
-                Aucun projet trouvé
+                Aucun chantier trouve
               </p>
             )}
           </TabsContent>

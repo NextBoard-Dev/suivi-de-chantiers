@@ -1,8 +1,16 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { MapPin, ListChecks, ChevronRight } from "lucide-react";
+import { MapPin, ListChecks, ChevronRight, Clock3 } from "lucide-react";
 
-export default function ProjectCard({ project, taskCount = 0 }) {
+function formatHoursMinutes(totalMinutes = 0) {
+  const total = Number.isFinite(Number(totalMinutes)) ? Math.max(0, Math.round(Number(totalMinutes))) : 0;
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (m === 0) return `${h} h`;
+  return `${h} h ${m} min`;
+}
+
+export default function ProjectCard({ project, taskCount = 0, totalHoursMinutes = 0 }) {
   const progress = project.progress || 0;
   const barColor = progress >= 100 ? "bg-emerald-500" : progress > 0 ? "bg-primary" : "bg-slate-300";
 
@@ -27,6 +35,12 @@ export default function ProjectCard({ project, taskCount = 0 }) {
             <div className={`h-full rounded-full ${barColor}`} style={{ width: `${progress}%` }} />
           </div>
           <span className="text-[8px] font-bold text-muted-foreground">{progress}%</span>
+        </div>
+        <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 rounded-md" style={{ background: "rgba(63,97,112,0.10)", border: "1px solid rgba(63,97,112,0.18)" }}>
+          <Clock3 className="w-3 h-3 shrink-0" style={{ color: "#3f6170" }} />
+          <span className="text-[10px] font-extrabold uppercase tracking-wide" style={{ color: "#213b48" }}>
+            Total heures: {formatHoursMinutes(totalHoursMinutes)}
+          </span>
         </div>
       </div>
 

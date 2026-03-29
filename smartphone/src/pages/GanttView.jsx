@@ -55,10 +55,10 @@ export default function GanttView() {
         </Select>
         <Select value={projectFilter} onValueChange={setProjectFilter}>
           <SelectTrigger className="flex-1 h-8 text-[12px] bg-white">
-            <SelectValue placeholder="Projet" />
+            <SelectValue placeholder="Chantier" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tous les projets</SelectItem>
+            <SelectItem value="all">Tous les chantiers</SelectItem>
             {projects.map((p) => (
               <SelectItem key={p} value={p}>{p}</SelectItem>
             ))}
