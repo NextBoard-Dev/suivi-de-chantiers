@@ -4,6 +4,7 @@ import {
   normalizeTaskInput,
   normalizeFiniteNumber,
   normalizeIsoDate,
+  normalizeString,
   normalizeStatuses,
   computeTaskProgressAuto,
 } from "@/lib/businessRules";
@@ -19,9 +20,11 @@ const {
   refsSiteColumn,
   readOnlyMode,
   allowTaskWrites,
+  allowTimeLogWrites,
 } = supabaseConfig;
 const READ_PAGE_SIZE = 500;
 const ID_BATCH_SIZE = 200;
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 
 const PROJECT_SELECT_COLUMNS = [
   "id",
@@ -93,6 +96,7 @@ const TIME_LOG_SELECT_COLUMNS = [
   "date",
   "log_date",
   "day",
+  "role_key",
   "role",
   "owner_type",
   "owner",
@@ -268,6 +272,27 @@ function normalizeMobileOwnerType(value) {
   return raw;
 }
 
+function roleKeyFromOwnerType(value, { technician = "", vendor = "" } = {}) {
+  const ownerType = normalizeMobileOwnerType(value);
+  if (ownerType === "RI") return "ri";
+  if (ownerType === "RSG") return "rsg";
+  if (ownerType === "Prestataire externe") return "externe";
+  if (ownerType === "INTERNE") return "interne";
+  if (String(vendor || "").trim()) return "externe";
+  if (String(technician || "").trim()) return "interne";
+  return "interne";
+}
+
+function ownerTypeFromRoleKey(value) {
+  const key = String(value || "").trim().toLowerCase();
+  if (!key) return "";
+  if (key === "ri") return "RI";
+  if (key === "rsg") return "RSG";
+  if (key === "externe") return "Prestataire externe";
+  if (key === "interne") return "INTERNE";
+  return "";
+}
+
 function stringifyInternalTech(value) {
   if (Array.isArray(value)) {
     return value
@@ -349,6 +374,12 @@ function assertTaskWriteAllowed() {
   }
 }
 
+function assertTimeLogWriteAllowed() {
+  if (toBool(readOnlyMode) && !toBool(allowTimeLogWrites)) {
+    throw new Error("Mode lecture seule actif: saisie heures reelles desactivee.");
+  }
+}
+
 function mapProjectRow(row) {
   return {
     id: toStringId(row.id),
@@ -424,12 +455,14 @@ function mapTaskRow(row) {
 }
 
 function mapTimeLogRow(row) {
+  const roleFromColumns = String(row.role ?? row.owner_type ?? row.owner ?? "").trim();
+  const roleFromKey = ownerTypeFromRoleKey(row.role_key);
   return {
     id: toStringId(row.id),
     task_id: toStringId(row.task_id ?? row.tache_id ?? row.taskId),
     project_id: toStringId(row.project_id ?? row.chantier_id ?? row.projectId),
     date: pickDate(row.date ?? row.log_date ?? row.day ?? ""),
-    role: String(row.role ?? row.owner_type ?? row.owner ?? "").trim(),
+    role: roleFromColumns || roleFromKey,
     technician: String(row.technician ?? row.tech ?? row.internal_tech ?? "").trim(),
     vendor: String(row.vendor ?? "").trim(),
     minutes: Number.isFinite(Number(row.minutes)) ? Number(row.minutes) : 0,
@@ -542,6 +575,127 @@ function taskPayloadForWrite(normalizedTask) {
     ...(normalizedTask.actual_cost !== undefined ? { actual_cost: normalizedTask.actual_cost } : {}),
     ...(normalizedTask.penalty_amount !== undefined ? { penalty_amount: normalizedTask.penalty_amount } : {}),
   };
+}
+
+function normalizeTimeLogInput(input = {}) {
+  const taskId = toStringId(input.task_id ?? input.tache_id ?? input.taskId);
+  if (!taskId) throw new Error("task_id obligatoire pour une saisie d'heures.");
+
+  const projectId = toStringId(input.project_id ?? input.chantier_id ?? input.projectId);
+  const date = normalizeIsoDate(input.date ?? input.log_date ?? input.day ?? input.date_key ?? "", {
+    field: "date",
+    allowEmpty: false,
+  });
+
+  const role = normalizeMobileOwnerType(input.role ?? input.owner_type ?? input.owner ?? "");
+  const technician = normalizeString(input.technician ?? input.tech ?? input.internal_tech ?? "", { maxLength: 140, allowEmpty: true });
+  const vendor = normalizeString(input.vendor ?? "", { maxLength: 140, allowEmpty: true });
+  const resolvedRole = role || (vendor ? "Prestataire externe" : (technician ? "INTERNE" : ""));
+  const roleKey = roleKeyFromOwnerType(resolvedRole, { technician, vendor });
+
+  const hoursInput = input.hours;
+  const minutesInput = input.minutes;
+  let minutes;
+  if (hoursInput !== undefined && hoursInput !== null && String(hoursInput).trim() !== "") {
+    const hours = normalizeFiniteNumber(hoursInput, {
+      field: "hours",
+      min: 0,
+      max: 24,
+      decimals: 2,
+      allowEmpty: false,
+    });
+    minutes = Math.round(hours * 60);
+  } else {
+    minutes = normalizeFiniteNumber(minutesInput, {
+      field: "minutes",
+      min: 0,
+      max: 1440,
+      decimals: 0,
+      allowEmpty: false,
+    });
+  }
+
+  return {
+    task_id: taskId,
+    project_id: projectId,
+    date,
+    role: resolvedRole,
+    role_key: roleKey,
+    technician,
+    vendor,
+    minutes,
+    hours: Math.round((minutes / 60) * 100) / 100,
+    note: normalizeString(input.note ?? input.comment ?? "", { maxLength: 500, allowEmpty: true }),
+  };
+}
+
+function buildTimeLogIdentityKey(input = {}) {
+  return [
+    toStringId(input.task_id),
+    pickDate(input.date || input.date_key || ""),
+    normalizeTechKey(input.role || input.owner_type || ""),
+    normalizeTechKey(input.technician || input.internal_tech || ""),
+    normalizeTechKey(input.vendor || ""),
+  ].join("|");
+}
+
+function timeLogPayloadForWrite(normalized, { includeCreatedDate = false } = {}) {
+  const nowIso = new Date().toISOString();
+  const base = {
+    task_id: normalized.task_id,
+    project_id: normalized.project_id || null,
+    date_key: normalized.date,
+    date: normalized.date,
+    log_date: normalized.date,
+    day: normalized.date,
+    role_key: normalized.role_key || roleKeyFromOwnerType(normalized.role, { technician: normalized.technician, vendor: normalized.vendor }),
+    owner_type: normalized.role || null,
+    owner: normalized.role || null,
+    intervenant_label: normalized.technician || normalized.vendor || normalized.role || null,
+    technician: normalized.technician || null,
+    tech: normalized.technician || null,
+    internal_tech: normalized.technician || null,
+    vendor: normalized.vendor || null,
+    minutes: normalized.minutes,
+    hours: normalized.hours,
+    note: normalized.note || null,
+    comment: normalized.note || null,
+    updated_date: nowIso,
+  };
+  if (includeCreatedDate) base.created_date = nowIso;
+  return base;
+}
+
+function extractMissingColumnName(error) {
+  const message = String(error?.message || "");
+  const match =
+    message.match(/column\s+"([^"]+)"\s+does not exist/i) ||
+    message.match(/column\s+'([^']+)'\s+/i) ||
+    message.match(/column\s+([a-zA-Z0-9_]+)\s+does not exist/i) ||
+    message.match(/'([^']+)'\s+column/i) ||
+    message.match(/"([^"]+)"\s+column/i);
+  return match?.[1] || "";
+}
+
+async function writeTimeLogWithColumnPruning({ mode, payload, id = "" }) {
+  const scope = mode === "insert" ? "Creation time log impossible" : "Mise a jour time log impossible";
+  const currentPayload = { ...payload };
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    let query = supabase.from(timeLogsTable);
+    query = mode === "insert" ? query.insert(currentPayload) : query.update(currentPayload).eq("id", id);
+    const { data, error } = await query.select("*").maybeSingle();
+    if (!error) return data || null;
+
+    const missingColumn = extractMissingColumnName(error);
+    if (missingColumn && hasOwn(currentPayload, missingColumn)) {
+      delete currentPayload[missingColumn];
+      continue;
+    }
+    throw buildError(scope, error);
+  }
+
+  throw new Error(`${scope}: colonnes incompatibles avec la table Supabase.`);
 }
 
 export const dataClient = {
@@ -735,6 +889,39 @@ export const dataClient = {
       filter: async (filters = {}, sort = "-date", limit = 1000) => {
         const logs = await fetchTimeLogs(filters);
         return applySort(logs, sort).slice(0, limit);
+      },
+      saveForTask: async (input) => {
+        assertTimeLogWriteAllowed();
+        const normalized = normalizeTimeLogInput(input);
+        const identity = buildTimeLogIdentityKey(normalized);
+
+        const logs = await fetchTimeLogs();
+        const existing = logs.find((log) =>
+          buildTimeLogIdentityKey({
+            task_id: log.task_id,
+            date: log.date,
+            role: log.role,
+            technician: log.technician,
+            vendor: log.vendor,
+          }) === identity
+        );
+
+        if (existing?.id) {
+          const payload = timeLogPayloadForWrite(normalized, { includeCreatedDate: false });
+          const written = await writeTimeLogWithColumnPruning({
+            mode: "update",
+            payload,
+            id: existing.id,
+          });
+          return mapTimeLogRow(written || { ...payload, id: existing.id });
+        }
+
+        const payload = timeLogPayloadForWrite(normalized, { includeCreatedDate: true });
+        const written = await writeTimeLogWithColumnPruning({
+          mode: "insert",
+          payload,
+        });
+        return mapTimeLogRow(written || payload);
       },
     },
 

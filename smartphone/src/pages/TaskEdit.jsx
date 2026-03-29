@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState, useEffect, useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { dataClient } from "@/api/dataClient";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -11,10 +11,25 @@ import { Label } from "@/components/ui/label";
 import StatusBadge from "../components/common/StatusBadge";
 import ProgressBar from "../components/common/ProgressBar";
 import { computeTaskProgressAuto } from "@/lib/businessRules";
+import { toast } from "@/components/ui/use-toast";
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function minutesToLabel(minutesValue) {
+  const total = Number.isFinite(Number(minutesValue)) ? Math.max(0, Math.round(Number(minutesValue))) : 0;
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (!h) return `${m} min`;
+  if (!m) return `${h} h`;
+  return `${h} h ${m} min`;
+}
 
 export default function TaskEdit() {
   const taskId = window.location.pathname.split("/task/")[1];
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: task, isLoading } = useQuery({
     queryKey: ["task", taskId],
@@ -26,6 +41,12 @@ export default function TaskEdit() {
   });
 
   const [form, setForm] = useState(null);
+  const [hoursForm, setHoursForm] = useState({
+    date: todayIso(),
+    hours: "",
+    note: "",
+    intervenant: "",
+  });
 
   useEffect(() => {
     if (task && !form) {
@@ -39,6 +60,97 @@ export default function TaskEdit() {
       });
     }
   }, [task, form]);
+
+  useEffect(() => {
+    if (!form) return;
+    const defaultIntervenant =
+      (form.owner_type === "INTERNE" && form.internal_tech) ||
+      (form.owner_type === "Prestataire externe" && form.vendor) ||
+      form.owner_type ||
+      "";
+
+    setHoursForm((prev) => ({
+      ...prev,
+      date: prev.date || todayIso(),
+      intervenant: prev.intervenant || defaultIntervenant,
+    }));
+  }, [form]);
+
+  const { data: allLogs = [] } = useQuery({
+    queryKey: ["time-logs"],
+    queryFn: async () => dataClient.entities.TimeLog.list("-date", 3000),
+  });
+
+  const taskLogs = useMemo(() => {
+    return (allLogs || [])
+      .filter((log) => String(log.task_id || "") === String(taskId || ""))
+      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  }, [allLogs, taskId]);
+
+  const totalTaskMinutes = useMemo(
+    () => taskLogs.reduce((sum, log) => sum + (Number.isFinite(Number(log.minutes)) ? Number(log.minutes) : 0), 0),
+    [taskLogs]
+  );
+
+  const saveHoursMutation = useMutation({
+    mutationFn: async (payload) => dataClient.entities.TimeLog.saveForTask(payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["time-logs"] });
+      setHoursForm((prev) => ({
+        ...prev,
+        hours: "",
+        note: "",
+      }));
+      toast({
+        title: "Heures enregistrees",
+        description: "La saisie des heures reelles a bien ete envoyee.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Echec enregistrement",
+        description: String(error?.message || "Impossible d'enregistrer la saisie d'heures."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveHours = async () => {
+    const rawHours = String(hoursForm.hours || "").trim().replace(",", ".");
+    const parsed = Number(rawHours);
+    if (!hoursForm.date) {
+      toast({
+        title: "Date obligatoire",
+        description: "Choisissez une date pour la saisie.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 24) {
+      toast({
+        title: "Heures invalides",
+        description: "Entrez un nombre entre 0.25 et 24.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const ownerType = String(form?.owner_type || "");
+    const effectiveIntervenant = String(hoursForm.intervenant || "").trim();
+    const technician = ownerType === "INTERNE" ? effectiveIntervenant : "";
+    const vendor = ownerType === "Prestataire externe" ? effectiveIntervenant : "";
+
+    await saveHoursMutation.mutateAsync({
+      task_id: task.id,
+      project_id: task.project_id,
+      date: hoursForm.date,
+      role: ownerType,
+      technician,
+      vendor,
+      hours: parsed,
+      note: hoursForm.note,
+    });
+  };
 
   const computedProgress = computeTaskProgressAuto(form?.start_date || "", form?.end_date || "");
 
@@ -180,6 +292,94 @@ export default function TaskEdit() {
         <p className="text-[10px] text-muted-foreground">
           Mode consultation : modification des taches desactivee sur smartphone.
         </p>
+      </div>
+
+      <div className="bg-card rounded-xl border border-border p-4 space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Saisie heures reelles</h2>
+          <p className="text-[10px] text-muted-foreground">
+            Seule action autorisee sur smartphone: ajouter les heures reelles.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs font-semibold text-muted-foreground">Date</Label>
+            <Input
+              type="date"
+              value={hoursForm.date}
+              onChange={(e) => setHoursForm((prev) => ({ ...prev, date: e.target.value }))}
+              className="mt-1.5 h-11"
+            />
+          </div>
+          <div>
+            <Label className="text-xs font-semibold text-muted-foreground">Heures</Label>
+            <Input
+              type="number"
+              min="0.25"
+              max="24"
+              step="0.25"
+              placeholder="ex: 2.5"
+              value={hoursForm.hours}
+              onChange={(e) => setHoursForm((prev) => ({ ...prev, hours: e.target.value }))}
+              className="mt-1.5 h-11"
+            />
+          </div>
+        </div>
+
+        <div>
+          <Label className="text-xs font-semibold text-muted-foreground">Intervenant (saisie)</Label>
+          <Input
+            value={hoursForm.intervenant}
+            onChange={(e) => setHoursForm((prev) => ({ ...prev, intervenant: e.target.value }))}
+            className="mt-1.5 h-11"
+            placeholder="Nom tech interne ou prestataire"
+          />
+        </div>
+
+        <div>
+          <Label className="text-xs font-semibold text-muted-foreground">Note (optionnel)</Label>
+          <Input
+            value={hoursForm.note}
+            onChange={(e) => setHoursForm((prev) => ({ ...prev, note: e.target.value }))}
+            className="mt-1.5 h-11"
+            placeholder="Commentaire court"
+          />
+        </div>
+
+        <Button
+          className="w-full h-11"
+          onClick={handleSaveHours}
+          disabled={saveHoursMutation.isPending}
+        >
+          {saveHoursMutation.isPending ? "Enregistrement..." : "Enregistrer les heures reelles"}
+        </Button>
+
+        <div className="pt-2 border-t border-border space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-foreground">Historique tache</p>
+            <p className="text-[11px] text-muted-foreground">Total: {minutesToLabel(totalTaskMinutes)}</p>
+          </div>
+
+          {taskLogs.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">Aucune heure reelle saisie pour cette tache.</p>
+          ) : (
+            <div className="space-y-2">
+              {taskLogs.slice(0, 8).map((log) => (
+                <div key={log.id || `${log.date}-${log.minutes}`} className="rounded-lg border border-border px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-foreground">{log.date || "-"}</p>
+                    <p className="text-xs font-semibold text-foreground">{minutesToLabel(log.minutes)}</p>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {(log.technician || log.vendor || log.role || "Intervenant non precise")}
+                  </p>
+                  {log.note ? <p className="text-[11px] text-muted-foreground">{log.note}</p> : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

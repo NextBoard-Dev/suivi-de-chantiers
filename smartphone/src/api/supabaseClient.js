@@ -20,6 +20,7 @@ export const supabaseConfig = {
   refsSiteColumn: import.meta.env.VITE_SUPABASE_REFS_SITE_COLUMN || "site",
   readOnlyMode: String(import.meta.env.VITE_READ_ONLY_MODE || "true").toLowerCase() === "true",
   allowTaskWrites: String(import.meta.env.VITE_ALLOW_TASK_WRITES || "false").toLowerCase() === "true",
+  allowTimeLogWrites: String(import.meta.env.VITE_ALLOW_TIME_LOG_WRITES || "true").toLowerCase() === "true",
 };
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
