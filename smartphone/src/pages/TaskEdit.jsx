@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { dataClient } from "@/api/dataClient";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,12 +11,10 @@ import { Label } from "@/components/ui/label";
 import StatusBadge from "../components/common/StatusBadge";
 import ProgressBar from "../components/common/ProgressBar";
 import { computeTaskProgressAuto } from "@/lib/businessRules";
-import { toast } from "sonner";
 
 export default function TaskEdit() {
   const taskId = window.location.pathname.split("/task/")[1];
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const { data: task, isLoading } = useQuery({
     queryKey: ["task", taskId],
@@ -34,39 +32,13 @@ export default function TaskEdit() {
       setForm({
         description: task.description || "",
         owner_type: task.owner_type || "",
+        internal_tech: task.internal_tech || "",
         vendor: task.vendor || "",
         start_date: task.start_date || "",
         end_date: task.end_date || "",
       });
     }
   }, [task, form]);
-
-  const updateMutation = useMutation({
-    mutationFn: (data) => dataClient.entities.Task.update(taskId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["task", taskId] });
-      queryClient.invalidateQueries({ queryKey: ["project-tasks"] });
-      toast.success("Tâche enregistrée");
-    },
-    onError: (error) => {
-      toast.error(error?.message || "Enregistrement impossible");
-    },
-  });
-
-  const handleSave = () => {
-    if (!form) return;
-    const duration =
-      form.start_date && form.end_date
-        ? Math.max(
-            1,
-            Math.ceil(
-              (new Date(form.end_date) - new Date(form.start_date)) / (1000 * 60 * 60 * 24)
-            ) + 1
-          )
-        : 0;
-    updateMutation.mutate({ ...form, duration_days: duration });
-  };
 
   const computedProgress = computeTaskProgressAuto(form?.start_date || "", form?.end_date || "");
 
@@ -105,6 +77,12 @@ export default function TaskEdit() {
         <h1 className="text-base font-bold text-foreground">{task.description}</h1>
         <div className="flex flex-wrap gap-1.5 mt-2">
           {task.owner_type && <StatusBadge type="owner" label={task.owner_type} />}
+          {task.owner_type === "INTERNE" && task.internal_tech && (
+            <StatusBadge type="status" label={task.internal_tech} />
+          )}
+          {task.owner_type === "Prestataire externe" && task.vendor && (
+            <StatusBadge type="status" label={task.vendor} />
+          )}
           {task.statuses?.map((s, i) => (
             <StatusBadge key={i} type="status" label={s} />
           ))}
@@ -117,7 +95,8 @@ export default function TaskEdit() {
           <Label className="text-xs font-semibold text-muted-foreground">Description</Label>
           <Input
             value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            readOnly
+            disabled
             className="mt-1.5 h-11"
           />
         </div>
@@ -126,7 +105,7 @@ export default function TaskEdit() {
           <Label className="text-xs font-semibold text-muted-foreground">Intervenant</Label>
           <Select
             value={form.owner_type || "none"}
-            onValueChange={(v) => setForm({ ...form, owner_type: v === "none" ? "" : v })}
+            disabled
           >
             <SelectTrigger className="mt-1.5 h-11">
               <SelectValue placeholder="Choisir" />
@@ -141,12 +120,26 @@ export default function TaskEdit() {
           </Select>
         </div>
 
+        {form.owner_type === "INTERNE" && (
+          <div>
+            <Label className="text-xs font-semibold text-muted-foreground">Technicien interne</Label>
+            <Input
+              value={form.internal_tech || ""}
+              readOnly
+              disabled
+              className="mt-1.5 h-11"
+              placeholder="Nom technicien interne"
+            />
+          </div>
+        )}
+
         {form.owner_type === "Prestataire externe" && (
           <div>
             <Label className="text-xs font-semibold text-muted-foreground">Prestataire</Label>
             <Input
               value={form.vendor}
-              onChange={(e) => setForm({ ...form, vendor: e.target.value })}
+              readOnly
+              disabled
               className="mt-1.5 h-11"
               placeholder="Nom du prestataire"
             />
@@ -159,7 +152,8 @@ export default function TaskEdit() {
             <Input
               type="date"
               value={form.start_date}
-              onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+              readOnly
+              disabled
               className="mt-1.5 h-11"
             />
           </div>
@@ -168,7 +162,8 @@ export default function TaskEdit() {
             <Input
               type="date"
               value={form.end_date}
-              onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+              readOnly
+              disabled
               className="mt-1.5 h-11"
             />
           </div>
@@ -182,14 +177,9 @@ export default function TaskEdit() {
           <p className="text-[10px] text-muted-foreground">Calcule automatiquement selon les dates de la tache (meme regle que PC).</p>
         </div>
 
-        <Button
-          className="w-full h-12 gap-2 text-sm font-semibold"
-          onClick={handleSave}
-          disabled={updateMutation.isPending}
-        >
-          <Save className="w-4 h-4" />
-          {updateMutation.isPending ? "Enregistrement..." : "Enregistrer les modifications"}
-        </Button>
+        <p className="text-[10px] text-muted-foreground">
+          Mode consultation : modification des taches desactivee sur smartphone.
+        </p>
       </div>
     </div>
   );

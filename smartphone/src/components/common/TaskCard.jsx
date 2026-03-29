@@ -40,6 +40,9 @@ export default function TaskCard({ task, showProject = true, isLate = false }) {
       {/* Badges */}
       <div className="flex flex-wrap gap-1 mb-1.5">
         {task.owner_type && <StatusBadge type="owner" label={task.owner_type} />}
+        {task.internal_tech && task.owner_type === "INTERNE" && (
+          <StatusBadge type="status" label={task.internal_tech} />
+        )}
         {task.vendor && task.owner_type === "Prestataire externe" && (
           <StatusBadge type="status" label={task.vendor} />
         )}

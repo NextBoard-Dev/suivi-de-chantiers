@@ -54,6 +54,15 @@ const TASK_SELECT_COLUMNS = [
   "name",
   "owner_type",
   "owner",
+  "internal_tech",
+  "internal_techs",
+  "internalTech",
+  "internalTechs",
+  "technician",
+  "tech",
+  "intervenant",
+  "intervenant_label",
+  "intervenants",
   "vendor",
   "start_date",
   "start",
@@ -246,6 +255,84 @@ function toBool(value) {
   return value === true || String(value || "").toLowerCase() === "true";
 }
 
+function normalizeMobileOwnerType(value) {
+  const raw = String(value || "").trim();
+  const up = raw.toUpperCase();
+  if (!up) return "";
+  if (up === "RSG/RI") return "RSG";
+  if (up === "RSG") return "RSG";
+  if (up === "RI") return "RI";
+  if (up === "INTERNE" || up === "EQUIPE INTERNE" || up === "ÉQUIPE INTERNE") return "INTERNE";
+  if (up === "EXTERNE" || up === "PRESTATAIRE EXTERNE" || up === "PRESTATAIRE") return "Prestataire externe";
+  return raw;
+}
+
+function stringifyInternalTech(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => String(v || "").trim())
+      .filter(Boolean)
+      .join(", ");
+  }
+  return String(value || "").trim();
+}
+
+function normalizeTechKey(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function splitInternalTechList(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
+}
+
+function buildInternalTechAllowBySite(rows = []) {
+  const bySite = new Map();
+  for (const row of rows || []) {
+    const nameKey = normalizeTechKey(row?.name || "");
+    if (!nameKey) continue;
+    const siteKey = normalizeTechKey(row?.site || "");
+    if (!bySite.has(siteKey)) bySite.set(siteKey, new Set());
+    bySite.get(siteKey).add(nameKey);
+  }
+  return bySite;
+}
+
+function sanitizeTaskInternalTechBySite(task, internalTechAllowBySite) {
+  if (!task || task.owner_type !== "INTERNE") return task;
+  if (!(internalTechAllowBySite instanceof Map)) return task;
+
+  const names = splitInternalTechList(task.internal_tech);
+  if (!names.length) return task;
+
+  const siteKey = normalizeTechKey(task.site || "");
+  const siteSet = internalTechAllowBySite.get(siteKey) || new Set();
+  const globalSet = internalTechAllowBySite.get("") || new Set();
+  const hasRules = siteSet.size > 0 || globalSet.size > 0;
+  if (!hasRules) return task;
+
+  const kept = names.filter((name) => {
+    const key = normalizeTechKey(name);
+    return !!key && (siteSet.has(key) || globalSet.has(key));
+  });
+
+  // Ne jamais masquer les noms venant de la tache:
+  // si le referentiel ne matche pas completement, on conserve la valeur brute.
+  if (!kept.length || kept.length !== names.length) return task;
+
+  return {
+    ...task,
+    internal_tech: kept.join(", "),
+  };
+}
+
 function assertProjectWriteAllowed() {
   if (toBool(readOnlyMode)) {
     throw new Error("Mode lecture seule actif: ecriture projet desactivee.");
@@ -284,12 +371,44 @@ function mapTaskRow(row) {
   const statuses = normalizeStatuses(row.statuses ?? row.status ?? []);
   const startDate = pickDate(row.start_date || row.start);
   const endDate = pickDate(row.end_date || row.end);
+  const ownerLabel = String(row.owner ?? "").trim();
+  const ownerTypeFromColumn = normalizeMobileOwnerType(row.owner_type || "");
+  const ownerTypeFromOwner = normalizeMobileOwnerType(ownerLabel);
+  const isOwnerLabelType =
+    ownerTypeFromOwner === "INTERNE" ||
+    ownerTypeFromOwner === "RSG" ||
+    ownerTypeFromOwner === "RI" ||
+    ownerTypeFromOwner === "Prestataire externe";
+
+  let internalTech = stringifyInternalTech(
+    row.internal_tech ??
+    row.internal_techs ??
+    row.internalTech ??
+    row.internalTechs ??
+    row.technician ??
+    row.tech ??
+    row.intervenant ??
+    row.intervenant_label ??
+    row.intervenants ??
+    ""
+  ).trim();
+  let vendor = String(row.vendor || "").trim();
+  let ownerType = ownerTypeFromColumn || (isOwnerLabelType ? ownerTypeFromOwner : "");
+  if (!ownerType) ownerType = vendor ? "Prestataire externe" : (internalTech ? "INTERNE" : "");
+
+  if (ownerType === "INTERNE" && !internalTech && ownerLabel && !isOwnerLabelType) {
+    internalTech = ownerLabel;
+  }
+  if (ownerType === "Prestataire externe" && !vendor && ownerLabel && !isOwnerLabelType) {
+    vendor = ownerLabel;
+  }
   return {
     id: toStringId(row.id),
     project_id: toStringId(row[taskProjectIdColumn] ?? row.project_id ?? row.chantier_id),
     description: row.description || row.name || "",
-    owner_type: row.owner_type || row.owner || "",
-    vendor: row.vendor || "",
+    owner_type: ownerType,
+    internal_tech: internalTech,
+    vendor,
     start_date: startDate,
     end_date: endDate,
     progress: computeTaskProgressAuto(startDate, endDate),
@@ -333,14 +452,15 @@ function mapReferentialItemRow(row, kind) {
   };
 }
 
-function enrichTasks(tasks, projectsById) {
+function enrichTasks(tasks, projectsById, internalTechAllowBySite = null) {
   return tasks.map((task) => {
     const project = projectsById.get(task.project_id);
-    return {
+    const enrichedTask = {
       ...task,
       project_name: task.project_name || project?.name || "",
       site: task.site || project?.site || "",
     };
+    return sanitizeTaskInternalTechBySite(enrichedTask, internalTechAllowBySite);
   });
 }
 
@@ -518,9 +638,14 @@ export const dataClient = {
 
     Task: {
       list: async (sort = "-updated_date", limit = 500) => {
-        const [tasks, projects] = await Promise.all([fetchTasks(), fetchProjects()]);
+        const [tasks, projects, internalTechRows] = await Promise.all([
+          fetchTasks(),
+          fetchProjects(),
+          fetchReferential(internalTechsTable, "internal_tech"),
+        ]);
         const projectMap = new Map(projects.map((p) => [p.id, p]));
-        const enriched = enrichTasks(tasks, projectMap);
+        const internalTechAllowBySite = buildInternalTechAllowBySite(internalTechRows);
+        const enriched = enrichTasks(tasks, projectMap, internalTechAllowBySite);
 
         return applySort(enriched, sort).slice(0, limit);
       },
@@ -532,7 +657,10 @@ export const dataClient = {
           delete dbFilters.project_id;
         }
 
-        const tasks = await fetchTasks(dbFilters);
+        const [tasks, internalTechRows] = await Promise.all([
+          fetchTasks(dbFilters),
+          fetchReferential(internalTechsTable, "internal_tech"),
+        ]);
         const projectIds = [...new Set(tasks.map((task) => task.project_id).filter(Boolean))];
 
         let projectMap = new Map();
@@ -541,7 +669,8 @@ export const dataClient = {
           projectMap = new Map(projectRows.map((mapped) => [mapped.id, mapped]));
         }
 
-        const enriched = enrichTasks(tasks, projectMap);
+        const internalTechAllowBySite = buildInternalTechAllowBySite(internalTechRows);
+        const enriched = enrichTasks(tasks, projectMap, internalTechAllowBySite);
         return applySort(enriched, sort).slice(0, limit);
       },
 

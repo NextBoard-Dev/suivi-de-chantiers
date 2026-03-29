@@ -1,31 +1,15 @@
 import React, { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { dataClient } from "@/api/dataClient";
 import ProjectCard from "../components/common/ProjectCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Search, Plus } from "lucide-react";
+import { Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-
-const DEFAULT_CHANTIER_FORM = {
-  name: "",
-  site: "",
-  subproject: "",
-  start_date: "",
-  end_date: "",
-  lifecycle_status: "a_planifier",
-};
 
 export default function ProjectsList() {
   const [search, setSearch] = useState("");
   const [siteFilter, setSiteFilter] = useState("all");
-  const [openCreate, setOpenCreate] = useState(false);
-  const [createForm, setCreateForm] = useState(DEFAULT_CHANTIER_FORM);
-  const queryClient = useQueryClient();
 
   const { data: projects = [], isLoading: loadingP } = useQuery({
     queryKey: ["projects"],
@@ -35,19 +19,6 @@ export default function ProjectsList() {
   const { data: tasks = [], isLoading: loadingT } = useQuery({
     queryKey: ["tasks"],
     queryFn: () => dataClient.entities.Task.list("-updated_date", 500),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (payload) => dataClient.entities.Project.create(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.success("Chantier cree");
-      setOpenCreate(false);
-      setCreateForm(DEFAULT_CHANTIER_FORM);
-    },
-    onError: (error) => {
-      toast.error(error?.message || "Creation chantier impossible");
-    },
   });
 
   const isLoading = loadingP || loadingT;
@@ -84,97 +55,12 @@ export default function ProjectsList() {
     return result;
   }, [projects, siteFilter, search]);
 
-  const submitCreate = () => {
-    createMutation.mutate(createForm);
-  };
-
   return (
     <div className="space-y-0">
       <div className="px-4 py-2 flex items-center justify-between" style={{ background: "rgba(235,230,220,0.6)" }}>
         <p className="text-[11px] font-bold text-foreground tracking-widest uppercase">PROJETS</p>
         <div className="flex items-center gap-2">
           <p className="text-[9px] text-muted-foreground font-semibold">{filtered.length} projet{filtered.length !== 1 ? "s" : ""}</p>
-          <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="h-7 px-2.5 gap-1 text-[10px]">
-                <Plus className="w-3.5 h-3.5" />
-                Chantier
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nouveau chantier</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3">
-                <div>
-                  <Label>Nom chantier</Label>
-                  <Input
-                    value={createForm.name}
-                    onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                    placeholder="Nom du chantier"
-                  />
-                </div>
-                <div>
-                  <Label>Site</Label>
-                  <Input
-                    value={createForm.site}
-                    onChange={(e) => setCreateForm({ ...createForm, site: e.target.value })}
-                    placeholder="Nom du site"
-                  />
-                </div>
-                <div>
-                  <Label>Sous-projet</Label>
-                  <Input
-                    value={createForm.subproject}
-                    onChange={(e) => setCreateForm({ ...createForm, subproject: e.target.value })}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label>Debut</Label>
-                    <Input
-                      type="date"
-                      value={createForm.start_date}
-                      onChange={(e) => setCreateForm({ ...createForm, start_date: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Fin</Label>
-                    <Input
-                      type="date"
-                      value={createForm.end_date}
-                      onChange={(e) => setCreateForm({ ...createForm, end_date: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label>Statut</Label>
-                  <Select
-                    value={createForm.lifecycle_status}
-                    onValueChange={(v) => setCreateForm({ ...createForm, lifecycle_status: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="a_planifier">A planifier</SelectItem>
-                      <SelectItem value="en_cours">En cours</SelectItem>
-                      <SelectItem value="en_pause">En pause</SelectItem>
-                      <SelectItem value="clos">Clos</SelectItem>
-                      <SelectItem value="annule">Annule</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  className="w-full"
-                  disabled={createMutation.isPending || !createForm.name.trim()}
-                  onClick={submitCreate}
-                >
-                  {createMutation.isPending ? "Creation..." : "Creer le chantier"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
 

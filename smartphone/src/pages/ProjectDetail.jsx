@@ -1,21 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { dataClient } from "@/api/dataClient";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, AlertTriangle, ListChecks, CheckCircle2, Timer, TrendingUp, CalendarClock, Pencil, Lock } from "lucide-react";
+import { ArrowLeft, MapPin, AlertTriangle, ListChecks, CheckCircle2, Timer, TrendingUp, CalendarClock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import TaskCard from "../components/common/TaskCard";
 import MobileGantt from "../components/gantt/MobileGantt";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "react-router-dom";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
-
-const TODAY = new Date().toISOString().slice(0, 10);
 
 function isLate(task) {
   return !!task.end_date && (task.progress || 0) < 100 && task.end_date < TODAY;
@@ -24,17 +16,6 @@ function isLate(task) {
 export default function ProjectDetail() {
   const projectId = window.location.pathname.split("/project/")[1];
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  const [openEdit, setOpenEdit] = useState(false);
-  const [editForm, setEditForm] = useState({
-    name: "",
-    site: "",
-    subproject: "",
-    start_date: "",
-    end_date: "",
-    lifecycle_status: "a_planifier",
-  });
 
   const { data: project, isLoading: loadingP } = useQuery({
     queryKey: ["project", projectId],
@@ -49,50 +30,6 @@ export default function ProjectDetail() {
     queryKey: ["project-tasks", projectId],
     queryFn: () => dataClient.entities.Task.filter({ project_id: projectId }, "-updated_date", 200),
     enabled: !!projectId,
-  });
-
-  useEffect(() => {
-    if (!project) return;
-    setEditForm({
-      name: project.name || "",
-      site: project.site || "",
-      subproject: project.subproject || "",
-      start_date: project.start_date || "",
-      end_date: project.end_date || "",
-      lifecycle_status: project.lifecycle_status || "a_planifier",
-    });
-  }, [project]);
-
-  const updateProjectMutation = useMutation({
-    mutationFn: (payload) => dataClient.entities.Project.update(projectId, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.success("Chantier mis a jour");
-      setOpenEdit(false);
-    },
-    onError: (error) => {
-      toast.error(error?.message || "Mise a jour impossible");
-    },
-  });
-
-  const closeProjectMutation = useMutation({
-    mutationFn: () =>
-      dataClient.entities.Project.update(projectId, {
-        lifecycle_status: "clos",
-        progress: 100,
-        end_date: TODAY,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["project-tasks", projectId] });
-      toast.success("Chantier clos");
-    },
-    onError: (error) => {
-      toast.error(error?.message || "Cloture chantier impossible");
-    },
   });
 
   const isLoading = loadingP || loadingT;
@@ -151,74 +88,6 @@ export default function ProjectDetail() {
               <p className="text-[9px] tracking-wide truncate mt-0.5" style={{ color: "#556d79" }}>{project.subproject}</p>
             )}
           </div>
-          <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 px-2 gap-1 text-[10px]">
-                <Pencil className="w-3 h-3" />
-                Editer
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Modifier chantier</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3">
-                <div>
-                  <Label>Nom chantier</Label>
-                  <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Site</Label>
-                  <Input value={editForm.site} onChange={(e) => setEditForm({ ...editForm, site: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Sous-projet</Label>
-                  <Input value={editForm.subproject} onChange={(e) => setEditForm({ ...editForm, subproject: e.target.value })} />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label>Debut</Label>
-                    <Input type="date" value={editForm.start_date || ""} onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Fin</Label>
-                    <Input type="date" value={editForm.end_date || ""} onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })} />
-                  </div>
-                </div>
-                <div>
-                  <Label>Statut</Label>
-                  <Select value={editForm.lifecycle_status} onValueChange={(v) => setEditForm({ ...editForm, lifecycle_status: v })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="a_planifier">A planifier</SelectItem>
-                      <SelectItem value="en_cours">En cours</SelectItem>
-                      <SelectItem value="en_pause">En pause</SelectItem>
-                      <SelectItem value="clos">Clos</SelectItem>
-                      <SelectItem value="annule">Annule</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  className="w-full"
-                  disabled={updateProjectMutation.isPending || !editForm.name.trim()}
-                  onClick={() => updateProjectMutation.mutate(editForm)}
-                >
-                  {updateProjectMutation.isPending ? "Enregistrement..." : "Enregistrer"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-          <Button
-            size="sm"
-            className="h-7 px-2 gap-1 text-[10px]"
-            disabled={closeProjectMutation.isPending || project.lifecycle_status === "clos"}
-            onClick={() => closeProjectMutation.mutate()}
-          >
-            <Lock className="w-3 h-3" />
-            Clore
-          </Button>
         </div>
       </div>
 

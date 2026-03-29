@@ -17,8 +17,8 @@ export const supabaseConfig = {
   internalTechsTable: import.meta.env.VITE_SUPABASE_INTERNAL_TECHS_TABLE || "chantier_internal_techs",
   vendorsTable: import.meta.env.VITE_SUPABASE_VENDORS_TABLE || "chantier_vendors",
   refsSiteColumn: import.meta.env.VITE_SUPABASE_REFS_SITE_COLUMN || "site",
-  readOnlyMode: String(import.meta.env.VITE_READ_ONLY_MODE || "false").toLowerCase() === "true",
-  allowTaskWrites: String(import.meta.env.VITE_ALLOW_TASK_WRITES || "true").toLowerCase() === "true",
+  readOnlyMode: String(import.meta.env.VITE_READ_ONLY_MODE || "true").toLowerCase() === "true",
+  allowTaskWrites: String(import.meta.env.VITE_ALLOW_TASK_WRITES || "false").toLowerCase() === "true",
 };
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
