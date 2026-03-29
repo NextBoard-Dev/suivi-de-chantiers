@@ -315,6 +315,26 @@ function normalizeTechKey(value) {
     .toUpperCase();
 }
 
+function normalizeSigText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function buildTaskSignature(taskLike = {}) {
+  const ownerType = normalizeMobileOwnerType(taskLike.owner_type ?? taskLike.owner ?? "");
+  const projectId = toStringId(taskLike.project_id ?? taskLike.projectId ?? taskLike.chantier_id);
+  const description = normalizeSigText(taskLike.description ?? taskLike.roomNumber ?? taskLike.name ?? "");
+  const startDate = pickDate(taskLike.start_date ?? taskLike.start ?? "");
+  const endDate = pickDate(taskLike.end_date ?? taskLike.end ?? "");
+  const internalTech = normalizeSigText(taskLike.internal_tech ?? taskLike.internalTech ?? taskLike.technician ?? "");
+  const vendor = normalizeSigText(taskLike.vendor ?? "");
+  return [projectId, description, ownerType, internalTech, vendor, startDate, endDate].join("|");
+}
+
 function splitInternalTechList(value) {
   return String(value || "")
     .split(",")
@@ -491,6 +511,7 @@ function mapTimeLogRow(row) {
     note: String(row.note ?? row.comment ?? "").trim(),
     updated_date: row.updated_date || row.updated_at || "",
     created_date: row.created_date || row.created_at || "",
+    legacy_task_signature: String(row.legacy_task_signature ?? "").trim(),
   };
 }
 
@@ -622,9 +643,12 @@ async function fetchLegacyStateTimeLogs(filters = {}) {
     stateRows.forEach((row, rowIdx) => {
       const stateJson = row?.state_json;
       const rawLogs = Array.isArray(stateJson?.timeLogs) ? stateJson.timeLogs : [];
+      const legacyTasks = Array.isArray(stateJson?.tasks) ? stateJson.tasks : [];
+      const taskById = new Map(legacyTasks.map((t) => [toStringId(t?.id), t]));
       rawLogs.forEach((log, idx) => {
         const taskId = toStringId(log?.taskId ?? log?.task_id ?? log?.tache_id);
         const dateVal = pickDate(log?.date ?? log?.date_key ?? log?.log_date ?? log?.day ?? "");
+        const linkedTask = taskById.get(taskId) || null;
         mapped.push(mapTimeLogRow({
           id: toStringId(log?.id) || `legacy_${rowIdx}_${taskId}_${dateVal}_${idx}`,
           task_id: taskId,
@@ -647,6 +671,7 @@ async function fetchLegacyStateTimeLogs(filters = {}) {
           comment: log?.comment ?? log?.note ?? "",
           updated_at: log?.updatedAt ?? log?.updated_at ?? row?.updated_at ?? "",
           created_at: log?.createdAt ?? log?.created_at ?? "",
+          legacy_task_signature: linkedTask ? buildTaskSignature(linkedTask) : "",
         }));
       });
     });
@@ -1080,6 +1105,48 @@ export const dataClient = {
           fetchLegacyStateTimeLogs(filters),
         ]);
         return applySort(mergeTimeLogSources(logs, legacyLogs), sort).slice(0, limit);
+      },
+      listForTask: async (taskRef = {}, sort = "-date", limit = 1000) => {
+        const [logs, legacyLogs] = await Promise.all([
+          fetchTimeLogs(),
+          fetchLegacyStateTimeLogs(),
+        ]);
+        const merged = mergeTimeLogSources(logs, legacyLogs);
+        const taskId = toStringId(taskRef?.id ?? taskRef?.task_id ?? taskRef?.taskId);
+        const exact = merged.filter((log) => toStringId(log?.task_id) === taskId);
+        if (exact.length > 0) return applySort(exact, sort).slice(0, limit);
+
+        const signature = buildTaskSignature(taskRef);
+        if (!signature) return [];
+        const bySignature = merged.filter((log) => String(log?.legacy_task_signature || "") === signature);
+        if (bySignature.length > 0) return applySort(bySignature, sort).slice(0, limit);
+
+        const projectId = toStringId(taskRef?.project_id ?? taskRef?.projectId ?? taskRef?.chantier_id);
+        const startDate = pickDate(taskRef?.start_date ?? taskRef?.start ?? "");
+        const endDate = pickDate(taskRef?.end_date ?? taskRef?.end ?? "");
+        const ownerType = normalizeMobileOwnerType(taskRef?.owner_type ?? taskRef?.owner ?? "");
+        const expectedIntervenant = normalizeSigText(
+          taskRef?.internal_tech ??
+          taskRef?.internalTech ??
+          taskRef?.vendor ??
+          ""
+        );
+        const byProjectHeuristic = merged.filter((log) => {
+          if (projectId && toStringId(log?.project_id) !== projectId) return false;
+          const d = pickDate(log?.date ?? "");
+          if (startDate && d && d < startDate) return false;
+          if (endDate && d && d > endDate) return false;
+          if (ownerType) {
+            const logOwner = normalizeMobileOwnerType(log?.role ?? "");
+            if (logOwner && logOwner !== ownerType) return false;
+          }
+          if (expectedIntervenant) {
+            const logInterv = normalizeSigText(log?.intervenant_label || log?.technician || log?.vendor || "");
+            if (logInterv && logInterv !== expectedIntervenant) return false;
+          }
+          return true;
+        });
+        return applySort(byProjectHeuristic, sort).slice(0, limit);
       },
       saveForTask: async (input) => {
         assertTimeLogWriteAllowed();

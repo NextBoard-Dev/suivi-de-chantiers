@@ -47,6 +47,7 @@ export default function TaskEdit() {
     note: "",
     intervenant: "",
   });
+  const [localSavedLogs, setLocalSavedLogs] = useState([]);
 
   useEffect(() => {
     if (task && !form) {
@@ -76,26 +77,38 @@ export default function TaskEdit() {
     }));
   }, [form]);
 
-  const { data: taskLogs = [] } = useQuery({
-    queryKey: ["time-logs", "task", taskId],
-    queryFn: async () => {
-      const filtered = await dataClient.entities.TimeLog.filter({ task_id: taskId }, "-date", 5000);
-      if (Array.isArray(filtered) && filtered.length > 0) return filtered;
-      const fallback = await dataClient.entities.TimeLog.list("-date", 5000);
-      return (fallback || []).filter((log) => String(log.task_id || "") === String(taskId || ""));
-    },
-    enabled: !!taskId,
+  const { data: taskLogs = [], refetch: refetchTaskLogs } = useQuery({
+    queryKey: ["time-logs", "task", taskId, task?.project_id || "", task?.description || ""],
+    queryFn: async () => dataClient.entities.TimeLog.listForTask(task, "-date", 5000),
+    enabled: !!taskId && !!task,
   });
 
+  const displayTaskLogs = useMemo(() => {
+    const byId = new Map();
+    (taskLogs || []).forEach((log) => {
+      const key = String(log?.id || `${log?.task_id}|${log?.date}|${log?.role_key}|${log?.intervenant_label || log?.technician || log?.vendor || ""}`);
+      byId.set(key, log);
+    });
+    (localSavedLogs || []).forEach((log) => {
+      const key = String(log?.id || `${log?.task_id}|${log?.date}|${log?.role_key}|${log?.intervenant_label || log?.technician || log?.vendor || ""}`);
+      byId.set(key, log);
+    });
+    return Array.from(byId.values()).sort((a, b) => String(b?.date || "").localeCompare(String(a?.date || "")));
+  }, [taskLogs, localSavedLogs]);
+
   const totalTaskMinutes = useMemo(
-    () => taskLogs.reduce((sum, log) => sum + (Number.isFinite(Number(log.minutes)) ? Number(log.minutes) : 0), 0),
-    [taskLogs]
+    () => displayTaskLogs.reduce((sum, log) => sum + (Number.isFinite(Number(log.minutes)) ? Number(log.minutes) : 0), 0),
+    [displayTaskLogs]
   );
 
   const saveHoursMutation = useMutation({
     mutationFn: async (payload) => dataClient.entities.TimeLog.saveForTask(payload),
-    onSuccess: async () => {
+    onSuccess: async (savedLog) => {
+      if (savedLog) {
+        setLocalSavedLogs((prev) => [savedLog, ...prev].slice(0, 200));
+      }
       await queryClient.invalidateQueries({ queryKey: ["time-logs"] });
+      try { await refetchTaskLogs(); } catch (_) {}
       setHoursForm((prev) => ({
         ...prev,
         hours: "",
@@ -361,11 +374,11 @@ export default function TaskEdit() {
             <p className="text-[11px] text-muted-foreground">Total: {minutesToLabel(totalTaskMinutes)}</p>
           </div>
 
-          {taskLogs.length === 0 ? (
+          {displayTaskLogs.length === 0 ? (
             <p className="text-[11px] text-muted-foreground">Aucune heure reelle saisie pour cette tache.</p>
           ) : (
             <div className="space-y-2">
-              {taskLogs.slice(0, 8).map((log) => (
+              {displayTaskLogs.slice(0, 8).map((log) => (
                 <div key={log.id || `${log.date}-${log.minutes}`} className="rounded-lg border border-border px-3 py-2">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold text-foreground">{log.date || "-"}</p>
