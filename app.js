@@ -3109,17 +3109,27 @@ function normalizeState(raw){
     return up;
   }).join(",");
 
-  const normProjects = (raw.projects||[]).map(p=>({...p, id:normId(p.id)}));
+  const normProjects = (raw.projects||[]).map(p=>({
+    ...p,
+    id:normId(p.id),
+    name: normalizeInternalTech(p?.name || ""),
+    subproject: normalizeInternalTech(p?.subproject || "")
+  }));
 
   const normTasks = (raw.tasks||[]).map(t=>{
     const ownerNorm = normalizeOwnerValue(t.owner || "");
     const ownerNormType = ownerType(ownerNorm);
     let vendorNorm = (t.vendor||"").toString().trim();
-    let internalTechNorm = serializeInternalTechList(
-      normalizeInternalTechList(t.internalTech || "")
-        .map((name)=>canonicalizeInternalTechForTask(name, null))
-        .filter(Boolean)
-    );
+    const taskInternalCsv = normalizeInternalTechList(t.internalTech || "");
+    const taskInternalLegacy = taskInternalCsv.length
+      ? []
+      : (Array.isArray(t.internalTechs) ? t.internalTechs.map((name)=>normalizeInternalTech(name || "")).filter(Boolean) : []);
+    const taskInternalCanonical = dedupInternalTechs([
+      ...taskInternalCsv,
+      ...taskInternalLegacy
+    ]).map((name)=>canonicalizeInternalTechForTask(name, null)).filter(Boolean);
+    let internalTechNorm = serializeInternalTechList(taskInternalCanonical);
+    let internalTechsNorm = dedupInternalTechs(taskInternalCanonical);
     if(ownerNormType === "externe" && !vendorNorm){
       vendorNorm = "PRESTATAIRE NON RENSEIGNE";
     }
@@ -3128,14 +3138,17 @@ function normalizeState(raw){
     }
     if(ownerNormType !== "interne"){
       internalTechNorm = "";
+      internalTechsNorm = [];
     }
     return {
       ...t,
       projectId:normId(t.projectId),
+      roomNumber: normalizeInternalTech(t.roomNumber || ""),
       status: normalizeStatus(t.status),
       owner: ownerNorm,
       vendor: vendorNorm,
-      internalTech: internalTechNorm
+      internalTech: internalTechNorm,
+      internalTechs: internalTechsNorm
     };
   });
 
@@ -10753,9 +10766,9 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     if(!p) return;
 
-    p.name        = el("p_name").value.trim();
+    p.name        = normalizeInternalTech(el("p_name").value || "");
 
-    p.subproject  = el("p_subproject").value.trim();
+    p.subproject  = normalizeInternalTech(el("p_subproject").value || "");
 
     const siteSelect = el("p_site");
     p.site        = siteSelect ? siteSelect.value.trim() : "";
@@ -10929,12 +10942,13 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     }
 
-    t.roomNumber = el("t_room").value.trim();
+    t.roomNumber = normalizeInternalTech(el("t_room").value || "");
 
     t.owner      = String(el("t_owner").value || "").toUpperCase();
 
     t.vendor     = el("t_vendor").value.trim();
     t.internalTech = serializeInternalTechList(getSelectedInternalTechValues());
+    t.internalTechs = normalizeInternalTechList(t.internalTech || "");
     const taskOwnerType = ownerType(t.owner);
     if(taskOwnerType === "inconnu"){
       alert("Responsable requis : choisissez INTERNE (avec technicien), RSG, RI ou PRESTATAIRE EXTERNE.");
@@ -10953,6 +10967,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     }
     if(taskOwnerType !== "interne"){
       t.internalTech = "";
+      t.internalTechs = [];
     }
 
     t.start      = unformatDate(el("t_start").value);
@@ -11028,6 +11043,13 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
       t = setTimeout(()=> fn(...args), wait);
     };
   };
+  ["p_name","p_subproject","t_room"].forEach((id)=>{
+    const n = el(id);
+    if(!n) return;
+    n.addEventListener("input", ()=>{
+      n.value = normalizeInternalTech(n.value || "");
+    });
+  });
   ["filterSite","filterProject","filterStatus","filterStartAfter","filterEndBefore"].forEach(id=>{
     const n=el(id);
     if(n) n.addEventListener("input", ()=>{ 
