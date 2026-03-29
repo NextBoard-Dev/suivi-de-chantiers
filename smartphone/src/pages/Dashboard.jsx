@@ -2,7 +2,7 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dataClient } from "@/api/dataClient";
 import { FolderKanban, ListChecks, CheckCircle2, AlertTriangle, ChevronRight, Clock, Timer, TrendingUp } from "lucide-react";
-import TaskCard from "../components/common/TaskCard";
+import ProjectCard from "../components/common/ProjectCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 
@@ -28,7 +28,17 @@ export default function Dashboard() {
   });
 
   const globalPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-  const recentTasks = tasks.slice(0, 6);
+  const recentProjects = projects.slice(0, 6);
+
+  const taskCountByProject = React.useMemo(() => {
+    const map = {};
+    tasks.forEach((t) => {
+      if (t.project_id) {
+        map[t.project_id] = (map[t.project_id] || 0) + 1;
+      }
+    });
+    return map;
+  }, [tasks]);
 
   if (isLoading) {
     return (
@@ -131,21 +141,25 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Tâches récentes */}
+      {/* Projets récents */}
       <div className="px-3 pt-2 pb-4">
         <div className="flex items-center justify-between mb-1.5">
-          <h2 className="text-[9px] font-bold text-foreground tracking-widest uppercase">TACHES RECENTES</h2>
-          <Link to="/master" className="flex items-center gap-0.5 text-xs text-primary font-semibold">
+          <h2 className="text-[9px] font-bold text-foreground tracking-widest uppercase">PROJETS RECENTS</h2>
+          <Link to="/projects" className="flex items-center gap-0.5 text-xs text-primary font-semibold">
             Tout voir <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
         <div className="space-y-2">
-          {recentTasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
+          {recentProjects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              taskCount={taskCountByProject[project.id] || 0}
+            />
           ))}
-          {recentTasks.length === 0 && (
+          {recentProjects.length === 0 && (
             <div className="text-center py-10 text-muted-foreground text-sm">
-              Aucune tâche pour le moment
+              Aucun projet pour le moment
             </div>
           )}
         </div>
