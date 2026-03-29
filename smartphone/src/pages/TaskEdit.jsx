@@ -139,6 +139,15 @@ export default function TaskEdit() {
       });
       return;
     }
+    const selectedDay = new Date(`${hoursForm.date}T00:00:00`).getDay();
+    if (selectedDay === 0 || selectedDay === 6) {
+      toast({
+        title: "Date invalide",
+        description: "La saisie des heures est interdite le samedi et le dimanche.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 24) {
       toast({
         title: "Heures invalides",

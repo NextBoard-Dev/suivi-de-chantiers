@@ -908,6 +908,36 @@ async function findExistingTimeLogIdByNaturalKey(payload = {}) {
   return "";
 }
 
+function toLogMinutes(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? Math.max(0, Math.round(num)) : 0;
+}
+
+function buildAccumulatedUpdatePayload(basePayload = {}, existingMinutes = 0, addedMinutes = 0) {
+  const nextMinutes = toLogMinutes(existingMinutes) + toLogMinutes(addedMinutes);
+  return {
+    ...basePayload,
+    minutes: nextMinutes,
+    hours: Math.round((nextMinutes / 60) * 100) / 100,
+  };
+}
+
+async function fetchTimeLogById(id = "") {
+  const targetId = toStringId(id);
+  if (!targetId) return null;
+  try {
+    const { data, error } = await supabase
+      .from(timeLogsTable)
+      .select("*")
+      .eq("id", targetId)
+      .maybeSingle();
+    if (error) return null;
+    return data || null;
+  } catch {
+    return null;
+  }
+}
+
 export const dataClient = {
   auth: {
     me: async () => null,
@@ -1152,10 +1182,14 @@ export const dataClient = {
         assertTimeLogWriteAllowed();
         const normalized = normalizeTimeLogInput(input);
         const identity = buildTimeLogIdentityKey(normalized);
-        const updatePayload = timeLogPayloadForWrite(normalized, { includeCreatedDate: false });
+        const baseUpdatePayload = timeLogPayloadForWrite(normalized, { includeCreatedDate: false });
+        const addedMinutes = toLogMinutes(normalized.minutes);
 
-        const naturalExistingId = await findExistingTimeLogIdByNaturalKey(updatePayload);
+        const naturalExistingId = await findExistingTimeLogIdByNaturalKey(baseUpdatePayload);
         if (naturalExistingId) {
+          const existingRow = await fetchTimeLogById(naturalExistingId);
+          const existingMapped = existingRow ? mapTimeLogRow(existingRow) : null;
+          const updatePayload = buildAccumulatedUpdatePayload(baseUpdatePayload, existingMapped?.minutes, addedMinutes);
           const updated = await writeTimeLogWithColumnPruning({
             mode: "update",
             payload: updatePayload,
@@ -1177,6 +1211,7 @@ export const dataClient = {
         );
 
         if (existing?.id) {
+          const updatePayload = buildAccumulatedUpdatePayload(baseUpdatePayload, existing?.minutes, addedMinutes);
           const written = await writeTimeLogWithColumnPruning({
             mode: "update",
             payload: updatePayload,
@@ -1196,6 +1231,9 @@ export const dataClient = {
           if (!isDuplicateKeyError(error)) throw error;
           const duplicateId = await findExistingTimeLogIdByDuplicateError(error, payload);
           if (duplicateId) {
+            const existingRow = await fetchTimeLogById(duplicateId);
+            const existingMapped = existingRow ? mapTimeLogRow(existingRow) : null;
+            const updatePayload = buildAccumulatedUpdatePayload(baseUpdatePayload, existingMapped?.minutes, addedMinutes);
             const updated = await writeTimeLogWithColumnPruning({
               mode: "update",
               payload: updatePayload,
@@ -1215,6 +1253,7 @@ export const dataClient = {
             }) === identity
           );
           if (!fallbackExisting?.id) throw error;
+          const updatePayload = buildAccumulatedUpdatePayload(baseUpdatePayload, fallbackExisting?.minutes, addedMinutes);
           const updated = await writeTimeLogWithColumnPruning({
             mode: "update",
             payload: updatePayload,

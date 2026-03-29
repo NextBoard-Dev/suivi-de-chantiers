@@ -65,6 +65,8 @@ const SUPABASE_URL  = "https://uioqchhbakcvemknqikh.supabase.co";
 const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpb3FjaGhiYWtjdmVta25xaWtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NjA4MTUsImV4cCI6MjA4NTMzNjgxNX0.W345e_uwKLGaFcP9KAZq0kNECBUSFluh2ErgHaHeO5w";
 
 const SUPABASE_TABLE = "app_states";
+const SUPABASE_TIME_LOGS_TABLE = "chantier_time_logs";
+const SUPABASE_TASKS_TABLE = "chantier_tasks";
 const SUPABASE_USERS_TABLE = "dashboard_users";
 const SUPABASE_LOGINS_TABLE = "dashboard_logins";
 const SUPABASE_SESSIONS_TABLE = "dashboard_sessions";
@@ -437,6 +439,191 @@ window.forceLoadUsersFromSupabase = async function(){
   }
 };
 
+function _normalizeSupabaseRoleKeyForTimeLog(row){
+  const roleKeyRaw = String(row?.role_key || "").trim().toLowerCase();
+  if(roleKeyRaw === "ri" || roleKeyRaw === "rsg" || roleKeyRaw === "interne" || roleKeyRaw === "externe"){
+    return roleKeyRaw;
+  }
+  const roleRaw = String(row?.role || row?.owner_type || row?.owner || "").toLowerCase();
+  if(roleRaw.includes("rsg/ri")) return "rsg";
+  if(roleRaw.includes("rsg")) return "rsg";
+  if(roleRaw.includes("ri")) return "ri";
+  if(roleRaw.includes("externe") || roleRaw.includes("prestataire")) return "externe";
+  const hasVendor = !!String(row?.vendor || "").trim();
+  if(hasVendor) return "externe";
+  return "interne";
+}
+
+function _foldTimeLogText(value){
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function _normalizeOwnerKeyForTimeLog(value){
+  const raw = _foldTimeLogText(value);
+  if(raw.includes("RSG RI") || raw.includes("RSG/RI")) return "rsg";
+  if(raw.includes("RSG")) return "rsg";
+  if(raw.includes("RI")) return "ri";
+  if(raw.includes("EXTERNE") || raw.includes("PRESTATAIRE")) return "externe";
+  if(raw.includes("INTERNE")) return "interne";
+  return "";
+}
+
+function _buildSupabaseTaskIdAliases(stateJson, supabaseRows, supabaseTaskRows){
+  const aliases = new Map();
+  const localTasks = Array.isArray(stateJson?.tasks) ? stateJson.tasks : [];
+  const localTaskIds = new Set(localTasks.map((t)=>normId(t?.id)).filter(Boolean));
+  const supTaskById = new Map((Array.isArray(supabaseTaskRows) ? supabaseTaskRows : []).map((t)=>[normId(t?.id), t]));
+
+  const supTaskIds = Array.from(new Set((Array.isArray(supabaseRows) ? supabaseRows : []).map((r)=>normId(r?.task_id || r?.tache_id || r?.taskId)).filter(Boolean)));
+  supTaskIds.forEach((supTaskId)=>{
+    if(localTaskIds.has(supTaskId)) return;
+    const supTask = supTaskById.get(supTaskId);
+    if(!supTask) return;
+
+    const supDesc = _foldTimeLogText(supTask?.description || supTask?.name || "");
+    const supOwner = _normalizeOwnerKeyForTimeLog(supTask?.owner_type || supTask?.owner || "");
+    const supStart = String(supTask?.start_date || supTask?.start || "").slice(0,10);
+    const supEnd = String(supTask?.end_date || supTask?.end || "").slice(0,10);
+    const supInternal = _foldTimeLogText(supTask?.internal_tech || supTask?.technician || "");
+    const supVendor = _foldTimeLogText(supTask?.vendor || "");
+
+    let best = null;
+    let second = null;
+    localTasks.forEach((localTask)=>{
+      const localId = normId(localTask?.id);
+      if(!localId) return;
+      let score = 0;
+      const localDesc = _foldTimeLogText(localTask?.roomNumber || localTask?.description || "");
+      const localOwner = _normalizeOwnerKeyForTimeLog(localTask?.owner || "");
+      const localStart = String(localTask?.start || "").slice(0,10);
+      const localEnd = String(localTask?.end || "").slice(0,10);
+      const localInternal = _foldTimeLogText(localTask?.internalTech || "");
+      const localVendor = _foldTimeLogText(localTask?.vendor || "");
+
+      if(supDesc && localDesc){
+        if(supDesc === localDesc) score += 6;
+        else if(localDesc.includes(supDesc) || supDesc.includes(localDesc)) score += 3;
+      }
+      if(supOwner && localOwner && supOwner === localOwner) score += 3;
+      if(supStart && localStart && supStart === localStart) score += 3;
+      if(supEnd && localEnd && supEnd === localEnd) score += 3;
+      if(supOwner === "interne" && supInternal && localInternal && supInternal === localInternal) score += 1;
+      if(supOwner === "externe" && supVendor && localVendor && supVendor === localVendor) score += 1;
+
+      const ranked = { id: localId, score };
+      if(!best || ranked.score > best.score){
+        second = best;
+        best = ranked;
+      }else if(!second || ranked.score > second.score){
+        second = ranked;
+      }
+    });
+
+    const margin = best && second ? (best.score - second.score) : (best ? best.score : 0);
+    if(best && best.score >= 9 && margin >= 2){
+      aliases.set(supTaskId, best.id);
+    }
+  });
+  return aliases;
+}
+
+function _mapSupabaseRowToStateTimeLog(row, taskIdAliases){
+  const rawTaskId = normId(row?.task_id || row?.tache_id || row?.taskId);
+  const taskId = taskIdAliases?.get(rawTaskId) || rawTaskId;
+  if(!taskId) return null;
+  const date = String(row?.date_key || row?.date || row?.log_date || row?.day || "").slice(0,10).trim();
+  if(!date) return null;
+  const roleKey = _normalizeSupabaseRoleKeyForTimeLog(row);
+  const internalTechSource = row?.technician || row?.internal_tech || row?.tech || "";
+  const internalTech = roleKey === "interne" ? normalizeInternalTech(internalTechSource || row?.intervenant_label || "") : "";
+  const minutesNum = Number(row?.minutes);
+  const hoursNum = Number(row?.hours);
+  const minutes = Number.isFinite(minutesNum)
+    ? Math.max(0, Math.round(minutesNum))
+    : (Number.isFinite(hoursNum) ? Math.max(0, Math.round(hoursNum * 60)) : 0);
+  const role = roleKey === "ri" ? "RI" : (roleKey === "rsg" ? "RSG" : (roleKey === "externe" ? "EXTERNE" : "INTERNE"));
+  return {
+    id: normId(row?.id) || uid(),
+    taskId,
+    projectId: normId(row?.project_id || row?.chantier_id || row?.projectId),
+    date,
+    minutes,
+    note: String(row?.note || row?.comment || "").trim(),
+    roleKey,
+    role,
+    internalTech,
+    userKey: String(row?.intervenant_label || "").trim(),
+    userName: String(row?.intervenant_label || "").trim(),
+    userEmail: "",
+    createdAt: String(row?.created_date || row?.created_at || row?.updated_date || row?.updated_at || "").trim(),
+    updatedAt: String(row?.updated_date || row?.updated_at || row?.created_date || row?.created_at || "").trim()
+  };
+}
+
+async function _loadSupabaseTimeLogsRows(sb){
+  try{
+    const { data, error } = await sb
+      .from(SUPABASE_TIME_LOGS_TABLE)
+      .select("*");
+    if(error){
+      console.warn("Supabase time logs select error", error);
+      return [];
+    }
+    return Array.isArray(data) ? data : [];
+  }catch(e){
+    console.warn("loadSupabaseTimeLogsRows failed", e);
+    return [];
+  }
+}
+
+async function _loadSupabaseTasksRowsByIds(sb, ids){
+  const uniqueIds = Array.from(new Set((Array.isArray(ids) ? ids : []).map((x)=>normId(x)).filter(Boolean)));
+  if(!uniqueIds.length) return [];
+  const out = [];
+  const chunkSize = 200;
+  for(let i=0;i<uniqueIds.length;i+=chunkSize){
+    const chunk = uniqueIds.slice(i, i + chunkSize);
+    try{
+      const { data, error } = await sb
+        .from(SUPABASE_TASKS_TABLE)
+        .select("*")
+        .in("id", chunk);
+      if(error){
+        console.warn("Supabase tasks select error", error);
+        continue;
+      }
+      if(Array.isArray(data)) out.push(...data);
+    }catch(e){
+      console.warn("loadSupabaseTasksRowsByIds failed", e);
+    }
+  }
+  return out;
+}
+
+function _mergeStateTimeLogs(stateJson, supabaseRows, supabaseTaskRows){
+  const baseLogs = Array.isArray(stateJson?.timeLogs) ? stateJson.timeLogs : [];
+  const taskIdAliases = _buildSupabaseTaskIdAliases(stateJson, supabaseRows, supabaseTaskRows);
+  const map = new Map();
+  const push = (log)=>{
+    if(!log || !log.taskId || !log.date) return;
+    const roleKey = normalizeTimeLogRole(log);
+    const internalTech = normalizeTimeLogInternalTech(log, roleKey);
+    const key = buildTimeLogKey(log.taskId, log.date, roleKey, internalTech);
+    map.set(key, { ...log });
+  };
+  baseLogs.forEach(push);
+  (Array.isArray(supabaseRows) ? supabaseRows : [])
+    .map((row)=>_mapSupabaseRowToStateTimeLog(row, taskIdAliases))
+    .filter(Boolean)
+    .forEach(push);
+  return Array.from(map.values());
+}
+
 
 window.loadAppStateFromSupabase = async function(){
 
@@ -473,8 +660,14 @@ window.loadAppStateFromSupabase = async function(){
 
 
     // IMPORTANT : on remplace UNIQUEMENT l'eétat global, puis on rend
-
-    state = normalizeState(data.state_json);
+    const supabaseTimeLogsRows = await _loadSupabaseTimeLogsRows(sb);
+    const supabaseTaskIds = Array.from(new Set(supabaseTimeLogsRows.map((r)=>normId(r?.task_id || r?.tache_id || r?.taskId)).filter(Boolean)));
+    const supabaseTaskRows = await _loadSupabaseTasksRowsByIds(sb, supabaseTaskIds);
+    const mergedStateJson = {
+      ...(data.state_json || {}),
+      timeLogs: _mergeStateTimeLogs(data?.state_json, supabaseTimeLogsRows, supabaseTaskRows)
+    };
+    state = normalizeState(mergedStateJson);
 
     renderAll();
 
