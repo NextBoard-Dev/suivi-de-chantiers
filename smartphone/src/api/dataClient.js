@@ -14,6 +14,7 @@ const {
   tasksTable,
   taskProjectIdColumn,
   timeLogsTable,
+  appStatesTable,
   internalTechsTable,
   vendorsTable,
   sitesTable,
@@ -93,6 +94,7 @@ const TIME_LOG_SELECT_COLUMNS = [
   "project_id",
   "chantier_id",
   "projectId",
+  "date_key",
   "date",
   "log_date",
   "day",
@@ -100,6 +102,7 @@ const TIME_LOG_SELECT_COLUMNS = [
   "role",
   "owner_type",
   "owner",
+  "intervenant_label",
   "technician",
   "tech",
   "internal_tech",
@@ -457,15 +460,33 @@ function mapTaskRow(row) {
 function mapTimeLogRow(row) {
   const roleFromColumns = String(row.role ?? row.owner_type ?? row.owner ?? "").trim();
   const roleFromKey = ownerTypeFromRoleKey(row.role_key);
+  const resolvedRole = roleFromColumns || roleFromKey;
+  const intervenantLabel = String(row.intervenant_label ?? "").trim();
+  let technician = String(row.technician ?? row.tech ?? row.internal_tech ?? "").trim();
+  let vendor = String(row.vendor ?? "").trim();
+  if (!technician && resolvedRole === "INTERNE" && intervenantLabel) technician = intervenantLabel;
+  if (!vendor && resolvedRole === "Prestataire externe" && intervenantLabel) vendor = intervenantLabel;
+  const roleKey = String(row.role_key || "").trim().toLowerCase()
+    || roleKeyFromOwnerType(resolvedRole, {
+      technician,
+      vendor,
+    });
+  const minutesRaw = Number(row.minutes);
+  const hoursRaw = Number(row.hours);
+  const resolvedMinutes = Number.isFinite(minutesRaw)
+    ? minutesRaw
+    : (Number.isFinite(hoursRaw) ? Math.round(hoursRaw * 60) : 0);
   return {
     id: toStringId(row.id),
     task_id: toStringId(row.task_id ?? row.tache_id ?? row.taskId),
     project_id: toStringId(row.project_id ?? row.chantier_id ?? row.projectId),
-    date: pickDate(row.date ?? row.log_date ?? row.day ?? ""),
-    role: roleFromColumns || roleFromKey,
-    technician: String(row.technician ?? row.tech ?? row.internal_tech ?? "").trim(),
-    vendor: String(row.vendor ?? "").trim(),
-    minutes: Number.isFinite(Number(row.minutes)) ? Number(row.minutes) : 0,
+    date: pickDate(row.date ?? row.log_date ?? row.day ?? row.date_key ?? ""),
+    role_key: roleKey,
+    role: resolvedRole,
+    intervenant_label: intervenantLabel,
+    technician,
+    vendor,
+    minutes: resolvedMinutes,
     hours: Number.isFinite(Number(row.hours)) ? Number(row.hours) : null,
     note: String(row.note ?? row.comment ?? "").trim(),
     updated_date: row.updated_date || row.updated_at || "",
@@ -544,6 +565,95 @@ async function fetchTimeLogs(filters = {}) {
     errorScope: "Lecture time logs Supabase impossible",
   });
   return rows.map(mapTimeLogRow);
+}
+
+function matchesFiltersInMemory(row, filters = {}) {
+  return Object.entries(filters || {}).every(([key, value]) => {
+    if (value === undefined || value === null || value === "") return true;
+    return String(row?.[key] ?? "") === String(value);
+  });
+}
+
+function mergeTimeLogSources(primaryLogs = [], legacyLogs = []) {
+  const out = new Map();
+  (legacyLogs || []).forEach((log) => {
+    out.set(buildTimeLogIdentityKey(log), log);
+  });
+  (primaryLogs || []).forEach((log) => {
+    out.set(buildTimeLogIdentityKey(log), log);
+  });
+  return Array.from(out.values());
+}
+
+async function fetchLegacyStateTimeLogs(filters = {}) {
+  if (!appStatesTable) return [];
+  try {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) return [];
+    const userId = sessionData?.session?.user?.id || "";
+
+    let stateRows = [];
+    if (userId) {
+      const { data, error } = await supabase
+        .from(appStatesTable)
+        .select("state_json, updated_at")
+        .eq("user_id", userId)
+        .limit(1);
+      if (error) {
+        if (isMissingOptionalTableError(error) || isMissingColumnError(error)) return [];
+        throw error;
+      }
+      stateRows = Array.isArray(data) ? data : [];
+    }
+    if (!stateRows.length) {
+      const { data, error } = await supabase
+        .from(appStatesTable)
+        .select("state_json, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(10);
+      if (error) {
+        if (isMissingOptionalTableError(error) || isMissingColumnError(error)) return [];
+        throw error;
+      }
+      stateRows = Array.isArray(data) ? data : [];
+    }
+
+    const mapped = [];
+    stateRows.forEach((row, rowIdx) => {
+      const stateJson = row?.state_json;
+      const rawLogs = Array.isArray(stateJson?.timeLogs) ? stateJson.timeLogs : [];
+      rawLogs.forEach((log, idx) => {
+        const taskId = toStringId(log?.taskId ?? log?.task_id ?? log?.tache_id);
+        const dateVal = pickDate(log?.date ?? log?.date_key ?? log?.log_date ?? log?.day ?? "");
+        mapped.push(mapTimeLogRow({
+          id: toStringId(log?.id) || `legacy_${rowIdx}_${taskId}_${dateVal}_${idx}`,
+          task_id: taskId,
+          project_id: toStringId(log?.projectId ?? log?.project_id ?? log?.chantier_id),
+          date_key: log?.date_key ?? dateVal,
+          date: log?.date ?? dateVal,
+          log_date: log?.log_date ?? dateVal,
+          day: log?.day ?? dateVal,
+          role_key: log?.role_key ?? "",
+          role: log?.role ?? log?.owner_type ?? log?.owner ?? "",
+          owner_type: log?.owner_type ?? "",
+          owner: log?.owner ?? "",
+          technician: log?.technician ?? log?.internalTech ?? log?.internal_tech ?? "",
+          tech: log?.tech ?? log?.internalTech ?? log?.internal_tech ?? "",
+          internal_tech: log?.internal_tech ?? log?.internalTech ?? "",
+          vendor: log?.vendor ?? "",
+          minutes: log?.minutes,
+          hours: log?.hours,
+          note: log?.note ?? log?.comment ?? "",
+          comment: log?.comment ?? log?.note ?? "",
+          updated_at: log?.updatedAt ?? log?.updated_at ?? row?.updated_at ?? "",
+          created_at: log?.createdAt ?? log?.created_at ?? "",
+        }));
+      });
+    });
+    return mapped.filter((row) => matchesFiltersInMemory(row, filters));
+  } catch {
+    return [];
+  }
 }
 
 async function fetchReferential(tableName, kind, filters = {}) {
@@ -630,10 +740,15 @@ function normalizeTimeLogInput(input = {}) {
 }
 
 function buildTimeLogIdentityKey(input = {}) {
+  const roleKey = String(input.role_key || "").trim().toLowerCase()
+    || roleKeyFromOwnerType(input.role || input.owner_type || input.owner || "", {
+      technician: input.technician || input.internal_tech || "",
+      vendor: input.vendor || "",
+    });
   return [
     toStringId(input.task_id),
     pickDate(input.date || input.date_key || ""),
-    normalizeTechKey(input.role || input.owner_type || ""),
+    normalizeTechKey(roleKey),
     normalizeTechKey(input.technician || input.internal_tech || ""),
     normalizeTechKey(input.vendor || ""),
   ].join("|");
@@ -645,21 +760,14 @@ function timeLogPayloadForWrite(normalized, { includeCreatedDate = false } = {})
     task_id: normalized.task_id,
     project_id: normalized.project_id || null,
     date_key: normalized.date,
-    date: normalized.date,
-    log_date: normalized.date,
-    day: normalized.date,
     role_key: normalized.role_key || roleKeyFromOwnerType(normalized.role, { technician: normalized.technician, vendor: normalized.vendor }),
     owner_type: normalized.role || null,
-    owner: normalized.role || null,
     intervenant_label: normalized.technician || normalized.vendor || normalized.role || null,
     technician: normalized.technician || null,
-    tech: normalized.technician || null,
-    internal_tech: normalized.technician || null,
     vendor: normalized.vendor || null,
     minutes: normalized.minutes,
     hours: normalized.hours,
     note: normalized.note || null,
-    comment: normalized.note || null,
     updated_date: nowIso,
   };
   if (includeCreatedDate) base.created_date = nowIso;
@@ -677,13 +785,22 @@ function extractMissingColumnName(error) {
   return match?.[1] || "";
 }
 
-async function writeTimeLogWithColumnPruning({ mode, payload, id = "" }) {
-  const scope = mode === "insert" ? "Creation time log impossible" : "Mise a jour time log impossible";
+async function writeTimeLogWithColumnPruning({ mode, payload, id = "", onConflict = "" }) {
+  const scope =
+    mode === "insert"
+      ? "Creation time log impossible"
+      : (mode === "upsert" ? "Upsert time log impossible" : "Mise a jour time log impossible");
   const currentPayload = { ...payload };
 
   for (let attempt = 0; attempt < 20; attempt += 1) {
     let query = supabase.from(timeLogsTable);
-    query = mode === "insert" ? query.insert(currentPayload) : query.update(currentPayload).eq("id", id);
+    if (mode === "insert") {
+      query = query.insert(currentPayload);
+    } else if (mode === "upsert") {
+      query = query.upsert(currentPayload, { onConflict, ignoreDuplicates: false });
+    } else {
+      query = query.update(currentPayload).eq("id", id);
+    }
     const { data, error } = await query.select("*").maybeSingle();
     if (!error) return data || null;
 
@@ -696,6 +813,74 @@ async function writeTimeLogWithColumnPruning({ mode, payload, id = "" }) {
   }
 
   throw new Error(`${scope}: colonnes incompatibles avec la table Supabase.`);
+}
+
+function isNoMatchingConflictTargetError(error) {
+  const msg = String(error?.message || "").toLowerCase();
+  const code = String(error?.code || "");
+  return code === "42P10" || msg.includes("no unique or exclusion constraint matching the on conflict specification");
+}
+
+function isDuplicateKeyError(error) {
+  const msg = String(error?.message || "").toLowerCase();
+  return msg.includes("duplicate key value violates unique constraint");
+}
+
+function parseDuplicateConstraintColumns(error) {
+  const details = String(error?.details || error?.message || "");
+  const match = details.match(/\(([^)]+)\)=\(([^)]*)\)/);
+  if (!match) return [];
+  const cols = String(match[1] || "")
+    .split(",")
+    .map((c) => String(c || "").trim())
+    .filter(Boolean);
+  return cols;
+}
+
+async function findExistingTimeLogIdByDuplicateError(error, payload) {
+  const cols = parseDuplicateConstraintColumns(error);
+  if (!cols.length) return "";
+  try {
+    let query = supabase.from(timeLogsTable).select("id").limit(1);
+    for (const col of cols) {
+      if (!hasOwn(payload, col)) return "";
+      query = query.eq(col, payload[col]);
+    }
+    const { data, error: selectError } = await query.maybeSingle();
+    if (selectError) return "";
+    return toStringId(data?.id);
+  } catch {
+    return "";
+  }
+}
+
+async function findExistingTimeLogIdByNaturalKey(payload = {}) {
+  const candidates = [
+    ["task_id", "date_key", "role_key", "intervenant_label"],
+    ["task_id", "date_key", "role_key", "technician"],
+    ["task_id", "date_key", "role_key", "vendor"],
+  ];
+  for (const cols of candidates) {
+    const hasAll = cols.every((col) => {
+      const v = payload?.[col];
+      return v !== undefined && v !== null && String(v).trim() !== "";
+    });
+    if (!hasAll) continue;
+    try {
+      let query = supabase.from(timeLogsTable).select("id").limit(1);
+      cols.forEach((col) => {
+        query = query.eq(col, payload[col]);
+      });
+      const { data, error } = await query;
+      if (error) continue;
+      const first = Array.isArray(data) ? data[0] : null;
+      const foundId = toStringId(first?.id);
+      if (foundId) return foundId;
+    } catch {
+      // try next candidate
+    }
+  }
+  return "";
 }
 
 export const dataClient = {
@@ -883,23 +1068,41 @@ export const dataClient = {
 
     TimeLog: {
       list: async (sort = "-date", limit = 1000) => {
-        const logs = await fetchTimeLogs();
-        return applySort(logs, sort).slice(0, limit);
+        const [logs, legacyLogs] = await Promise.all([
+          fetchTimeLogs(),
+          fetchLegacyStateTimeLogs(),
+        ]);
+        return applySort(mergeTimeLogSources(logs, legacyLogs), sort).slice(0, limit);
       },
       filter: async (filters = {}, sort = "-date", limit = 1000) => {
-        const logs = await fetchTimeLogs(filters);
-        return applySort(logs, sort).slice(0, limit);
+        const [logs, legacyLogs] = await Promise.all([
+          fetchTimeLogs(filters),
+          fetchLegacyStateTimeLogs(filters),
+        ]);
+        return applySort(mergeTimeLogSources(logs, legacyLogs), sort).slice(0, limit);
       },
       saveForTask: async (input) => {
         assertTimeLogWriteAllowed();
         const normalized = normalizeTimeLogInput(input);
         const identity = buildTimeLogIdentityKey(normalized);
+        const updatePayload = timeLogPayloadForWrite(normalized, { includeCreatedDate: false });
+
+        const naturalExistingId = await findExistingTimeLogIdByNaturalKey(updatePayload);
+        if (naturalExistingId) {
+          const updated = await writeTimeLogWithColumnPruning({
+            mode: "update",
+            payload: updatePayload,
+            id: naturalExistingId,
+          });
+          return mapTimeLogRow(updated || { ...updatePayload, id: naturalExistingId });
+        }
 
         const logs = await fetchTimeLogs();
         const existing = logs.find((log) =>
           buildTimeLogIdentityKey({
             task_id: log.task_id,
             date: log.date,
+            role_key: log.role_key,
             role: log.role,
             technician: log.technician,
             vendor: log.vendor,
@@ -907,21 +1110,51 @@ export const dataClient = {
         );
 
         if (existing?.id) {
-          const payload = timeLogPayloadForWrite(normalized, { includeCreatedDate: false });
           const written = await writeTimeLogWithColumnPruning({
             mode: "update",
-            payload,
+            payload: updatePayload,
             id: existing.id,
           });
-          return mapTimeLogRow(written || { ...payload, id: existing.id });
+          return mapTimeLogRow(written || { ...updatePayload, id: existing.id });
         }
 
         const payload = timeLogPayloadForWrite(normalized, { includeCreatedDate: true });
-        const written = await writeTimeLogWithColumnPruning({
-          mode: "insert",
-          payload,
-        });
-        return mapTimeLogRow(written || payload);
+        try {
+          const written = await writeTimeLogWithColumnPruning({
+            mode: "insert",
+            payload,
+          });
+          return mapTimeLogRow(written || payload);
+        } catch (error) {
+          if (!isDuplicateKeyError(error)) throw error;
+          const duplicateId = await findExistingTimeLogIdByDuplicateError(error, payload);
+          if (duplicateId) {
+            const updated = await writeTimeLogWithColumnPruning({
+              mode: "update",
+              payload: updatePayload,
+              id: duplicateId,
+            });
+            return mapTimeLogRow(updated || { ...updatePayload, id: duplicateId });
+          }
+          const freshLogs = await fetchTimeLogs();
+          const fallbackExisting = freshLogs.find((log) =>
+            buildTimeLogIdentityKey({
+              task_id: log.task_id,
+              date: log.date,
+              role_key: log.role_key,
+              role: log.role,
+              technician: log.technician,
+              vendor: log.vendor,
+            }) === identity
+          );
+          if (!fallbackExisting?.id) throw error;
+          const updated = await writeTimeLogWithColumnPruning({
+            mode: "update",
+            payload: updatePayload,
+            id: fallbackExisting.id,
+          });
+          return mapTimeLogRow(updated || { ...updatePayload, id: fallbackExisting.id });
+        }
       },
     },
 

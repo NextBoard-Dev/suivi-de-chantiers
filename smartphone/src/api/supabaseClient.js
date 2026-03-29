@@ -14,6 +14,7 @@ export const supabaseConfig = {
   tasksTable: import.meta.env.VITE_SUPABASE_TASKS_TABLE || "chantier_tasks",
   taskProjectIdColumn: import.meta.env.VITE_SUPABASE_TASKS_PROJECT_ID_COLUMN || "project_id",
   timeLogsTable: import.meta.env.VITE_SUPABASE_TIME_LOGS_TABLE || "chantier_time_logs",
+  appStatesTable: import.meta.env.VITE_SUPABASE_APP_STATES_TABLE || "app_states",
   internalTechsTable: import.meta.env.VITE_SUPABASE_INTERNAL_TECHS_TABLE || "chantier_internal_techs",
   vendorsTable: import.meta.env.VITE_SUPABASE_VENDORS_TABLE || "chantier_vendors",
   sitesTable: import.meta.env.VITE_SUPABASE_SITES_TABLE || "sites",

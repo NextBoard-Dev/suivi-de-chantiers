@@ -76,16 +76,16 @@ export default function TaskEdit() {
     }));
   }, [form]);
 
-  const { data: allLogs = [] } = useQuery({
-    queryKey: ["time-logs"],
-    queryFn: async () => dataClient.entities.TimeLog.list("-date", 3000),
+  const { data: taskLogs = [] } = useQuery({
+    queryKey: ["time-logs", "task", taskId],
+    queryFn: async () => {
+      const filtered = await dataClient.entities.TimeLog.filter({ task_id: taskId }, "-date", 5000);
+      if (Array.isArray(filtered) && filtered.length > 0) return filtered;
+      const fallback = await dataClient.entities.TimeLog.list("-date", 5000);
+      return (fallback || []).filter((log) => String(log.task_id || "") === String(taskId || ""));
+    },
+    enabled: !!taskId,
   });
-
-  const taskLogs = useMemo(() => {
-    return (allLogs || [])
-      .filter((log) => String(log.task_id || "") === String(taskId || ""))
-      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
-  }, [allLogs, taskId]);
 
   const totalTaskMinutes = useMemo(
     () => taskLogs.reduce((sum, log) => sum + (Number.isFinite(Number(log.minutes)) ? Number(log.minutes) : 0), 0),
