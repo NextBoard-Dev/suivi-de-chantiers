@@ -28,7 +28,29 @@
         } catch (error) {}
 
         var ua = String(navigator.userAgent || "");
-        return /android|iphone|ipod|blackberry|iemobile|opera mini|mobile/i.test(ua);
+        if (/android|iphone|ipod|blackberry|iemobile|opera mini|mobile/i.test(ua)) return true;
+        if (/ipad|tablet/i.test(ua)) return true;
+
+        var maxTouchPoints = Number(navigator.maxTouchPoints || 0);
+        var hasCoarsePointer = false;
+        var isSmallViewport = false;
+
+        try {
+          hasCoarsePointer = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+          isSmallViewport = !!(window.matchMedia && window.matchMedia("(max-width: 900px)").matches);
+        } catch (error) {}
+
+        if (!isSmallViewport) {
+          try {
+            var sw = Number((window.screen && window.screen.width) || 0);
+            var sh = Number((window.screen && window.screen.height) || 0);
+            var shortSide = Math.min(sw || 0, sh || 0);
+            isSmallViewport = shortSide > 0 && shortSide <= 900;
+          } catch (error) {}
+        }
+
+        if (maxTouchPoints > 0 && (hasCoarsePointer || isSmallViewport)) return true;
+        return false;
       }
 
       function buildMobileUrl(params) {
