@@ -21,7 +21,15 @@ export default function MobileGantt({ tasks = [], showLabels = true }) {
   const { weeks, rows, minDate } = useMemo(() => {
     if (!tasks.length) return { weeks: [], rows: [], minDate: null };
 
-    const validTasks = tasks.filter((t) => t.start_date && t.end_date);
+    const validTasks = tasks
+      .filter((t) => t.start_date && t.end_date)
+      .sort((a, b) => {
+        const startCmp = String(a.start_date || "").localeCompare(String(b.start_date || ""));
+        if (startCmp !== 0) return startCmp;
+        const endCmp = String(a.end_date || "").localeCompare(String(b.end_date || ""));
+        if (endCmp !== 0) return endCmp;
+        return String(a.description || "").localeCompare(String(b.description || ""));
+      });
     if (!validTasks.length) return { weeks: [], rows: [], minDate: null };
 
     let earliest = parseISO(validTasks[0].start_date);
