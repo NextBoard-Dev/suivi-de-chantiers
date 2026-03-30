@@ -753,6 +753,7 @@ window.loadAppStateFromSupabase = async function(){
       timeLogs: _mergeStateTimeLogs(data?.state_json, supabaseTimeLogsRows, supabaseTaskRowsForLogs)
     };
     state = normalizeState(mergedStateJson);
+    _lastStateLoadSource = "supabase_cloud";
 
     renderAll();
 
@@ -780,9 +781,12 @@ function _scheduleSupabaseAutoLoad(){
   _supabaseAutoloadScheduled = true;
 
   // pas d'await au chargement initial : on laisse l'UI se rendre d'abord
-  setTimeout(function(){
+  setTimeout(async function(){
     try{
-      window.loadAppStateFromSupabase();
+      const ok = await window.loadAppStateFromSupabase();
+      if(!ok){
+        showSaveToast("error", "Chargement Supabase", "Impossible de charger les données cloud. Vérifie la connexion.");
+      }
       loadUsersFromSupabase();
     }catch(e){ softCatch(e); }
   }, 120);
@@ -4019,109 +4023,13 @@ function saveDescriptionsRegistry(list){
 
 
 function load(){
-
-  const skipFileFetch = (window.location && window.location.protocol === "file:");
-
-  const backupPromise = skipFileFetch
-
-    ? Promise.reject("skip-file-fetch")
-
-    : fetch(`suivi_chantiers_backup.json?v=${Date.now()}`, {cache:"no-store"});
-
-  // 1) tenter le fichier de backup du projet (persistant disque)
-
-  backupPromise
-
-    .then(resp=> resp.ok ? resp.json() : null)
-
-    .then(data=>{
-
-      if(data){
-
-        state = normalizeState(data);
-        _lastStateLoadSource = "backup_json";
-
-        renderAll();
-
-        clearDirty();
-
-        _scheduleSupabaseAutoLoad();
-
-        return;
-
-      }
-
-      // 2) sinon tenter le localStorage
-
-      try{
-
-        const raw = localStorage.getItem(STORAGE_KEY);
-
-        if(raw){
-
-          state = normalizeState(JSON.parse(raw));
-          _lastStateLoadSource = "local_storage";
-
-          renderAll();
-
-          clearDirty();
-
-          _scheduleSupabaseAutoLoad();
-
-          return;
-
-        }
-
-      }catch(e){ softCatch(e); }
-
-      // 3) fallback état embarqu
-
-      state = normalizeState(defaultState());
-      _lastStateLoadSource = "default_state";
-
-      renderAll();
-
-      clearDirty();
-
-      _scheduleSupabaseAutoLoad();
-
-    })
-
-    .catch(()=>{
-
-      // si fetch choue, on tente localStorage puis default
-
-      try{
-
-        const raw = localStorage.getItem(STORAGE_KEY);
-
-        if(raw){
-
-          state = normalizeState(JSON.parse(raw));
-          _lastStateLoadSource = "local_storage";
-
-          renderAll();
-
-          clearDirty();
-
-          _scheduleSupabaseAutoLoad();
-
-          return;
-
-        }
-
-      }catch(e){ softCatch(e); }
-
-      state = normalizeState(defaultState());
-      _lastStateLoadSource = "default_state";
-
-      renderAll();
-
-      clearDirty();
-
-      _scheduleSupabaseAutoLoad();
-
-    });
+  // Mode Supabase-only (PC):
+  // JSON hébergé et localStorage ne sont plus des sources actives.
+  state = normalizeState(defaultState());
+  _lastStateLoadSource = "default_state";
+  renderAll();
+  clearDirty();
+  _scheduleSupabaseAutoLoad();
 
 }
 
@@ -4615,7 +4523,6 @@ function saveState(opts={}){
     const normalized = normalizeState(state || {});
     state = normalized;
     const serialized = JSON.stringify(normalized);
-    localStorage.setItem(STORAGE_KEY, serialized);
     runtimePerf.lastStateBytes = new Blob([serialized]).size;
     runtimePerf.lastSaveMs = Math.max(0, performance.now() - t0);
     runtimePerf.lastSaveAt = new Date().toISOString();
@@ -9254,6 +9161,8 @@ function saveHoursTaskModal(){
   }
 }
 function checkTimeLogReminders(){
+  // Evite les faux rappels pendant l'initialisation (etat par defaut).
+  if(_lastStateLoadSource !== "supabase_cloud") return;
   const yKey = getYesterdayKey();
   const userKey = getCurrentUserKey() || "anonymous";
   const flag = `timeLogReminder_${yKey}_${userKey}`;
