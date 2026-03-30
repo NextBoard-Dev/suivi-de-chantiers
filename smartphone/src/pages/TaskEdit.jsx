@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { dataClient } from "@/api/dataClient";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -454,12 +454,22 @@ export default function TaskEdit() {
 
         <div>
           <Label className="text-xs font-semibold text-muted-foreground">Intervenant (saisie)</Label>
-          <Input
-            value={hoursForm.intervenant}
-            readOnly
-            className="mt-1.5 h-11"
-            placeholder="Nom tech interne ou prestataire"
-          />
+          <div className="relative mt-1.5">
+            <Input
+              value={hoursForm.intervenant}
+              readOnly
+              disabled
+              className="h-11 pr-10 bg-muted/40 text-muted-foreground cursor-not-allowed"
+              placeholder="Nom tech interne ou prestataire"
+            />
+            <span
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/80"
+              title="Champ verrouille : recupere automatiquement depuis la tache."
+              aria-label="Information champ verrouille"
+            >
+              <Info className="h-4 w-4" />
+            </span>
+          </div>
         </div>
 
         <div>
