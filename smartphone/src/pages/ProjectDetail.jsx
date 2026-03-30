@@ -1,7 +1,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dataClient } from "@/api/dataClient";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, MapPin, AlertTriangle, ListChecks, CheckCircle2, Timer, TrendingUp, CalendarClock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import TaskCard from "../components/common/TaskCard";
@@ -16,7 +16,7 @@ function isLate(task) {
 }
 
 export default function ProjectDetail() {
-  const projectId = window.location.pathname.split("/project/")[1];
+  const { id: projectId = "" } = useParams();
   const navigate = useNavigate();
 
   const { data: project, isLoading: loadingP } = useQuery({

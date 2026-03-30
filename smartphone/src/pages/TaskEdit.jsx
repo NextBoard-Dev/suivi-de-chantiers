@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { dataClient } from "@/api/dataClient";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,7 +75,7 @@ function mapStrictTimeLogRow(row = {}) {
 }
 
 export default function TaskEdit() {
-  const taskId = window.location.pathname.split("/task/")[1];
+  const { id: taskId = "" } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
