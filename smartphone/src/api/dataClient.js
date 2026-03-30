@@ -434,6 +434,10 @@ function mapTaskRow(row) {
     ownerTypeFromOwner === "RSG" ||
     ownerTypeFromOwner === "RI" ||
     ownerTypeFromOwner === "Prestataire externe";
+  const isGenericIntervenantLabel = (value) => {
+    const normalized = normalizeMobileOwnerType(value);
+    return normalized === "INTERNE" || normalized === "Prestataire externe" || normalized === "RSG" || normalized === "RI";
+  };
 
   let internalTech = stringifyInternalTech(
     row.internal_tech ??
@@ -442,12 +446,12 @@ function mapTaskRow(row) {
     row.internalTechs ??
     row.technician ??
     row.tech ??
-    row.intervenant ??
-    row.intervenant_label ??
     row.intervenants ??
     ""
   ).trim();
+  if (isGenericIntervenantLabel(internalTech)) internalTech = "";
   let vendor = String(row.vendor || "").trim();
+  if (isGenericIntervenantLabel(vendor)) vendor = "";
   let ownerType = ownerTypeFromColumn || (isOwnerLabelType ? ownerTypeFromOwner : "");
   if (!ownerType) ownerType = vendor ? "Prestataire externe" : (internalTech ? "INTERNE" : "");
 
