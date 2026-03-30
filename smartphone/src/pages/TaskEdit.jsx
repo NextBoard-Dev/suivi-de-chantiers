@@ -456,7 +456,7 @@ export default function TaskEdit() {
           <Label className="text-xs font-semibold text-muted-foreground">Intervenant (saisie)</Label>
           <Input
             value={hoursForm.intervenant}
-            onChange={(e) => setHoursForm((prev) => ({ ...prev, intervenant: e.target.value }))}
+            readOnly
             className="mt-1.5 h-11"
             placeholder="Nom tech interne ou prestataire"
           />
