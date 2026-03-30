@@ -401,9 +401,9 @@ function sanitizeTaskInternalTechBySite(task, internalTechAllowBySite) {
     return !!key && (siteSet.has(key) || globalSet.has(key));
   });
 
-  // Ne jamais masquer les noms venant de la tache:
-  // si le referentiel ne matche pas completement, on conserve la valeur brute.
-  if (!kept.length || kept.length !== names.length) return task;
+  // Si on trouve au moins un technicien valide pour le site, on garde uniquement ceux-la.
+  // Sinon on conserve la valeur brute pour eviter un champ vide si le referentiel est incomplet.
+  if (!kept.length) return task;
 
   return {
     ...task,
