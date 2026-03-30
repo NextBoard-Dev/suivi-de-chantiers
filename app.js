@@ -9362,7 +9362,14 @@ function renderProject(){
 
     setInputValue("t_room", desc);
 
-    const ownerVal = (t.owner || "");
+    let ownerVal = String(t.owner || "").trim();
+    const ownerKind = ownerType(ownerVal);
+    if(ownerKind === "inconnu"){
+      const hasInternalTech = normalizeInternalTechList(t.internalTech || "").length > 0;
+      const hasVendor = !!String(t.vendor || "").trim();
+      if(hasInternalTech) ownerVal = "INTERNE";
+      else if(hasVendor) ownerVal = "EXTERNE";
+    }
     setInputValue("t_owner", ownerVal.toUpperCase()==="RSG/RI" ? "RSG" : ownerVal);
 
     setInputValue("t_vendor", t.vendor||"");

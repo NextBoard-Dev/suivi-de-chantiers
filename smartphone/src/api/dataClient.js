@@ -412,18 +412,11 @@ function sanitizeTaskInternalTechBySite(task, internalTechAllowBySite) {
 }
 
 function assertProjectWriteAllowed() {
-  if (toBool(readOnlyMode)) {
-    throw new Error("Mode lecture seule actif: ecriture chantier desactivee.");
-  }
+  throw new Error("Smartphone: ecriture chantier desactivee (lecture seule).");
 }
 
 function assertTaskWriteAllowed() {
-  if (toBool(readOnlyMode)) {
-    throw new Error("Mode lecture seule actif: ecriture tache desactivee.");
-  }
-  if (!toBool(allowTaskWrites)) {
-    throw new Error("Ecriture tache desactivee (VITE_ALLOW_TASK_WRITES=false).");
-  }
+  throw new Error("Smartphone: ecriture tache desactivee (lecture seule).");
 }
 
 function assertTimeLogWriteAllowed() {
