@@ -1717,9 +1717,9 @@ function getInternalTechsForSite(siteLabel=""){
   if(!siteKey) return list;
   return list.filter((name)=>{
     const row = byLower.get(String(name || "").toLowerCase());
-    if(!row) return true;
+    if(!row) return false;
     const sites = Array.isArray(row.sites) ? row.sites : [];
-    if(!sites.length) return true;
+    if(!sites.length) return false;
     return sites.some(s=>canonSiteKey(s)===siteKey);
   });
 }
@@ -7704,7 +7704,7 @@ function getInternalTechsForTaskHours(task){
     : all.filter((name)=>{
         const key = Object.keys(map).find((k)=>k.toLowerCase()===name.toLowerCase()) || name;
         const sites = Array.isArray(map[key]) ? map[key].filter(Boolean) : [];
-        if(!sites.length) return true;
+        if(!sites.length) return false;
         return sites.some((s)=>canonSiteKey(s)===siteKey);
       });
   if(bySite.length) return bySite;
