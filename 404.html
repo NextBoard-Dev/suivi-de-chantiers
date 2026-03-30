@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Redirection</title>
+  <meta http-equiv="refresh" content="0;url=/suivi-de-chantiers/" />
   <script>
     (function () {
       var path = String(window.location.pathname || "");
@@ -12,7 +13,9 @@
       var targetPath = "/suivi-de-chantiers/";
       if (path === "/suivi-de-chantiers" || path === "/suivi-de-chantiers/404.html" || path === "/suivi-de-chantiers/index.html") {
         window.location.replace(targetPath + search + hash);
+        return;
       }
+      window.location.replace(targetPath + search + hash);
     })();
   </script>
 </head>
