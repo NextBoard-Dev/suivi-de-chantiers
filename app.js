@@ -5572,6 +5572,7 @@ function hasPendingTaskEditorChanges(task){
 
 function computeWorkloadPieSegments(tasks, rangeStart=null, rangeEnd=null){
   const ids = new Set((tasks || []).map((t)=>t.id));
+  const taskById = new Map((tasks || []).map((t)=>[t.id, t]));
   const roleByTask = new Map((tasks || []).map((t)=>[t.id, getTaskRoleKey(t)]));
   const rangeByTask = new Map((tasks || []).map((t)=>[t.id, { start:t.start || "", end:t.end || "" }]));
   if(ids.size === 0) return [];
@@ -5599,19 +5600,23 @@ function computeWorkloadPieSegments(tasks, rangeStart=null, rangeEnd=null){
 
     const minutes = Number(l.minutes || 0);
     if(!minutes) return;
-    const weightedHours = (minutes / 60) * roleHoursMultiplier(role);
-    if(!weightedHours) return;
+    const weightedMinutes = Math.round(minutes * roleHoursMultiplier(role));
+    if(!weightedMinutes) return;
 
     if(role === "interne"){
-      const techName = normalizeTimeLogInternalTech(l, role).toUpperCase();
-      if(!techName) return;
-      internalByName.set(techName, (internalByName.get(techName) || 0) + weightedHours);
+      const task = taskById.get(l.taskId) || null;
+      const allocations = resolveInternalLogAllocations(l, task, weightedMinutes);
+      allocations.forEach((alloc)=>{
+        const valueHours = (Number(alloc.minutes || 0) / 60);
+        if(!valueHours) return;
+        internalByName.set(alloc.name, (internalByName.get(alloc.name) || 0) + valueHours);
+      });
     }else if(role === "rsg"){
-      totalRsg += weightedHours;
+      totalRsg += (weightedMinutes / 60);
     }else if(role === "ri"){
-      totalRi += weightedHours;
+      totalRi += (weightedMinutes / 60);
     }else{
-      totalExternal += weightedHours;
+      totalExternal += (weightedMinutes / 60);
     }
   });
 
@@ -7879,6 +7884,41 @@ const formatHoursMinutes = window.formatHoursMinutes || ((totalMinutes)=>{
   return `${h} h ${m} min`;
 });
 const roleHoursMultiplier = window.roleHoursMultiplier || (()=>1);
+function splitMinutesAcross(totalMinutes, count){
+  const total = Math.max(0, Math.round(Number(totalMinutes || 0)));
+  const n = Math.max(1, Math.round(Number(count || 1)));
+  const base = Math.floor(total / n);
+  let rem = total - (base * n);
+  const out = Array.from({ length:n }, ()=>base);
+  for(let i=0; i<out.length && rem>0; i+=1, rem-=1){
+    out[i] += 1;
+  }
+  return out;
+}
+function resolveInternalLogAllocations(log, task, weightedMinutes){
+  const explicitRaw = String(log?.internalTech || "");
+  const explicitList = dedupInternalTechs(normalizeInternalTechList(explicitRaw));
+  if(explicitList.length){
+    const shares = splitMinutesAcross(weightedMinutes, explicitList.length);
+    return explicitList.map((name, idx)=>({
+      name: normalizeInternalTech(name).toUpperCase(),
+      minutes: shares[idx] || 0
+    })).filter((x)=>x.name && x.minutes > 0);
+  }
+
+  const fromTaskCsv = normalizeInternalTechList(task?.internalTech || "");
+  const fromTaskArr = Array.isArray(task?.internalTechs)
+    ? task.internalTechs.map((name)=>normalizeInternalTech(name || "")).filter(Boolean)
+    : [];
+  const assigned = dedupInternalTechs([...fromTaskCsv, ...fromTaskArr]);
+  if(!assigned.length) return [];
+
+  const shares = splitMinutesAcross(weightedMinutes, assigned.length);
+  return assigned.map((name, idx)=>({
+    name: normalizeInternalTech(name).toUpperCase(),
+    minutes: shares[idx] || 0
+  })).filter((x)=>x.name && x.minutes > 0);
+}
 function getTaskTimeTotals(taskRef){
   const taskId = (typeof taskRef === "string") ? taskRef : taskRef?.id;
   const roleKey = (typeof taskRef === "object" && taskRef) ? getTaskRoleKey(taskRef) : "";
@@ -7904,6 +7944,7 @@ function getTaskTimeTotals(taskRef){
 }
 function getRealMinutesForTasks(tasks){
   const ids = new Set((tasks || []).map(t=>t.id));
+  const taskById = new Map((tasks || []).map((t)=>[t.id, t]));
   const roleByTask = new Map((tasks || []).map(t=>[t.id, getTaskRoleKey(t)]));
   const rangeByTask = new Map((tasks || []).map(t=>[t.id, {start:t.start||"", end:t.end||""}]));
   let totalMinutes = 0;
@@ -7922,11 +7963,27 @@ function getRealMinutesForTasks(tasks){
     const role = normalizeTimeLogRole(l);
     if(roleExpected && role !== roleExpected) return;
     const weightedMinutes = Math.round(m * roleHoursMultiplier(role));
-    totalMinutes += weightedMinutes;
-    if(role === "externe") externalMinutes += weightedMinutes;
-    else if(role === "rsg") rsgMinutes += weightedMinutes;
-    else if(role === "ri") riMinutes += weightedMinutes;
-    else internalMinutes += weightedMinutes;
+    if(role === "externe"){
+      totalMinutes += weightedMinutes;
+      externalMinutes += weightedMinutes;
+      return;
+    }
+    if(role === "rsg"){
+      totalMinutes += weightedMinutes;
+      rsgMinutes += weightedMinutes;
+      return;
+    }
+    if(role === "ri"){
+      totalMinutes += weightedMinutes;
+      riMinutes += weightedMinutes;
+      return;
+    }
+    const task = taskById.get(l.taskId) || null;
+    const allocations = resolveInternalLogAllocations(l, task, weightedMinutes);
+    if(!allocations.length) return;
+    const distributed = allocations.reduce((s, x)=>s + (Number(x.minutes) || 0), 0);
+    totalMinutes += distributed;
+    internalMinutes += distributed;
   });
   return { totalMinutes, internalMinutes, externalMinutes, rsgMinutes, riMinutes };
 }
@@ -12461,9 +12518,20 @@ function buildRealHoursReportForTasks(tasksInput){
         intervLabel = extName;
       }else{
         if(rk === "interne"){
-          const techName = normalizeTimeLogInternalTech(l, rk);
-          if(!techName) return;
-          intervLabel = techName.toUpperCase();
+          // Compatibilité temporaire: anciens logs sans nom technicien
+          // sont répartis entre techniciens affectés à la tâche.
+          const allocations = resolveInternalLogAllocations(l, t, weightedMinutes);
+          if(!allocations.length) return;
+          if(roleTotals[rk] !== undefined) roleTotals[rk] += weightedMinutes;
+          allocations.forEach((alloc)=>{
+            const techName = alloc.name;
+            const techMins = Number(alloc.minutes || 0);
+            if(!techName || !techMins) return;
+            internalByName.set(techName, (internalByName.get(techName) || 0) + techMins);
+            const interKeyLocal = `${rk}|${techName}`;
+            perInterv.set(interKeyLocal, (perInterv.get(interKeyLocal) || 0) + techMins);
+          });
+          return;
         }
         if(roleTotals[rk] !== undefined) roleTotals[rk] += weightedMinutes;
         internalByName.set(intervLabel, (internalByName.get(intervLabel) || 0) + weightedMinutes);
