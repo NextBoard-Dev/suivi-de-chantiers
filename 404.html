@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Redirection</title>
+  <script>
+    (function () {
+      var path = String(window.location.pathname || "");
+      var search = String(window.location.search || "");
+      var hash = String(window.location.hash || "");
+      var targetPath = "/suivi-de-chantiers/";
+      if (path === "/suivi-de-chantiers" || path === "/suivi-de-chantiers/404.html" || path === "/suivi-de-chantiers/index.html") {
+        window.location.replace(targetPath + search + hash);
+      }
+    })();
+  </script>
+</head>
+<body></body>
+</html>
