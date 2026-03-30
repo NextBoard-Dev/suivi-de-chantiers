@@ -605,6 +605,84 @@ async function _loadSupabaseTasksRowsByIds(sb, ids){
   return out;
 }
 
+function _normalizeSupabaseTaskStatus(rawStatus){
+  if(Array.isArray(rawStatus)){
+    return rawStatus.map((v)=>String(v || "").trim()).filter(Boolean).join(",");
+  }
+  return String(rawStatus || "").trim();
+}
+
+function _extractSupabaseTaskInternalTechList(row){
+  const fromArray = Array.isArray(row?.internal_techs) ? row.internal_techs : [];
+  const fromSingle = [row?.internal_tech, row?.internalTech, row?.technician, row?.tech, row?.intervenants]
+    .map((v)=>String(v || "").trim())
+    .filter(Boolean);
+  return dedupInternalTechs([...fromArray, ...fromSingle].map((v)=>normalizeInternalTech(v)).filter(Boolean));
+}
+
+function _mapSupabaseRowToStateTask(row, fallbackTask={}){
+  if(!row) return null;
+  const id = normId(row?.id || fallbackTask?.id);
+  if(!id) return null;
+
+  let ownerValue = normalizeOwnerValue(row?.owner_type || row?.owner || fallbackTask?.owner || "");
+  let ownerKind = ownerType(ownerValue);
+  const fallbackInternal = dedupInternalTechs([
+    ...normalizeInternalTechList(fallbackTask?.internalTech || ""),
+    ...(Array.isArray(fallbackTask?.internalTechs) ? fallbackTask.internalTechs : [])
+  ]);
+  let internalTechs = dedupInternalTechs([
+    ..._extractSupabaseTaskInternalTechList(row),
+    ...fallbackInternal
+  ]);
+  if(internalTechs.length && ownerKind !== "interne"){
+    ownerValue = "INTERNE";
+    ownerKind = "interne";
+  }
+  if(ownerKind !== "interne") internalTechs = [];
+  const internalTechCsv = serializeInternalTechList(internalTechs);
+  let vendor = String(row?.vendor || fallbackTask?.vendor || "").trim();
+  if(ownerKind !== "externe") vendor = "";
+
+  return {
+    ...fallbackTask,
+    id,
+    projectId: normId(row?.project_id || row?.chantier_id || fallbackTask?.projectId),
+    roomNumber: normalizeInternalTech(row?.description || row?.name || fallbackTask?.roomNumber || ""),
+    status: _normalizeSupabaseTaskStatus(row?.statuses ?? row?.status ?? fallbackTask?.status ?? ""),
+    owner: ownerValue,
+    vendor,
+    internalTech: internalTechCsv,
+    internalTechs: internalTechs,
+    start: String(row?.start_date || row?.start || fallbackTask?.start || "").slice(0,10),
+    end: String(row?.end_date || row?.end || fallbackTask?.end || "").slice(0,10)
+  };
+}
+
+function _mergeStateTasksFromSupabase(stateJson, supabaseTaskRows){
+  const baseTasks = Array.isArray(stateJson?.tasks) ? stateJson.tasks : [];
+  const baseById = new Map(baseTasks.map((t)=>[normId(t?.id), t]).filter(([id])=>!!id));
+  const usedIds = new Set();
+  const merged = [];
+
+  (Array.isArray(supabaseTaskRows) ? supabaseTaskRows : []).forEach((row)=>{
+    const rowId = normId(row?.id);
+    if(!rowId) return;
+    const mapped = _mapSupabaseRowToStateTask(row, baseById.get(rowId) || {});
+    if(!mapped) return;
+    usedIds.add(rowId);
+    merged.push(mapped);
+  });
+
+  baseTasks.forEach((task)=>{
+    const taskId = normId(task?.id);
+    if(!taskId || usedIds.has(taskId)) return;
+    merged.push(task);
+  });
+
+  return merged;
+}
+
 function _mergeStateTimeLogs(stateJson, supabaseRows, supabaseTaskRows){
   const baseLogs = Array.isArray(stateJson?.timeLogs) ? stateJson.timeLogs : [];
   const taskIdAliases = _buildSupabaseTaskIdAliases(stateJson, supabaseRows, supabaseTaskRows);
@@ -661,11 +739,18 @@ window.loadAppStateFromSupabase = async function(){
 
     // IMPORTANT : on remplace UNIQUEMENT l'eétat global, puis on rend
     const supabaseTimeLogsRows = await _loadSupabaseTimeLogsRows(sb);
+    const stateTaskIds = Array.from(new Set(
+      (Array.isArray(data?.state_json?.tasks) ? data.state_json.tasks : [])
+        .map((t)=>normId(t?.id))
+        .filter(Boolean)
+    ));
+    const supabaseTasksRows = await _loadSupabaseTasksRowsByIds(sb, stateTaskIds);
     const supabaseTaskIds = Array.from(new Set(supabaseTimeLogsRows.map((r)=>normId(r?.task_id || r?.tache_id || r?.taskId)).filter(Boolean)));
-    const supabaseTaskRows = await _loadSupabaseTasksRowsByIds(sb, supabaseTaskIds);
+    const supabaseTaskRowsForLogs = await _loadSupabaseTasksRowsByIds(sb, supabaseTaskIds);
     const mergedStateJson = {
       ...(data.state_json || {}),
-      timeLogs: _mergeStateTimeLogs(data?.state_json, supabaseTimeLogsRows, supabaseTaskRows)
+      tasks: _mergeStateTasksFromSupabase(data?.state_json, supabaseTasksRows),
+      timeLogs: _mergeStateTimeLogs(data?.state_json, supabaseTimeLogsRows, supabaseTaskRowsForLogs)
     };
     state = normalizeState(mergedStateJson);
 
@@ -1752,10 +1837,11 @@ function refreshInternalTechInputOptions(preferredValues=null){
   const node = el("t_internal_tech");
   if(!node) return;
   const site = projectSiteById(selectedProjectId);
-  const available = getInternalTechsForSite(site);
+  const availableBySite = getInternalTechsForSite(site);
   const current = Array.isArray(preferredValues)
     ? dedupInternalTechs(preferredValues)
     : getSelectedInternalTechValues();
+  const available = dedupInternalTechs([...(availableBySite || []), ...current]);
   if(node.tagName === "SELECT"){
     const selectedLower = new Set(current.map((v)=>v.toLowerCase()));
     node.size = Math.max(4, Math.min(8, Math.max(1, available.length)));
@@ -1773,8 +1859,7 @@ function refreshInternalTechInputOptions(preferredValues=null){
     return;
   }
   if(current.length){
-    const allowed = current.filter((name)=>available.some((x)=>x.toLowerCase()===name.toLowerCase()));
-    node.value = serializeInternalTechList(allowed);
+    node.value = serializeInternalTechList(current);
   }
   renderInternalTechListbox();
 }
@@ -1909,6 +1994,7 @@ function syncTaskOwnerDependentFields(){
   }
   refreshInternalTechInputOptions();
   renderInternalTechListbox();
+  updateInternalTechFilterDisplay();
 }
 
 function renderConfigInternalTechList(){
@@ -2483,6 +2569,15 @@ const normalizeOwnerValue = (o="")=>{
   if(up === "EXTERNE" || up === "PRESTATAIRE EXTERNE" || up === "PRESTATAIRE") return "EXTERNE";
   if(up === "INTERNE" || up === "EQUIPE INTERNE" || up === "ÉQUIPE INTERNE") return "INTERNE";
   return raw;
+};
+
+const toOwnerSelectValue = (ownerRaw="")=>{
+  const kind = ownerType(normalizeOwnerValue(ownerRaw));
+  if(kind === "interne") return "INTERNE";
+  if(kind === "rsg") return "RSG";
+  if(kind === "ri") return "RI";
+  if(kind === "externe") return "Prestataire externe";
+  return String(ownerRaw || "").trim();
 };
 
 const ownerBadge = (o="", labelOverride="")=>{
@@ -3310,8 +3405,8 @@ function normalizeState(raw){
   }));
 
   const normTasks = (raw.tasks||[]).map(t=>{
-    const ownerNorm = normalizeOwnerValue(t.owner || "");
-    const ownerNormType = ownerType(ownerNorm);
+    let ownerNorm = normalizeOwnerValue(t.owner || "");
+    let ownerNormType = ownerType(ownerNorm);
     let vendorNorm = (t.vendor||"").toString().trim();
     const taskInternalCsv = normalizeInternalTechList(t.internalTech || "");
     const taskInternalLegacy = taskInternalCsv.length
@@ -3320,7 +3415,11 @@ function normalizeState(raw){
     const taskInternalCanonical = dedupInternalTechs([
       ...taskInternalCsv,
       ...taskInternalLegacy
-    ]).map((name)=>canonicalizeInternalTechForTask(name, null)).filter(Boolean);
+    ]).map((name)=>normalizeInternalTech(name)).filter(Boolean);
+    if(taskInternalCanonical.length && ownerNormType !== "interne"){
+      ownerNorm = "INTERNE";
+      ownerNormType = "interne";
+    }
     let internalTechNorm = serializeInternalTechList(taskInternalCanonical);
     let internalTechsNorm = dedupInternalTechs(taskInternalCanonical);
     if(ownerNormType === "externe" && !vendorNorm){
@@ -5539,6 +5638,31 @@ function computeWorkloadData(tasks, mode="week", rangeStart=null, rangeEnd=null)
 
 }
 
+function hasPendingTaskEditorChanges(task){
+  if(!task) return false;
+  const uiRoom = normalizeInternalTech(el("t_room")?.value || "");
+  const uiOwner = normalizeOwnerValue(el("t_owner")?.value || "");
+  const uiOwnerType = ownerType(uiOwner);
+  const uiVendor = uiOwnerType === "externe" ? String(el("t_vendor")?.value || "").trim() : "";
+  const uiInternal = uiOwnerType === "interne" ? serializeInternalTechList(getSelectedInternalTechValues()) : "";
+  const uiStart = unformatDate(el("t_start")?.value || "");
+  const uiEnd = unformatDate(el("t_end")?.value || "");
+  const uiStatus = Array.from(selectedStatusSet).join(",");
+
+  const taskVendor = uiOwnerType === "externe" ? String(task.vendor || "").trim() : "";
+  const taskInternal = uiOwnerType === "interne" ? serializeInternalTechList(normalizeInternalTechList(task.internalTech || "")) : "";
+
+  return (
+    uiRoom !== normalizeInternalTech(task.roomNumber || "") ||
+    uiOwner !== normalizeOwnerValue(task.owner || "") ||
+    uiVendor !== taskVendor ||
+    uiInternal !== taskInternal ||
+    uiStart !== String(task.start || "") ||
+    uiEnd !== String(task.end || "") ||
+    uiStatus !== String(task.status || "")
+  );
+}
+
 function computeWorkloadPieSegments(tasks, rangeStart=null, rangeEnd=null){
   const ids = new Set((tasks || []).map((t)=>t.id));
   const roleByTask = new Map((tasks || []).map((t)=>[t.id, getTaskRoleKey(t)]));
@@ -5572,7 +5696,8 @@ function computeWorkloadPieSegments(tasks, rangeStart=null, rangeEnd=null){
     if(!weightedHours) return;
 
     if(role === "interne"){
-      const techName = (normalizeTimeLogInternalTech(l, role) || "INTERNE").toUpperCase();
+      const techName = normalizeTimeLogInternalTech(l, role).toUpperCase();
+      if(!techName) return;
       internalByName.set(techName, (internalByName.get(techName) || 0) + weightedHours);
     }else if(role === "rsg"){
       totalRsg += weightedHours;
@@ -9370,7 +9495,7 @@ function renderProject(){
       if(hasInternalTech) ownerVal = "INTERNE";
       else if(hasVendor) ownerVal = "EXTERNE";
     }
-    setInputValue("t_owner", ownerVal.toUpperCase()==="RSG/RI" ? "RSG" : ownerVal);
+    setInputValue("t_owner", toOwnerSelectValue(ownerVal.toUpperCase()==="RSG/RI" ? "RSG" : ownerVal));
 
     setInputValue("t_vendor", t.vendor||"");
     setInputValue("t_internal_tech_filter", "");
@@ -9392,6 +9517,7 @@ function renderProject(){
     syncTaskOwnerDependentFields();
     refreshInternalTechInputOptions(taskInternalTechs);
     setSelectedInternalTechValues(taskInternalTechs);
+    updateInternalTechFilterDisplay();
 
   }else{
 
@@ -9405,6 +9531,7 @@ function renderProject(){
     syncTaskOwnerDependentFields();
     refreshInternalTechInputOptions([]);
     setSelectedInternalTechValues([]);
+    updateInternalTechFilterDisplay();
 
   }
 
@@ -10671,6 +10798,18 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     initLoginJournalUI();
   });
   el("btnSave")?.addEventListener("click", async ()=>{
+    const currentTask = selectedProjectId && selectedTaskId
+      ? (state.tasks || []).find((x)=>x.id===selectedTaskId && x.projectId===selectedProjectId)
+      : null;
+    if(currentTask && hasPendingTaskEditorChanges(currentTask)){
+      el("btnSaveTask")?.click();
+      const refreshedTask = (state.tasks || []).find((x)=>x.id===selectedTaskId && x.projectId===selectedProjectId);
+      if(refreshedTask && hasPendingTaskEditorChanges(refreshedTask)){
+        showSaveToast("error", "Sauvegarde bloquée", "Enregistre d'abord la tâche en cours (techniciens, dates, statuts).");
+        return;
+      }
+    }
+
     const quality = collectDataQualityIssues(state);
     if(!quality.ok){
       showSaveToast("error", "Sauvegarde bloquée", formatQualityIssuesForToast(quality));
@@ -11142,36 +11281,39 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     }
 
-    t.roomNumber = normalizeInternalTech(el("t_room").value || "");
+    const nextRoomNumber = normalizeInternalTech(el("t_room").value || "");
+    const nextOwner = String(el("t_owner").value || "").trim();
+    const nextOwnerType = ownerType(nextOwner);
+    const nextVendorRaw = String(el("t_vendor").value || "").trim();
+    const nextInternalTechRaw = serializeInternalTechList(getSelectedInternalTechValues());
+    const nextInternalTechList = normalizeInternalTechList(nextInternalTechRaw || "");
 
-    t.owner      = String(el("t_owner").value || "").toUpperCase();
-
-    t.vendor     = el("t_vendor").value.trim();
-    t.internalTech = serializeInternalTechList(getSelectedInternalTechValues());
-    t.internalTechs = normalizeInternalTechList(t.internalTech || "");
-    const taskOwnerType = ownerType(t.owner);
+    const taskOwnerType = nextOwnerType;
     if(taskOwnerType === "inconnu"){
       alert("Responsable requis : choisissez INTERNE (avec technicien), RSG, RI ou PRESTATAIRE EXTERNE.");
       return;
     }
-    if(taskOwnerType === "externe" && !t.vendor){
+    if(taskOwnerType === "externe" && !nextVendorRaw){
       alert("Prestataire externe requis : renseignez le nom du prestataire.");
       return;
     }
-    if(taskOwnerType === "interne" && !normalizeInternalTechList(t.internalTech || "").length){
+    if(taskOwnerType === "interne" && !nextInternalTechList.length){
       alert("Technicien interne requis : sélectionnez au moins un technicien.");
       return;
     }
-    if(taskOwnerType !== "externe"){
-      t.vendor = "";
-    }
-    if(taskOwnerType !== "interne"){
-      t.internalTech = "";
-      t.internalTechs = [];
-    }
+    const nextVendor = taskOwnerType === "externe" ? nextVendorRaw : "";
+    const nextInternalTech = taskOwnerType === "interne" ? serializeInternalTechList(nextInternalTechList) : "";
+    const nextInternalTechs = taskOwnerType === "interne" ? nextInternalTechList : [];
+    const nextStart = unformatDate(el("t_start").value);
+    const nextEnd = end;
 
-    t.start      = unformatDate(el("t_start").value);
-    t.end        = end;
+    t.roomNumber = nextRoomNumber;
+    t.owner = nextOwner.toUpperCase();
+    t.vendor = nextVendor;
+    t.internalTech = nextInternalTech;
+    t.internalTechs = nextInternalTechs;
+    t.start = nextStart;
+    t.end = nextEnd;
 
     if(t.end && t.start && t.end < t.start){
 
@@ -12400,19 +12542,21 @@ function buildRealHoursReportForTasks(tasksInput){
       const mins = Number(l.minutes)||0;
       if(!mins) return;
       const weightedMinutes = Math.round(mins * roleHoursMultiplier(rk));
-      if(roleTotals[rk] !== undefined) roleTotals[rk] += weightedMinutes;
 
       let intervLabel = roleLabel(rk);
 
       if(isExternalTask || rk==="externe"){
+        if(roleTotals[rk] !== undefined) roleTotals[rk] += weightedMinutes;
         externalByName.set(extName, (externalByName.get(extName) || 0) + weightedMinutes);
         vendorTotals.set(extName, (vendorTotals.get(extName) || 0) + weightedMinutes);
         intervLabel = extName;
       }else{
         if(rk === "interne"){
-          const techName = normalizeTimeLogInternalTech(l, rk) || "INTERNE";
+          const techName = normalizeTimeLogInternalTech(l, rk);
+          if(!techName) return;
           intervLabel = techName.toUpperCase();
         }
+        if(roleTotals[rk] !== undefined) roleTotals[rk] += weightedMinutes;
         internalByName.set(intervLabel, (internalByName.get(intervLabel) || 0) + weightedMinutes);
       }
       const interKey = `${rk}|${intervLabel}`;
@@ -12600,9 +12744,11 @@ function buildRepartitionRowsByIntervenant(rep, includeExternal=true){
   (rep?.internalByNameRows || []).forEach(([name, mins])=>{
     const m = Number(mins) || 0;
     if(m <= 0) return;
+    const label = String(name || "").trim();
+    if(!label) return;
     rows.push({
       category: "Interne",
-      label: String(name || "INTERNE"),
+      label,
       mins: m
     });
   });
