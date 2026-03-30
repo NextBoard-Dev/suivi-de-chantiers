@@ -838,6 +838,10 @@ function normalizeTimeLogInput(input = {}) {
     field: "date",
     allowEmpty: false,
   });
+  const dayOfWeek = new Date(`${date}T00:00:00`).getDay();
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    throw new Error("La saisie des heures est interdite le samedi et le dimanche.");
+  }
 
   const role = normalizeMobileOwnerType(input.role ?? input.owner_type ?? input.owner ?? "");
   const technician = normalizeString(input.technician ?? input.tech ?? input.internal_tech ?? "", { maxLength: 140, allowEmpty: true });
@@ -860,11 +864,14 @@ function normalizeTimeLogInput(input = {}) {
   } else {
     minutes = normalizeFiniteNumber(minutesInput, {
       field: "minutes",
-      min: 0,
+      min: 1,
       max: 1440,
       decimals: 0,
       allowEmpty: false,
     });
+  }
+  if (!Number.isFinite(minutes) || minutes <= 0) {
+    throw new Error("La saisie doit etre strictement superieure a 0 minute.");
   }
 
   return {
@@ -879,6 +886,54 @@ function normalizeTimeLogInput(input = {}) {
     hours: Math.round((minutes / 60) * 100) / 100,
     note: normalizeString(input.note ?? input.comment ?? "", { maxLength: 500, allowEmpty: true }),
   };
+}
+
+function normalizeCsvNames(value = "") {
+  return String(value || "")
+    .split(",")
+    .map((item) => normalizeTechKey(item))
+    .filter(Boolean);
+}
+
+function validateTimeLogAgainstTask(normalized = {}, task = null) {
+  if (!task) throw new Error("Tache introuvable pour la saisie d'heures.");
+  const taskProjectId = toStringId(task.project_id ?? task.projectId ?? task.chantier_id);
+  if (taskProjectId && normalized.project_id && taskProjectId !== normalized.project_id) {
+    throw new Error("Incoherence projet/tache: saisie refusee.");
+  }
+  const d = pickDate(normalized.date);
+  const start = pickDate(task.start_date ?? task.start ?? "");
+  const end = pickDate(task.end_date ?? task.end ?? "");
+  if (start && d < start) throw new Error("Date hors periode de la tache.");
+  if (end && d > end) throw new Error("Date hors periode de la tache.");
+
+  const expectedOwner = normalizeMobileOwnerType(task.owner_type ?? task.owner ?? "");
+  const actualOwner = normalizeMobileOwnerType(normalized.role ?? normalized.owner_type ?? normalized.owner ?? "");
+  if (expectedOwner && actualOwner && expectedOwner !== actualOwner) {
+    throw new Error("Intervenant incoherent avec la tache: saisie refusee.");
+  }
+
+  if (expectedOwner === "INTERNE") {
+    const tech = normalizeTechKey(normalized.technician || "");
+    if (!tech) throw new Error("Nom technicien interne obligatoire.");
+    const allowed = new Set(normalizeCsvNames(task.internal_tech ?? task.internalTech ?? ""));
+    if (allowed.size && !allowed.has(tech)) {
+      throw new Error("Technicien non autorise pour cette tache.");
+    }
+  }
+  if (expectedOwner === "Prestataire externe") {
+    const vendor = normalizeTechKey(normalized.vendor || "");
+    if (!vendor) throw new Error("Nom prestataire externe obligatoire.");
+    const expectedVendor = normalizeTechKey(task.vendor || "");
+    if (expectedVendor && vendor !== expectedVendor) {
+      throw new Error("Prestataire incoherent avec la tache.");
+    }
+  }
+  if (expectedOwner === "RSG" || expectedOwner === "RI") {
+    if (normalizeTechKey(normalized.technician || "") || normalizeTechKey(normalized.vendor || "")) {
+      throw new Error("Pas de nom technicien/prestataire attendu pour RI/RSG.");
+    }
+  }
 }
 
 function buildTimeLogIdentityKey(input = {}) {
@@ -1301,6 +1356,15 @@ export const dataClient = {
       saveForTask: async (input) => {
         assertTimeLogWriteAllowed();
         const normalized = normalizeTimeLogInput(input);
+        const taskRows = await fetchTasks({ id: normalized.task_id });
+        const taskRef = Array.isArray(taskRows) ? taskRows[0] : null;
+        validateTimeLogAgainstTask(normalized, taskRef);
+        normalized.project_id = toStringId(taskRef?.project_id || normalized.project_id);
+        normalized.role = normalizeMobileOwnerType(taskRef?.owner_type ?? normalized.role);
+        normalized.role_key = roleKeyFromOwnerType(normalized.role, {
+          technician: normalized.technician,
+          vendor: normalized.vendor,
+        });
         const identity = buildTimeLogIdentityKey(normalized);
         const baseUpdatePayload = timeLogPayloadForWrite(normalized, { includeCreatedDate: false });
         const addedMinutes = toLogMinutes(normalized.minutes);

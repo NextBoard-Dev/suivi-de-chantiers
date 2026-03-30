@@ -3491,14 +3491,18 @@ function normalizeState(raw){
     const expectedRole = getTaskRoleKey(task);
     const actualRole = normalizeTimeLogRole(fixed);
     if(expectedRole && actualRole !== expectedRole){
-      fixed.roleKey = expectedRole;
-      fixed.role = String(expectedRole).toUpperCase();
+      orphanBuffer.push(fixed);
+      return;
     }
     if(expectedRole !== "interne"){
       fixed.internalTech = "";
     }else{
       const techRaw = normalizeTimeLogInternalTech(fixed, expectedRole);
       fixed.internalTech = canonicalizeInternalTechForTask(techRaw, task);
+      if(!fixed.internalTech){
+        orphanBuffer.push(fixed);
+        return;
+      }
     }
     keptLogs.push(fixed);
   });
@@ -3518,13 +3522,17 @@ function normalizeState(raw){
       migratedLogs.push(l);
       return;
     }
-    migratedLogs.push(l);
+    orphanBuffer.push(l);
   });
 
   const dedupMap = new Map();
   migratedLogs.forEach(l=>{
     const rk = normalizeTimeLogRole(l);
     const techKey = normalizeTimeLogInternalTech(l, rk);
+    if(rk === "interne" && !techKey){
+      orphanBuffer.push(l);
+      return;
+    }
     const key = buildTimeLogKey(l.taskId, l.date, rk, techKey);
     const prev = dedupMap.get(key);
     if(!prev){
@@ -4540,7 +4548,12 @@ function saveState(opts={}){
 
     const skipSupabase = !!opts.skipSupabase || _suppressSupabaseSave;
     if(!skipSupabase){
-      try{ if(window.saveAppStateToSupabase) window.saveAppStateToSupabase(normalized); }catch(e){ softCatch(e); }
+      try{
+        if(window.saveAppStateToSupabase){
+          const cloudPayload = buildSmartphoneCompatState(normalized);
+          window.saveAppStateToSupabase(cloudPayload);
+        }
+      }catch(e){ softCatch(e); }
     }
 
   }catch(e){
@@ -7771,6 +7784,81 @@ const roleLabel = window.roleLabel || ((roleKey)=>{
   if(roleKey==="externe") return "EXTERNE";
   return "INTERNE";
 });
+function smartphoneOwnerTypeFromRoleKey(roleKey){
+  if(roleKey === "rsg") return "RSG";
+  if(roleKey === "ri") return "RI";
+  if(roleKey === "externe") return "Prestataire externe";
+  return "INTERNE";
+}
+function buildSmartphoneCompatState(sourceState){
+  const safeState = sourceState || { projects:[], tasks:[], ui:{}, timeLogs:[] };
+  const tasksSrc = Array.isArray(safeState.tasks) ? safeState.tasks : [];
+  const logsSrc = Array.isArray(safeState.timeLogs) ? safeState.timeLogs : [];
+  const tasksById = new Map(tasksSrc.map((t)=>[String(t?.id || ""), t]));
+
+  const tasks = tasksSrc.map((t)=>{
+    const roleKey = getTaskRoleKey(t);
+    const ownerType = smartphoneOwnerTypeFromRoleKey(roleKey);
+    const internalTechList = dedupInternalTechs(normalizeInternalTechList(t?.internalTech || ""));
+    const internalTechCsv = internalTechList.join(", ");
+    return {
+      ...t,
+      project_id: String(t?.projectId || ""),
+      description: String(t?.roomNumber || ""),
+      owner_type: ownerType,
+      owner: ownerType === "Prestataire externe"
+        ? String(t?.vendor || "").trim()
+        : (ownerType === "INTERNE" ? (internalTechCsv || "INTERNE") : ownerType),
+      internal_tech: internalTechCsv,
+      internal_techs: internalTechList,
+      start_date: String(t?.start || ""),
+      end_date: String(t?.end || ""),
+      statuses: String(t?.status || "").split(",").map((s)=>String(s || "").trim()).filter(Boolean)
+    };
+  });
+
+  const timeLogs = logsSrc
+    .filter((l)=>l && l.taskId && l.date)
+    .map((l)=>{
+      const task = tasksById.get(String(l.taskId || "")) || null;
+      const roleKey = normalizeTimeLogRole(l);
+      const ownerType = smartphoneOwnerTypeFromRoleKey(roleKey);
+      const dateKey = String(l.date || "").slice(0,10);
+      const minutes = Number.isFinite(+l.minutes) ? Math.max(0, Math.round(+l.minutes)) : 0;
+      const techName = roleKey === "interne"
+        ? canonicalizeInternalTechForTask(normalizeTimeLogInternalTech(l, roleKey), task)
+        : "";
+      const vendorName = roleKey === "externe"
+        ? String(task?.vendor || "").trim()
+        : "";
+      const intervenantLabel = techName || vendorName || roleLabel(roleKey);
+      return {
+        ...l,
+        task_id: String(l.taskId || ""),
+        project_id: String(task?.projectId || l.projectId || ""),
+        date_key: dateKey,
+        day: dateKey,
+        log_date: dateKey,
+        role_key: roleKey,
+        owner_type: ownerType,
+        owner: ownerType,
+        intervenant_label: intervenantLabel,
+        technician: techName,
+        tech: techName,
+        internal_tech: techName,
+        vendor: vendorName,
+        minutes,
+        hours: Math.round((minutes / 60) * 100) / 100,
+        comment: String(l.note || "")
+      };
+    });
+
+  return {
+    ...safeState,
+    tasks,
+    timeLogs
+  };
+}
 function getCanonicalTimeLogs(){
   const logs = getTimeLogs();
   const map = new Map(); // taskId|date|roleKey|internalTech -> merged log
