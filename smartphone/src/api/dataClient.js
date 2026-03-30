@@ -384,35 +384,9 @@ function buildInternalTechAllowBySite(rows = []) {
 }
 
 function sanitizeTaskInternalTechBySite(task, internalTechAllowBySite) {
-  if (!task || task.owner_type !== "INTERNE") return task;
-  if (!(internalTechAllowBySite instanceof Map)) return task;
-
-  const names = splitInternalTechList(task.internal_tech);
-  if (!names.length) return task;
-
-  const siteKey = normalizeTechKey(task.site || "");
-  const siteSet = internalTechAllowBySite.get(siteKey) || new Set();
-  const globalSet = internalTechAllowBySite.get("") || new Set();
-  const hasRules = siteSet.size > 0 || globalSet.size > 0;
-  if (!hasRules) return task;
-
-  const kept = names.filter((name) => {
-    const key = normalizeTechKey(name);
-    return !!key && (siteSet.has(key) || globalSet.has(key));
-  });
-
-  // Regle stricte: si aucun technicien ne matche le site, on vide la valeur.
-  if (!kept.length) {
-    return {
-      ...task,
-      internal_tech: "",
-    };
-  }
-
-  return {
-    ...task,
-    internal_tech: kept.join(", "),
-  };
+  // Source de verite = tache Supabase/PC.
+  // Ne jamais alterer les noms internes dans l'UI smartphone.
+  return task;
 }
 
 function assertProjectWriteAllowed() {

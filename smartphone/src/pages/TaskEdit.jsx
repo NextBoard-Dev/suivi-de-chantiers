@@ -33,6 +33,27 @@ function minutesToHoursDecimalLabel(minutesValue) {
   return `${String(hours).replace(".", ",")} h`;
 }
 
+function defaultIntervenantByOwnerType(ownerType, internalTech, vendor) {
+  const type = String(ownerType || "").trim();
+  if (type === "INTERNE") return String(internalTech || "").trim();
+  if (type === "Prestataire externe") return String(vendor || "").trim();
+  if (type === "RSG" || type === "RI") return type;
+  return "";
+}
+
+function resolveIntervenantLabel(log = {}) {
+  const tech = String(log?.technician || log?.internal_tech || "").trim();
+  const vendor = String(log?.vendor || "").trim();
+  const rawRole = String(log?.role || "").trim().toUpperCase();
+  const roleKey = String(log?.role_key || "").trim().toLowerCase();
+  if (tech && tech.toUpperCase() !== "INTERNE") return tech;
+  if (vendor && vendor.toUpperCase() !== "EXTERNE" && vendor.toUpperCase() !== "PRESTATAIRE EXTERNE") return vendor;
+  if (rawRole === "RSG" || rawRole === "RI") return rawRole;
+  if (roleKey === "rsg") return "RSG";
+  if (roleKey === "ri") return "RI";
+  return "Intervenant non precise";
+}
+
 function mapStrictTimeLogRow(row = {}) {
   const minutesRaw = Number(row?.minutes);
   const hoursRaw = Number(row?.hours);
@@ -91,11 +112,7 @@ export default function TaskEdit() {
 
   useEffect(() => {
     if (!form) return;
-    const defaultIntervenant =
-      (form.owner_type === "INTERNE" && form.internal_tech) ||
-      (form.owner_type === "Prestataire externe" && form.vendor) ||
-      form.owner_type ||
-      "";
+    const defaultIntervenant = defaultIntervenantByOwnerType(form.owner_type, form.internal_tech, form.vendor);
 
     setHoursForm((prev) => ({
       ...prev,
@@ -217,10 +234,31 @@ export default function TaskEdit() {
       return;
     }
 
-    const ownerType = String(form?.owner_type || "");
+    const ownerType = String(form?.owner_type || "").trim();
     const effectiveIntervenant = String(hoursForm.intervenant || "").trim();
-    const technician = ownerType === "INTERNE" ? effectiveIntervenant : "";
-    const vendor = ownerType === "Prestataire externe" ? effectiveIntervenant : "";
+    let technician = "";
+    let vendor = "";
+    if (ownerType === "INTERNE") {
+      if (!effectiveIntervenant || effectiveIntervenant.toUpperCase() === "INTERNE") {
+        toast({
+          title: "Technicien requis",
+          description: "Renseignez le nom du technicien interne.",
+          variant: "destructive",
+        });
+        return;
+      }
+      technician = effectiveIntervenant;
+    } else if (ownerType === "Prestataire externe") {
+      if (!effectiveIntervenant || effectiveIntervenant.toUpperCase() === "EXTERNE" || effectiveIntervenant.toUpperCase() === "PRESTATAIRE EXTERNE") {
+        toast({
+          title: "Prestataire requis",
+          description: "Renseignez le nom du prestataire externe.",
+          variant: "destructive",
+        });
+        return;
+      }
+      vendor = effectiveIntervenant;
+    }
 
     await saveHoursMutation.mutateAsync({
       task_id: task.id,
@@ -459,7 +497,7 @@ export default function TaskEdit() {
                     <p className="text-xs font-semibold text-foreground">{minutesToLabel(log.minutes)}</p>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    {(log.technician || log.vendor || log.role || "Intervenant non precise")}
+                    {resolveIntervenantLabel(log)}
                   </p>
                   {log.note ? <p className="text-[11px] text-muted-foreground">{log.note}</p> : null}
                 </div>
