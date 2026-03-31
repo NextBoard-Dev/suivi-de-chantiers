@@ -125,3 +125,25 @@ Ce mode est obligatoire pour toutes les interventions futures :
 4. Vérifier l’impact avant/après chaque patch.
 5. Aucune refactorisation globale sans demande explicite.
 6. Fournir une phrase de commit à chaque intervention.
+
+---
+
+# Rapport de chantier (règle officielle)
+
+Source des données :
+
+- utiliser uniquement `state_json` Supabase (`app_states`)
+- ne pas utiliser le JSON local pour établir un rapport
+
+Format de sortie obligatoire :
+
+1. nom du chantier en première ligne (MAJUSCULES)
+2. puis une ligne par intervenant :
+`ROLE | NOM : X log(s), Y min`
+
+Couverture obligatoire :
+
+- inclure tous les intervenants ayant des logs
+- inclure aussi les intervenants affectés aux tâches avec `0 log(s)` :
+`INTERNE` (techniciens assignés) et `EXTERNE` (prestataires assignés)
+- `RI` et `RSG` sont toujours affichés selon les logs présents

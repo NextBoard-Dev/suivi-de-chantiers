@@ -232,6 +232,28 @@ window.saveAppStateToSupabase = async function(stateObj){
 
 
   try{
+    const { data: remoteRow, error: remoteError } = await sb
+      .from(SUPABASE_TABLE)
+      .select("updated_at")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    if(remoteError){
+      console.warn("Supabase pre-save check error", remoteError);
+      showSaveToast("error", "Sauvegarde cloud bloquée", "Contrôle version cloud impossible. Recharge puis réessaie.");
+      return false;
+    }
+    const remoteUpdatedAt = String(remoteRow?.updated_at || "").trim();
+    const localKnownUpdatedAt = String(_lastCloudStateUpdatedAt || "").trim();
+    if(remoteUpdatedAt && !localKnownUpdatedAt){
+      showSaveToast("error", "Sauvegarde cloud bloquée", "Version cloud non synchronisée localement. Recharge la page.");
+      return false;
+    }
+    const remoteTs = remoteUpdatedAt ? new Date(remoteUpdatedAt).getTime() : 0;
+    const localTs = localKnownUpdatedAt ? new Date(localKnownUpdatedAt).getTime() : 0;
+    if(remoteTs && localTs && remoteTs > (localTs + 1000)){
+      showSaveToast("error", "Sauvegarde cloud bloquée", "Version cloud plus récente détectée. Recharge la page.");
+      return false;
+    }
 
     const payload = {
 
@@ -246,6 +268,7 @@ window.saveAppStateToSupabase = async function(stateObj){
     const { error } = await sb.from(SUPABASE_TABLE).upsert(payload, { onConflict: "user_id" });
 
     if(error){ console.warn("Supabase upsert error", error); return false; }
+    _lastCloudStateUpdatedAt = String(payload.updated_at || "");
 
     return true;
 
@@ -775,6 +798,7 @@ window.loadAppStateFromSupabase = async function(){
     if(error){ console.warn("Supabase select error", error); return false; }
 
     if(!data || !data.state_json) return false;
+    _lastCloudStateUpdatedAt = String(data.updated_at || "").trim();
 
 
 
@@ -4155,6 +4179,7 @@ let _lastDataQualityReport = null;
 let _lastCloudAlignmentReport = null;
 let _lastStateLoadSource = "inconnu";
 let _supabaseOwnerFallbackCount = 0;
+let _lastCloudStateUpdatedAt = "";
 
 function stateLoadSourceLabel(src){
   const k = String(src || "").toLowerCase();
