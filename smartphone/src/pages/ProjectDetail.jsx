@@ -63,6 +63,10 @@ export default function ProjectDetail() {
     () => (Array.isArray(timeLogs) ? timeLogs.filter(Boolean) : []),
     [timeLogs]
   );
+  const missingEntriesByTask = React.useMemo(
+    () => computeMissingEntriesByTask(taskList, timeLogList),
+    [taskList, timeLogList]
+  );
 
   if (isLoading) {
     return (
@@ -97,11 +101,6 @@ export default function ProjectDetail() {
   const avgProgress = taskList.length > 0
     ? Math.round(taskList.reduce((sum, t) => sum + (t.progress || 0), 0) / taskList.length)
     : project.progress || 0;
-  const missingEntriesByTask = React.useMemo(
-    () => computeMissingEntriesByTask(taskList, timeLogList),
-    [taskList, timeLogList]
-  );
-
   const endDates = taskList.map((t) => t.end_date).filter(Boolean).sort();
   const finPrevue = endDates[endDates.length - 1] || project.end_date;
 
