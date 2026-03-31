@@ -10,7 +10,7 @@ function formatHoursMinutes(totalMinutes = 0) {
   return `${h} h ${m} min`;
 }
 
-export default function ProjectCard({ project, taskCount = 0, totalHoursMinutes = 0 }) {
+export default function ProjectCard({ project, taskCount = 0, totalHoursMinutes = 0, missingEntries = 0 }) {
   const progress = project.progress || 0;
   const barColor = progress >= 100 ? "bg-emerald-500" : progress > 0 ? "bg-primary" : "bg-slate-300";
 
@@ -40,6 +40,20 @@ export default function ProjectCard({ project, taskCount = 0, totalHoursMinutes 
           <Clock3 className="w-3 h-3 shrink-0" style={{ color: "#3f6170" }} />
           <span className="text-[10px] font-extrabold uppercase tracking-wide" style={{ color: "#213b48" }}>
             Total heures: {formatHoursMinutes(totalHoursMinutes)}
+          </span>
+        </div>
+        <div
+          className="mt-1 inline-flex items-center gap-1.5 px-2 py-1 rounded-md"
+          style={{
+            background: missingEntries > 0 ? "rgba(234,179,8,0.16)" : "rgba(22,163,74,0.12)",
+            border: `1px solid ${missingEntries > 0 ? "rgba(180,83,9,0.24)" : "rgba(22,163,74,0.24)"}`,
+          }}
+        >
+          <span
+            className="text-[10px] font-extrabold uppercase tracking-wide"
+            style={{ color: missingEntries > 0 ? "#92400e" : "#166534" }}
+          >
+            Heures manquantes: {missingEntries} saisie{missingEntries > 1 ? "s" : ""}
           </span>
         </div>
       </div>

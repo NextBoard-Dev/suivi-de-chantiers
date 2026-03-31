@@ -15,6 +15,16 @@ const ownerColors = {
   "Prestataire externe": "#d97706",
 };
 
+function parseDateSafe(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  const iso = parseISO(raw);
+  if (!Number.isNaN(iso.getTime())) return iso;
+  const native = new Date(raw);
+  if (!Number.isNaN(native.getTime())) return native;
+  return null;
+}
+
 export default function MobileGantt({ tasks = [], showLabels = true }) {
   const scrollRef = useRef(null);
 
@@ -22,7 +32,13 @@ export default function MobileGantt({ tasks = [], showLabels = true }) {
     if (!tasks.length) return { weeks: [], rows: [], minDate: null };
 
     const validTasks = tasks
-      .filter((t) => t.start_date && t.end_date)
+      .map((t) => {
+        const start = parseDateSafe(t.start_date);
+        const end = parseDateSafe(t.end_date);
+        if (!start || !end) return null;
+        return { ...t, _startDate: start, _endDate: end };
+      })
+      .filter(Boolean)
       .sort((a, b) => {
         const startCmp = String(a.start_date || "").localeCompare(String(b.start_date || ""));
         if (startCmp !== 0) return startCmp;
@@ -32,12 +48,12 @@ export default function MobileGantt({ tasks = [], showLabels = true }) {
       });
     if (!validTasks.length) return { weeks: [], rows: [], minDate: null };
 
-    let earliest = parseISO(validTasks[0].start_date);
-    let latest = parseISO(validTasks[0].end_date);
+    let earliest = validTasks[0]._startDate;
+    let latest = validTasks[0]._endDate;
 
     validTasks.forEach((t) => {
-      const s = parseISO(t.start_date);
-      const e = parseISO(t.end_date);
+      const s = t._startDate;
+      const e = t._endDate;
       if (s < earliest) earliest = s;
       if (e > latest) latest = e;
     });
@@ -47,8 +63,8 @@ export default function MobileGantt({ tasks = [], showLabels = true }) {
     const wks = Array.from({ length: totalWeeks }, (_, i) => addWeeks(startWeek, i));
 
     const rws = validTasks.map((task) => {
-      const taskStart = parseISO(task.start_date);
-      const taskEnd = parseISO(task.end_date);
+      const taskStart = task._startDate;
+      const taskEnd = task._endDate;
       const offsetWeeks = Math.max(0, differenceInWeeks(taskStart, startWeek));
       const durationWeeks = Math.max(1, differenceInWeeks(taskEnd, taskStart) + 1);
       return { task, offsetWeeks, durationWeeks };

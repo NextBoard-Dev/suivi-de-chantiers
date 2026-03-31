@@ -42,8 +42,12 @@ function isWeekdayDate(value) {
 
 function buildWeekdayDateKeys(startDate, endDate) {
   const start = new Date(`${String(startDate || "").slice(0, 10)}T00:00:00`);
-  const end = new Date(`${String(endDate || "").slice(0, 10)}T00:00:00`);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return [];
+  const endRaw = new Date(`${String(endDate || "").slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(start.getTime())) return [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = Number.isNaN(endRaw.getTime()) ? today : new Date(Math.min(endRaw.getTime(), today.getTime()));
+  if (end < start) return [];
   const out = [];
   for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const day = d.getDay();
@@ -442,6 +446,18 @@ export default function TaskEdit() {
           </div>
           <ProgressBar value={computedProgress} className="mb-1" />
           <p className="text-[10px] text-muted-foreground">Calcule automatiquement selon les dates de la tache (meme regle que PC).</p>
+          <div className="mt-2 flex items-center justify-between rounded-md border border-border bg-muted/30 px-2 py-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground">Heures manquantes</p>
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                missingWeekdayKeys.length > 0
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-emerald-100 text-emerald-800"
+              }`}
+            >
+              {missingWeekdayKeys.length > 0 ? `${missingWeekdayKeys.length} j` : "0 j"}
+            </span>
+          </div>
           <p className={`text-[10px] ${missingWeekdayKeys.length > 0 ? "text-amber-700" : "text-emerald-700"}`}>
             {missingWeekdayKeys.length > 0
               ? `Heures manquantes: ${missingWeekdayKeys.length} jour(s) ouvre(s) sans saisie.`

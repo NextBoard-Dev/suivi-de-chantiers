@@ -5,10 +5,26 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import StatusBadge from "./StatusBadge";
 
-export default function TaskCard({ task, showProject = true, isLate = false }) {
-  const startFmt = task.start_date ? format(new Date(task.start_date), "dd MMM", { locale: fr }) : null;
-  const endFmt   = task.end_date   ? format(new Date(task.end_date),   "dd MMM", { locale: fr }) : null;
+function formatShortDateSafe(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  try {
+    return format(date, "dd MMM", { locale: fr });
+  } catch (_) {
+    return null;
+  }
+}
+
+export default function TaskCard({ task, showProject = true, isLate = false, missingEntries = 0 }) {
+  const startFmt = formatShortDateSafe(task.start_date);
+  const endFmt   = formatShortDateSafe(task.end_date);
   const progress = task.progress || 0;
+  const statusList = Array.isArray(task.statuses)
+    ? task.statuses.filter(Boolean)
+    : typeof task.statuses === "string"
+      ? task.statuses.split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
 
   const barColor =
     progress >= 100 ? "bg-emerald-500" :
@@ -22,7 +38,7 @@ export default function TaskCard({ task, showProject = true, isLate = false }) {
         <p className="text-[8px] font-bold tracking-widest uppercase text-muted-foreground truncate flex-1">
           {showProject
             ? [task.site, task.project_name].filter(Boolean).join(" · ")
-            : (task.statuses?.slice(0,2).join(" · ") || task.owner_type || "")}
+            : (statusList.slice(0, 2).join(" · ") || task.owner_type || "")}
         </p>
         {isLate
           ? <span className="flex items-center gap-0.5 text-[8px] font-bold uppercase text-red-600 bg-red-50 border border-red-200 rounded-full px-1.5 py-0.5 ml-2 shrink-0">
@@ -46,7 +62,7 @@ export default function TaskCard({ task, showProject = true, isLate = false }) {
         {task.vendor && task.owner_type === "Prestataire externe" && (
           <StatusBadge type="status" label={task.vendor} />
         )}
-        {task.statuses?.map((s, i) => <StatusBadge key={i} type="status" label={s} />)}
+        {statusList.map((s, i) => <StatusBadge key={i} type="status" label={s} />)}
       </div>
 
       {/* Progress + dates sur la même ligne */}
@@ -62,6 +78,20 @@ export default function TaskCard({ task, showProject = true, isLate = false }) {
             <Calendar className="w-2.5 h-2.5" />{startFmt || "—"}→{endFmt || "—"}
           </span>
         )}
+      </div>
+      <div
+        className="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md"
+        style={{
+          background: missingEntries > 0 ? "rgba(234,179,8,0.16)" : "rgba(22,163,74,0.12)",
+          border: `1px solid ${missingEntries > 0 ? "rgba(180,83,9,0.24)" : "rgba(22,163,74,0.24)"}`,
+        }}
+      >
+        <span
+          className="text-[9px] font-extrabold uppercase tracking-wide"
+          style={{ color: missingEntries > 0 ? "#92400e" : "#166534" }}
+        >
+          Heures manquantes: {missingEntries} saisie{missingEntries > 1 ? "s" : ""}
+        </span>
       </div>
     </Link>
   );

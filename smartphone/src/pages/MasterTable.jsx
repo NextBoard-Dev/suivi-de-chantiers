@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Search, ArrowUpDown, ChevronDown, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { computeMissingEntriesByTask } from "@/lib/missingHours";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,6 +63,10 @@ export default function MasterTable() {
   const { data: projectsList = [] } = useQuery({
     queryKey: ["projects-master-filter-sites"],
     queryFn: () => dataClient.entities.Project.list("-updated_date", 500),
+  });
+  const { data: timeLogs = [] } = useQuery({
+    queryKey: ["time-logs", "tasks-missing-master"],
+    queryFn: () => dataClient.entities.TimeLog.list("-date", 0),
   });
   const { data: sitesRef = [] } = useQuery({
     queryKey: ["sites-master-filter-ref"],
@@ -145,6 +150,10 @@ export default function MasterTable() {
   // Compteurs rapides (sur toutes les tâches, pas les filtrées)
   const lateCount       = useMemo(() => tasks.filter(isTaskLate).length, [tasks]);
   const inProgressCount = useMemo(() => tasks.filter((t) => { const p = t.progress || 0; return p > 0 && p < 100; }).length, [tasks]);
+  const missingEntriesByTask = useMemo(
+    () => computeMissingEntriesByTask(tasks, timeLogs),
+    [tasks, timeLogs]
+  );
 
   const isDefaultSort = sortBy === "site_project";
   const activeFiltersCount = Object.entries(filters).filter(([k, v]) =>
@@ -282,7 +291,7 @@ export default function MasterTable() {
       ) : (
         <div className="space-y-1.5">
           {filtered.map((task) => (
-            <TaskCard key={task.id} task={task} isLate={isTaskLate(task)} />
+            <TaskCard key={task.id} task={task} isLate={isTaskLate(task)} missingEntries={missingEntriesByTask[task.id] || 0} />
           ))}
           {filtered.length === 0 && (
             <div className="text-center py-8">

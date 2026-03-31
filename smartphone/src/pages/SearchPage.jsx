@@ -7,6 +7,7 @@ import TaskCard from "../components/common/TaskCard";
 import ProjectCard from "../components/common/ProjectCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { computeProjectHoursById } from "@/lib/projectHours";
+import { computeMissingEntriesByProject, computeMissingEntriesByTask } from "@/lib/missingHours";
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -35,6 +36,14 @@ export default function SearchPage() {
   const projectHoursById = useMemo(
     () => computeProjectHoursById(projects, tasks, timeLogs),
     [projects, tasks, timeLogs]
+  );
+  const missingEntriesByProject = useMemo(
+    () => computeMissingEntriesByProject(tasks, timeLogs),
+    [tasks, timeLogs]
+  );
+  const missingEntriesByTask = useMemo(
+    () => computeMissingEntriesByTask(tasks, timeLogs),
+    [tasks, timeLogs]
   );
 
   const q = query.toLowerCase().trim();
@@ -96,7 +105,7 @@ export default function SearchPage() {
 
           <TabsContent value="tasks" className="mt-3 space-y-2.5">
             {filteredTasks.map((task) => (
-              <TaskCard key={task.id} task={task} />
+              <TaskCard key={task.id} task={task} missingEntries={missingEntriesByTask[task.id] || 0} />
             ))}
             {filteredTasks.length === 0 && (
               <p className="text-center py-8 text-sm text-muted-foreground">
@@ -112,6 +121,7 @@ export default function SearchPage() {
                 project={project}
                 taskCount={taskCountByProject[project.id] || 0}
                 totalHoursMinutes={projectHoursById[project.id] || 0}
+                missingEntries={missingEntriesByProject[project.id] || 0}
               />
             ))}
             {filteredProjects.length === 0 && (

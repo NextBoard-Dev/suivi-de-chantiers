@@ -13,6 +13,7 @@ import ProjectDetail from './pages/ProjectDetail';
 import TaskEdit from './pages/TaskEdit';
 import GanttView from './pages/GanttView';
 import SearchPage from './pages/SearchPage';
+import RouteErrorBoundary from './components/common/RouteErrorBoundary';
 
 const isGithubPagesHost = typeof window !== "undefined" && /github\.io$/i.test(window.location.hostname);
 const AppRouter = isGithubPagesHost ? HashRouter : BrowserRouter;
@@ -47,7 +48,14 @@ const AuthenticatedApp = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/master" element={<MasterTable />} />
         <Route path="/projects" element={<ProjectsList />} />
-        <Route path="/project/:id" element={<ProjectDetail />} />
+        <Route
+          path="/project/:id"
+          element={
+            <RouteErrorBoundary>
+              <ProjectDetail />
+            </RouteErrorBoundary>
+          }
+        />
         <Route path="/task/:id" element={<TaskEdit />} />
         <Route path="/gantt" element={<GanttView />} />
         <Route path="/search" element={<SearchPage />} />

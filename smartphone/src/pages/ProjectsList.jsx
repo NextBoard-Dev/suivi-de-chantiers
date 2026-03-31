@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { computeProjectHoursById } from "@/lib/projectHours";
+import { computeMissingEntriesByProject } from "@/lib/missingHours";
 
 export default function ProjectsList() {
   const [search, setSearch] = useState("");
@@ -40,6 +41,10 @@ export default function ProjectsList() {
   const projectHoursById = useMemo(
     () => computeProjectHoursById(projects, tasks, timeLogs),
     [projects, tasks, timeLogs]
+  );
+  const missingEntriesByProject = useMemo(
+    () => computeMissingEntriesByProject(tasks, timeLogs),
+    [tasks, timeLogs]
   );
 
   const sites = useMemo(
@@ -111,6 +116,7 @@ export default function ProjectsList() {
               project={project}
               taskCount={taskCountByProject[project.id] || 0}
               totalHoursMinutes={projectHoursById[project.id] || 0}
+              missingEntries={missingEntriesByProject[project.id] || 0}
             />
           ))}
           {filtered.length === 0 && (

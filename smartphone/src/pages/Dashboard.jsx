@@ -6,6 +6,12 @@ import ProjectCard from "../components/common/ProjectCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { computeProjectHoursById } from "@/lib/projectHours";
+import { computeTaskProgressAuto } from "@/lib/businessRules";
+import { computeMissingEntriesByProject } from "@/lib/missingHours";
+
+function toIsoDateKey(value) {
+  return String(value || "").slice(0, 10);
+}
 
 export default function Dashboard() {
   const { data: projects = [], isLoading: loadingProjects } = useQuery({
@@ -24,11 +30,20 @@ export default function Dashboard() {
 
   const isLoading = loadingProjects || loadingTasks || loadingLogs;
 
-  const totalTasks      = tasks.length;
-  const completedTasks  = tasks.filter((t) => t.progress >= 100).length;
-  const inProgressTasks = tasks.filter((t) => t.progress > 0 && t.progress < 100).length;
-  const overdueTasks    = tasks.filter((t) => {
-    if (!t.end_date || t.progress >= 100) return false;
+  const tasksWithComputedProgress = React.useMemo(
+    () =>
+      (tasks || []).map((t) => ({
+        ...t,
+        progress_auto: computeTaskProgressAuto(t?.start_date || "", t?.end_date || ""),
+      })),
+    [tasks]
+  );
+
+  const totalTasks      = tasksWithComputedProgress.length;
+  const completedTasks  = tasksWithComputedProgress.filter((t) => t.progress_auto >= 100).length;
+  const inProgressTasks = tasksWithComputedProgress.filter((t) => t.progress_auto > 0 && t.progress_auto < 100).length;
+  const overdueTasks    = tasksWithComputedProgress.filter((t) => {
+    if (!t.end_date || t.progress_auto >= 100) return false;
     return new Date(t.end_date) < new Date();
   });
 
@@ -48,6 +63,49 @@ export default function Dashboard() {
     () => computeProjectHoursById(projects, tasks, timeLogs),
     [projects, tasks, timeLogs]
   );
+  const missingEntriesByProject = React.useMemo(
+    () => computeMissingEntriesByProject(tasks, timeLogs),
+    [tasks, timeLogs]
+  );
+  const missingHoursKpi = React.useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayKey = today.toISOString().slice(0, 10);
+    const day = today.getDay();
+    const isWeekdayToday = day >= 1 && day <= 5;
+    if (!isWeekdayToday) {
+      return { tasksWithMissing: 0, missingEntries: 0 };
+    }
+
+    const logsTodayByTask = new Set();
+    (timeLogs || []).forEach((log) => {
+      const taskId = String(log?.task_id || log?.taskId || "");
+      const dateKey = toIsoDateKey(log?.date);
+      const minutes = Number.isFinite(Number(log?.minutes)) ? Number(log.minutes) : 0;
+      if (!taskId || dateKey !== todayKey || minutes <= 0) return;
+      logsTodayByTask.add(taskId);
+    });
+
+    let tasksWithMissing = 0;
+    let missingEntries = 0;
+
+    (tasks || []).forEach((task) => {
+      const progressAuto = computeTaskProgressAuto(task?.start_date || "", task?.end_date || "");
+      if (progressAuto >= 100) return;
+      const startKey = toIsoDateKey(task?.start_date);
+      const endKey = toIsoDateKey(task?.end_date);
+      if (!startKey || !endKey) return;
+      if (todayKey < startKey || todayKey > endKey) return;
+      const taskId = String(task?.id || "");
+      if (!taskId) return;
+      if (!logsTodayByTask.has(taskId)) {
+        tasksWithMissing += 1;
+        missingEntries += 1;
+      }
+    });
+
+    return { tasksWithMissing, missingEntries };
+  }, [tasks, timeLogs]);
 
   if (isLoading) {
     return (
@@ -94,6 +152,29 @@ export default function Dashboard() {
           <p className="text-xl font-black leading-none" style={{ color: "#b45309" }}>{inProgressTasks}</p>
           <p className="text-[8px] font-bold tracking-widest uppercase" style={{ color: "#556d79" }}>EN COURS</p>
           <p className="text-[8px] font-semibold" style={{ color: "#556d79" }}>{overdueTasks.length} en retard</p>
+        </div>
+      </div>
+
+      <div className="px-3 pb-1.5" style={{ background: "rgba(217,226,231,0.4)" }}>
+        <div
+          className="flex items-center justify-between rounded-xl px-3 py-2"
+          style={{
+            background: missingHoursKpi.tasksWithMissing > 0 ? "rgba(234,179,8,0.12)" : "rgba(111,157,120,0.14)",
+            border: `1px solid ${missingHoursKpi.tasksWithMissing > 0 ? "rgba(180,83,9,0.25)" : "rgba(22,163,74,0.25)"}`,
+          }}
+        >
+          <p className="text-[9px] font-bold tracking-widest uppercase" style={{ color: "#556d79" }}>
+            HEURES MANQUANTES
+          </p>
+          <span
+            className="text-[10px] font-bold rounded-full px-2 py-0.5"
+            style={{
+              color: missingHoursKpi.tasksWithMissing > 0 ? "#92400e" : "#166534",
+              background: missingHoursKpi.tasksWithMissing > 0 ? "rgba(254,243,199,0.9)" : "rgba(220,252,231,0.9)",
+            }}
+          >
+            {missingHoursKpi.tasksWithMissing} tache(s) · {missingHoursKpi.missingEntries} saisie(s)
+          </span>
         </div>
       </div>
 
@@ -165,6 +246,7 @@ export default function Dashboard() {
               project={project}
               taskCount={taskCountByProject[project.id] || 0}
               totalHoursMinutes={projectHoursById[project.id] || 0}
+              missingEntries={missingEntriesByProject[project.id] || 0}
             />
           ))}
           {recentProjects.length === 0 && (
