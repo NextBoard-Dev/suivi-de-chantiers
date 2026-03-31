@@ -521,11 +521,11 @@ function _foldTimeLogText(value){
 
 function _normalizeOwnerKeyForTimeLog(value){
   const raw = _foldTimeLogText(value);
-  if(raw.includes("RSG RI") || raw.includes("RSG/RI")) return "rsg";
-  if(raw.includes("RSG")) return "rsg";
-  if(raw.includes("RI")) return "ri";
-  if(raw.includes("EXTERNE") || raw.includes("PRESTATAIRE")) return "externe";
-  if(raw.includes("INTERNE")) return "interne";
+  if(raw === "RSG RI" || raw === "RSG/RI") return "rsg";
+  if(raw === "RSG") return "rsg";
+  if(raw === "RI") return "ri";
+  if(raw === "EXTERNE" || raw === "PRESTATAIRE EXTERNE" || raw === "PRESTATAIRE") return "externe";
+  if(raw === "INTERNE") return "interne";
   return "";
 }
 
@@ -2631,23 +2631,22 @@ const dedupDescriptions = (arr=[])=>{
 };
 
 const ownerType = (o="")=>{
+  const k = String(o || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .trim();
 
-  const k=o.toLowerCase();
+  if(!k) return "inconnu";
+  if(k === "RSG/RI" || k === "RSG RI") return "rsg";
+  if(k === "RSG") return "rsg";
+  if(k === "RI") return "ri";
 
-  if(k.includes("rsg/ri")) return "rsg";
-  if(k.includes("rsg")) return "rsg";
-  if(k.includes("ri")) return "ri";
-
-  const hasInt = k.includes("interne");
-
-  const hasExt = k.includes("externe");
-
-  // Plus de catégorie "mixte" : on priorise "interne" si exclusif, sinon "externe".
+  const hasInt = /\bINTERNE\b/.test(k);
+  const hasExt = /\bEXTERNE\b/.test(k) || /\bPRESTATAIRE\b/.test(k);
 
   if(hasInt && !hasExt) return "interne";
-
   if(hasExt) return "externe";
-
   return "inconnu";
 
 };
@@ -3520,20 +3519,8 @@ function normalizeState(raw){
         ownerNormType = fallbackType;
       }
     }
-    if(ownerNormType === "interne" && !taskInternalCanonical.length && ownerRaw){
-      const ownerLooksLikeGeneric = ownerType(ownerRaw) !== "inconnu";
-      if(!ownerLooksLikeGeneric){
-        taskInternalCanonical = dedupInternalTechs(normalizeInternalTechList(ownerRaw));
-      }
-    }
     let internalTechNorm = serializeInternalTechList(taskInternalCanonical);
     let internalTechsNorm = dedupInternalTechs(taskInternalCanonical);
-    if(ownerNormType === "externe" && !vendorNorm && ownerRaw && ownerType(ownerRaw) === "inconnu"){
-      vendorNorm = ownerRaw;
-    }
-    if(ownerNormType === "externe" && !vendorNorm){
-      vendorNorm = "PRESTATAIRE NON RENSEIGNE";
-    }
     if(ownerNormType !== "externe"){
       vendorNorm = "";
     }
