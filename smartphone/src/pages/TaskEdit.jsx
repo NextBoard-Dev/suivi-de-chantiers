@@ -2,12 +2,14 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { dataClient } from "@/api/dataClient";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Info } from "lucide-react";
+import { ArrowLeft, Info, Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import StatusBadge from "../components/common/StatusBadge";
 import ProgressBar from "../components/common/ProgressBar";
 import { computeTaskProgressAuto } from "@/lib/businessRules";
@@ -15,7 +17,11 @@ import { toast } from "@/components/ui/use-toast";
 import { supabase, supabaseConfig } from "@/api/supabaseClient";
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function minutesToLabel(minutesValue) {
@@ -51,9 +57,25 @@ function buildWeekdayDateKeys(startDate, endDate) {
   const out = [];
   for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const day = d.getDay();
-    if (day >= 1 && day <= 5) out.push(d.toISOString().slice(0, 10));
+    if (day >= 1 && day <= 5) out.push(dateToIsoKey(d));
   }
   return out;
+}
+
+function parseIsoDateSafe(value) {
+  const iso = String(value || "").slice(0, 10);
+  if (!iso) return null;
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
+}
+
+function dateToIsoKey(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 function defaultIntervenantByOwnerType(ownerType, internalTech, vendor) {
@@ -204,11 +226,20 @@ export default function TaskEdit() {
     if (!expected.length) return [];
     const filled = new Set(
       displayTaskLogs
+        .filter((log) => Number.isFinite(Number(log?.minutes)) && Number(log.minutes) > 0)
         .map((log) => String(log?.date || "").slice(0, 10))
         .filter((dateKey) => dateKey && isWeekdayDate(dateKey))
     );
     return expected.filter((dateKey) => !filled.has(dateKey));
   }, [form?.start_date, form?.end_date, displayTaskLogs]);
+  const missingWeekdayDates = useMemo(
+    () => missingWeekdayKeys.map(parseIsoDateSafe).filter(Boolean),
+    [missingWeekdayKeys]
+  );
+  const selectedHoursDate = useMemo(
+    () => parseIsoDateSafe(hoursForm.date),
+    [hoursForm.date]
+  );
 
   const saveHoursMutation = useMutation({
     mutationFn: async (payload) => dataClient.entities.TimeLog.saveForTask(payload),
@@ -481,12 +512,51 @@ export default function TaskEdit() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-xs font-semibold text-muted-foreground">Date</Label>
-            <Input
-              type="date"
-              value={hoursForm.date}
-              onChange={(e) => setHoursForm((prev) => ({ ...prev, date: e.target.value }))}
-              className="mt-1.5 h-11"
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-1.5 h-11 w-full justify-between px-3 font-normal"
+                >
+                  <span>{selectedHoursDate ? selectedHoursDate.toLocaleDateString("fr-FR") : "Choisir une date"}</span>
+                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedHoursDate || undefined}
+                  onSelect={(date) => {
+                    const iso = dateToIsoKey(date);
+                    if (!iso) return;
+                    setHoursForm((prev) => ({ ...prev, date: iso }));
+                  }}
+                  onDayClick={(date, modifiers) => {
+                    if (modifiers?.disabled) return;
+                    const iso = dateToIsoKey(date);
+                    if (!iso) return;
+                    setHoursForm((prev) => ({ ...prev, date: iso }));
+                  }}
+                  disabled={(date) => {
+                    const iso = dateToIsoKey(date);
+                    if (!iso) return true;
+                    const d = parseIsoDateSafe(iso);
+                    const day = d ? d.getDay() : 0;
+                    if (day === 0 || day === 6) return true;
+                    return iso > todayIso();
+                  }}
+                  modifiers={{ missing: missingWeekdayDates }}
+                  modifiersClassNames={{
+                    missing: "bg-amber-200 text-amber-900 font-bold ring-1 ring-amber-400",
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            <p className="mt-1 text-[10px] text-amber-700">
+              Jours ambre = jours ouvrés manquants pour cette tâche.
+            </p>
           </div>
           <div>
             <Label className="text-xs font-semibold text-muted-foreground">Heures</Label>
