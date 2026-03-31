@@ -71,7 +71,7 @@ const SUPABASE_USERS_TABLE = "dashboard_users";
 const SUPABASE_LOGINS_TABLE = "dashboard_logins";
 const SUPABASE_SESSIONS_TABLE = "dashboard_sessions";
 const FEATURE_SINGLE_SOURCE_STATEJSON_KEY = "feature_single_source_statejson_v1";
-const FEATURE_SINGLE_SOURCE_STATEJSON = (() => {
+function isSingleSourceReadMode(){
   try{
     const raw = localStorage.getItem(FEATURE_SINGLE_SOURCE_STATEJSON_KEY);
     // Par defaut: ON (lecture unique state_json).
@@ -79,7 +79,7 @@ const FEATURE_SINGLE_SOURCE_STATEJSON = (() => {
   }catch(e){
     return true;
   }
-})();
+}
 window.setSingleSourceReadMode = function(enabled){
   try{
     localStorage.setItem(FEATURE_SINGLE_SOURCE_STATEJSON_KEY, enabled ? "1" : "0");
@@ -88,6 +88,17 @@ window.setSingleSourceReadMode = function(enabled){
     return false;
   }
 };
+function refreshSingleSourceToggleButton(){
+  const btn = el("btnToggleSingleSource");
+  if(!btn) return;
+  const enabled = isSingleSourceReadMode();
+  btn.textContent = `Lecture unique: ${enabled ? "ON" : "OFF"}`;
+  btn.title = enabled
+    ? "Mode stable (state_json seul)"
+    : "Mode legacy (fusion state_json + tables)";
+  btn.classList.toggle("btn-primary", enabled);
+  btn.classList.toggle("btn-ghost", !enabled);
+}
 
 
 // Auto-login (pour ne PAS utiliser la console)
@@ -668,9 +679,12 @@ function _mapSupabaseRowToStateTask(row, fallbackTask={}){
     if(rawVendor){
       ownerValue = "EXTERNE";
       ownerKind = "externe";
-    }else{
+    }else if(internalTechs.length > 0){
       ownerValue = "INTERNE";
       ownerKind = "interne";
+    }else{
+      ownerValue = "RI";
+      ownerKind = "ri";
     }
     _supabaseOwnerFallbackCount += 1;
     console.warn("Supabase task owner invalide corrige", { taskId: id, ownerSource: row?.owner_type || row?.owner || "", ownerFixed: ownerValue });
@@ -775,7 +789,7 @@ window.loadAppStateFromSupabase = async function(){
 
 
     // Mode production stable: lecture unique state_json (sans fusion).
-    if(FEATURE_SINGLE_SOURCE_STATEJSON){
+    if(isSingleSourceReadMode()){
       state = normalizeState(data.state_json || {});
     }else{
       const supabaseTimeLogsRows = await _loadSupabaseTimeLogsRows(sb);
@@ -1527,6 +1541,9 @@ function updateRoleUI(){
   const role = getCurrentRole();
   const cfgBtn = el("btnConfig");
   if(cfgBtn) cfgBtn.style.display = (role==="admin") ? "inline-flex" : "none";
+  const sourceBtn = el("btnToggleSingleSource");
+  if(sourceBtn) sourceBtn.style.display = (role==="admin") ? "inline-flex" : "none";
+  refreshSingleSourceToggleButton();
   const topUser = el("topbarUser");
   if(topUser){
     const name = sessionStorage.getItem("current_user") || "Invité";
@@ -1558,6 +1575,11 @@ function applyRoleAccess(){
   if(cfgBtn){
     cfgBtn.style.display = role==="admin" ? "inline-flex" : "none";
   }
+  const sourceBtn = el("btnToggleSingleSource");
+  if(sourceBtn){
+    sourceBtn.style.display = role==="admin" ? "inline-flex" : "none";
+  }
+  refreshSingleSourceToggleButton();
   const switchBtn = el("btnSwitchUser");
   if(switchBtn){
     switchBtn.style.display = "inline-flex";
@@ -10663,6 +10685,19 @@ function bind(){
   el("btnConfig")?.addEventListener("click", ()=>{
     if(getCurrentRole()!=="admin") return;
     openConfigModal();
+  });
+  el("btnToggleSingleSource")?.addEventListener("click", ()=>{
+    if(getCurrentRole()!=="admin") return;
+    const current = isSingleSourceReadMode();
+    const next = !current;
+    const ok = window.setSingleSourceReadMode(next);
+    if(!ok){
+      showSaveToast("error", "Mode lecture", "Impossible de changer le mode.");
+      return;
+    }
+    refreshSingleSourceToggleButton();
+    showSaveToast("ok", "Mode lecture", `Lecture unique ${next ? "ON" : "OFF"} · rechargement...`);
+    setTimeout(()=>{ window.location.reload(); }, 250);
   });
   el("btnHelp")?.addEventListener("click", ()=>{
     const modal = el("helpModal");
