@@ -11495,9 +11495,40 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
       alert("Technicien interne requis : sélectionnez au moins un technicien.");
       return;
     }
-    const nextVendor = taskOwnerType === "externe" ? nextVendorRaw : "";
-    const nextInternalTech = taskOwnerType === "interne" ? serializeInternalTechList(nextInternalTechList) : "";
-    const nextInternalTechs = taskOwnerType === "interne" ? nextInternalTechList : [];
+    const vendorRegistry = dedupVendors(vendorsCache || []);
+    const vendorByLower = new Map(vendorRegistry.map((name)=>[String(name || "").trim().toLowerCase(), String(name || "").trim()]));
+    const internalRegistry = dedupInternalTechs((internalTechCache || []).map((name)=>normalizeInternalTech(name || "")).filter(Boolean));
+    const internalByLower = new Map(internalRegistry.map((name)=>[name.toLowerCase(), name]));
+
+    let canonicalVendor = "";
+    if(taskOwnerType === "externe"){
+      const vendorKey = nextVendorRaw.toLowerCase();
+      canonicalVendor = vendorByLower.get(vendorKey) || "";
+      if(!canonicalVendor){
+        alert("Prestataire invalide : choisissez un prestataire existant dans Configuration.");
+        return;
+      }
+    }
+
+    let canonicalInternalTechs = [];
+    if(taskOwnerType === "interne"){
+      const invalidInternal = nextInternalTechList.filter((name)=>!internalByLower.has(String(name || "").toLowerCase()));
+      if(invalidInternal.length){
+        alert("Technicien invalide : sélectionnez uniquement des techniciens existants dans Configuration.");
+        return;
+      }
+      canonicalInternalTechs = nextInternalTechList
+        .map((name)=>internalByLower.get(String(name || "").toLowerCase()) || "")
+        .filter(Boolean);
+      if(!canonicalInternalTechs.length){
+        alert("Technicien interne requis : sélectionnez au moins un technicien.");
+        return;
+      }
+    }
+
+    const nextVendor = taskOwnerType === "externe" ? canonicalVendor : "";
+    const nextInternalTech = taskOwnerType === "interne" ? serializeInternalTechList(canonicalInternalTechs) : "";
+    const nextInternalTechs = taskOwnerType === "interne" ? canonicalInternalTechs : [];
     const nextStart = unformatDate(el("t_start").value);
     const nextEnd = end;
 
