@@ -239,15 +239,9 @@ window.saveAppStateToSupabase = async function(stateObj){
       .maybeSingle();
     if(remoteError){
       console.warn("Supabase pre-save check error", remoteError);
-      showSaveToast("error", "Sauvegarde cloud bloquée", "Contrôle version cloud impossible. Recharge puis réessaie.");
-      return false;
     }
     const remoteUpdatedAt = String(remoteRow?.updated_at || "").trim();
     const localKnownUpdatedAt = String(_lastCloudStateUpdatedAt || "").trim();
-    if(remoteUpdatedAt && !localKnownUpdatedAt){
-      showSaveToast("error", "Sauvegarde cloud bloquée", "Version cloud non synchronisée localement. Recharge la page.");
-      return false;
-    }
     const remoteTs = remoteUpdatedAt ? new Date(remoteUpdatedAt).getTime() : 0;
     const localTs = localKnownUpdatedAt ? new Date(localKnownUpdatedAt).getTime() : 0;
     if(remoteTs && localTs && remoteTs > (localTs + 1000)){
