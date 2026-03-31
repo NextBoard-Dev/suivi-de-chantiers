@@ -2888,6 +2888,8 @@ function setupVendorPicker(){
   };
 
   if(!input) return;
+  input.readOnly = true;
+  input.setAttribute("aria-readonly", "true");
 
   const openList = ()=>{
 
@@ -11785,7 +11787,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     altFormat:"d/m/Y",
 
-    allowInput:true,
+    allowInput:false,
 
     locale:"fr",
 
