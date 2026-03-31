@@ -2662,6 +2662,13 @@ const normalizeOwnerValue = (o="")=>{
   if(up === "INTERNE" || up === "EQUIPE INTERNE" || up === "ÉQUIPE INTERNE") return "INTERNE";
   return raw;
 };
+const ownerTypeToCanonicalOwnerValue = (typ="")=>{
+  if(typ === "rsg") return "RSG";
+  if(typ === "ri") return "RI";
+  if(typ === "interne") return "INTERNE";
+  if(typ === "externe") return "EXTERNE";
+  return "";
+};
 
 const toOwnerSelectValue = (ownerRaw="")=>{
   const kind = ownerType(normalizeOwnerValue(ownerRaw));
@@ -3536,6 +3543,7 @@ function normalizeState(raw){
       roomNumber: normalizeInternalTech(t.roomNumber || ""),
       status: normalizeStatus(t.status),
       owner: ownerNorm,
+      owner_type: ownerTypeToCanonicalOwnerValue(ownerNormType) || ownerNorm,
       vendor: vendorNorm,
       internalTech: internalTechNorm,
       internalTechs: internalTechsNorm
@@ -11536,6 +11544,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     t.roomNumber = nextRoomNumber;
     t.owner = nextOwner.toUpperCase();
+    t.owner_type = t.owner;
     t.vendor = nextVendor;
     t.internalTech = nextInternalTech;
     t.internalTechs = nextInternalTechs;
