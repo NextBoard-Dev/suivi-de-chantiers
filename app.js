@@ -7942,32 +7942,69 @@ function getCanonicalTimeLogs(){
   const logs = getTimeLogs();
   const tasksById = new Map((state?.tasks || []).map((t)=>[String(t?.id || ""), t]));
   const map = new Map(); // taskId|date|roleKey|internalTech -> merged log
+  const getAssignedInternalTechs = (task)=>
+    dedupInternalTechs([
+      ...normalizeInternalTechList(task?.internalTech || ""),
+      ...(Array.isArray(task?.internalTechs) ? task.internalTechs : [])
+    ].map((name)=>normalizeInternalTech(name || "")).filter(Boolean));
   logs.forEach(l=>{
     if(!l || !l.taskId || !l.date) return;
     const roleKey = normalizeTimeLogRole(l);
     const task = tasksById.get(String(l.taskId || "")) || null;
-    let techKey = normalizeTimeLogInternalTech(l, roleKey);
+    const sourceMinutes = Math.max(0, Math.round(Number(l.minutes || 0)));
+    let normalizedRows = [{ internalTech:"", minutes: sourceMinutes }];
     if(roleKey === "interne"){
-      techKey = canonicalizeInternalTechForTask(techKey, task);
+      const explicitList = dedupInternalTechs([
+        ...normalizeInternalTechList(l?.internalTech || ""),
+        ...(Array.isArray(l?.internalTechs) ? l.internalTechs : [])
+      ].map((name)=>normalizeInternalTech(name || "")).filter(Boolean));
+      if(explicitList.length > 1){
+        const shares = splitMinutesAcross(sourceMinutes, explicitList.length);
+        normalizedRows = explicitList.map((tech, idx)=>({
+          internalTech: canonicalizeInternalTechForTask(tech, task) || tech,
+          minutes: shares[idx] || 0
+        }));
+      }else if(explicitList.length === 1){
+        const mapped = canonicalizeInternalTechForTask(explicitList[0], task) || explicitList[0];
+        normalizedRows = [{ internalTech:mapped, minutes: sourceMinutes }];
+      }else{
+        const direct = canonicalizeInternalTechForTask(normalizeTimeLogInternalTech(l, roleKey), task);
+        if(direct){
+          normalizedRows = [{ internalTech:direct, minutes: sourceMinutes }];
+        }else{
+          const assigned = getAssignedInternalTechs(task);
+          if(assigned.length > 1){
+            const shares = splitMinutesAcross(sourceMinutes, assigned.length);
+            normalizedRows = assigned.map((tech, idx)=>({ internalTech: tech, minutes: shares[idx] || 0 }));
+          }else if(assigned.length === 1){
+            normalizedRows = [{ internalTech:assigned[0], minutes: sourceMinutes }];
+          }else{
+            normalizedRows = [{ internalTech:"", minutes: sourceMinutes }];
+          }
+        }
+      }
     }
-    const key = buildTimeLogKey(l.taskId, l.date, roleKey, techKey);
-    const existing = map.get(key);
-    if(!existing){
-      map.set(key, { ...l });
-      return;
-    }
-    existing.minutes = Math.max(0, Math.round(Number(existing.minutes || 0) + Number(l.minutes || 0)));
-    const prevTs = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
-    const curTs = new Date(l.updatedAt || l.createdAt || 0).getTime();
-    if(curTs >= prevTs){
-      existing.updatedAt = l.updatedAt || existing.updatedAt;
-      existing.note = l.note || existing.note || "";
-      existing.userKey = l.userKey || existing.userKey || "";
-      existing.userName = l.userName || existing.userName || "";
-      existing.userEmail = l.userEmail || existing.userEmail || "";
-      existing.id = l.id || existing.id;
-    }
-    map.set(key, existing);
+    normalizedRows.forEach((row)=>{
+      const techKey = roleKey === "interne" ? normalizeInternalTech(row.internalTech || "") : "";
+      const key = buildTimeLogKey(l.taskId, l.date, roleKey, techKey);
+      const existing = map.get(key);
+      if(!existing){
+        map.set(key, { ...l, internalTech: techKey, minutes: Math.max(0, Math.round(Number(row.minutes || 0))) });
+        return;
+      }
+      existing.minutes = Math.max(0, Math.round(Number(existing.minutes || 0) + Number(row.minutes || 0)));
+      const prevTs = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+      const curTs = new Date(l.updatedAt || l.createdAt || 0).getTime();
+      if(curTs >= prevTs){
+        existing.updatedAt = l.updatedAt || existing.updatedAt;
+        existing.note = l.note || existing.note || "";
+        existing.userKey = l.userKey || existing.userKey || "";
+        existing.userName = l.userName || existing.userName || "";
+        existing.userEmail = l.userEmail || existing.userEmail || "";
+        existing.id = l.id || existing.id;
+      }
+      map.set(key, existing);
+    });
   });
   return Array.from(map.values());
 }
