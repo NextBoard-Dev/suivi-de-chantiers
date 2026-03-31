@@ -3501,7 +3501,7 @@ function normalizeState(raw){
   const normTasks = (raw.tasks||[]).map(t=>{
     const ownerTypeRaw = String(t?.owner_type || "").trim();
     const ownerRaw = String(t?.owner || "").trim();
-    let ownerNorm = normalizeOwnerValue(ownerTypeRaw || ownerRaw || "");
+    let ownerNorm = normalizeOwnerValue(ownerRaw || ownerTypeRaw || "");
     let ownerNormType = ownerType(ownerNorm);
     let vendorNorm = (t.vendor||"").toString().trim();
     const taskInternalCsv = normalizeInternalTechList(t.internalTech || t.internal_tech || "");
