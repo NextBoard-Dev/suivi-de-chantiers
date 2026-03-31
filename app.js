@@ -675,19 +675,8 @@ function _mapSupabaseRowToStateTask(row, fallbackTask={}){
     ...fallbackInternal
   ]);
   if(ownerKind === "inconnu"){
-    const rawVendor = String(row?.vendor || fallbackTask?.vendor || "").trim();
-    if(rawVendor){
-      ownerValue = "EXTERNE";
-      ownerKind = "externe";
-    }else if(internalTechs.length > 0){
-      ownerValue = "INTERNE";
-      ownerKind = "interne";
-    }else{
-      ownerValue = "RI";
-      ownerKind = "ri";
-    }
     _supabaseOwnerFallbackCount += 1;
-    console.warn("Supabase task owner invalide corrige", { taskId: id, ownerSource: row?.owner_type || row?.owner || "", ownerFixed: ownerValue });
+    console.warn("Supabase task owner invalide detecte", { taskId: id, ownerSource: row?.owner_type || row?.owner || "" });
   }
   if(ownerKind !== "interne") internalTechs = [];
   const internalTechCsv = serializeInternalTechList(internalTechs);
@@ -814,8 +803,8 @@ window.loadAppStateFromSupabase = async function(){
     if(_supabaseOwnerFallbackCount > 0){
       showSaveToast(
         "error",
-        "Données corrigées (owner)",
-        `${_supabaseOwnerFallbackCount} tâche(s) avec owner invalide corrigée(s) automatiquement depuis Supabase.`
+        "Données invalides (owner)",
+        `${_supabaseOwnerFallbackCount} tâche(s) avec owner invalide détectée(s) depuis Supabase.`
       );
     }
 
@@ -3490,19 +3479,6 @@ function normalizeState(raw){
       ...taskInternalCsv,
       ...taskInternalLegacy
     ]).map((name)=>normalizeInternalTech(name)).filter(Boolean);
-    if(taskInternalCanonical.length && ownerNormType === "inconnu"){
-      ownerNorm = "INTERNE";
-      ownerNormType = "interne";
-    }
-    if(ownerNormType === "inconnu"){
-      if(vendorNorm){
-        ownerNorm = "EXTERNE";
-        ownerNormType = "externe";
-      }else{
-        ownerNorm = "INTERNE";
-        ownerNormType = "interne";
-      }
-    }
     let internalTechNorm = serializeInternalTechList(taskInternalCanonical);
     let internalTechsNorm = dedupInternalTechs(taskInternalCanonical);
     if(ownerNormType === "externe" && !vendorNorm){
@@ -7841,22 +7817,12 @@ function getInternalTechsForTaskHours(task){
   return [];
 }
 function getTaskRoleKey(t){
-  const hasVendor = (t?.vendor || "").trim();
-  if(hasVendor) return "externe";
-  const hasInternalTechCsv = normalizeInternalTechList(t?.internalTech || "").length > 0;
-  const hasInternalTechArray = Array.isArray(t?.internalTechs) && t.internalTechs.some((x)=>!!normalizeInternalTech(x || ""));
-  if(hasInternalTechCsv || hasInternalTechArray) return "interne";
   const typ = ownerType(t?.owner);
   if(typ === "rsg") return "rsg";
   if(typ === "ri") return "ri";
+  if(typ === "interne") return "interne";
   if(typ === "externe") return "externe";
-  if(typ === "inconnu"){
-    const hasInternalTechCsv = normalizeInternalTechList(t?.internalTech || "").length > 0;
-    const hasInternalTechArray = Array.isArray(t?.internalTechs) && t.internalTechs.some((x)=>!!normalizeInternalTech(x || ""));
-    if(hasInternalTechCsv || hasInternalTechArray) return "interne";
-    return "externe";
-  }
-  return "interne";
+  return "inconnu";
 }
 const roleLabel = window.roleLabel || ((roleKey)=>{
   if(roleKey==="rsg") return "RSG";
@@ -8176,6 +8142,7 @@ function countMissingDaysForTask(t){
 function getExpectedLogSpecsForTask(t){
   if(!t) return [];
   const roleKey = getTaskRoleKey(t);
+  if(roleKey === "inconnu") return [];
   if(roleKey !== "interne"){
     return [{ roleKey, internalTech:"" }];
   }
@@ -9622,13 +9589,6 @@ function renderProject(){
     setInputValue("t_room", desc);
 
     let ownerVal = String(t.owner || "").trim();
-    const ownerKind = ownerType(ownerVal);
-    if(ownerKind === "inconnu"){
-      const hasInternalTech = normalizeInternalTechList(t.internalTech || "").length > 0;
-      const hasVendor = !!String(t.vendor || "").trim();
-      if(hasInternalTech) ownerVal = "INTERNE";
-      else if(hasVendor) ownerVal = "EXTERNE";
-    }
     setInputValue("t_owner", toOwnerSelectValue(ownerVal.toUpperCase()==="RSG/RI" ? "RSG" : ownerVal));
 
     setInputValue("t_vendor", t.vendor||"");
