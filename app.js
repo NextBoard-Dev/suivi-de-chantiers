@@ -3446,9 +3446,18 @@ function normalizeState(raw){
       ...taskInternalCsv,
       ...taskInternalLegacy
     ]).map((name)=>normalizeInternalTech(name)).filter(Boolean);
-    if(taskInternalCanonical.length && ownerNormType !== "interne"){
+    if(taskInternalCanonical.length && ownerNormType === "inconnu"){
       ownerNorm = "INTERNE";
       ownerNormType = "interne";
+    }
+    if(ownerNormType === "inconnu"){
+      if(vendorNorm){
+        ownerNorm = "EXTERNE";
+        ownerNormType = "externe";
+      }else{
+        ownerNorm = "INTERNE";
+        ownerNormType = "interne";
+      }
     }
     let internalTechNorm = serializeInternalTechList(taskInternalCanonical);
     let internalTechsNorm = dedupInternalTechs(taskInternalCanonical);
