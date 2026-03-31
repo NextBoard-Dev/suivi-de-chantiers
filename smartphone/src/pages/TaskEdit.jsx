@@ -33,6 +33,25 @@ function minutesToHoursDecimalLabel(minutesValue) {
   return `${String(hours).replace(".", ",")} h`;
 }
 
+function isWeekdayDate(value) {
+  const d = new Date(`${String(value || "").slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return false;
+  const day = d.getDay();
+  return day >= 1 && day <= 5;
+}
+
+function buildWeekdayDateKeys(startDate, endDate) {
+  const start = new Date(`${String(startDate || "").slice(0, 10)}T00:00:00`);
+  const end = new Date(`${String(endDate || "").slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return [];
+  const out = [];
+  for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const day = d.getDay();
+    if (day >= 1 && day <= 5) out.push(d.toISOString().slice(0, 10));
+  }
+  return out;
+}
+
 function defaultIntervenantByOwnerType(ownerType, internalTech, vendor) {
   const type = String(ownerType || "").trim();
   if (type === "INTERNE") return String(internalTech || "").trim();
@@ -175,6 +194,17 @@ export default function TaskEdit() {
     () => displayTaskLogs.reduce((sum, log) => sum + (Number.isFinite(Number(log.minutes)) ? Number(log.minutes) : 0), 0),
     [displayTaskLogs]
   );
+
+  const missingWeekdayKeys = useMemo(() => {
+    const expected = buildWeekdayDateKeys(form?.start_date || "", form?.end_date || "");
+    if (!expected.length) return [];
+    const filled = new Set(
+      displayTaskLogs
+        .map((log) => String(log?.date || "").slice(0, 10))
+        .filter((dateKey) => dateKey && isWeekdayDate(dateKey))
+    );
+    return expected.filter((dateKey) => !filled.has(dateKey));
+  }, [form?.start_date, form?.end_date, displayTaskLogs]);
 
   const saveHoursMutation = useMutation({
     mutationFn: async (payload) => dataClient.entities.TimeLog.saveForTask(payload),
@@ -412,6 +442,11 @@ export default function TaskEdit() {
           </div>
           <ProgressBar value={computedProgress} className="mb-1" />
           <p className="text-[10px] text-muted-foreground">Calcule automatiquement selon les dates de la tache (meme regle que PC).</p>
+          <p className={`text-[10px] ${missingWeekdayKeys.length > 0 ? "text-amber-700" : "text-emerald-700"}`}>
+            {missingWeekdayKeys.length > 0
+              ? `Heures manquantes: ${missingWeekdayKeys.length} jour(s) ouvre(s) sans saisie.`
+              : "Heures manquantes: aucune."}
+          </p>
         </div>
 
         <p className="text-[10px] text-muted-foreground">
