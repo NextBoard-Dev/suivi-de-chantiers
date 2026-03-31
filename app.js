@@ -11499,9 +11499,11 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
       alert("Technicien interne requis : sélectionnez au moins un technicien.");
       return;
     }
-    const vendorRegistry = dedupVendors(vendorsCache || []);
+    const vendorRegistry = dedupVendors(loadVendorsRegistry());
     const vendorByLower = new Map(vendorRegistry.map((name)=>[String(name || "").trim().toLowerCase(), String(name || "").trim()]));
-    const internalRegistry = dedupInternalTechs((internalTechCache || []).map((name)=>normalizeInternalTech(name || "")).filter(Boolean));
+    const internalRegistry = dedupInternalTechs(
+      loadInternalTechRegistry().map((name)=>normalizeInternalTech(name || "")).filter(Boolean)
+    );
     const internalByLower = new Map(internalRegistry.map((name)=>[name.toLowerCase(), name]));
 
     let canonicalVendor = "";
