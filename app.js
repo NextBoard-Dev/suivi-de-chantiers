@@ -11020,14 +11020,13 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     const quality = collectDataQualityIssues(state);
     if(!quality.ok){
-      showSaveToast("error", "Sauvegarde bloquée", formatQualityIssuesForToast(quality));
+      showSaveToast("error", "Alerte qualité", `${formatQualityIssuesForToast(quality)} | Sauvegarde cloud maintenue.`);
       if((quality?.counts?.logsOutsideTaskRange || 0) > 0){
         const launchFlow = window.confirm("Des erreurs de saisie hors période sont détectées.\nVoulez-vous démarrer le parcours de correction maintenant ?");
         if(launchFlow) startOutsideRangeFlow();
       }
       updateDataQualityBanner(false);
       markDirty();
-      return;
     }
 
     _suppressSupabaseSave = true;
