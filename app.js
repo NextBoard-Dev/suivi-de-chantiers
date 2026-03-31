@@ -2716,6 +2716,30 @@ function ownerBadgeForTask(t){
   }
   return ownerBadge(owner, label);
 }
+function buildTaskIntervenantBadgesHTML(t){
+  if(!t) return "<span class='text-muted'></span>";
+  const typ = ownerType(t.owner);
+  if(typ === "interne"){
+    const techs = dedupInternalTechs([
+      ...normalizeInternalTechList(t.internalTech || ""),
+      ...(Array.isArray(t.internalTechs) ? t.internalTechs : [])
+    ].map((name)=>normalizeInternalTech(name || "")).filter(Boolean));
+    if(techs.length){
+      return techs.map((name)=>ownerBadge("INTERNE", name)).join(" ");
+    }
+    return ownerBadge("INTERNE", "INTERNE");
+  }
+  if(typ === "externe"){
+    const vendor = String(t.vendor || "").trim();
+    return ownerBadge("EXTERNE", vendor || "Prestataire non renseigné");
+  }
+  if(typ === "rsg") return ownerBadge("RSG", "RSG");
+  if(typ === "ri") return ownerBadge("RI", "RI");
+  if(String(t.vendor || "").trim()){
+    return ownerBadge("EXTERNE", String(t.vendor || "").trim());
+  }
+  return "<span class='text-muted'></span>";
+}
 
 const SITE_PHOTOS = {
   "CDM": "assets/sites/CDM.jpg",
@@ -5868,25 +5892,7 @@ function renderGantt(projectId){
 
     const ownerBadges = t.owner ? ownerBadgeForTask(t) : "";
 
-    const vendorBadges = (()=> {
-
-      const set = new Set();
-
-      if(t.vendor) set.add(t.vendor);
-
-      const typ = ownerType(t.owner);
-      if(typ === "interne") set.add("INTERNE");
-      if(typ === "rsg") set.add("RSG");
-      if(typ === "ri") set.add("RI");
-      if(typ === "externe" && !t.vendor) set.add("Prestataire non renseigné");
-
-      if(set.size===0) return "<span class='text-muted'></span>";
-
-      return Array.from(set).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}))
-
-        .map(v=>vendorBadge(v)).join(" ");
-
-    })();
+    const vendorBadges = buildTaskIntervenantBadgesHTML(t);
 
 
 
@@ -6155,17 +6161,7 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
     const color = statusColor(mainStatus);
     const p = state?.projects?.find(x=>x.id===t.projectId);
     const projectName = (p?.name || "Projet").trim() || "Projet";
-    const vendorBadges = (()=>{
-      const set = new Set();
-      if(t.vendor) set.add(t.vendor);
-      const typ = ownerType(t.owner);
-      if(typ === "interne") set.add("INTERNE");
-      if(typ === "rsg") set.add("RSG");
-      if(typ === "ri") set.add("RI");
-      if(typ === "externe" && !t.vendor) set.add("Prestataire non renseigné");
-      if(set.size===0) return "<span class='text-muted'></span>";
-      return Array.from(set).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"})).map(v=>vendorBadge(v)).join(" ");
-    })();
+    const vendorBadges = buildTaskIntervenantBadgesHTML(t);
 
     const todayKey = new Date().toISOString().slice(0,10);
     const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
@@ -6266,17 +6262,7 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
     subsetRows.forEach((t,rowIdx)=>{
       const mainStatus = getTaskMainStatus(t);
     const color = statusColor(mainStatus);
-      const vendorBadges = (()=> {
-        const set = new Set();
-        if(t.vendor) set.add(t.vendor);
-        const typ = ownerType(t.owner);
-        if(typ === "interne") set.add("INTERNE");
-        if(typ === "rsg") set.add("RSG");
-        if(typ === "ri") set.add("RI");
-        if(typ === "externe" && !t.vendor) set.add("Prestataire non renseigné");
-        if(set.size===0) return "<span class='text-muted'></span>";
-        return Array.from(set).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"})).map(v=>vendorBadge(v)).join(" ");
-      })();
+      const vendorBadges = buildTaskIntervenantBadgesHTML(t);
 
       const todayKey = new Date().toISOString().slice(0,10);
       const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
@@ -6401,25 +6387,7 @@ function renderMasterGantt(){
     const projectName = (p?.name || "Projet").trim() || "Projet";
     const siteLabel = (p?.site || "").trim();
 
-    const vendorBadges = (()=> {
-
-      const set = new Set();
-
-      if(t.vendor) set.add(t.vendor);
-
-      const typ = ownerType(t.owner);
-      if(typ === "interne") set.add("INTERNE");
-      if(typ === "rsg") set.add("RSG");
-      if(typ === "ri") set.add("RI");
-      if(typ === "externe" && !t.vendor) set.add("Prestataire non renseigné");
-
-      if(set.size===0) return "<span class='text-muted'></span>";
-
-      return Array.from(set).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}))
-
-        .map(v=>vendorBadge(v)).join(" ");
-
-    })();
+    const vendorBadges = buildTaskIntervenantBadgesHTML(t);
 
 
 
