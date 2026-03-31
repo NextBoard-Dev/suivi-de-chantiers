@@ -449,6 +449,9 @@ function _normalizeSupabaseRoleKeyForTimeLog(row){
   if(roleRaw.includes("rsg")) return "rsg";
   if(roleRaw.includes("ri")) return "ri";
   if(roleRaw.includes("externe") || roleRaw.includes("prestataire")) return "externe";
+  const labelRaw = _foldTimeLogText(row?.intervenant_label || row?.technician || row?.internal_tech || "");
+  if(labelRaw === "RSG") return "rsg";
+  if(labelRaw === "RI") return "ri";
   const hasVendor = !!String(row?.vendor || "").trim();
   if(hasVendor) return "externe";
   return "interne";
@@ -613,10 +616,17 @@ function _normalizeSupabaseTaskStatus(rawStatus){
 }
 
 function _extractSupabaseTaskInternalTechList(row){
+  const isGenericToken = (value)=>{
+    const raw = _foldTimeLogText(value);
+    if(!raw) return true;
+    if(raw === "INTERNE" || raw === "EXTERNE" || raw === "PRESTATAIRE EXTERNE" || raw === "PRESTATAIRE") return true;
+    if(raw === "RI" || raw === "RSG" || raw === "RSG RI" || raw === "RSG/RI") return true;
+    return false;
+  };
   const fromArray = Array.isArray(row?.internal_techs) ? row.internal_techs : [];
   const fromSingle = [row?.internal_tech, row?.internalTech, row?.technician, row?.tech, row?.intervenants]
     .map((v)=>String(v || "").trim())
-    .filter(Boolean);
+    .filter((v)=>!!v && !isGenericToken(v));
   return dedupInternalTechs([...fromArray, ...fromSingle].map((v)=>normalizeInternalTech(v)).filter(Boolean));
 }
 
@@ -635,9 +645,17 @@ function _mapSupabaseRowToStateTask(row, fallbackTask={}){
     ..._extractSupabaseTaskInternalTechList(row),
     ...fallbackInternal
   ]);
-  if(internalTechs.length && ownerKind !== "interne"){
-    ownerValue = "INTERNE";
-    ownerKind = "interne";
+  if(ownerKind === "inconnu"){
+    const rawVendor = String(row?.vendor || fallbackTask?.vendor || "").trim();
+    if(rawVendor){
+      ownerValue = "EXTERNE";
+      ownerKind = "externe";
+    }else{
+      ownerValue = "INTERNE";
+      ownerKind = "interne";
+    }
+    _supabaseOwnerFallbackCount += 1;
+    console.warn("Supabase task owner invalide corrige", { taskId: id, ownerSource: row?.owner_type || row?.owner || "", ownerFixed: ownerValue });
   }
   if(ownerKind !== "interne") internalTechs = [];
   const internalTechCsv = serializeInternalTechList(internalTechs);
@@ -718,6 +736,7 @@ window.loadAppStateFromSupabase = async function(){
 
 
   try{
+    _supabaseOwnerFallbackCount = 0;
 
     const { data, error } = await sb
 
@@ -756,6 +775,13 @@ window.loadAppStateFromSupabase = async function(){
     _lastStateLoadSource = "supabase_cloud";
 
     renderAll();
+    if(_supabaseOwnerFallbackCount > 0){
+      showSaveToast(
+        "error",
+        "Données corrigées (owner)",
+        `${_supabaseOwnerFallbackCount} tâche(s) avec owner invalide corrigée(s) automatiquement depuis Supabase.`
+      );
+    }
 
     clearDirty();
 
@@ -4073,6 +4099,7 @@ function showSaveToast(type, title, detail){
 let _lastDataQualityReport = null;
 let _lastCloudAlignmentReport = null;
 let _lastStateLoadSource = "inconnu";
+let _supabaseOwnerFallbackCount = 0;
 
 function stateLoadSourceLabel(src){
   const k = String(src || "").toLowerCase();

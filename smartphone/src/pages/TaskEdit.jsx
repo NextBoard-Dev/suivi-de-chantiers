@@ -99,6 +99,40 @@ function resolveIntervenantLabel(log = {}) {
   return "Intervenant non precise";
 }
 
+function normalizeCompareKey(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function logMatchesTaskIntervenant(log = {}, form = {}) {
+  const ownerType = normalizeCompareKey(form?.owner_type);
+  const role = normalizeCompareKey(log?.role);
+  const roleKey = String(log?.role_key || "").trim().toLowerCase();
+
+  if (ownerType === "RI") return role === "RI" || roleKey === "ri";
+  if (ownerType === "RSG") return role === "RSG" || roleKey === "rsg";
+
+  if (ownerType === "INTERNE") {
+    const expected = normalizeCompareKey(form?.internal_tech);
+    if (!expected) return role === "INTERNE" || roleKey === "interne";
+    const tech = normalizeCompareKey(log?.technician || log?.intervenant_label);
+    return tech === expected;
+  }
+
+  if (ownerType === "PRESTATAIRE EXTERNE") {
+    const expected = normalizeCompareKey(form?.vendor);
+    if (!expected) return role === "PRESTATAIRE EXTERNE" || roleKey === "externe";
+    const vendor = normalizeCompareKey(log?.vendor || log?.intervenant_label);
+    return vendor === expected;
+  }
+
+  return true;
+}
+
 function mapStrictTimeLogRow(row = {}) {
   const minutesRaw = Number(row?.minutes);
   const hoursRaw = Number(row?.hours);
@@ -224,14 +258,14 @@ export default function TaskEdit() {
   const missingWeekdayKeys = useMemo(() => {
     const expected = buildWeekdayDateKeys(form?.start_date || "", form?.end_date || "");
     if (!expected.length) return [];
+    const logsForCurrentIntervenant = displayTaskLogs.filter((log) => logMatchesTaskIntervenant(log, form));
     const filled = new Set(
-      displayTaskLogs
-        .filter((log) => Number.isFinite(Number(log?.minutes)) && Number(log.minutes) > 0)
+      logsForCurrentIntervenant
         .map((log) => String(log?.date || "").slice(0, 10))
         .filter((dateKey) => dateKey && isWeekdayDate(dateKey))
     );
     return expected.filter((dateKey) => !filled.has(dateKey));
-  }, [form?.start_date, form?.end_date, displayTaskLogs]);
+  }, [form, displayTaskLogs]);
   const missingWeekdayDates = useMemo(
     () => missingWeekdayKeys.map(parseIsoDateSafe).filter(Boolean),
     [missingWeekdayKeys]
