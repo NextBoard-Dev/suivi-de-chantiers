@@ -112,3 +112,16 @@ Si une question est posée :
 
 Si une modification peut impacter d’autres modules :
 → demander confirmation avant d’agir.
+
+---
+
+# Mode opératoire permanent (imposé)
+
+Ce mode est obligatoire pour toutes les interventions futures :
+
+1. Prudence maximale en continu.
+2. Modifications minimales, ciblées et locales.
+3. Ne jamais casser l’UI existante.
+4. Vérifier l’impact avant/après chaque patch.
+5. Aucune refactorisation globale sans demande explicite.
+6. Fournir une phrase de commit à chaque intervention.
