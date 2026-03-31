@@ -7781,7 +7781,10 @@ function buildTimeLogKey(taskId, dateKey, roleKey, internalTech=""){
 }
 function getInternalTechsForTaskHours(task){
   if(getTaskRoleKey(task) !== "interne") return [];
-  const selected = normalizeInternalTechList(task?.internalTech || "");
+  const selected = dedupInternalTechs([
+    ...normalizeInternalTechList(task?.internalTech || ""),
+    ...(Array.isArray(task?.internalTechs) ? task.internalTechs : [])
+  ].map((name)=>normalizeInternalTech(name || "")).filter(Boolean));
   if(selected.length) return dedupInternalTechs(selected);
 
   // Compatibilite legacy: si aucune affectation explicite sur la tâche,
@@ -7828,6 +7831,7 @@ const roleLabel = window.roleLabel || ((roleKey)=>{
   if(roleKey==="rsg") return "RSG";
   if(roleKey==="ri") return "RI";
   if(roleKey==="externe") return "EXTERNE";
+  if(roleKey==="inconnu") return "INCONNU";
   return "INTERNE";
 });
 function smartphoneOwnerTypeFromRoleKey(roleKey){
