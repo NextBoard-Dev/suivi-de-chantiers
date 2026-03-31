@@ -70,6 +70,24 @@ const SUPABASE_TASKS_TABLE = "chantier_tasks";
 const SUPABASE_USERS_TABLE = "dashboard_users";
 const SUPABASE_LOGINS_TABLE = "dashboard_logins";
 const SUPABASE_SESSIONS_TABLE = "dashboard_sessions";
+const FEATURE_SINGLE_SOURCE_STATEJSON_KEY = "feature_single_source_statejson_v1";
+const FEATURE_SINGLE_SOURCE_STATEJSON = (() => {
+  try{
+    const raw = localStorage.getItem(FEATURE_SINGLE_SOURCE_STATEJSON_KEY);
+    // Par defaut: ON (lecture unique state_json).
+    return raw !== "0";
+  }catch(e){
+    return true;
+  }
+})();
+window.setSingleSourceReadMode = function(enabled){
+  try{
+    localStorage.setItem(FEATURE_SINGLE_SOURCE_STATEJSON_KEY, enabled ? "1" : "0");
+    return true;
+  }catch(e){
+    return false;
+  }
+};
 
 
 // Auto-login (pour ne PAS utiliser la console)
@@ -756,22 +774,26 @@ window.loadAppStateFromSupabase = async function(){
 
 
 
-    // IMPORTANT : on remplace UNIQUEMENT l'eétat global, puis on rend
-    const supabaseTimeLogsRows = await _loadSupabaseTimeLogsRows(sb);
-    const stateTaskIds = Array.from(new Set(
-      (Array.isArray(data?.state_json?.tasks) ? data.state_json.tasks : [])
-        .map((t)=>normId(t?.id))
-        .filter(Boolean)
-    ));
-    const supabaseTasksRows = await _loadSupabaseTasksRowsByIds(sb, stateTaskIds);
-    const supabaseTaskIds = Array.from(new Set(supabaseTimeLogsRows.map((r)=>normId(r?.task_id || r?.tache_id || r?.taskId)).filter(Boolean)));
-    const supabaseTaskRowsForLogs = await _loadSupabaseTasksRowsByIds(sb, supabaseTaskIds);
-    const mergedStateJson = {
-      ...(data.state_json || {}),
-      tasks: _mergeStateTasksFromSupabase(data?.state_json, supabaseTasksRows),
-      timeLogs: _mergeStateTimeLogs(data?.state_json, supabaseTimeLogsRows, supabaseTaskRowsForLogs)
-    };
-    state = normalizeState(mergedStateJson);
+    // Mode production stable: lecture unique state_json (sans fusion).
+    if(FEATURE_SINGLE_SOURCE_STATEJSON){
+      state = normalizeState(data.state_json || {});
+    }else{
+      const supabaseTimeLogsRows = await _loadSupabaseTimeLogsRows(sb);
+      const stateTaskIds = Array.from(new Set(
+        (Array.isArray(data?.state_json?.tasks) ? data.state_json.tasks : [])
+          .map((t)=>normId(t?.id))
+          .filter(Boolean)
+      ));
+      const supabaseTasksRows = await _loadSupabaseTasksRowsByIds(sb, stateTaskIds);
+      const supabaseTaskIds = Array.from(new Set(supabaseTimeLogsRows.map((r)=>normId(r?.task_id || r?.tache_id || r?.taskId)).filter(Boolean)));
+      const supabaseTaskRowsForLogs = await _loadSupabaseTasksRowsByIds(sb, supabaseTaskIds);
+      const mergedStateJson = {
+        ...(data.state_json || {}),
+        tasks: _mergeStateTasksFromSupabase(data?.state_json, supabaseTasksRows),
+        timeLogs: _mergeStateTimeLogs(data?.state_json, supabaseTimeLogsRows, supabaseTaskRowsForLogs)
+      };
+      state = normalizeState(mergedStateJson);
+    }
     _lastStateLoadSource = "supabase_cloud";
 
     renderAll();
