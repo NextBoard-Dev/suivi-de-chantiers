@@ -2480,8 +2480,13 @@ function resolveInternalTechAgainstList(rawTech="", candidates=[]){
 
 function canonicalizeInternalTechForTask(rawTech="", taskObj=null){
   const clean = normalizeInternalTech(rawTech || "");
-  if(!clean) return "";
-  const expected = normalizeInternalTechList(taskObj?.internalTech || "");
+  const expected = dedupInternalTechs([
+    ...normalizeInternalTechList(taskObj?.internalTech || ""),
+    ...(Array.isArray(taskObj?.internalTechs) ? taskObj.internalTechs : [])
+  ].map((name)=>normalizeInternalTech(name || "")).filter(Boolean));
+  if(!clean){
+    return expected.length === 1 ? expected[0] : "";
+  }
   const authoritative = getAuthoritativeInternalTechs();
 
   if(expected.length){
@@ -7935,11 +7940,16 @@ function buildSmartphoneCompatState(sourceState){
 }
 function getCanonicalTimeLogs(){
   const logs = getTimeLogs();
+  const tasksById = new Map((state?.tasks || []).map((t)=>[String(t?.id || ""), t]));
   const map = new Map(); // taskId|date|roleKey|internalTech -> merged log
   logs.forEach(l=>{
     if(!l || !l.taskId || !l.date) return;
     const roleKey = normalizeTimeLogRole(l);
-    const techKey = normalizeTimeLogInternalTech(l, roleKey);
+    const task = tasksById.get(String(l.taskId || "")) || null;
+    let techKey = normalizeTimeLogInternalTech(l, roleKey);
+    if(roleKey === "interne"){
+      techKey = canonicalizeInternalTechForTask(techKey, task);
+    }
     const key = buildTimeLogKey(l.taskId, l.date, roleKey, techKey);
     const existing = map.get(key);
     if(!existing){
