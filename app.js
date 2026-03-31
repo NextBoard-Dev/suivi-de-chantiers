@@ -73,16 +73,17 @@ const SUPABASE_SESSIONS_TABLE = "dashboard_sessions";
 const FEATURE_SINGLE_SOURCE_STATEJSON_KEY = "feature_single_source_statejson_v1";
 function isSingleSourceReadMode(){
   try{
-    const raw = localStorage.getItem(FEATURE_SINGLE_SOURCE_STATEJSON_KEY);
-    // Par defaut: ON (lecture unique state_json).
-    return raw !== "0";
+    // Mode force pour stabiliser la prod PC : toujours lecture unique state_json.
+    localStorage.setItem(FEATURE_SINGLE_SOURCE_STATEJSON_KEY, "1");
+    return true;
   }catch(e){
     return true;
   }
 }
 window.setSingleSourceReadMode = function(enabled){
   try{
-    localStorage.setItem(FEATURE_SINGLE_SOURCE_STATEJSON_KEY, enabled ? "1" : "0");
+    // OFF desactive en prod PC pour eviter toute re-fusion legacy.
+    localStorage.setItem(FEATURE_SINGLE_SOURCE_STATEJSON_KEY, "1");
     return true;
   }catch(e){
     return false;
@@ -3468,19 +3469,39 @@ function normalizeState(raw){
   }));
 
   const normTasks = (raw.tasks||[]).map(t=>{
-    let ownerNorm = normalizeOwnerValue(t.owner || "");
+    const ownerTypeRaw = String(t?.owner_type || "").trim();
+    const ownerRaw = String(t?.owner || "").trim();
+    let ownerNorm = normalizeOwnerValue(ownerTypeRaw || ownerRaw || "");
     let ownerNormType = ownerType(ownerNorm);
     let vendorNorm = (t.vendor||"").toString().trim();
-    const taskInternalCsv = normalizeInternalTechList(t.internalTech || "");
+    const taskInternalCsv = normalizeInternalTechList(t.internalTech || t.internal_tech || "");
     const taskInternalLegacy = taskInternalCsv.length
       ? []
-      : (Array.isArray(t.internalTechs) ? t.internalTechs.map((name)=>normalizeInternalTech(name || "")).filter(Boolean) : []);
-    const taskInternalCanonical = dedupInternalTechs([
+      : (Array.isArray(t.internalTechs) ? t.internalTechs.map((name)=>normalizeInternalTech(name || "")).filter(Boolean)
+        : (Array.isArray(t.internal_techs) ? t.internal_techs.map((name)=>normalizeInternalTech(name || "")).filter(Boolean) : []));
+    let taskInternalCanonical = dedupInternalTechs([
       ...taskInternalCsv,
       ...taskInternalLegacy
     ]).map((name)=>normalizeInternalTech(name)).filter(Boolean);
+    if(ownerNormType === "inconnu" && ownerTypeRaw){
+      const fallbackOwner = normalizeOwnerValue(ownerTypeRaw);
+      const fallbackType = ownerType(fallbackOwner);
+      if(fallbackType !== "inconnu"){
+        ownerNorm = fallbackOwner;
+        ownerNormType = fallbackType;
+      }
+    }
+    if(ownerNormType === "interne" && !taskInternalCanonical.length && ownerRaw){
+      const ownerLooksLikeGeneric = ownerType(ownerRaw) !== "inconnu";
+      if(!ownerLooksLikeGeneric){
+        taskInternalCanonical = dedupInternalTechs(normalizeInternalTechList(ownerRaw));
+      }
+    }
     let internalTechNorm = serializeInternalTechList(taskInternalCanonical);
     let internalTechsNorm = dedupInternalTechs(taskInternalCanonical);
+    if(ownerNormType === "externe" && !vendorNorm && ownerRaw && ownerType(ownerRaw) === "inconnu"){
+      vendorNorm = ownerRaw;
+    }
     if(ownerNormType === "externe" && !vendorNorm){
       vendorNorm = "PRESTATAIRE NON RENSEIGNE";
     }
@@ -4606,8 +4627,8 @@ function saveState(opts={}){
     if(!skipSupabase){
       try{
         if(window.saveAppStateToSupabase){
-          const cloudPayload = buildSmartphoneCompatState(normalized);
-          window.saveAppStateToSupabase(cloudPayload);
+          // Sauvegarde cloud en format natif PC pour eviter toute perte de champs.
+          window.saveAppStateToSupabase(normalized);
         }
       }catch(e){ softCatch(e); }
     }
@@ -7849,7 +7870,10 @@ function buildSmartphoneCompatState(sourceState){
   const tasks = tasksSrc.map((t)=>{
     const roleKey = getTaskRoleKey(t);
     const ownerType = smartphoneOwnerTypeFromRoleKey(roleKey);
-    const internalTechList = dedupInternalTechs(normalizeInternalTechList(t?.internalTech || ""));
+    const internalTechList = dedupInternalTechs([
+      ...normalizeInternalTechList(t?.internalTech || ""),
+      ...(Array.isArray(t?.internalTechs) ? t.internalTechs : [])
+    ].map((name)=>normalizeInternalTech(name || "")).filter(Boolean));
     const internalTechCsv = internalTechList.join(", ");
     return {
       ...t,
@@ -9598,7 +9622,10 @@ function renderProject(){
     setInputValue("t_vendor", t.vendor||"");
     setInputValue("t_internal_tech_filter", "");
 
-    const taskInternalTechs = normalizeInternalTechList(t.internalTech || "");
+    const taskInternalTechs = dedupInternalTechs([
+      ...normalizeInternalTechList(t.internalTech || ""),
+      ...(Array.isArray(t.internalTechs) ? t.internalTechs : [])
+    ].map((name)=>normalizeInternalTech(name || "")).filter(Boolean));
     setSelectedInternalTechValues(taskInternalTechs);
 
     const startVal = toInputDate(t.start);
@@ -10652,15 +10679,13 @@ function bind(){
   });
   el("btnToggleSingleSource")?.addEventListener("click", ()=>{
     if(getCurrentRole()!=="admin") return;
-    const current = isSingleSourceReadMode();
-    const next = !current;
-    const ok = window.setSingleSourceReadMode(next);
+    const ok = window.setSingleSourceReadMode(true);
     if(!ok){
       showSaveToast("error", "Mode lecture", "Impossible de changer le mode.");
       return;
     }
     refreshSingleSourceToggleButton();
-    showSaveToast("ok", "Mode lecture", `Lecture unique ${next ? "ON" : "OFF"} · rechargement...`);
+    showSaveToast("ok", "Mode lecture", "Lecture unique ON (mode legacy OFF desactive) · rechargement...");
     setTimeout(()=>{ window.location.reload(); }, 250);
   });
   el("btnHelp")?.addEventListener("click", ()=>{
