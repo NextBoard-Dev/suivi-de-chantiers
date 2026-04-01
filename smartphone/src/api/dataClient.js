@@ -606,7 +606,7 @@ function mergeProjectSources(primaryProjects = [], legacyProjects = []) {
   const upsert = (project = {}, preferIncoming = false) => {
     const id = toStringId(project?.id);
     const natural = buildProjectNaturalKey(project);
-    const key = id || natural;
+    const key = natural || id;
     if (!key) return;
     const prev = out.get(key);
     if (!prev) {
@@ -623,6 +623,26 @@ function mergeProjectSources(primaryProjects = [], legacyProjects = []) {
   (legacyProjects || []).forEach((project) => upsert(project));
   (primaryProjects || []).forEach((project) => upsert(project, true));
   return Array.from(out.values());
+}
+
+function buildLegacyProjectId(projectLike = {}) {
+  const key = buildProjectNaturalKey(projectLike);
+  if (key) return `legacy_project_${key}`;
+  const name = normalizeProjectKeyText(projectLike?.name ?? projectLike?.project_name ?? "");
+  return name ? `legacy_project_${name}` : "";
+}
+
+function buildLegacyTaskId(taskLike = {}) {
+  const projectId = toStringId(taskLike?.project_id ?? taskLike?.projectId ?? taskLike?.chantier_id);
+  const description = normalizeSigText(taskLike?.description ?? taskLike?.name ?? taskLike?.roomNumber ?? "");
+  const owner = normalizeMobileOwnerType(taskLike?.owner_type ?? taskLike?.owner ?? taskLike?.intervenant ?? "");
+  const startDate = pickDate(taskLike?.start_date ?? taskLike?.start ?? "");
+  const endDate = pickDate(taskLike?.end_date ?? taskLike?.end ?? "");
+  const internalTech = normalizeSigText(taskLike?.internal_tech ?? taskLike?.internalTech ?? taskLike?.technician ?? "");
+  const vendor = normalizeSigText(taskLike?.vendor ?? "");
+  const key = [projectId, description, owner, internalTech, vendor, startDate, endDate].join("|");
+  if (key.replace(/\|/g, "").trim()) return `legacy_task_${key}`;
+  return "";
 }
 
 async function fetchLegacyStateProjects(filters = {}) {
@@ -684,8 +704,18 @@ async function fetchLegacyStateProjects(filters = {}) {
       const stateJson = row?.state_json;
       const rawProjects = Array.isArray(stateJson?.projects) ? stateJson.projects : [];
       rawProjects.forEach((project, idx) => {
+        const stableLegacyId =
+          buildLegacyProjectId({
+            id: project?.id ?? project?.project_id ?? "",
+            name: project?.name ?? project?.project_name ?? "",
+            project_name: project?.project_name ?? project?.name ?? "",
+            site: project?.site ?? project?.site_name ?? "",
+            site_name: project?.site_name ?? project?.site ?? "",
+            subproject: project?.subproject ?? project?.sub_project ?? "",
+            sub_project: project?.sub_project ?? project?.subproject ?? "",
+          }) || `legacy_project_fallback_${idx}`;
         const mappedProject = mapProjectRow({
-          id: project?.id ?? project?.project_id ?? `legacy_project_${idx}`,
+          id: project?.id ?? project?.project_id ?? stableLegacyId,
           name: project?.name ?? project?.project_name ?? "",
           project_name: project?.project_name ?? project?.name ?? "",
           site: project?.site ?? project?.site_name ?? "",
@@ -709,6 +739,129 @@ async function fetchLegacyStateProjects(filters = {}) {
       });
     });
 
+    return mapped.filter((row) => matchesFiltersInMemory(row, filters));
+  } catch {
+    return [];
+  }
+}
+
+function mergeTaskSources(primaryTasks = [], legacyTasks = []) {
+  const out = new Map();
+  const upsert = (task = {}, preferIncoming = false) => {
+    const id = toStringId(task?.id);
+    const signature = buildTaskSignature(task);
+    const key = id || signature;
+    if (!key) return;
+    const prev = out.get(key);
+    if (!prev) {
+      out.set(key, task);
+      return;
+    }
+    const prevTs = new Date(prev?.updated_date || prev?.created_date || 0).getTime();
+    const nextTs = new Date(task?.updated_date || task?.created_date || 0).getTime();
+    if (preferIncoming || nextTs >= prevTs) {
+      out.set(key, { ...prev, ...task });
+    }
+  };
+
+  (legacyTasks || []).forEach((task) => upsert(task));
+  (primaryTasks || []).forEach((task) => upsert(task, true));
+  return Array.from(out.values());
+}
+
+async function fetchLegacyStateTasks(filters = {}) {
+  if (!appStatesTable) return [];
+  try {
+    let { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) return [];
+    let sessionUser = sessionData?.session?.user || null;
+    const expectedEmail = String(autoEmail || "").trim().toLowerCase();
+    const currentEmail = String(sessionUser?.email || "").trim().toLowerCase();
+    const shouldAutoLogin = !sessionUser || (expectedEmail && currentEmail !== expectedEmail);
+    if (shouldAutoLogin && !legacyAutoLoginAttempted) {
+      legacyAutoLoginAttempted = true;
+      const email = String(autoEmail || "").trim();
+      const password = String(autoPassword || "").trim();
+      if (email && password) {
+        try {
+          await supabase.auth.signInWithPassword({ email, password });
+          const next = await supabase.auth.getSession();
+          if (!next.error) {
+            sessionData = next.data;
+            sessionUser = sessionData?.session?.user || null;
+          }
+        } catch {
+          // keep current session
+        }
+      }
+    }
+    const userId = sessionUser?.id || "";
+
+    let stateRows = [];
+    if (userId) {
+      const { data, error } = await supabase
+        .from(appStatesTable)
+        .select("state_json, updated_at")
+        .eq("user_id", userId)
+        .limit(1);
+      if (error) {
+        if (isMissingOptionalTableError(error) || isMissingColumnError(error)) return [];
+        throw error;
+      }
+      stateRows = Array.isArray(data) ? data : [];
+    }
+    if (!stateRows.length) {
+      const { data, error } = await supabase
+        .from(appStatesTable)
+        .select("state_json, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(10);
+      if (error) {
+        if (isMissingOptionalTableError(error) || isMissingColumnError(error)) return [];
+        throw error;
+      }
+      stateRows = Array.isArray(data) ? data : [];
+    }
+
+    const mapped = [];
+    stateRows.forEach((row, rowIdx) => {
+      const stateJson = row?.state_json;
+      const rawTasks = Array.isArray(stateJson?.tasks) ? stateJson.tasks : [];
+      rawTasks.forEach((task, idx) => {
+        const stableLegacyId = buildLegacyTaskId(task) || `legacy_task_fallback_${rowIdx}_${idx}`;
+        const mappedTask = mapTaskRow({
+          id: task?.id ?? task?.task_id ?? stableLegacyId,
+          project_id: task?.project_id ?? task?.projectId ?? task?.chantier_id ?? "",
+          chantier_id: task?.chantier_id ?? task?.project_id ?? task?.projectId ?? "",
+          description: task?.description ?? task?.name ?? task?.roomNumber ?? "",
+          name: task?.name ?? task?.description ?? "",
+          owner_type: task?.owner_type ?? task?.owner ?? task?.intervenant ?? "",
+          owner: task?.owner ?? task?.owner_type ?? "",
+          internal_tech: task?.internal_tech ?? task?.internalTech ?? task?.technician ?? "",
+          internalTech: task?.internalTech ?? task?.internal_tech ?? "",
+          technician: task?.technician ?? task?.internalTech ?? task?.internal_tech ?? "",
+          tech: task?.tech ?? task?.internalTech ?? task?.internal_tech ?? "",
+          intervenants: task?.intervenants ?? "",
+          vendor: task?.vendor ?? "",
+          start_date: task?.start_date ?? task?.start ?? "",
+          start: task?.start ?? task?.start_date ?? "",
+          end_date: task?.end_date ?? task?.end ?? "",
+          end: task?.end ?? task?.end_date ?? "",
+          progress: task?.progress ?? 0,
+          statuses: task?.statuses ?? task?.status ?? [],
+          status: task?.status ?? task?.statuses ?? [],
+          duration_days: task?.duration_days ?? 0,
+          updated_date: task?.updated_date ?? task?.updatedAt ?? row?.updated_at ?? "",
+          updated_at: task?.updated_at ?? task?.updatedAt ?? row?.updated_at ?? "",
+          created_date: task?.created_date ?? task?.createdAt ?? "",
+          created_at: task?.created_at ?? task?.createdAt ?? "",
+          estimated_cost: task?.estimated_cost ?? null,
+          actual_cost: task?.actual_cost ?? null,
+          penalty_amount: task?.penalty_amount ?? null,
+        });
+        mapped.push(mappedTask);
+      });
+    });
     return mapped.filter((row) => matchesFiltersInMemory(row, filters));
   } catch {
     return [];
@@ -1233,14 +1386,16 @@ export const dataClient = {
   entities: {
     Project: {
       list: async (sort = "-updated_date", limit = 200) => {
-        const [projects, legacyProjects, tasks] = await Promise.all([
+        const [projects, legacyProjects, tasks, legacyTasks] = await Promise.all([
           fetchProjects(),
           fetchLegacyStateProjects(),
           fetchTasks(),
+          fetchLegacyStateTasks(),
         ]);
         const mergedProjects = mergeProjectSources(projects, legacyProjects);
+        const mergedTasks = mergeTaskSources(tasks, legacyTasks);
         const tasksByProject = new Map();
-        for (const task of tasks) {
+        for (const task of mergedTasks) {
           const arr = tasksByProject.get(task.project_id) || [];
           arr.push(task);
           tasksByProject.set(task.project_id, arr);
@@ -1255,24 +1410,31 @@ export const dataClient = {
       },
 
       filter: async (filters = {}, sort = "-updated_date", limit = 200) => {
-        const [projects, legacyProjects, tasks] = await Promise.all([
-          fetchProjects(filters),
-          fetchLegacyStateProjects(filters),
+        const hasIdFilter = filters && hasOwn(filters, "id") && String(filters.id || "").trim() !== "";
+        const [projects, legacyProjects, tasks, legacyTasks] = await Promise.all([
+          hasIdFilter ? fetchProjects() : fetchProjects(filters),
+          hasIdFilter ? fetchLegacyStateProjects() : fetchLegacyStateProjects(filters),
           fetchTasks(),
+          fetchLegacyStateTasks(),
         ]);
         const mergedProjects = mergeProjectSources(projects, legacyProjects);
+        const mergedTasks = mergeTaskSources(tasks, legacyTasks);
         const tasksByProject = new Map();
 
-        for (const task of tasks) {
+        for (const task of mergedTasks) {
           const arr = tasksByProject.get(task.project_id) || [];
           arr.push(task);
           tasksByProject.set(task.project_id, arr);
         }
 
-        const enriched = mergedProjects.map((project) => ({
+        let enriched = mergedProjects.map((project) => ({
           ...project,
           progress: computeProjectProgress(project, tasksByProject.get(project.id) || []),
         }));
+        if (hasIdFilter) {
+          const wantedId = String(filters.id || "");
+          enriched = enriched.filter((project) => String(project?.id || "") === wantedId);
+        }
 
         return applySort(enriched, sort).slice(0, limit);
       },
@@ -1328,14 +1490,18 @@ export const dataClient = {
 
     Task: {
       list: async (sort = "-updated_date", limit = 500) => {
-        const [tasks, projects, internalTechRows] = await Promise.all([
+        const [tasks, legacyTasks, projects, legacyProjects, internalTechRows] = await Promise.all([
           fetchTasks(),
+          fetchLegacyStateTasks(),
           fetchProjects(),
+          fetchLegacyStateProjects(),
           fetchReferential(internalTechsTable, "internal_tech"),
         ]);
-        const projectMap = new Map(projects.map((p) => [p.id, p]));
+        const mergedProjects = mergeProjectSources(projects, legacyProjects);
+        const mergedTasks = mergeTaskSources(tasks, legacyTasks);
+        const projectMap = new Map(mergedProjects.map((p) => [p.id, p]));
         const internalTechAllowBySite = buildInternalTechAllowBySite(internalTechRows);
-        const enriched = enrichTasks(tasks, projectMap, internalTechAllowBySite);
+        const enriched = enrichTasks(mergedTasks, projectMap, internalTechAllowBySite);
 
         return applySort(enriched, sort).slice(0, limit);
       },
@@ -1347,20 +1513,28 @@ export const dataClient = {
           delete dbFilters.project_id;
         }
 
-        const [tasks, internalTechRows] = await Promise.all([
+        const [tasks, legacyTasks, internalTechRows] = await Promise.all([
           fetchTasks(dbFilters),
+          fetchLegacyStateTasks(dbFilters),
           fetchReferential(internalTechsTable, "internal_tech"),
         ]);
-        const projectIds = [...new Set(tasks.map((task) => task.project_id).filter(Boolean))];
+        const mergedTasks = mergeTaskSources(tasks, legacyTasks);
+        const projectIds = [...new Set(mergedTasks.map((task) => task.project_id).filter(Boolean))];
 
         let projectMap = new Map();
         if (projectIds.length > 0) {
-          const projectRows = await fetchProjectsByIds(projectIds);
-          projectMap = new Map(projectRows.map((mapped) => [mapped.id, mapped]));
+          const [projectRows, legacyProjectRows] = await Promise.all([
+            fetchProjectsByIds(projectIds),
+            fetchLegacyStateProjects(),
+          ]);
+          projectMap = new Map(
+            mergeProjectSources(projectRows, legacyProjectRows)
+              .map((mapped) => [mapped.id, mapped]),
+          );
         }
 
         const internalTechAllowBySite = buildInternalTechAllowBySite(internalTechRows);
-        const enriched = enrichTasks(tasks, projectMap, internalTechAllowBySite);
+        const enriched = enrichTasks(mergedTasks, projectMap, internalTechAllowBySite);
         return applySort(enriched, sort).slice(0, limit);
       },
 

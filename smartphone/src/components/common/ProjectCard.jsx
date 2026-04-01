@@ -13,9 +13,10 @@ function formatHoursMinutes(totalMinutes = 0) {
 export default function ProjectCard({ project, taskCount = 0, totalHoursMinutes = 0, missingEntries = 0 }) {
   const progress = project.progress || 0;
   const barColor = progress >= 100 ? "bg-emerald-500" : progress > 0 ? "bg-primary" : "bg-slate-300";
+  const safeProjectId = encodeURIComponent(String(project?.id ?? ""));
 
   return (
-    <Link to={`/project/${project.id}`} className="flex items-center gap-3 rounded-lg px-3 py-2.5 card-hover" style={{ background: "rgba(217,226,231,0.75)", border: "1px solid rgba(63,97,112,0.2)" }}>
+    <Link to={`/project/${safeProjectId}`} className="flex items-center gap-3 rounded-lg px-3 py-2.5 card-hover" style={{ background: "rgba(217,226,231,0.75)", border: "1px solid rgba(63,97,112,0.2)" }}>
       {/* Indicator bar */}
       <div className="w-1 self-stretch rounded-full shrink-0" style={{background: progress >= 100 ? "#10b981" : progress > 0 ? "hsl(var(--primary))" : "#cbd5e1"}} />
 

@@ -31,7 +31,14 @@ function isLate(task) {
 }
 
 export default function ProjectDetail() {
-  const { id: projectId = "" } = useParams();
+  const { id: rawProjectId = "" } = useParams();
+  const projectId = React.useMemo(() => {
+    try {
+      return decodeURIComponent(String(rawProjectId || ""));
+    } catch {
+      return String(rawProjectId || "");
+    }
+  }, [rawProjectId]);
   const navigate = useNavigate();
 
   const { data: project, isLoading: loadingP } = useQuery({
