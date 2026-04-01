@@ -62,10 +62,16 @@ export default function ProjectDetail() {
   });
 
   const isLoading = loadingP || loadingT;
-  const taskList = React.useMemo(
-    () => (Array.isArray(tasks) ? tasks.filter(Boolean) : []),
-    [tasks]
-  );
+  const taskList = React.useMemo(() => {
+    const list = Array.isArray(tasks) ? tasks.filter(Boolean) : [];
+    return [...list].sort((a, b) => {
+      const aStart = String(a?.start_date || "");
+      const bStart = String(b?.start_date || "");
+      const byStart = aStart.localeCompare(bStart);
+      if (byStart !== 0) return byStart;
+      return String(a?.description || "").localeCompare(String(b?.description || ""), "fr", { sensitivity: "base" });
+    });
+  }, [tasks]);
   const timeLogList = React.useMemo(
     () => (Array.isArray(timeLogs) ? timeLogs.filter(Boolean) : []),
     [timeLogs]
