@@ -22,6 +22,7 @@ const {
   sitesTable,
   refsSiteColumn,
   readOnlyMode,
+  stateJsonReadMode,
   allowTaskWrites,
   allowTimeLogWrites,
 } = supabaseConfig;
@@ -29,6 +30,7 @@ const READ_PAGE_SIZE = 500;
 const ID_BATCH_SIZE = 200;
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 let legacyAutoLoginAttempted = false;
+const strictStateJsonRead = String(stateJsonReadMode || "strict").toLowerCase() !== "auto";
 
 const PROJECT_SELECT_COLUMNS = [
   "id",
@@ -1398,8 +1400,12 @@ export const dataClient = {
           fetchTasks(),
           fetchLegacyStateTasks(),
         ]);
-        const primaryProjects = legacyProjects.length ? legacyProjects : mergeProjectSources(projects, legacyProjects);
-        const primaryTasks = legacyTasks.length ? legacyTasks : mergeTaskSources(tasks, legacyTasks);
+        const primaryProjects = strictStateJsonRead
+          ? legacyProjects
+          : (legacyProjects.length ? legacyProjects : mergeProjectSources(projects, legacyProjects));
+        const primaryTasks = strictStateJsonRead
+          ? legacyTasks
+          : (legacyTasks.length ? legacyTasks : mergeTaskSources(tasks, legacyTasks));
         const tasksByProject = new Map();
         for (const task of primaryTasks) {
           const arr = tasksByProject.get(task.project_id) || [];
@@ -1422,8 +1428,12 @@ export const dataClient = {
           fetchTasks(),
           fetchLegacyStateTasks(),
         ]);
-        const primaryProjects = legacyProjects.length ? legacyProjects : mergeProjectSources(projects, legacyProjects);
-        const primaryTasks = legacyTasks.length ? legacyTasks : mergeTaskSources(tasks, legacyTasks);
+        const primaryProjects = strictStateJsonRead
+          ? legacyProjects
+          : (legacyProjects.length ? legacyProjects : mergeProjectSources(projects, legacyProjects));
+        const primaryTasks = strictStateJsonRead
+          ? legacyTasks
+          : (legacyTasks.length ? legacyTasks : mergeTaskSources(tasks, legacyTasks));
         const tasksByProject = new Map();
 
         for (const task of primaryTasks) {
@@ -1499,8 +1509,12 @@ export const dataClient = {
           fetchLegacyStateProjects(),
           fetchReferential(internalTechsTable, "internal_tech"),
         ]);
-        const primaryProjects = legacyProjects.length ? legacyProjects : mergeProjectSources(projects, legacyProjects);
-        const primaryTasks = legacyTasks.length ? legacyTasks : mergeTaskSources(tasks, legacyTasks);
+        const primaryProjects = strictStateJsonRead
+          ? legacyProjects
+          : (legacyProjects.length ? legacyProjects : mergeProjectSources(projects, legacyProjects));
+        const primaryTasks = strictStateJsonRead
+          ? legacyTasks
+          : (legacyTasks.length ? legacyTasks : mergeTaskSources(tasks, legacyTasks));
         const projectMap = new Map(primaryProjects.map((p) => [p.id, p]));
         const internalTechAllowBySite = buildInternalTechAllowBySite(internalTechRows);
         const enriched = enrichTasks(primaryTasks, projectMap, internalTechAllowBySite);
@@ -1516,8 +1530,12 @@ export const dataClient = {
           fetchLegacyStateProjects(),
           fetchReferential(internalTechsTable, "internal_tech"),
         ]);
-        const primaryProjects = legacyProjects.length ? legacyProjects : mergeProjectSources(projects, legacyProjects);
-        const primaryTasks = legacyTasks.length ? legacyTasks : mergeTaskSources(tasks, legacyTasks);
+        const primaryProjects = strictStateJsonRead
+          ? legacyProjects
+          : (legacyProjects.length ? legacyProjects : mergeProjectSources(projects, legacyProjects));
+        const primaryTasks = strictStateJsonRead
+          ? legacyTasks
+          : (legacyTasks.length ? legacyTasks : mergeTaskSources(tasks, legacyTasks));
         const projectMap = new Map(primaryProjects.map((p) => [p.id, p]));
         const internalTechAllowBySite = buildInternalTechAllowBySite(internalTechRows);
         let enriched = enrichTasks(primaryTasks, projectMap, internalTechAllowBySite);

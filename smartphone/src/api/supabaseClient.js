@@ -20,6 +20,7 @@ export const supabaseConfig = {
   sitesTable: import.meta.env.VITE_SUPABASE_SITES_TABLE || "sites",
   refsSiteColumn: import.meta.env.VITE_SUPABASE_REFS_SITE_COLUMN || "site",
   readOnlyMode: String(import.meta.env.VITE_READ_ONLY_MODE || "true").toLowerCase() === "true",
+  stateJsonReadMode: String(import.meta.env.VITE_STATE_JSON_READ_MODE || "strict").toLowerCase(),
   allowTaskWrites: String(import.meta.env.VITE_ALLOW_TASK_WRITES || "false").toLowerCase() === "true",
   allowTimeLogWrites: String(import.meta.env.VITE_ALLOW_TIME_LOG_WRITES || "true").toLowerCase() === "true",
   autoEmail: import.meta.env.VITE_SUPABASE_AUTO_EMAIL || "sebastien_duc@outlook.fr",
