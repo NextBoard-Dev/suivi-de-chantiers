@@ -601,6 +601,120 @@ async function fetchProjects(filters = {}) {
   return rows.map(mapProjectRow);
 }
 
+function mergeProjectSources(primaryProjects = [], legacyProjects = []) {
+  const out = new Map();
+  const upsert = (project = {}, preferIncoming = false) => {
+    const id = toStringId(project?.id);
+    const natural = buildProjectNaturalKey(project);
+    const key = id || natural;
+    if (!key) return;
+    const prev = out.get(key);
+    if (!prev) {
+      out.set(key, project);
+      return;
+    }
+    const prevTs = new Date(prev?.updated_date || prev?.created_date || 0).getTime();
+    const nextTs = new Date(project?.updated_date || project?.created_date || 0).getTime();
+    if (preferIncoming || nextTs >= prevTs) {
+      out.set(key, { ...prev, ...project });
+    }
+  };
+
+  (legacyProjects || []).forEach((project) => upsert(project));
+  (primaryProjects || []).forEach((project) => upsert(project, true));
+  return Array.from(out.values());
+}
+
+async function fetchLegacyStateProjects(filters = {}) {
+  if (!appStatesTable) return [];
+  try {
+    let { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) return [];
+    let sessionUser = sessionData?.session?.user || null;
+    const expectedEmail = String(autoEmail || "").trim().toLowerCase();
+    const currentEmail = String(sessionUser?.email || "").trim().toLowerCase();
+    const shouldAutoLogin = !sessionUser || (expectedEmail && currentEmail !== expectedEmail);
+    if (shouldAutoLogin && !legacyAutoLoginAttempted) {
+      legacyAutoLoginAttempted = true;
+      const email = String(autoEmail || "").trim();
+      const password = String(autoPassword || "").trim();
+      if (email && password) {
+        try {
+          await supabase.auth.signInWithPassword({ email, password });
+          const next = await supabase.auth.getSession();
+          if (!next.error) {
+            sessionData = next.data;
+            sessionUser = sessionData?.session?.user || null;
+          }
+        } catch {
+          // keep current session
+        }
+      }
+    }
+    const userId = sessionUser?.id || "";
+
+    let stateRows = [];
+    if (userId) {
+      const { data, error } = await supabase
+        .from(appStatesTable)
+        .select("state_json, updated_at")
+        .eq("user_id", userId)
+        .limit(1);
+      if (error) {
+        if (isMissingOptionalTableError(error) || isMissingColumnError(error)) return [];
+        throw error;
+      }
+      stateRows = Array.isArray(data) ? data : [];
+    }
+    if (!stateRows.length) {
+      const { data, error } = await supabase
+        .from(appStatesTable)
+        .select("state_json, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(10);
+      if (error) {
+        if (isMissingOptionalTableError(error) || isMissingColumnError(error)) return [];
+        throw error;
+      }
+      stateRows = Array.isArray(data) ? data : [];
+    }
+
+    const mapped = [];
+    stateRows.forEach((row) => {
+      const stateJson = row?.state_json;
+      const rawProjects = Array.isArray(stateJson?.projects) ? stateJson.projects : [];
+      rawProjects.forEach((project, idx) => {
+        const mappedProject = mapProjectRow({
+          id: project?.id ?? project?.project_id ?? `legacy_project_${idx}`,
+          name: project?.name ?? project?.project_name ?? "",
+          project_name: project?.project_name ?? project?.name ?? "",
+          site: project?.site ?? project?.site_name ?? "",
+          site_name: project?.site_name ?? project?.site ?? "",
+          subproject: project?.subproject ?? project?.sub_project ?? "",
+          sub_project: project?.sub_project ?? project?.subproject ?? "",
+          progress: project?.progress ?? 0,
+          lifecycle_status: project?.lifecycle_status ?? project?.status ?? "a_planifier",
+          status: project?.status ?? project?.lifecycle_status ?? "a_planifier",
+          start_date: project?.start_date ?? project?.start ?? "",
+          end_date: project?.end_date ?? project?.end ?? "",
+          updated_date: project?.updated_date ?? project?.updatedAt ?? row?.updated_at ?? "",
+          updated_at: project?.updated_at ?? project?.updatedAt ?? row?.updated_at ?? "",
+          created_date: project?.created_date ?? project?.createdAt ?? "",
+          created_at: project?.created_at ?? project?.createdAt ?? "",
+          budget_estimated: project?.budget_estimated ?? null,
+          budget_actual: project?.budget_actual ?? null,
+          penalty_amount: project?.penalty_amount ?? null,
+        });
+        mapped.push(mappedProject);
+      });
+    });
+
+    return mapped.filter((row) => matchesFiltersInMemory(row, filters));
+  } catch {
+    return [];
+  }
+}
+
 async function fetchTasks(filters = {}) {
   const rows = await fetchPagedRows(tasksTable, {
     filters,
@@ -1119,7 +1233,12 @@ export const dataClient = {
   entities: {
     Project: {
       list: async (sort = "-updated_date", limit = 200) => {
-        const [projects, tasks] = await Promise.all([fetchProjects(), fetchTasks()]);
+        const [projects, legacyProjects, tasks] = await Promise.all([
+          fetchProjects(),
+          fetchLegacyStateProjects(),
+          fetchTasks(),
+        ]);
+        const mergedProjects = mergeProjectSources(projects, legacyProjects);
         const tasksByProject = new Map();
         for (const task of tasks) {
           const arr = tasksByProject.get(task.project_id) || [];
@@ -1127,7 +1246,7 @@ export const dataClient = {
           tasksByProject.set(task.project_id, arr);
         }
 
-        const enriched = projects.map((project) => ({
+        const enriched = mergedProjects.map((project) => ({
           ...project,
           progress: computeProjectProgress(project, tasksByProject.get(project.id) || []),
         }));
@@ -1136,8 +1255,12 @@ export const dataClient = {
       },
 
       filter: async (filters = {}, sort = "-updated_date", limit = 200) => {
-        const projects = await fetchProjects(filters);
-        const tasks = await fetchTasks();
+        const [projects, legacyProjects, tasks] = await Promise.all([
+          fetchProjects(filters),
+          fetchLegacyStateProjects(filters),
+          fetchTasks(),
+        ]);
+        const mergedProjects = mergeProjectSources(projects, legacyProjects);
         const tasksByProject = new Map();
 
         for (const task of tasks) {
@@ -1146,7 +1269,7 @@ export const dataClient = {
           tasksByProject.set(task.project_id, arr);
         }
 
-        const enriched = projects.map((project) => ({
+        const enriched = mergedProjects.map((project) => ({
           ...project,
           progress: computeProjectProgress(project, tasksByProject.get(project.id) || []),
         }));
