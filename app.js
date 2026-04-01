@@ -7386,6 +7386,30 @@ function renderMasterMetrics(tasks){
 
 }
 
+function renderMasterQuickKpis(tasks){
+  const host = el("masterQuickKpis");
+  if(!host) return;
+  const list = Array.isArray(tasks) ? tasks : [];
+  const todayKey = new Date().toISOString().slice(0,10);
+  const totalProjects = new Set(list.map(t=>String(t?.projectId||"")).filter(Boolean)).size;
+  const activeTasksToday = list.filter(t=>t?.start && t?.end && t.start<=todayKey && t.end>=todayKey);
+  const activeProjectsToday = new Set(activeTasksToday.map(t=>String(t?.projectId||"")).filter(Boolean)).size;
+  host.innerHTML = `
+    <div class="master-quick-kpi-card" title="Chantiers total et actifs au jour">
+      <span class="master-quick-kpi-card-icon" aria-hidden="true">□</span>
+      <div class="master-quick-kpi-card-value">${totalProjects}</div>
+      <div class="master-quick-kpi-card-title">CHANTIERS</div>
+      <div class="master-quick-kpi-card-sub">${activeProjectsToday} actif(s)</div>
+    </div>
+    <div class="master-quick-kpi-card" title="Tâches total et actives au jour">
+      <span class="master-quick-kpi-card-icon" aria-hidden="true">✓</span>
+      <div class="master-quick-kpi-card-value">${list.length}</div>
+      <div class="master-quick-kpi-card-title">TÂCHES</div>
+      <div class="master-quick-kpi-card-sub">${activeTasksToday.length} actives</div>
+    </div>
+  `;
+}
+
 function canonSiteKey(raw){
   return String(raw || "")
     .trim()
@@ -7578,6 +7602,7 @@ function renderMaster(){
   renderKPIs(tasks);
 
   renderMasterMetrics(tasks);
+  renderMasterQuickKpis(tasks);
 
   // Charge de travail
 
