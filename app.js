@@ -2918,7 +2918,9 @@ function setupVendorPicker(){
 
   const openList = ()=>{
 
-    renderVendorDropdown(input.value);
+    // Champ en lecture seule: toujours ouvrir la liste complète pour
+    // permettre de remplacer un prestataire invalide/obsolète.
+    renderVendorDropdown("");
 
     showVendorDropdown(true);
 
