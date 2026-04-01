@@ -11,6 +11,8 @@ Push-Location $smartphoneDir
 try {
   Write-Host "[0/4] Verify state_json parity..."
   node .\scripts\verify-statejson-parity.cjs
+  Write-Host "[0.5/4] Lint smartphone (blocking)..."
+  npm run lint
   npm run build
 } finally {
   Pop-Location
