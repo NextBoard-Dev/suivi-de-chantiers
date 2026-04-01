@@ -343,6 +343,12 @@ function buildProjectNaturalKey(projectLike = {}) {
   return [site, name, sub].join("|");
 }
 
+function buildProjectLooseKey(projectLike = {}) {
+  const site = normalizeProjectKeyText(projectLike.site ?? projectLike.site_name ?? "");
+  const name = normalizeProjectKeyText(projectLike.name ?? projectLike.project_name ?? "");
+  return [site, name].join("|");
+}
+
 function buildTaskSignature(taskLike = {}) {
   const ownerType = normalizeMobileOwnerType(taskLike.owner_type ?? taskLike.owner ?? "");
   const projectId = toStringId(taskLike.project_id ?? taskLike.projectId ?? taskLike.chantier_id);
@@ -1508,6 +1514,9 @@ export const dataClient = {
 
       filter: async (filters = {}, sort = "-updated_date", limit = 500) => {
         const dbFilters = { ...filters };
+        const requestedProjectId = toStringId(
+          dbFilters.project_id ?? dbFilters[taskProjectIdColumn] ?? "",
+        );
         if (dbFilters.project_id && taskProjectIdColumn !== "project_id") {
           dbFilters[taskProjectIdColumn] = dbFilters.project_id;
           delete dbFilters.project_id;
@@ -1534,7 +1543,49 @@ export const dataClient = {
         }
 
         const internalTechAllowBySite = buildInternalTechAllowBySite(internalTechRows);
-        const enriched = enrichTasks(mergedTasks, projectMap, internalTechAllowBySite);
+        let enriched = enrichTasks(mergedTasks, projectMap, internalTechAllowBySite);
+
+        // Fallback robuste: si filtre project_id sans resultat, re-filtrer en memoire par cle chantier.
+        if (requestedProjectId) {
+          const direct = enriched.filter((task) => toStringId(task?.project_id) === requestedProjectId);
+          if (direct.length > 0) {
+            return applySort(direct, sort).slice(0, limit);
+          }
+
+          const [allProjects, allLegacyProjects, allTasks, allLegacyTasks] = await Promise.all([
+            fetchProjects(),
+            fetchLegacyStateProjects(),
+            fetchTasks(),
+            fetchLegacyStateTasks(),
+          ]);
+          const mergedAllProjects = mergeProjectSources(allProjects, allLegacyProjects);
+          const targetProject = mergedAllProjects.find((project) => toStringId(project?.id) === requestedProjectId);
+          if (targetProject) {
+            const targetNatural = buildProjectNaturalKey(targetProject);
+            const targetLoose = buildProjectLooseKey(targetProject);
+            const allTaskMap = new Map(mergedAllProjects.map((p) => [p.id, p]));
+            const allMergedTasks = mergeTaskSources(allTasks, allLegacyTasks);
+            const allEnriched = enrichTasks(allMergedTasks, allTaskMap, internalTechAllowBySite);
+            enriched = allEnriched.filter((task) => {
+              if (toStringId(task?.project_id) === requestedProjectId) return true;
+              const taskNatural = buildProjectNaturalKey({
+                site: task?.site || "",
+                name: task?.project_name || "",
+                subproject: "",
+              });
+              const taskLoose = buildProjectLooseKey({
+                site: task?.site || "",
+                name: task?.project_name || "",
+              });
+              if (targetNatural && taskNatural === targetNatural) return true;
+              if (targetLoose && taskLoose === targetLoose) return true;
+              return false;
+            });
+          } else {
+            enriched = [];
+          }
+        }
+
         return applySort(enriched, sort).slice(0, limit);
       },
 
