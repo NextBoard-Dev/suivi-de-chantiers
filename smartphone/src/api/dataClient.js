@@ -1398,16 +1398,16 @@ export const dataClient = {
           fetchTasks(),
           fetchLegacyStateTasks(),
         ]);
-        const mergedProjects = mergeProjectSources(projects, legacyProjects);
-        const mergedTasks = mergeTaskSources(tasks, legacyTasks);
+        const primaryProjects = legacyProjects.length ? legacyProjects : mergeProjectSources(projects, legacyProjects);
+        const primaryTasks = legacyTasks.length ? legacyTasks : mergeTaskSources(tasks, legacyTasks);
         const tasksByProject = new Map();
-        for (const task of mergedTasks) {
+        for (const task of primaryTasks) {
           const arr = tasksByProject.get(task.project_id) || [];
           arr.push(task);
           tasksByProject.set(task.project_id, arr);
         }
 
-        const enriched = mergedProjects.map((project) => ({
+        const enriched = primaryProjects.map((project) => ({
           ...project,
           progress: computeProjectProgress(project, tasksByProject.get(project.id) || []),
         }));
@@ -1416,31 +1416,27 @@ export const dataClient = {
       },
 
       filter: async (filters = {}, sort = "-updated_date", limit = 200) => {
-        const hasIdFilter = filters && hasOwn(filters, "id") && String(filters.id || "").trim() !== "";
         const [projects, legacyProjects, tasks, legacyTasks] = await Promise.all([
-          hasIdFilter ? fetchProjects() : fetchProjects(filters),
-          hasIdFilter ? fetchLegacyStateProjects() : fetchLegacyStateProjects(filters),
+          fetchProjects(),
+          fetchLegacyStateProjects(),
           fetchTasks(),
           fetchLegacyStateTasks(),
         ]);
-        const mergedProjects = mergeProjectSources(projects, legacyProjects);
-        const mergedTasks = mergeTaskSources(tasks, legacyTasks);
+        const primaryProjects = legacyProjects.length ? legacyProjects : mergeProjectSources(projects, legacyProjects);
+        const primaryTasks = legacyTasks.length ? legacyTasks : mergeTaskSources(tasks, legacyTasks);
         const tasksByProject = new Map();
 
-        for (const task of mergedTasks) {
+        for (const task of primaryTasks) {
           const arr = tasksByProject.get(task.project_id) || [];
           arr.push(task);
           tasksByProject.set(task.project_id, arr);
         }
 
-        let enriched = mergedProjects.map((project) => ({
+        let enriched = primaryProjects.map((project) => ({
           ...project,
           progress: computeProjectProgress(project, tasksByProject.get(project.id) || []),
         }));
-        if (hasIdFilter) {
-          const wantedId = String(filters.id || "");
-          enriched = enriched.filter((project) => String(project?.id || "") === wantedId);
-        }
+        enriched = enriched.filter((project) => matchesFiltersInMemory(project, filters));
 
         return applySort(enriched, sort).slice(0, limit);
       },
@@ -1503,88 +1499,36 @@ export const dataClient = {
           fetchLegacyStateProjects(),
           fetchReferential(internalTechsTable, "internal_tech"),
         ]);
-        const mergedProjects = mergeProjectSources(projects, legacyProjects);
-        const mergedTasks = mergeTaskSources(tasks, legacyTasks);
-        const projectMap = new Map(mergedProjects.map((p) => [p.id, p]));
+        const primaryProjects = legacyProjects.length ? legacyProjects : mergeProjectSources(projects, legacyProjects);
+        const primaryTasks = legacyTasks.length ? legacyTasks : mergeTaskSources(tasks, legacyTasks);
+        const projectMap = new Map(primaryProjects.map((p) => [p.id, p]));
         const internalTechAllowBySite = buildInternalTechAllowBySite(internalTechRows);
-        const enriched = enrichTasks(mergedTasks, projectMap, internalTechAllowBySite);
+        const enriched = enrichTasks(primaryTasks, projectMap, internalTechAllowBySite);
 
         return applySort(enriched, sort).slice(0, limit);
       },
 
       filter: async (filters = {}, sort = "-updated_date", limit = 500) => {
-        const dbFilters = { ...filters };
-        const requestedProjectId = toStringId(
-          dbFilters.project_id ?? dbFilters[taskProjectIdColumn] ?? "",
-        );
-        if (dbFilters.project_id && taskProjectIdColumn !== "project_id") {
-          dbFilters[taskProjectIdColumn] = dbFilters.project_id;
-          delete dbFilters.project_id;
-        }
-
-        const [tasks, legacyTasks, internalTechRows] = await Promise.all([
-          fetchTasks(dbFilters),
-          fetchLegacyStateTasks(dbFilters),
+        const [tasks, legacyTasks, projects, legacyProjects, internalTechRows] = await Promise.all([
+          fetchTasks(),
+          fetchLegacyStateTasks(),
+          fetchProjects(),
+          fetchLegacyStateProjects(),
           fetchReferential(internalTechsTable, "internal_tech"),
         ]);
-        const mergedTasks = mergeTaskSources(tasks, legacyTasks);
-        const projectIds = [...new Set(mergedTasks.map((task) => task.project_id).filter(Boolean))];
-
-        let projectMap = new Map();
-        if (projectIds.length > 0) {
-          const [projectRows, legacyProjectRows] = await Promise.all([
-            fetchProjectsByIds(projectIds),
-            fetchLegacyStateProjects(),
-          ]);
-          projectMap = new Map(
-            mergeProjectSources(projectRows, legacyProjectRows)
-              .map((mapped) => [mapped.id, mapped]),
-          );
-        }
-
+        const primaryProjects = legacyProjects.length ? legacyProjects : mergeProjectSources(projects, legacyProjects);
+        const primaryTasks = legacyTasks.length ? legacyTasks : mergeTaskSources(tasks, legacyTasks);
+        const projectMap = new Map(primaryProjects.map((p) => [p.id, p]));
         const internalTechAllowBySite = buildInternalTechAllowBySite(internalTechRows);
-        let enriched = enrichTasks(mergedTasks, projectMap, internalTechAllowBySite);
-
-        // Fallback robuste: si filtre project_id sans resultat, re-filtrer en memoire par cle chantier.
+        let enriched = enrichTasks(primaryTasks, projectMap, internalTechAllowBySite);
+        const requestedProjectId = toStringId(filters?.project_id ?? filters?.[taskProjectIdColumn] ?? "");
         if (requestedProjectId) {
-          const direct = enriched.filter((task) => toStringId(task?.project_id) === requestedProjectId);
-          if (direct.length > 0) {
-            return applySort(direct, sort).slice(0, limit);
-          }
-
-          const [allProjects, allLegacyProjects, allTasks, allLegacyTasks] = await Promise.all([
-            fetchProjects(),
-            fetchLegacyStateProjects(),
-            fetchTasks(),
-            fetchLegacyStateTasks(),
-          ]);
-          const mergedAllProjects = mergeProjectSources(allProjects, allLegacyProjects);
-          const targetProject = mergedAllProjects.find((project) => toStringId(project?.id) === requestedProjectId);
-          if (targetProject) {
-            const targetNatural = buildProjectNaturalKey(targetProject);
-            const targetLoose = buildProjectLooseKey(targetProject);
-            const allTaskMap = new Map(mergedAllProjects.map((p) => [p.id, p]));
-            const allMergedTasks = mergeTaskSources(allTasks, allLegacyTasks);
-            const allEnriched = enrichTasks(allMergedTasks, allTaskMap, internalTechAllowBySite);
-            enriched = allEnriched.filter((task) => {
-              if (toStringId(task?.project_id) === requestedProjectId) return true;
-              const taskNatural = buildProjectNaturalKey({
-                site: task?.site || "",
-                name: task?.project_name || "",
-                subproject: "",
-              });
-              const taskLoose = buildProjectLooseKey({
-                site: task?.site || "",
-                name: task?.project_name || "",
-              });
-              if (targetNatural && taskNatural === targetNatural) return true;
-              if (targetLoose && taskLoose === targetLoose) return true;
-              return false;
-            });
-          } else {
-            enriched = [];
-          }
+          enriched = enriched.filter((task) => toStringId(task?.project_id) === requestedProjectId);
         }
+        enriched = enriched.filter((task) => {
+          const local = { ...task, [taskProjectIdColumn]: task?.project_id };
+          return matchesFiltersInMemory(local, filters);
+        });
 
         return applySort(enriched, sort).slice(0, limit);
       },
