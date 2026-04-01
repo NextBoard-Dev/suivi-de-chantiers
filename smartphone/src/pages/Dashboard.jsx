@@ -6,12 +6,7 @@ import ProjectCard from "../components/common/ProjectCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { computeProjectHoursById } from "@/lib/projectHours";
-import { computeTaskProgressAuto } from "@/lib/businessRules";
-import { computeMissingEntriesByProject } from "@/lib/missingHours";
-
-function toIsoDateKey(value) {
-  return String(value || "").slice(0, 10);
-}
+import { computeMissingEntriesByProject, computeMissingEntriesByTask } from "@/lib/missingHours";
 
 export default function Dashboard() {
   const { data: projects = [], isLoading: loadingProjects } = useQuery({
@@ -67,45 +62,16 @@ export default function Dashboard() {
     () => computeMissingEntriesByProject(tasks, timeLogs),
     [tasks, timeLogs]
   );
+  const missingEntriesByTask = React.useMemo(
+    () => computeMissingEntriesByTask(tasks, timeLogs),
+    [tasks, timeLogs]
+  );
   const missingHoursKpi = React.useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayKey = today.toISOString().slice(0, 10);
-    const day = today.getDay();
-    const isWeekdayToday = day >= 1 && day <= 5;
-    if (!isWeekdayToday) {
-      return { tasksWithMissing: 0, missingEntries: 0 };
-    }
-
-    const logsTodayByTask = new Set();
-    (timeLogs || []).forEach((log) => {
-      const taskId = String(log?.task_id || log?.taskId || "");
-      const dateKey = toIsoDateKey(log?.date);
-      const minutes = Number.isFinite(Number(log?.minutes)) ? Number(log.minutes) : 0;
-      if (!taskId || dateKey !== todayKey || minutes <= 0) return;
-      logsTodayByTask.add(taskId);
-    });
-
-    let tasksWithMissing = 0;
-    let missingEntries = 0;
-
-    (tasks || []).forEach((task) => {
-      const progressAuto = computeTaskProgressAuto(task?.start_date || "", task?.end_date || "");
-      if (progressAuto >= 100) return;
-      const startKey = toIsoDateKey(task?.start_date);
-      const endKey = toIsoDateKey(task?.end_date);
-      if (!startKey || !endKey) return;
-      if (todayKey < startKey || todayKey > endKey) return;
-      const taskId = String(task?.id || "");
-      if (!taskId) return;
-      if (!logsTodayByTask.has(taskId)) {
-        tasksWithMissing += 1;
-        missingEntries += 1;
-      }
-    });
-
+    const values = Object.values(missingEntriesByTask || {});
+    const tasksWithMissing = values.reduce((acc, count) => acc + (Number(count) > 0 ? 1 : 0), 0);
+    const missingEntries = values.reduce((acc, count) => acc + (Number(count) || 0), 0);
     return { tasksWithMissing, missingEntries };
-  }, [tasks, timeLogs]);
+  }, [missingEntriesByTask]);
 
   if (isLoading) {
     return (
