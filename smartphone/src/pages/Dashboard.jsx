@@ -6,6 +6,7 @@ import ProjectCard from "../components/common/ProjectCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { computeProjectHoursById } from "@/lib/projectHours";
+import { computeTaskProgressAuto } from "@/lib/businessRules";
 import { computeMissingEntriesByProject, computeMissingEntriesByTask } from "@/lib/missingHours";
 
 export default function Dashboard() {
