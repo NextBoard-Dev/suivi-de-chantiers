@@ -612,7 +612,7 @@ function mergeProjectSources(primaryProjects = [], legacyProjects = []) {
   const upsert = (project = {}, preferIncoming = false) => {
     const id = toStringId(project?.id);
     const natural = buildProjectNaturalKey(project);
-    const key = natural || id;
+    const key = id || natural;
     if (!key) return;
     const prev = out.get(key);
     if (!prev) {
