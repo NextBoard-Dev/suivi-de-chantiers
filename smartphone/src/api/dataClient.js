@@ -687,6 +687,7 @@ async function fetchLegacyStateProjects(filters = {}) {
         .from(appStatesTable)
         .select("state_json, updated_at")
         .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
         .limit(1);
       if (error) {
         if (isMissingOptionalTableError(error) || isMissingColumnError(error)) return [];
@@ -699,7 +700,7 @@ async function fetchLegacyStateProjects(filters = {}) {
         .from(appStatesTable)
         .select("state_json, updated_at")
         .order("updated_at", { ascending: false })
-        .limit(10);
+        .limit(1);
       if (error) {
         if (isMissingOptionalTableError(error) || isMissingColumnError(error)) return [];
         throw error;
@@ -811,6 +812,7 @@ async function fetchLegacyStateTasks(filters = {}) {
         .from(appStatesTable)
         .select("state_json, updated_at")
         .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
         .limit(1);
       if (error) {
         if (isMissingOptionalTableError(error) || isMissingColumnError(error)) return [];
@@ -823,7 +825,7 @@ async function fetchLegacyStateTasks(filters = {}) {
         .from(appStatesTable)
         .select("state_json, updated_at")
         .order("updated_at", { ascending: false })
-        .limit(10);
+        .limit(1);
       if (error) {
         if (isMissingOptionalTableError(error) || isMissingColumnError(error)) return [];
         throw error;
@@ -1005,6 +1007,7 @@ async function fetchLegacyStateTimeLogs(filters = {}) {
         .from(appStatesTable)
         .select("state_json, updated_at")
         .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
         .limit(1);
       if (error) {
         if (isMissingOptionalTableError(error) || isMissingColumnError(error)) return [];
@@ -1017,7 +1020,7 @@ async function fetchLegacyStateTimeLogs(filters = {}) {
         .from(appStatesTable)
         .select("state_json, updated_at")
         .order("updated_at", { ascending: false })
-        .limit(10);
+        .limit(1);
       if (error) {
         if (isMissingOptionalTableError(error) || isMissingColumnError(error)) return [];
         throw error;
