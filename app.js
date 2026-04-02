@@ -907,6 +907,11 @@ const SCALE_GUARDS = {
 const runtimePerf = {
   lastRenderMs: 0,
   lastSaveMs: 0,
+  lastRenderMasterMs: 0,
+  lastRenderMasterGanttMs: 0,
+  lastMissingMapCalls: 0,
+  totalMissingMapCalls: 0,
+  _missingMapCallsAtRenderStart: 0,
   lastStateBytes: 0,
   lastRenderAt: "",
   lastSaveAt: "",
@@ -1548,7 +1553,10 @@ function buildAdminMiniDiagText(){
     if(!m) return "";
     const seg = m.segmentsBytes || {};
     const kb = (v)=>`${Math.round((Number(v||0))/1024)} Ko`;
-    return ` | Diag: etat ${kb(m.totalBytes)} | projets ${kb(seg.projects)} | taches ${kb(seg.tasks)} | logs ${kb(seg.timeLogs)}`;
+    const rm = Number(runtimePerf?.lastRenderMasterMs || 0).toFixed(0);
+    const rg = Number(runtimePerf?.lastRenderMasterGanttMs || 0).toFixed(0);
+    const mm = Number(runtimePerf?.lastMissingMapCalls || 0);
+    return ` | Diag: etat ${kb(m.totalBytes)} | projets ${kb(seg.projects)} | taches ${kb(seg.tasks)} | logs ${kb(seg.timeLogs)} | rm ${rm} ms | rg ${rg} ms | mm ${mm}`;
   }catch(e){
     softCatch(e);
     return "";
@@ -4401,6 +4409,9 @@ function collectScalabilityReport(currentState=state){
     segmentMetrics: segmentMetrics || null,
     lastSegmentationAt: runtimePerf.lastSegmentationAt || "",
     lastRenderMs: runtimePerf.lastRenderMs || 0,
+    lastRenderMasterMs: runtimePerf.lastRenderMasterMs || 0,
+    lastRenderMasterGanttMs: runtimePerf.lastRenderMasterGanttMs || 0,
+    lastMissingMapCalls: runtimePerf.lastMissingMapCalls || 0,
     lastSaveMs: runtimePerf.lastSaveMs || 0,
     lastRenderAt: runtimePerf.lastRenderAt || "",
     lastSaveAt: runtimePerf.lastSaveAt || ""
@@ -6394,16 +6405,21 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
   return buildTable(tasks, 0, true);
 }
 function renderMasterGantt(){
+  const ganttRenderT0 = performance.now();
 
   const wrap = el("masterGantt");
 
-  if(!wrap) return;
+  if(!wrap){
+    runtimePerf.lastRenderMasterGanttMs = Math.max(0, performance.now() - ganttRenderT0);
+    return;
+  }
 
   const tasks = filteredTasks().filter(t=>t.start && t.end);
 
   if(tasks.length===0){
     wrap.innerHTML = "<div class='gantt-empty'>Aucune tâche date.</div>";
     updateMasterGanttSortResetButtonState();
+    runtimePerf.lastRenderMasterGanttMs = Math.max(0, performance.now() - ganttRenderT0);
 
     return;
 
@@ -6626,6 +6642,7 @@ function renderMasterGantt(){
   });
   updateSortIndicators("masterGanttTable", sortMasterGantt);
   updateMasterGanttSortResetButtonState();
+  runtimePerf.lastRenderMasterGanttMs = Math.max(0, performance.now() - ganttRenderT0);
 
 }
 
@@ -7740,6 +7757,7 @@ function updateSidebarFilterIndicator(){
 
 
 function renderMaster(){
+  const masterRenderT0 = performance.now();
   computeTaskOrderMap();
   renderTabs();
   closeAllOverlays();
@@ -7748,7 +7766,10 @@ function renderMaster(){
 
   const tbody = el("masterTable")?.querySelector("tbody");
 
-  if(!tbody) return;
+  if(!tbody){
+    runtimePerf.lastRenderMasterMs = Math.max(0, performance.now() - masterRenderT0);
+    return;
+  }
 
   const tasks = filteredTasks();
 
@@ -7834,6 +7855,7 @@ function renderMaster(){
     tbody.innerHTML = onlyMissingEnabled
       ? "<tr><td colspan='8' class='empty-row'>Aucune tâche à compléter.</td></tr>"
       : "<tr><td colspan='8' class='empty-row'>Aucune tâche.</td></tr>";
+    runtimePerf.lastRenderMasterMs = Math.max(0, performance.now() - masterRenderT0);
 
     return;
 
@@ -7927,6 +7949,7 @@ function renderMaster(){
     animateBadgeChanges(el("viewMaster"));
     animateCardsInView("viewMaster");
   }
+  runtimePerf.lastRenderMasterMs = Math.max(0, performance.now() - masterRenderT0);
 
 }
 
@@ -8427,6 +8450,7 @@ function getMissingDaysList(t){
   return hasAllExpectedLogsForTaskDate(t, todayKey) ? [] : [todayKey];
 }
 function buildMissingDaysMap(tasks){
+  runtimePerf.totalMissingMapCalls = Number(runtimePerf.totalMissingMapCalls || 0) + 1;
   const map = new Map();
   (tasks || []).forEach(t=>{
     map.set(t.id, countMissingDaysForTask(t));
@@ -9925,6 +9949,7 @@ function renderProject(){
 
 function renderAll(){
   const renderT0 = performance.now();
+  runtimePerf._missingMapCallsAtRenderStart = Number(runtimePerf.totalMissingMapCalls || 0);
   // filet de sécurité : si localStorage est vide (ex : fichier ouvert en navigation privée), on recharge l'état par défaut
   if(!state || !Array.isArray(state.projects) || state.projects.length===0){
     state = defaultState();
@@ -9960,6 +9985,10 @@ function renderAll(){
   applySidebarTopLock();
   checkTimeLogReminders();
   runtimePerf.lastRenderMs = Math.max(0, performance.now() - renderT0);
+  runtimePerf.lastMissingMapCalls = Math.max(
+    0,
+    Number(runtimePerf.totalMissingMapCalls || 0) - Number(runtimePerf._missingMapCallsAtRenderStart || 0)
+  );
   runtimePerf.lastRenderAt = new Date().toISOString();
   updateDataQualityBanner(false);
   applyUiUpperNoAccent();
