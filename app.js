@@ -893,6 +893,7 @@ let lastUndoSnapshot = null;
 let _stateVersion = 0;
 let _filteredCache = { key:"", version:-1, tasks:null };
 let _missingLogEntriesTotalCache = { version:-1, todayKey:"", totalTasks:-1, total:0 };
+let _missingDaysMapAllTasksCache = { version:-1, todayKey:"", totalTasks:-1, map:null };
 let _missingHoursFlow = null;
 let _outsideRangeFlow = null;
 let _lastMasterAnimSignature = "";
@@ -7825,9 +7826,10 @@ function renderMaster(){
   const missingMap = buildMissingDaysMap(sorted);
   const todayKey = new Date().toISOString().slice(0,10);
   const allTasks = Array.isArray(state?.tasks) ? state.tasks : [];
-  const missingMapAll = buildMissingDaysMap(allTasks);
+  const missingMapAll = getMissingDaysMapAllTasksCached(allTasks);
   const missingHoursCount = allTasks.reduce((acc, t)=> acc + ((missingMapAll.get(t.id) || 0) > 0 ? 1 : 0), 0);
   const missingLogEntriesCount = getMissingLogEntriesCountAllTasks(allTasks);
+  const projectById = new Map((state?.projects || []).map((p)=>[String(p.id || ""), p]));
   const onlyMissingEnabled = !!el("toggleMissingOnly")?.checked;
   const visibleTasks = onlyMissingEnabled
     ? sorted.filter(t=> (missingMap.get(t.id) || 0) > 0)
@@ -7879,7 +7881,7 @@ function renderMaster(){
 
   visibleTasks.forEach(t=>{
 
-    const p = state.projects.find(x=>x.id===t.projectId);
+    const p = projectById.get(String(t.projectId || "")) || null;
 
     const mainStatus = getTaskMainStatus(t);
     const c = statusColor(mainStatus);
@@ -8504,6 +8506,29 @@ function buildMissingDaysMap(tasks){
   (tasks || []).forEach(t=>{
     map.set(t.id, countMissingDaysForTask(t));
   });
+  return map;
+}
+function getMissingDaysMapAllTasksCached(tasks){
+  const allTasks = Array.isArray(tasks) ? tasks : [];
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const todayKey = toLocalDateKey(today);
+  const cache = _missingDaysMapAllTasksCache || {};
+  if(
+    cache.version === _stateVersion &&
+    cache.todayKey === todayKey &&
+    cache.totalTasks === allTasks.length &&
+    cache.map instanceof Map
+  ){
+    return cache.map;
+  }
+  const map = buildMissingDaysMap(allTasks);
+  _missingDaysMapAllTasksCache = {
+    version: _stateVersion,
+    todayKey,
+    totalTasks: allTasks.length,
+    map
+  };
   return map;
 }
 function getMissingTasksForMasterFlow(){
