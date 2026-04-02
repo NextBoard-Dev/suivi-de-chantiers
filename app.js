@@ -892,6 +892,9 @@ let unsavedChanges = false;
 let lastUndoSnapshot = null;
 let _stateVersion = 0;
 let _filteredCache = { key:"", version:-1, tasks:null };
+let _missingDaysMapCache = { key:"", map:null };
+let _masterGanttRenderSignature = "";
+let _renderAllBootstrapped = false;
 let _missingHoursFlow = null;
 let _outsideRangeFlow = null;
 let _lastScalabilityReport = null;
@@ -6400,14 +6403,23 @@ function renderMasterGantt(){
   if(!wrap) return;
 
   const tasks = filteredTasks().filter(t=>t.start && t.end);
+  const tasksSig = tasks.map((t)=>`${t?.id || ""}:${t?.projectId || ""}:${t?.start || ""}:${t?.end || ""}:${t?.owner || ""}:${t?.vendor || ""}:${t?.status || ""}`).join("|");
+  const renderSig = `${_stateVersion}|${sortMasterGantt?.key || ""}|${sortMasterGantt?.dir || ""}|${selectedTaskId || ""}|${tasksSig}`;
 
   if(tasks.length===0){
-
-    wrap.innerHTML = "<div class='gantt-empty'>Aucune tâche date.</div>";
+    if(_masterGanttRenderSignature !== renderSig){
+      wrap.innerHTML = "<div class='gantt-empty'>Aucune tâche date.</div>";
+      _masterGanttRenderSignature = renderSig;
+    }
     updateMasterGanttSortResetButtonState();
 
     return;
 
+  }
+
+  if(_masterGanttRenderSignature === renderSig){
+    updateMasterGanttSortResetButtonState();
+    return;
   }
 
   const minStart = tasks.map(t=>new Date(t.start+"T00:00:00")).reduce((a,b)=>a<b?a:b);
@@ -6627,6 +6639,7 @@ function renderMasterGantt(){
   });
   updateSortIndicators("masterGanttTable", sortMasterGantt);
   updateMasterGanttSortResetButtonState();
+  _masterGanttRenderSignature = renderSig;
 
 }
 
@@ -8428,10 +8441,17 @@ function getMissingDaysList(t){
   return hasAllExpectedLogsForTaskDate(t, todayKey) ? [] : [todayKey];
 }
 function buildMissingDaysMap(tasks){
+  const list = Array.isArray(tasks) ? tasks : [];
+  const todayKey = toLocalDateKey(new Date());
+  const sig = `${_stateVersion}|${todayKey}|${list.length}|${list.map((t)=>`${t?.id || ""}:${t?.start || ""}:${t?.end || ""}`).join("|")}`;
+  if(_missingDaysMapCache.key === sig && _missingDaysMapCache.map){
+    return _missingDaysMapCache.map;
+  }
   const map = new Map();
-  (tasks || []).forEach(t=>{
+  list.forEach((t)=>{
     map.set(t.id, countMissingDaysForTask(t));
   });
+  _missingDaysMapCache = { key:sig, map };
   return map;
 }
 function getMissingTasksForMasterFlow(){
@@ -9933,19 +9953,18 @@ function renderAll(){
   closeAllOverlays();
   refreshVendorsList();
   refreshDescriptionsList();
-  resetProjectWorkloadFilters();
-  // rinitialiser les filtres visibles pour éviter un filtrage bloquant
-
-  ["filterSite","filterProject","filterStatus","filterSearch","filterStartAfter","filterEndBefore"].forEach(id=>{
-
-    const n=el(id);
-
-    if(n) n.value="";
-
-  });
-  const toggleMissingOnly = el("toggleMissingOnly");
-  if(toggleMissingOnly) toggleMissingOnly.checked = false;
-  _filteredCache = { key:"", version:-1, tasks:null };
+  if(!_renderAllBootstrapped){
+    resetProjectWorkloadFilters();
+    // Bootstrap unique pour éviter de forcer les resets à chaque rendu.
+    ["filterSite","filterProject","filterStatus","filterSearch","filterStartAfter","filterEndBefore"].forEach(id=>{
+      const n=el(id);
+      if(n) n.value="";
+    });
+    const toggleMissingOnly = el("toggleMissingOnly");
+    if(toggleMissingOnly) toggleMissingOnly.checked = false;
+    _filteredCache = { key:"", version:-1, tasks:null };
+    _renderAllBootstrapped = true;
+  }
 
   renderFilters();
 
