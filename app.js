@@ -1384,9 +1384,9 @@ function applyGanttColumnVisibility(){
 
   if(masterTable){
 
-    masterTable.classList.toggle("hide-vendor", !ganttColVisibility.masterVendor);
-
-    masterTable.classList.toggle("hide-status", !ganttColVisibility.masterStatus);
+    // Gantt global: colonnes Prestataire/Statut toujours visibles (boutons supprimés)
+    masterTable.classList.remove("hide-vendor");
+    masterTable.classList.remove("hide-status");
 
   }
 
@@ -1399,10 +1399,6 @@ function applyGanttColumnVisibility(){
     projectTable.classList.toggle("hide-status", !ganttColVisibility.projectStatus);
 
   }
-
-  setToggleBtnState("btnToggleMasterVendor", ganttColVisibility.masterVendor);
-
-  setToggleBtnState("btnToggleMasterStatus", ganttColVisibility.masterStatus);
 
   setToggleBtnState("btnToggleProjectVendor", ganttColVisibility.projectVendor);
 
@@ -6148,8 +6144,8 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
     return taskTitle(a).localeCompare(taskTitle(b),"fr",{sensitivity:"base"});
   });
 
-  const hideVendor = !ganttColVisibility.masterVendor;
-  const hideStatus = !ganttColVisibility.masterStatus;
+  const hideVendor = false;
+  const hideStatus = false;
   const tableClass = `table${hideVendor ? " hide-vendor" : ""}${hideStatus ? " hide-status" : ""}`;
 
   let html=`<div class='tablewrap gantt-table'><table class='${tableClass}' style='--gcol0:70px;--gcol1:120px;--gcol2:90px;--gcol3:90px'>`;
@@ -11313,22 +11309,6 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     renderAll();
 
   });
-  el("btnToggleMasterVendor")?.addEventListener("click", ()=>{
-
-    ganttColVisibility.masterVendor = !ganttColVisibility.masterVendor;
-
-    applyGanttColumnVisibility();
-
-  });
-
-  el("btnToggleMasterStatus")?.addEventListener("click", ()=>{
-
-    ganttColVisibility.masterStatus = !ganttColVisibility.masterStatus;
-
-    applyGanttColumnVisibility();
-
-  });
-
   el("btnResetSortMasterGantt")?.addEventListener("click", ()=>{
     sortMasterGantt = { ...MASTER_GANTT_DEFAULT_SORT };
     renderMasterGantt();
