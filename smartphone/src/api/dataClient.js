@@ -264,6 +264,10 @@ function toStringId(value) {
   return value === undefined || value === null ? "" : String(value);
 }
 
+function isUuidLike(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "").trim());
+}
+
 function toBool(value) {
   return value === true || String(value || "").toLowerCase() === "true";
 }
@@ -1669,8 +1673,33 @@ export const dataClient = {
       saveForTask: async (input) => {
         assertTimeLogWriteAllowed();
         const normalized = normalizeTimeLogInput(input);
-        const taskRows = await fetchTasks({ id: normalized.task_id });
-        const taskRef = Array.isArray(taskRows) ? taskRows[0] : null;
+        const requestedTaskId = toStringId(normalized.task_id);
+        let taskRef = null;
+
+        if (isUuidLike(requestedTaskId)) {
+          const taskRows = await fetchTasks({ id: requestedTaskId });
+          taskRef = Array.isArray(taskRows) ? taskRows[0] : null;
+        }
+
+        if (!taskRef) {
+          const legacyRows = await fetchLegacyStateTasks({ id: requestedTaskId });
+          const legacyRef = Array.isArray(legacyRows) ? legacyRows[0] : null;
+          if (legacyRef) {
+            const tableTasks = await fetchTasks();
+            const strictSig = buildTaskSignature(legacyRef);
+            const looseSig = buildTaskSignatureLoose(legacyRef);
+            taskRef =
+              tableTasks.find((row) => buildTaskSignature(row) === strictSig) ||
+              tableTasks.find((row) => buildTaskSignatureLoose(row) === looseSig) ||
+              null;
+          }
+        }
+
+        if (!taskRef?.id || !isUuidLike(taskRef.id)) {
+          throw new Error("Tache introuvable pour ecriture heures (id legacy non resolu).");
+        }
+
+        normalized.task_id = toStringId(taskRef.id);
         validateTimeLogAgainstTask(normalized, taskRef);
         normalized.project_id = toStringId(taskRef?.project_id || normalized.project_id);
         normalized.role = normalizeMobileOwnerType(taskRef?.owner_type ?? normalized.role);
