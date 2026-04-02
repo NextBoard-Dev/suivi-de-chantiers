@@ -894,6 +894,7 @@ let _stateVersion = 0;
 let _filteredCache = { key:"", version:-1, tasks:null };
 let _missingHoursFlow = null;
 let _outsideRangeFlow = null;
+let _lastMasterAnimSignature = "";
 let _lastScalabilityReport = null;
 let _lastScaleAlertSig = "";
 let _lastScaleAlertAt = 0;
@@ -7946,8 +7947,20 @@ function renderMaster(){
   }
 
   if(!runtimePerf.degradedMode){
-    animateBadgeChanges(el("viewMaster"));
-    animateCardsInView("viewMaster");
+    const animSignature = [
+      String(selectedProjectId || ""),
+      String(selectedTaskId || ""),
+      String(sortMaster?.key || ""),
+      String(sortMaster?.dir || ""),
+      String(visibleTasks.length || 0),
+      String(missingHoursCount || 0),
+      String(missingLogEntriesCount || 0)
+    ].join("|");
+    if(animSignature !== _lastMasterAnimSignature){
+      animateBadgeChanges(el("viewMaster"));
+      animateCardsInView("viewMaster");
+      _lastMasterAnimSignature = animSignature;
+    }
   }
   runtimePerf.lastRenderMasterMs = Math.max(0, performance.now() - masterRenderT0);
 
