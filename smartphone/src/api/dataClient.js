@@ -1233,6 +1233,150 @@ function buildTimeLogIdentityKey(input = {}) {
   ].join("|");
 }
 
+function buildStateJsonTimeLogIdentityKey(input = {}) {
+  return [
+    toStringId(input.taskId ?? input.task_id),
+    pickDate(input.date || input.date_key || ""),
+    normalizeTechKey(input.role_key || input.role || input.owner_type || ""),
+    normalizeTechKey(input.internal_tech || input.technician || ""),
+    normalizeTechKey(input.vendor || ""),
+  ].join("|");
+}
+
+function buildStateJsonTimeLogRow({
+  stateTaskId = "",
+  stateProjectId = "",
+  persisted = {},
+  normalized = {},
+} = {}) {
+  const nowIso = new Date().toISOString();
+  const minutes = Number.isFinite(Number(persisted?.minutes))
+    ? Math.max(0, Math.round(Number(persisted.minutes)))
+    : toLogMinutes(normalized?.minutes);
+  const hours = Math.round((minutes / 60) * 100) / 100;
+  const roleKey = String(
+    normalized?.role_key ||
+    persisted?.role_key ||
+    roleKeyFromOwnerType(normalized?.role || persisted?.role || persisted?.owner_type || "", {
+      technician: normalized?.technician || persisted?.technician || persisted?.internal_tech || "",
+      vendor: normalized?.vendor || persisted?.vendor || "",
+    })
+  ).trim().toLowerCase();
+  const role = normalizeMobileOwnerType(normalized?.role || persisted?.role || persisted?.owner_type || "");
+  const technician = String(normalized?.technician || persisted?.technician || persisted?.internal_tech || "").trim();
+  const vendor = String(normalized?.vendor || persisted?.vendor || "").trim();
+  const dateKey = pickDate(normalized?.date || persisted?.date || persisted?.date_key || "");
+  return {
+    id: toStringId(persisted?.id) || `log_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+    taskId: toStringId(stateTaskId),
+    task_id: toStringId(stateTaskId),
+    projectId: toStringId(stateProjectId),
+    project_id: toStringId(stateProjectId),
+    date: dateKey,
+    date_key: dateKey,
+    role: role || "",
+    role_key: roleKey || "",
+    owner_type: role || "",
+    technician: technician || "",
+    internal_tech: technician || "",
+    vendor: vendor || "",
+    intervenant_label: technician || vendor || role || "",
+    minutes,
+    hours,
+    note: String(normalized?.note || persisted?.note || "").trim(),
+    comment: String(normalized?.note || persisted?.note || "").trim(),
+    createdAt: String(persisted?.created_date || persisted?.createdAt || nowIso),
+    updatedAt: nowIso,
+  };
+}
+
+async function syncStateJsonTimeLogForCurrentUser({
+  requestedTaskId = "",
+  normalized = {},
+  taskRef = null,
+  persisted = null,
+} = {}) {
+  if (!appStatesTable) return;
+  let session = null;
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) return;
+    session = data?.session || null;
+  } catch {
+    return;
+  }
+  const userId = toStringId(session?.user?.id);
+  if (!userId) return;
+
+  const { data, error } = await supabase
+    .from(appStatesTable)
+    .select("state_json, updated_at")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  if (error) throw buildError("Sync state_json timeLogs impossible", error);
+
+  const row = Array.isArray(data) ? data[0] : null;
+  const stateJson = row?.state_json && typeof row.state_json === "object" ? row.state_json : {};
+  const tasks = Array.isArray(stateJson.tasks) ? stateJson.tasks : [];
+  const logs = Array.isArray(stateJson.timeLogs) ? stateJson.timeLogs : [];
+
+  let stateTaskId = "";
+  const requested = toStringId(requestedTaskId);
+  if (requested && !isUuidLike(requested)) stateTaskId = requested;
+
+  const stateTaskByRequested = tasks.find((t) => toStringId(t?.id) === requested);
+  if (!stateTaskId && stateTaskByRequested) stateTaskId = toStringId(stateTaskByRequested?.id);
+
+  if (!stateTaskId && taskRef) {
+    const strictSig = buildTaskSignature(taskRef);
+    const looseSig = buildTaskSignatureLoose(taskRef);
+    const match =
+      tasks.find((t) => buildTaskSignature(t) === strictSig) ||
+      tasks.find((t) => buildTaskSignatureLoose(t) === looseSig) ||
+      null;
+    stateTaskId = toStringId(match?.id);
+  }
+  if (!stateTaskId) return;
+
+  const stateTask = tasks.find((t) => toStringId(t?.id) === stateTaskId) || null;
+  const stateProjectId = toStringId(
+    stateTask?.projectId ??
+    stateTask?.project_id ??
+    normalized?.project_id ??
+    taskRef?.project_id ??
+    ""
+  );
+
+  const nextLog = buildStateJsonTimeLogRow({
+    stateTaskId,
+    stateProjectId,
+    persisted: persisted || {},
+    normalized,
+  });
+  const nextKey = buildStateJsonTimeLogIdentityKey(nextLog);
+
+  let replaced = false;
+  const nextLogs = logs.map((item) => {
+    const sameIdentity = buildStateJsonTimeLogIdentityKey(item) === nextKey;
+    if (!sameIdentity) return item;
+    replaced = true;
+    return { ...item, ...nextLog };
+  });
+  if (!replaced) nextLogs.push(nextLog);
+
+  const nextState = { ...stateJson, timeLogs: nextLogs };
+  const updatePayload = {
+    state_json: nextState,
+    updated_at: new Date().toISOString(),
+  };
+  const { error: updateError } = await supabase
+    .from(appStatesTable)
+    .update(updatePayload)
+    .eq("user_id", userId);
+  if (updateError) throw buildError("Ecriture state_json timeLogs impossible", updateError);
+}
+
 function timeLogPayloadForWrite(normalized, { includeCreatedDate = false } = {}) {
   const nowIso = new Date().toISOString();
   const base = {
@@ -1710,6 +1854,16 @@ export const dataClient = {
         const identity = buildTimeLogIdentityKey(normalized);
         const baseUpdatePayload = timeLogPayloadForWrite(normalized, { includeCreatedDate: false });
         const addedMinutes = toLogMinutes(normalized.minutes);
+        const finalizeSavedLog = async (rowLike, fallback = {}) => {
+          const mapped = mapTimeLogRow(rowLike || fallback || {});
+          await syncStateJsonTimeLogForCurrentUser({
+            requestedTaskId,
+            normalized,
+            taskRef,
+            persisted: mapped,
+          });
+          return mapped;
+        };
 
         const naturalExistingId = await findExistingTimeLogIdByNaturalKey(baseUpdatePayload);
         if (naturalExistingId) {
@@ -1721,7 +1875,7 @@ export const dataClient = {
             payload: updatePayload,
             id: naturalExistingId,
           });
-          return mapTimeLogRow(updated || { ...updatePayload, id: naturalExistingId });
+          return finalizeSavedLog(updated, { ...updatePayload, id: naturalExistingId });
         }
 
         const logs = await fetchTimeLogs();
@@ -1743,7 +1897,7 @@ export const dataClient = {
             payload: updatePayload,
             id: existing.id,
           });
-          return mapTimeLogRow(written || { ...updatePayload, id: existing.id });
+          return finalizeSavedLog(written, { ...updatePayload, id: existing.id });
         }
 
         const payload = timeLogPayloadForWrite(normalized, { includeCreatedDate: true });
@@ -1752,7 +1906,7 @@ export const dataClient = {
             mode: "insert",
             payload,
           });
-          return mapTimeLogRow(written || payload);
+          return finalizeSavedLog(written, payload);
         } catch (error) {
           if (!isDuplicateKeyError(error)) throw error;
           const duplicateId = await findExistingTimeLogIdByDuplicateError(error, payload);
@@ -1765,7 +1919,7 @@ export const dataClient = {
               payload: updatePayload,
               id: duplicateId,
             });
-            return mapTimeLogRow(updated || { ...updatePayload, id: duplicateId });
+            return finalizeSavedLog(updated, { ...updatePayload, id: duplicateId });
           }
           const freshLogs = await fetchTimeLogs();
           const fallbackExisting = freshLogs.find((log) =>
@@ -1785,7 +1939,7 @@ export const dataClient = {
             payload: updatePayload,
             id: fallbackExisting.id,
           });
-          return mapTimeLogRow(updated || { ...updatePayload, id: fallbackExisting.id });
+          return finalizeSavedLog(updated, { ...updatePayload, id: fallbackExisting.id });
         }
       },
     },
