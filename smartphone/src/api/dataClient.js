@@ -1700,8 +1700,8 @@ export const dataClient = {
         }
 
         normalized.task_id = toStringId(taskRef.id);
-        validateTimeLogAgainstTask(normalized, taskRef);
         normalized.project_id = toStringId(taskRef?.project_id || normalized.project_id);
+        validateTimeLogAgainstTask(normalized, taskRef);
         normalized.role = normalizeMobileOwnerType(taskRef?.owner_type ?? normalized.role);
         normalized.role_key = roleKeyFromOwnerType(normalized.role, {
           technician: normalized.technician,
