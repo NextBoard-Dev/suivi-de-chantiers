@@ -894,6 +894,7 @@ let _stateVersion = 0;
 let _filteredCache = { key:"", version:-1, tasks:null };
 let _missingLogEntriesTotalCache = { version:-1, todayKey:"", totalTasks:-1, total:0 };
 let _missingDaysMapAllTasksCache = { version:-1, todayKey:"", totalTasks:-1, map:null };
+let _masterTableRowsHtmlCache = { key:"", html:"" };
 let _missingHoursFlow = null;
 let _outsideRangeFlow = null;
 let _lastMasterAnimSignature = "";
@@ -7834,6 +7835,15 @@ function renderMaster(){
   const visibleTasks = onlyMissingEnabled
     ? sorted.filter(t=> (missingMap.get(t.id) || 0) > 0)
     : sorted;
+  const visibleTaskIdsSig = visibleTasks.map((t)=>String(t.id || "")).join(",");
+  const masterRowsCacheKey = [
+    _stateVersion,
+    todayKey,
+    sortMaster?.key || "",
+    sortMaster?.dir || "",
+    onlyMissingEnabled ? "1" : "0",
+    visibleTaskIdsSig
+  ].join("|");
   const missingOnlyToggleWrap = el("missingOnlyToggleWrap");
   if(missingOnlyToggleWrap){
     missingOnlyToggleWrap.classList.toggle("inactive", !onlyMissingEnabled);
@@ -7878,48 +7888,54 @@ function renderMaster(){
   }
 
   let h="";
+  if(_masterTableRowsHtmlCache.key === masterRowsCacheKey){
+    h = _masterTableRowsHtmlCache.html || "";
+  }else{
+    visibleTasks.forEach(t=>{
 
-  visibleTasks.forEach(t=>{
+      const p = projectById.get(String(t.projectId || "")) || null;
 
-    const p = projectById.get(String(t.projectId || "")) || null;
+      const mainStatus = getTaskMainStatus(t);
+      const c = statusColor(mainStatus);
 
-    const mainStatus = getTaskMainStatus(t);
-    const c = statusColor(mainStatus);
+      const rowBg = siteColor(p?.site);
+      const chantierLabel = (p?.name || "").trim() || "Sans chantier";
+      const sub = (p?.subproject || "").trim();
+      const projLabel = sub ? `${p?.name||"Sans projet"} - ${sub}` : (p?.name||"Sans projet");
+      const taskLabel = (t.roomNumber||"").trim();
 
-    const rowBg = siteColor(p?.site);
-    const chantierLabel = (p?.name || "").trim() || "Sans chantier";
-    const sub = (p?.subproject || "").trim();
-    const projLabel = sub ? `${p?.name||"Sans projet"} - ${sub}` : (p?.name||"Sans projet");
-    const taskLabel = (t.roomNumber||"").trim();
+      const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
+      const isLate = !!(t.end && t.end < todayKey);
+      const rowClass = `${isToday ? "today-row " : ""}${isLate ? "late-row" : ""}`.trim();
+      const statusCellBg = isToday
+        ? "rgba(254,243,199,0.7)"
+        : (isLate ? "rgba(254,226,226,0.55)" : rowBg);
+      const miss = missingMap.get(t.id) || 0;
+      const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
+      h+=`<tr class="${rowClass}" data-project="${t.projectId}" data-task="${t.id}" style="--site-bg:${rowBg};background:var(--site-bg);">
 
-    const isToday = !!(t.start && t.end && t.start<=todayKey && t.end>=todayKey);
-    const isLate = !!(t.end && t.end < todayKey);
-    const rowClass = `${isToday ? "today-row " : ""}${isLate ? "late-row" : ""}`.trim();
-    const statusCellBg = isToday
-      ? "rgba(254,243,199,0.7)"
-      : (isLate ? "rgba(254,226,226,0.55)" : rowBg);
-    const miss = missingMap.get(t.id) || 0;
-    const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
-    h+=`<tr class="${rowClass}" data-project="${t.projectId}" data-task="${t.id}" style="--site-bg:${rowBg};background:var(--site-bg);">
+        <td>${p?.site||""}</td>
+        <td>${projLabel}</td>
 
-      <td>${p?.site||""}</td>
-      <td>${projLabel}</td>
+        <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskLabel}</td>
 
-      <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskLabel}</td>
+        <td class="status-cell" style="background:${statusCellBg};background-color:${statusCellBg};"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${t.owner?ownerBadgeForTask(t):""}</td>
 
-      <td class="status-cell" style="background:${statusCellBg};background-color:${statusCellBg};"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${t.owner?ownerBadgeForTask(t):""}</td>
+        <td>${formatDate(t.start)||""}${isToday ? `<span class="today-dot" title="En cours aujourd'hui"></span>` : ""}</td>
 
-      <td>${formatDate(t.start)||""}${isToday ? `<span class="today-dot" title="En cours aujourd'hui"></span>` : ""}</td>
+        <td>${formatDate(t.end)||""}</td>
+        <td>${taskProgress(t)}%</td>
+        <td>${durationLabelForTask(t)}</td>
 
-      <td>${formatDate(t.end)||""}</td>
-      <td>${taskProgress(t)}%</td>
-      <td>${durationLabelForTask(t)}</td>
+      </tr>`;
 
-    </tr>`;
-
-  });
-
-  tbody.innerHTML=h;
+    });
+    _masterTableRowsHtmlCache = { key: masterRowsCacheKey, html: h };
+  }
+  if(tbody.dataset.masterRowsCacheKey !== masterRowsCacheKey){
+    tbody.innerHTML = h;
+    tbody.dataset.masterRowsCacheKey = masterRowsCacheKey;
+  }
   runtimePerf.lastRenderMasterTableMs = Math.max(0, performance.now() - tableT0);
 
 
