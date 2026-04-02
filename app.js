@@ -6209,7 +6209,7 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
   return html;
 }
 
-function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverride=null, plainOverride=null){
+function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverride=null, plainOverride=null, sortCfgOverride=null){
   const tasksAll = (tasksOverride || []).filter(t=>t.start && t.end);
   if(tasksAll.length===0) return "<div class='gantt-empty'>Aucune tâche date.</div>";
   const rs = rangeStart || null;
@@ -6232,13 +6232,83 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
   const vacWeeks = weeks.map(w=>isVacationWeek(w));
   const internalVacWeeks = weeks.map(w=>isInternalVacationWeek(w));
 
-  tasks.sort((a,b)=>{
-    const oa=(taskOrderMap[a.id]||9999)-(taskOrderMap[b.id]||9999);
-    if(oa!==0) return oa;
-    const sa=Date.parse(a.start||"9999-12-31"), sb=Date.parse(b.start||"9999-12-31");
-    if(sa!==sb) return sa-sb;
-    return taskTitle(a).localeCompare(taskTitle(b));
-  });
+  if(sortCfgOverride){
+    const projectById = new Map((state?.projects || []).map((p)=>[p.id, p]));
+    const toLower = (v)=>String(v || "").toLowerCase();
+    const taskIntervenantSortKey = (t)=>{
+      const typ = ownerType(t?.owner || "");
+      if(typ === "rsg") return "rsg";
+      if(typ === "ri") return "ri";
+      if(typ === "interne"){
+        const techs = dedupInternalTechs([
+          ...normalizeInternalTechList(t?.internalTech || ""),
+          ...(Array.isArray(t?.internalTechs) ? t.internalTechs : [])
+        ].map((name)=>normalizeInternalTech(name || "")).filter(Boolean));
+        return toLower(techs.join(" / ") || "interne");
+      }
+      if(typ === "externe") return toLower(String(t?.vendor || "").trim() || "prestataire non renseigne");
+      if(String(t?.vendor || "").trim()) return toLower(String(t.vendor).trim());
+      return "inconnu";
+    };
+    const getSortValue = (t, key)=>{
+      const p = projectById.get(t?.projectId);
+      switch(key){
+        case "site": return toLower(p?.site || "");
+        case "task": return toLower((p?.name || "Projet").trim() || "Projet");
+        case "vendor": return taskIntervenantSortKey(t);
+        case "status": return toLower(statusLabels(getTaskMainStatus(t)));
+        case "start": return Date.parse(t?.start || "9999-12-31");
+        case "end": return Date.parse(t?.end || "9999-12-31");
+        case "duration": return durationDays(t?.start, t?.end);
+        case "progress": return taskProgress(t);
+        default: return 0;
+      }
+    };
+    const compareDefaultOrder = (a,b)=>{
+      const saSite = toLower(projectById.get(a?.projectId)?.site || "");
+      const sbSite = toLower(projectById.get(b?.projectId)?.site || "");
+      if(saSite < sbSite) return -1;
+      if(saSite > sbSite) return 1;
+      const saProject = toLower((projectById.get(a?.projectId)?.name || "Projet").trim() || "Projet");
+      const sbProject = toLower((projectById.get(b?.projectId)?.name || "Projet").trim() || "Projet");
+      if(saProject < sbProject) return -1;
+      if(saProject > sbProject) return 1;
+      const saStart = Date.parse(a?.start || "9999-12-31");
+      const sbStart = Date.parse(b?.start || "9999-12-31");
+      if(saStart !== sbStart) return saStart - sbStart;
+      const saEnd = Date.parse(a?.end || "9999-12-31");
+      const sbEnd = Date.parse(b?.end || "9999-12-31");
+      if(saEnd !== sbEnd) return saEnd - sbEnd;
+      const saTask = toLower(taskTitle(a));
+      const sbTask = toLower(taskTitle(b));
+      if(saTask < sbTask) return -1;
+      if(saTask > sbTask) return 1;
+      const oa = Number(taskOrderMap?.[a?.id] || 9999);
+      const ob = Number(taskOrderMap?.[b?.id] || 9999);
+      if(oa !== ob) return oa - ob;
+      return 0;
+    };
+    const sortKey = String(sortCfgOverride?.key || MASTER_GANTT_DEFAULT_SORT.key);
+    const sortDir = sortCfgOverride?.dir === "desc" ? -1 : 1;
+    tasks.sort((a,b)=>{
+      if(sortKey === MASTER_GANTT_DEFAULT_SORT.key){
+        return compareDefaultOrder(a,b);
+      }
+      const va = getSortValue(a, sortKey);
+      const vb = getSortValue(b, sortKey);
+      if(va < vb) return -1 * sortDir;
+      if(va > vb) return 1 * sortDir;
+      return compareDefaultOrder(a,b);
+    });
+  }else{
+    tasks.sort((a,b)=>{
+      const oa=(taskOrderMap[a.id]||9999)-(taskOrderMap[b.id]||9999);
+      if(oa!==0) return oa;
+      const sa=Date.parse(a.start||"9999-12-31"), sb=Date.parse(b.start||"9999-12-31");
+      if(sa!==sb) return sa-sb;
+      return taskTitle(a).localeCompare(taskTitle(b));
+    });
+  }
 
   const hideVendor = !ganttColVisibility.projectVendor;
   const hideStatus = !ganttColVisibility.projectStatus;
@@ -10559,7 +10629,7 @@ function runUnifiedPdfExport(){
 
       if(def.key === "master_gantt"){
         const ganttTasks = state.tasks.filter((t)=>selectedProjectIds.includes(t.projectId) && t.start && t.end);
-        const ganttHtml = buildProjectGanttHTMLForRange(null, null, ganttTasks, true);
+        const ganttHtml = buildProjectGanttHTMLForRange(null, null, ganttTasks, true, sortMasterGantt);
         const ganttTitle = `<div class="card-title">Gantt global (cumul chantiers)</div>`;
         const groupedHeader = buildGroupedProjectsExportHeaderHTML(selectedProjects, pdfTheme);
         modules.push({
