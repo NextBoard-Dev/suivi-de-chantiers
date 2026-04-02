@@ -882,7 +882,8 @@ let selectedStatusSet = new Set();
 let sortMaster = {key:"start", dir:"asc"};
 
 let sortProject = {key:"start", dir:"asc"};
-let sortMasterGantt = {key:"start", dir:"asc"};
+const MASTER_GANTT_DEFAULT_SORT = {key:"default", dir:"asc"};
+let sortMasterGantt = {...MASTER_GANTT_DEFAULT_SORT};
 
 let tabsSortMode = "progress_asc"; // default de tri projets : avancement 0% -> 100%
 
@@ -1369,7 +1370,7 @@ function setToggleBtnState(id, isOn){
 }
 
 function isMasterGanttSortActive(){
-  return !(sortMasterGantt?.key === "start" && sortMasterGantt?.dir === "asc");
+  return !(sortMasterGantt?.key === MASTER_GANTT_DEFAULT_SORT.key && sortMasterGantt?.dir === MASTER_GANTT_DEFAULT_SORT.dir);
 }
 
 function updateMasterGanttSortResetButtonState(){
@@ -6384,23 +6385,39 @@ function renderMasterGantt(){
   };
   const sortDir = sortMasterGantt?.dir === "desc" ? -1 : 1;
   const sortKey = String(sortMasterGantt?.key || "start");
-  const compareFallback = (a,b)=>{
-    const sa=Date.parse(a?.start || "9999-12-31"), sb=Date.parse(b?.start || "9999-12-31");
-    if(sa!==sb) return sa-sb;
-    const ea=Date.parse(a?.end || "9999-12-31"), eb=Date.parse(b?.end || "9999-12-31");
-    if(ea!==eb) return ea-eb;
-    const pa = toLower((projectById.get(a?.projectId)?.name || "Projet").trim() || "Projet");
-    const pb = toLower((projectById.get(b?.projectId)?.name || "Projet").trim() || "Projet");
-    if(pa < pb) return -1;
-    if(pa > pb) return 1;
+  const compareDefaultOrder = (a,b)=>{
+    const saSite = toLower(projectById.get(a?.projectId)?.site || "");
+    const sbSite = toLower(projectById.get(b?.projectId)?.site || "");
+    if(saSite < sbSite) return -1;
+    if(saSite > sbSite) return 1;
+    const saProject = toLower((projectById.get(a?.projectId)?.name || "Projet").trim() || "Projet");
+    const sbProject = toLower((projectById.get(b?.projectId)?.name || "Projet").trim() || "Projet");
+    if(saProject < sbProject) return -1;
+    if(saProject > sbProject) return 1;
+    const saStart = Date.parse(a?.start || "9999-12-31");
+    const sbStart = Date.parse(b?.start || "9999-12-31");
+    if(saStart !== sbStart) return saStart - sbStart;
+    const saEnd = Date.parse(a?.end || "9999-12-31");
+    const sbEnd = Date.parse(b?.end || "9999-12-31");
+    if(saEnd !== sbEnd) return saEnd - sbEnd;
+    const saTask = toLower(taskTitle(a));
+    const sbTask = toLower(taskTitle(b));
+    if(saTask < sbTask) return -1;
+    if(saTask > sbTask) return 1;
+    const oa = Number(taskOrderMap?.[a?.id] || 9999);
+    const ob = Number(taskOrderMap?.[b?.id] || 9999);
+    if(oa !== ob) return oa - ob;
     return 0;
   };
   tasks.sort((a,b)=>{
+    if(sortKey === MASTER_GANTT_DEFAULT_SORT.key){
+      return compareDefaultOrder(a,b);
+    }
     const va = getSortValue(a, sortKey);
     const vb = getSortValue(b, sortKey);
     if(va < vb) return -1 * sortDir;
     if(va > vb) return 1 * sortDir;
-    return compareFallback(a,b);
+    return compareDefaultOrder(a,b);
   });
 
 
@@ -11312,7 +11329,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
   });
 
   el("btnResetSortMasterGantt")?.addEventListener("click", ()=>{
-    sortMasterGantt = { key:"start", dir:"asc" };
+    sortMasterGantt = { ...MASTER_GANTT_DEFAULT_SORT };
     renderMasterGantt();
   });
 
