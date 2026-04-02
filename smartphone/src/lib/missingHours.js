@@ -4,6 +4,15 @@ function toIsoDateKey(value) {
   return String(value || "").slice(0, 10);
 }
 
+function toLocalDateKey(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function normalizeText(value) {
   return String(value || "")
     .normalize("NFD")
@@ -65,7 +74,7 @@ function computeMissingEntryCountsToday(tasks = [], timeLogs = [], now = new Dat
   today.setHours(0, 0, 0, 0);
   const day = today.getDay();
   if (day === 0 || day === 6) return {};
-  const todayKey = today.toISOString().slice(0, 10);
+  const todayKey = toLocalDateKey(today);
 
   const logPresence = buildLogPresenceSetForDate(timeLogs, todayKey);
   const out = {};
