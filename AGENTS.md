@@ -102,6 +102,7 @@ Snapshots validés → dossier `snapshots_ok/`
 - réponses concises
 - modifications minimales
 - instructions claires si action requise
+- après reformulation d’une demande utilisateur, attendre explicitement le `GO` avant toute action/modification
 
 Si une question est posée :
 → répondre d’abord puis attendre le `go`.

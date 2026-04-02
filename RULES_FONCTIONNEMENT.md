@@ -8,6 +8,7 @@ Ce document est la référence à suivre pour toute modification du dashboard.
 - Toujours répondre d’abord aux questions explicites avant d’agir.
 - Développer les propositions avant d’exécuter (objectifs, portée, impact).
 - Considérer que l’utilisateur est novice : explications simples, sans jargon.
+- Après reformulation d’une demande, attendre explicitement le `GO` utilisateur avant toute action de modification.
 
 2) Sécurité et risques
 - Avant toute modification risquée, annoncer le niveau de risque, proposer une sauvegarde et attendre l’accord.

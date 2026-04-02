@@ -38,6 +38,7 @@
 - Réponses courtes, concrètes, orientées action.
 - Si le besoin est ambigu, poser une question avant de coder.
 - Si l’utilisateur dit "go", exécuter directement.
+- Après reformulation d’une demande, attendre explicitement le `GO` avant toute modification.
 
 ## 7) Résolution écran / layout
 - Toute modification UI doit rester stable en changement de résolution.
