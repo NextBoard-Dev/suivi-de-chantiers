@@ -892,6 +892,7 @@ let unsavedChanges = false;
 let lastUndoSnapshot = null;
 let _stateVersion = 0;
 let _filteredCache = { key:"", version:-1, tasks:null };
+let _missingLogEntriesTotalCache = { version:-1, todayKey:"", totalTasks:-1, total:0 };
 let _missingHoursFlow = null;
 let _outsideRangeFlow = null;
 let _lastMasterAnimSignature = "";
@@ -7826,7 +7827,7 @@ function renderMaster(){
   const allTasks = Array.isArray(state?.tasks) ? state.tasks : [];
   const missingMapAll = buildMissingDaysMap(allTasks);
   const missingHoursCount = allTasks.reduce((acc, t)=> acc + ((missingMapAll.get(t.id) || 0) > 0 ? 1 : 0), 0);
-  const missingLogEntriesCount = allTasks.reduce((acc, t)=> acc + countMissingLogEntriesForTask(t), 0);
+  const missingLogEntriesCount = getMissingLogEntriesCountAllTasks(allTasks);
   const onlyMissingEnabled = !!el("toggleMissingOnly")?.checked;
   const visibleTasks = onlyMissingEnabled
     ? sorted.filter(t=> (missingMap.get(t.id) || 0) > 0)
@@ -8462,6 +8463,28 @@ function countMissingLogEntriesForTask(t){
   if(!isWeekday(today)) return 0;
   const todayKey = toLocalDateKey(today);
   return countMissingLogEntriesForTaskDate(t, todayKey);
+}
+function getMissingLogEntriesCountAllTasks(tasks){
+  const allTasks = Array.isArray(tasks) ? tasks : [];
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const todayKey = toLocalDateKey(today);
+  const cache = _missingLogEntriesTotalCache || {};
+  if(
+    cache.version === _stateVersion &&
+    cache.todayKey === todayKey &&
+    cache.totalTasks === allTasks.length
+  ){
+    return Number(cache.total || 0);
+  }
+  const total = allTasks.reduce((acc, t)=> acc + countMissingLogEntriesForTask(t), 0);
+  _missingLogEntriesTotalCache = {
+    version: _stateVersion,
+    todayKey,
+    totalTasks: allTasks.length,
+    total
+  };
+  return total;
 }
 function getMissingDaysList(t){
   if(!t || !t.start || !t.end) return [];
