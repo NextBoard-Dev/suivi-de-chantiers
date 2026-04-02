@@ -7827,7 +7827,10 @@ function renderMaster(){
   const missingMap = buildMissingDaysMap(sorted);
   const todayKey = new Date().toISOString().slice(0,10);
   const allTasks = Array.isArray(state?.tasks) ? state.tasks : [];
-  const missingMapAll = getMissingDaysMapAllTasksCached(allTasks);
+  const sameUniverseAsAllTasks = sorted.length === allTasks.length;
+  const missingMapAll = sameUniverseAsAllTasks
+    ? missingMap
+    : getMissingDaysMapAllTasksCached(allTasks);
   const missingHoursCount = allTasks.reduce((acc, t)=> acc + ((missingMapAll.get(t.id) || 0) > 0 ? 1 : 0), 0);
   const missingLogEntriesCount = getMissingLogEntriesCountAllTasks(allTasks);
   const projectById = new Map((state?.projects || []).map((p)=>[String(p.id || ""), p]));
