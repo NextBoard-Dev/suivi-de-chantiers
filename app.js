@@ -883,6 +883,7 @@ let sortMaster = {key:"start", dir:"asc"};
 
 let sortProject = {key:"start", dir:"asc"};
 const MASTER_GANTT_DEFAULT_SORT = {key:"default", dir:"asc"};
+const MASTER_GANTT_TIME_SORT = {key:"start", dir:"asc"};
 let sortMasterGantt = {...MASTER_GANTT_DEFAULT_SORT};
 
 let tabsSortMode = "progress_asc"; // default de tri projets : avancement 0% -> 100%
@@ -11330,6 +11331,11 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
   el("btnResetSortMasterGantt")?.addEventListener("click", ()=>{
     sortMasterGantt = { ...MASTER_GANTT_DEFAULT_SORT };
+    renderMasterGantt();
+  });
+
+  el("btnMasterGanttTimeSort")?.addEventListener("click", ()=>{
+    sortMasterGantt = { ...MASTER_GANTT_TIME_SORT };
     renderMasterGantt();
   });
 
