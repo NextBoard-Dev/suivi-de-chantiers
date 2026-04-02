@@ -1368,6 +1368,14 @@ function setToggleBtnState(id, isOn){
 
 }
 
+function isMasterGanttSortActive(){
+  return !(sortMasterGantt?.key === "start" && sortMasterGantt?.dir === "asc");
+}
+
+function updateMasterGanttSortResetButtonState(){
+  setToggleBtnState("btnResetSortMasterGantt", isMasterGanttSortActive());
+}
+
 function applyGanttColumnVisibility(){
 
   const masterTable = document.querySelector("#masterGantt table");
@@ -6326,6 +6334,7 @@ function renderMasterGantt(){
   if(tasks.length===0){
 
     wrap.innerHTML = "<div class='gantt-empty'>Aucune tâche date.</div>";
+    updateMasterGanttSortResetButtonState();
 
     return;
 
@@ -6531,6 +6540,7 @@ function renderMasterGantt(){
     };
   });
   updateSortIndicators("masterGanttTable", sortMasterGantt);
+  updateMasterGanttSortResetButtonState();
 
 }
 
@@ -11299,6 +11309,11 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     applyGanttColumnVisibility();
 
+  });
+
+  el("btnResetSortMasterGantt")?.addEventListener("click", ()=>{
+    sortMasterGantt = { key:"start", dir:"asc" };
+    renderMasterGantt();
   });
 
   el("btnToggleProjectVendor")?.addEventListener("click", ()=>{
