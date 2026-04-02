@@ -910,6 +910,9 @@ const runtimePerf = {
   lastSaveMs: 0,
   lastRenderMasterMs: 0,
   lastRenderMasterGanttMs: 0,
+  lastRenderMasterMetricsMs: 0,
+  lastRenderMasterWorkloadMs: 0,
+  lastRenderMasterTableMs: 0,
   lastMissingMapCalls: 0,
   totalMissingMapCalls: 0,
   _missingMapCallsAtRenderStart: 0,
@@ -1556,8 +1559,11 @@ function buildAdminMiniDiagText(){
     const kb = (v)=>`${Math.round((Number(v||0))/1024)} Ko`;
     const rm = Number(runtimePerf?.lastRenderMasterMs || 0).toFixed(0);
     const rg = Number(runtimePerf?.lastRenderMasterGanttMs || 0).toFixed(0);
+    const rmm = Number(runtimePerf?.lastRenderMasterMetricsMs || 0).toFixed(0);
+    const rwl = Number(runtimePerf?.lastRenderMasterWorkloadMs || 0).toFixed(0);
+    const rtb = Number(runtimePerf?.lastRenderMasterTableMs || 0).toFixed(0);
     const mm = Number(runtimePerf?.lastMissingMapCalls || 0);
-    return ` | Diag: etat ${kb(m.totalBytes)} | projets ${kb(seg.projects)} | taches ${kb(seg.tasks)} | logs ${kb(seg.timeLogs)} | rm ${rm} ms | rg ${rg} ms | mm ${mm}`;
+    return ` | Diag: etat ${kb(m.totalBytes)} | projets ${kb(seg.projects)} | taches ${kb(seg.tasks)} | logs ${kb(seg.timeLogs)} | rm ${rm} ms | rg ${rg} ms | rmm ${rmm} | rwl ${rwl} | rtb ${rtb} | mm ${mm}`;
   }catch(e){
     softCatch(e);
     return "";
@@ -7759,6 +7765,9 @@ function updateSidebarFilterIndicator(){
 
 function renderMaster(){
   const masterRenderT0 = performance.now();
+  runtimePerf.lastRenderMasterMetricsMs = 0;
+  runtimePerf.lastRenderMasterWorkloadMs = 0;
+  runtimePerf.lastRenderMasterTableMs = 0;
   computeTaskOrderMap();
   renderTabs();
   closeAllOverlays();
@@ -7773,15 +7782,16 @@ function renderMaster(){
   }
 
   const tasks = filteredTasks();
-
+  const metricsT0 = performance.now();
   renderKPIs(tasks);
-
   renderMasterMetrics(tasks);
   renderMasterQuickKpis(tasks);
+  runtimePerf.lastRenderMasterMetricsMs = Math.max(0, performance.now() - metricsT0);
 
   // Charge de travail
-
+  const workloadT0 = performance.now();
   renderWorkloadChart(tasks);
+  runtimePerf.lastRenderMasterWorkloadMs = Math.max(0, performance.now() - workloadT0);
 
   // Bandeau live global (toutes tâches en cours aujourd'hui)
 
@@ -7808,6 +7818,7 @@ function renderMaster(){
 
   }
 
+  const tableT0 = performance.now();
   const sorted = sortTasks(tasks, sortMaster);
   const includeChantierCol = (new Set(sorted.map(t=>String(t.projectId||""))).size > 1);
   const missingMap = buildMissingDaysMap(sorted);
@@ -7856,6 +7867,7 @@ function renderMaster(){
     tbody.innerHTML = onlyMissingEnabled
       ? "<tr><td colspan='8' class='empty-row'>Aucune tâche à compléter.</td></tr>"
       : "<tr><td colspan='8' class='empty-row'>Aucune tâche.</td></tr>";
+    runtimePerf.lastRenderMasterTableMs = Math.max(0, performance.now() - tableT0);
     runtimePerf.lastRenderMasterMs = Math.max(0, performance.now() - masterRenderT0);
 
     return;
@@ -7905,6 +7917,7 @@ function renderMaster(){
   });
 
   tbody.innerHTML=h;
+  runtimePerf.lastRenderMasterTableMs = Math.max(0, performance.now() - tableT0);
 
 
 
