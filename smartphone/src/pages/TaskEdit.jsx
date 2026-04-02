@@ -324,11 +324,12 @@ export default function TaskEdit() {
       });
       return;
     }
+    const isZero = Number.isFinite(parsed) && Math.abs(parsed) < 1e-9;
     const isHalfHourStep = Number.isFinite(parsed) && Math.abs(parsed * 2 - Math.round(parsed * 2)) < 1e-9;
-    if (!Number.isFinite(parsed) || parsed < 0.5 || parsed > 24 || !isHalfHourStep) {
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 24 || (!isZero && !isHalfHourStep)) {
       toast({
         title: "Heures invalides",
-        description: "Entrez un nombre entre 0.5 et 24, par pas de 0.5 h.",
+        description: "Entrez un nombre entre 0 et 24. Valeurs autorisees : 0, puis pas de 0.5 h.",
         variant: "destructive",
       });
       return;
@@ -597,7 +598,7 @@ export default function TaskEdit() {
             <Label className="text-xs font-semibold text-muted-foreground">Heures</Label>
             <Input
               type="number"
-              min="0.5"
+              min="0"
               max="24"
               step="0.5"
               placeholder="ex: 2.5"

@@ -1142,14 +1142,14 @@ function normalizeTimeLogInput(input = {}) {
   } else {
     minutes = normalizeFiniteNumber(minutesInput, {
       field: "minutes",
-      min: 1,
+      min: 0,
       max: 1440,
       decimals: 0,
       allowEmpty: false,
     });
   }
-  if (!Number.isFinite(minutes) || minutes <= 0) {
-    throw new Error("La saisie doit etre strictement superieure a 0 minute.");
+  if (!Number.isFinite(minutes) || minutes < 0) {
+    throw new Error("La saisie doit etre superieure ou egale a 0 minute.");
   }
 
   return {
