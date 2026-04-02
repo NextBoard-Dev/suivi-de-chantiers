@@ -1375,7 +1375,9 @@ function isMasterGanttSortActive(){
 }
 
 function updateMasterGanttSortResetButtonState(){
-  setToggleBtnState("btnResetSortMasterGantt", isMasterGanttSortActive());
+  const resetIsActive = isMasterGanttSortActive();
+  setToggleBtnState("btnResetSortMasterGantt", resetIsActive);
+  setToggleBtnState("btnMasterGanttTimeSort", !resetIsActive);
 }
 
 function applyGanttColumnVisibility(){
