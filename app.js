@@ -882,6 +882,7 @@ let selectedStatusSet = new Set();
 let sortMaster = {key:"start", dir:"asc"};
 
 let sortProject = {key:"start", dir:"asc"};
+let sortMasterGantt = {key:"start", dir:"asc"};
 
 let tabsSortMode = "progress_asc"; // default de tri projets : avancement 0% -> 100%
 
@@ -6341,19 +6342,63 @@ function renderMasterGantt(){
 
 
 
-  tasks.sort((a,b)=>{
-    const sa=Date.parse(a.start||"9999-12-31"), sb=Date.parse(b.start||"9999-12-31");
+  const projectById = new Map((state?.projects || []).map((p)=>[p.id, p]));
+  const toLower = (v)=>String(v || "").toLowerCase();
+  const taskIntervenantSortKey = (t)=>{
+    const typ = ownerType(t?.owner || "");
+    if(typ === "rsg") return "rsg";
+    if(typ === "ri") return "ri";
+    if(typ === "interne"){
+      const techs = dedupInternalTechs([
+        ...normalizeInternalTechList(t?.internalTech || ""),
+        ...(Array.isArray(t?.internalTechs) ? t.internalTechs : [])
+      ].map((name)=>normalizeInternalTech(name || "")).filter(Boolean));
+      return toLower(techs.join(" / ") || "interne");
+    }
+    if(typ === "externe") return toLower(String(t?.vendor || "").trim() || "prestataire non renseigne");
+    if(String(t?.vendor || "").trim()) return toLower(String(t.vendor).trim());
+    return "inconnu";
+  };
+  const getSortValue = (t, key)=>{
+    const p = projectById.get(t?.projectId);
+    switch(key){
+      case "site": return toLower(p?.site || "");
+      case "task": return toLower((p?.name || "Projet").trim() || "Projet");
+      case "vendor": return taskIntervenantSortKey(t);
+      case "status": return toLower(statusLabels(getTaskMainStatus(t)));
+      case "start": return Date.parse(t?.start || "9999-12-31");
+      case "end": return Date.parse(t?.end || "9999-12-31");
+      case "duration": return durationDays(t?.start, t?.end);
+      case "progress": return taskProgress(t);
+      default: return 0;
+    }
+  };
+  const sortDir = sortMasterGantt?.dir === "desc" ? -1 : 1;
+  const sortKey = String(sortMasterGantt?.key || "start");
+  const compareFallback = (a,b)=>{
+    const sa=Date.parse(a?.start || "9999-12-31"), sb=Date.parse(b?.start || "9999-12-31");
     if(sa!==sb) return sa-sb;
-    const ea=Date.parse(a.end||"9999-12-31"), eb=Date.parse(b.end||"9999-12-31");
+    const ea=Date.parse(a?.end || "9999-12-31"), eb=Date.parse(b?.end || "9999-12-31");
     if(ea!==eb) return ea-eb;
-    return taskTitle(a).localeCompare(taskTitle(b),"fr",{sensitivity:"base"});
+    const pa = toLower((projectById.get(a?.projectId)?.name || "Projet").trim() || "Projet");
+    const pb = toLower((projectById.get(b?.projectId)?.name || "Projet").trim() || "Projet");
+    if(pa < pb) return -1;
+    if(pa > pb) return 1;
+    return 0;
+  };
+  tasks.sort((a,b)=>{
+    const va = getSortValue(a, sortKey);
+    const vb = getSortValue(b, sortKey);
+    if(va < vb) return -1 * sortDir;
+    if(va > vb) return 1 * sortDir;
+    return compareFallback(a,b);
   });
 
 
 
-  let html="<div class='tablewrap gantt-table'><table class='table' style='--gcol0:70px;--gcol1:150px;--gcol2:140px;--gcol3:120px'>";
+  let html="<div class='tablewrap gantt-table'><table id='masterGanttTable' class='table' style='--gcol0:70px;--gcol1:150px;--gcol2:140px;--gcol3:120px'>";
 
-  html+="<thead><tr><th class='gantt-col-site' style='width:70px'>Site</th><th class='gantt-col-task' style='width:150px'>Nom</th><th class='gantt-col-vendor' style='width:140px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
+  html+="<thead><tr><th class='gantt-col-site' data-sort='site' style='width:70px'>Site</th><th class='gantt-col-task' data-sort='task' style='width:150px'>Nom</th><th class='gantt-col-vendor' data-sort='vendor' style='width:140px'>Prestataire</th><th class='gantt-col-status' data-sort='status' style='width:120px'>Statut</th>";
 
   weeks.forEach((w,i)=>{
 
@@ -6473,6 +6518,19 @@ function renderMasterGantt(){
     };
 
   });
+
+  const masterGanttTable = el("masterGanttTable");
+  masterGanttTable?.querySelectorAll("thead th[data-sort]")?.forEach(th=>{
+    th.onclick = (evt)=>{
+      if(evt && evt.stopPropagation) evt.stopPropagation();
+      const key = th.dataset.sort || "";
+      if(!key) return;
+      if(sortMasterGantt.key === key) sortMasterGantt.dir = sortMasterGantt.dir === "asc" ? "desc" : "asc";
+      else { sortMasterGantt.key = key; sortMasterGantt.dir = "asc"; }
+      renderMasterGantt();
+    };
+  });
+  updateSortIndicators("masterGanttTable", sortMasterGantt);
 
 }
 
