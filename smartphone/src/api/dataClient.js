@@ -1818,29 +1818,13 @@ export const dataClient = {
         assertTimeLogWriteAllowed();
         const normalized = normalizeTimeLogInput(input);
         const requestedTaskId = toStringId(normalized.task_id);
-        let taskRef = null;
-
-        if (isUuidLike(requestedTaskId)) {
-          const taskRows = await fetchTasks({ id: requestedTaskId });
-          taskRef = Array.isArray(taskRows) ? taskRows[0] : null;
+        if (!isUuidLike(requestedTaskId)) {
+          throw new Error("Ecriture heures refusee: task_id doit etre un UUID valide.");
         }
-
-        if (!taskRef) {
-          const legacyRows = await fetchLegacyStateTasks({ id: requestedTaskId });
-          const legacyRef = Array.isArray(legacyRows) ? legacyRows[0] : null;
-          if (legacyRef) {
-            const tableTasks = await fetchTasks();
-            const strictSig = buildTaskSignature(legacyRef);
-            const looseSig = buildTaskSignatureLoose(legacyRef);
-            taskRef =
-              tableTasks.find((row) => buildTaskSignature(row) === strictSig) ||
-              tableTasks.find((row) => buildTaskSignatureLoose(row) === looseSig) ||
-              null;
-          }
-        }
-
+        const taskRows = await fetchTasks({ id: requestedTaskId });
+        const taskRef = Array.isArray(taskRows) ? taskRows[0] : null;
         if (!taskRef?.id || !isUuidLike(taskRef.id)) {
-          throw new Error("Tache introuvable pour ecriture heures (id legacy non resolu).");
+          throw new Error(`Ecriture heures refusee: tache UUID introuvable (${requestedTaskId}).`);
         }
 
         normalized.task_id = toStringId(taskRef.id);
