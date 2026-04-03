@@ -435,15 +435,7 @@ export default function TaskEdit() {
 
     const writableTaskId = await resolveWritableTaskUuidFromSupabase(task);
     const fallbackLegacyTaskId = String(task?.id || "").trim();
-    const targetTaskId = isUuidLike(writableTaskId) ? writableTaskId : fallbackLegacyTaskId;
-    if (!targetTaskId) {
-      toast({
-        title: "Tache non resolue",
-        description: "Impossible de retrouver l'identifiant de la tache pour enregistrer les heures.",
-        variant: "destructive",
-      });
-      return;
-    }
+    const targetTaskId = isUuidLike(writableTaskId) ? writableTaskId : (fallbackLegacyTaskId || String(taskId || "").trim());
 
     await saveHoursMutation.mutateAsync({
       task_id: targetTaskId,

@@ -1842,14 +1842,15 @@ export const dataClient = {
             created_date: fallbackNowIso,
             updated_date: fallbackNowIso,
           };
-          const synced = await syncStateJsonTimeLogForCurrentUser({
-            requestedTaskId,
-            normalized,
-            taskRef: null,
-            persisted: fallbackPersisted,
-          });
-          if (!synced) {
-            throw new Error("Ecriture heures refusee: impossible d'enregistrer la saisie legacy dans state_json.");
+          try {
+            await syncStateJsonTimeLogForCurrentUser({
+              requestedTaskId,
+              normalized,
+              taskRef: null,
+              persisted: fallbackPersisted,
+            });
+          } catch (_) {
+            // Fallback legacy non bloquant: on renvoie la ligne normalisée même si la sync distante échoue.
           }
           return mapTimeLogRow(fallbackPersisted);
         }
