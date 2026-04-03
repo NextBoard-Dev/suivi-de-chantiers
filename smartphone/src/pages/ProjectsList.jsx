@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { computeProjectHoursById } from "@/lib/projectHours";
-import { computeMissingEntriesByProject } from "@/lib/missingHours";
+import { computeMissingEntriesByTask } from "@/lib/missingHours";
 
 export default function ProjectsList() {
   const [search, setSearch] = useState("");
@@ -42,10 +42,27 @@ export default function ProjectsList() {
     () => computeProjectHoursById(projects, tasks, timeLogs),
     [projects, tasks, timeLogs]
   );
-  const missingEntriesByProject = useMemo(
-    () => computeMissingEntriesByProject(tasks, timeLogs),
+  const missingEntriesByTask = useMemo(
+    () => computeMissingEntriesByTask(tasks, timeLogs),
     [tasks, timeLogs]
   );
+  const missingEntriesByProject = useMemo(() => {
+    const out = {};
+    (projects || []).forEach((project) => {
+      const projectId = String(project?.id || "").trim();
+      if (!projectId) return;
+      const projectTaskIds = (tasks || [])
+        .filter((task) => String(task?.project_id || "").trim() === projectId)
+        .map((task) => String(task?.id || task?.task_id || "").trim())
+        .filter(Boolean);
+      const totalMissing = projectTaskIds.reduce(
+        (sum, taskId) => sum + (Number(missingEntriesByTask[taskId]) || 0),
+        0
+      );
+      out[projectId] = totalMissing;
+    });
+    return out;
+  }, [projects, tasks, missingEntriesByTask]);
 
   const sites = useMemo(
     () => [...new Set(projects.map((p) => p.site).filter(Boolean))].sort(),

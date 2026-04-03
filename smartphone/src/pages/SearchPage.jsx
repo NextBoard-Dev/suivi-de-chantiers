@@ -7,7 +7,7 @@ import TaskCard from "../components/common/TaskCard";
 import ProjectCard from "../components/common/ProjectCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { computeProjectHoursById } from "@/lib/projectHours";
-import { computeMissingEntriesByProject, computeMissingEntriesByTask } from "@/lib/missingHours";
+import { computeMissingEntriesByTask } from "@/lib/missingHours";
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -37,14 +37,27 @@ export default function SearchPage() {
     () => computeProjectHoursById(projects, tasks, timeLogs),
     [projects, tasks, timeLogs]
   );
-  const missingEntriesByProject = useMemo(
-    () => computeMissingEntriesByProject(tasks, timeLogs),
-    [tasks, timeLogs]
-  );
   const missingEntriesByTask = useMemo(
     () => computeMissingEntriesByTask(tasks, timeLogs),
     [tasks, timeLogs]
   );
+  const missingEntriesByProject = useMemo(() => {
+    const out = {};
+    (projects || []).forEach((project) => {
+      const projectId = String(project?.id || "").trim();
+      if (!projectId) return;
+      const projectTaskIds = (tasks || [])
+        .filter((task) => String(task?.project_id || "").trim() === projectId)
+        .map((task) => String(task?.id || task?.task_id || "").trim())
+        .filter(Boolean);
+      const totalMissing = projectTaskIds.reduce(
+        (sum, taskId) => sum + (Number(missingEntriesByTask[taskId]) || 0),
+        0
+      );
+      out[projectId] = totalMissing;
+    });
+    return out;
+  }, [projects, tasks, missingEntriesByTask]);
 
   const q = query.toLowerCase().trim();
 

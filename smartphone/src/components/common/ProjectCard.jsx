@@ -14,6 +14,7 @@ export default function ProjectCard({ project, taskCount = 0, totalHoursMinutes 
   const progress = project.progress || 0;
   const barColor = progress >= 100 ? "bg-emerald-500" : progress > 0 ? "bg-primary" : "bg-slate-300";
   const safeProjectId = encodeURIComponent(String(project?.id ?? ""));
+  const missing = Number(missingEntries ?? 0);
 
   return (
     <Link to={`/project/${safeProjectId}`} className="flex items-center gap-3 rounded-lg px-3 py-2.5 card-hover" style={{ background: "rgba(217,226,231,0.75)", border: "1px solid rgba(63,97,112,0.2)" }}>
@@ -46,15 +47,15 @@ export default function ProjectCard({ project, taskCount = 0, totalHoursMinutes 
         <div
           className="mt-1 inline-flex items-center gap-1.5 px-2 py-1 rounded-md"
           style={{
-            background: missingEntries > 0 ? "rgba(234,179,8,0.16)" : "rgba(22,163,74,0.12)",
-            border: `1px solid ${missingEntries > 0 ? "rgba(180,83,9,0.24)" : "rgba(22,163,74,0.24)"}`,
+            background: missing > 0 ? "rgba(234,179,8,0.16)" : "rgba(22,163,74,0.12)",
+            border: `1px solid ${missing > 0 ? "rgba(180,83,9,0.24)" : "rgba(22,163,74,0.24)"}`,
           }}
         >
           <span
             className="text-[10px] font-extrabold uppercase tracking-wide"
-            style={{ color: missingEntries > 0 ? "#92400e" : "#166534" }}
+            style={{ color: missing > 0 ? "#92400e" : "#166534" }}
           >
-            Heures manquantes: {missingEntries} saisie{missingEntries > 1 ? "s" : ""}
+            Heures manquantes: {missing} saisie{missing > 1 ? "s" : ""}
           </span>
         </div>
       </div>

@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { computeProjectHoursById } from "@/lib/projectHours";
 import { computeTaskProgressAuto } from "@/lib/businessRules";
-import { computeMissingEntriesByProject, computeMissingEntriesByTask } from "@/lib/missingHours";
+import { computeMissingEntriesByTask } from "@/lib/missingHours";
 
 export default function Dashboard() {
   const { data: projects = [], isLoading: loadingProjects } = useQuery({
@@ -59,14 +59,27 @@ export default function Dashboard() {
     () => computeProjectHoursById(projects, tasks, timeLogs),
     [projects, tasks, timeLogs]
   );
-  const missingEntriesByProject = React.useMemo(
-    () => computeMissingEntriesByProject(tasks, timeLogs),
-    [tasks, timeLogs]
-  );
   const missingEntriesByTask = React.useMemo(
     () => computeMissingEntriesByTask(tasks, timeLogs),
     [tasks, timeLogs]
   );
+  const missingEntriesByProject = React.useMemo(() => {
+    const out = {};
+    (projects || []).forEach((project) => {
+      const projectId = String(project?.id || "").trim();
+      if (!projectId) return;
+      const projectTaskIds = (tasks || [])
+        .filter((task) => String(task?.project_id || "").trim() === projectId)
+        .map((task) => String(task?.id || task?.task_id || "").trim())
+        .filter(Boolean);
+      const totalMissing = projectTaskIds.reduce(
+        (sum, taskId) => sum + (Number(missingEntriesByTask[taskId]) || 0),
+        0
+      );
+      out[projectId] = totalMissing;
+    });
+    return out;
+  }, [projects, tasks, missingEntriesByTask]);
   const missingHoursKpi = React.useMemo(() => {
     const values = Object.values(missingEntriesByTask || {});
     const tasksWithMissing = values.reduce((acc, count) => acc + (Number(count) > 0 ? 1 : 0), 0);
