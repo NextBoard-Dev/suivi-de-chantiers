@@ -1,5 +1,3 @@
-import { computeTaskProgressAuto } from "@/lib/businessRules";
-
 function toIsoDateKey(value) {
   return String(value || "").slice(0, 10);
 }
@@ -24,13 +22,13 @@ function normalizeText(value) {
 
 function normalizeRoleKey(value) {
   const raw = normalizeText(value);
-  if (!raw) return "interne";
+  if (!raw) return "inconnu";
   if (raw.includes("RSG/RI")) return "rsg";
   if (raw.includes("RSG")) return "rsg";
   if (raw.includes("RI")) return "ri";
   if (raw.includes("EXTERNE") || raw.includes("PRESTATAIRE")) return "externe";
   if (raw.includes("INTERNE")) return "interne";
-  return "interne";
+  return "inconnu";
 }
 
 function normalizeInternalTech(value) {
@@ -44,62 +42,114 @@ function splitInternalTechList(value) {
     .filter(Boolean);
 }
 
-function expectedSpecsForTask(task) {
-  const roleKey = normalizeRoleKey(task?.owner_type || task?.owner || "");
+function dedupTechs(values = []) {
+  const seen = new Set();
+  const out = [];
+  (values || []).forEach((value) => {
+    const norm = normalizeInternalTech(value);
+    if (!norm) return;
+    const key = norm.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(norm);
+  });
+  return out;
+}
+
+function getTaskRoleKey(task) {
+  return normalizeRoleKey(task?.owner_type || task?.owner || "");
+}
+
+function getInternalTechsForTask(task, timeLogs = []) {
+  if (getTaskRoleKey(task) !== "interne") return [];
+  const selected = dedupTechs([
+    ...splitInternalTechList(task?.internal_tech || ""),
+    ...splitInternalTechList(task?.internalTech || ""),
+  ]);
+  if (selected.length) return selected;
+
+  const taskId = String(task?.id || "").trim();
+  if (!taskId) return [];
+  const fromLogs = dedupTechs(
+    (timeLogs || [])
+      .filter((log) => String(log?.task_id || log?.taskId || "").trim() === taskId)
+      .filter((log) => normalizeRoleKey(log?.role_key || log?.role || log?.owner_type || "") === "interne")
+      .map((log) => log?.technician || log?.internal_tech || log?.intervenant_label || "")
+  );
+  return fromLogs;
+}
+
+function expectedSpecsForTask(task, timeLogs = []) {
+  const roleKey = getTaskRoleKey(task);
+  if (roleKey === "inconnu") return [];
   if (roleKey !== "interne") {
     return [{ roleKey, internalTech: "" }];
   }
-  const techs = splitInternalTechList(task?.internal_tech || task?.internalTech || "");
+  const techs = getInternalTechsForTask(task, timeLogs);
   if (!techs.length) return [];
   return techs.map((internalTech) => ({ roleKey: "interne", internalTech }));
 }
 
-function buildLogPresenceSetForDate(timeLogs = [], dateKey = "") {
-  const set = new Set();
+function buildLogPresenceByDate(timeLogs = []) {
+  const byDate = new Map();
   (timeLogs || []).forEach((log) => {
     const taskId = String(log?.task_id || log?.taskId || "").trim();
-    const logDateKey = toIsoDateKey(log?.date);
-    if (!taskId || logDateKey !== dateKey) return;
+    const logDateKey = toIsoDateKey(log?.date || log?.date_key || log?.log_date || log?.day || "");
+    if (!taskId || !logDateKey) return;
     const roleKey = normalizeRoleKey(log?.role_key || log?.role || log?.owner_type || "");
     const internalTech = roleKey === "interne"
       ? normalizeInternalTech(log?.technician || log?.internal_tech || log?.intervenant_label || "")
       : "";
-    set.add(`${taskId}|${roleKey}|${internalTech}`);
+    const key = `${taskId}|${roleKey}|${internalTech}`;
+    if (!byDate.has(logDateKey)) byDate.set(logDateKey, new Set());
+    byDate.get(logDateKey).add(key);
   });
-  return set;
+  return byDate;
 }
 
-function computeMissingEntryCountsToday(tasks = [], timeLogs = [], now = new Date()) {
+function isWeekday(date) {
+  const day = date.getDay();
+  return day >= 1 && day <= 5;
+}
+
+function computeMissingEntryCountsAligned(tasks = [], timeLogs = [], now = new Date()) {
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
-  const day = today.getDay();
-  if (day === 0 || day === 6) return {};
-  const todayKey = toLocalDateKey(today);
-
-  const logPresence = buildLogPresenceSetForDate(timeLogs, todayKey);
+  const limit = new Date(today);
+  limit.setDate(limit.getDate() - 1);
+  const logPresenceByDate = buildLogPresenceByDate(timeLogs);
   const out = {};
 
   (tasks || []).forEach((task) => {
     const taskId = String(task?.id || "").trim();
     if (!taskId) return;
 
-    const startKey = toIsoDateKey(task?.start_date);
-    const endKey = toIsoDateKey(task?.end_date);
-    if (!startKey || !endKey) return;
-    if (todayKey < startKey || todayKey > endKey) return;
-    const progressAuto = computeTaskProgressAuto(task?.start_date || "", task?.end_date || "", today);
-    if (progressAuto >= 100) return;
+    const startDate = new Date(`${toIsoDateKey(task?.start_date)}T00:00:00`);
+    const endDate = new Date(`${toIsoDateKey(task?.end_date)}T00:00:00`);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) return;
+    const rangeEnd = endDate < limit ? endDate : limit;
+    if (rangeEnd < startDate) {
+      out[taskId] = 0;
+      return;
+    }
 
-    const specs = expectedSpecsForTask(task);
+    const specs = expectedSpecsForTask(task, timeLogs);
     if (!specs.length) {
       out[taskId] = 0;
       return;
     }
+
     let missing = 0;
-    specs.forEach((spec) => {
-      const key = `${taskId}|${spec.roleKey}|${spec.internalTech || ""}`;
-      if (!logPresence.has(key)) missing += 1;
-    });
+    for (const d = new Date(startDate); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+      if (!isWeekday(d)) continue;
+      const dayKey = toLocalDateKey(d);
+      const dayPresence = logPresenceByDate.get(dayKey) || new Set();
+      const hasAll = specs.every((spec) => {
+        const key = `${taskId}|${spec.roleKey}|${spec.internalTech || ""}`;
+        return dayPresence.has(key);
+      });
+      if (!hasAll) missing += 1;
+    }
     out[taskId] = missing;
   });
 
@@ -107,7 +157,7 @@ function computeMissingEntryCountsToday(tasks = [], timeLogs = [], now = new Dat
 }
 
 export function computeMissingEntriesByProject(tasks = [], timeLogs = [], now = new Date()) {
-  const missingByTask = computeMissingEntryCountsToday(tasks, timeLogs, now);
+  const missingByTask = computeMissingEntryCountsAligned(tasks, timeLogs, now);
   const out = {};
   (tasks || []).forEach((task) => {
     const taskId = String(task?.id || "").trim();
@@ -121,5 +171,5 @@ export function computeMissingEntriesByProject(tasks = [], timeLogs = [], now = 
 }
 
 export function computeMissingEntriesByTask(tasks = [], timeLogs = [], now = new Date()) {
-  return computeMissingEntryCountsToday(tasks, timeLogs, now);
+  return computeMissingEntryCountsAligned(tasks, timeLogs, now);
 }
