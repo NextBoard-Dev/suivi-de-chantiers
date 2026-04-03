@@ -1000,6 +1000,7 @@ let ganttColVisibility = {
 const DEFAULT_STATUSES = [
 
   {v:"CHANTIER_COMPLET", label:"Chantier complet"},
+  {v:"CAFE", label:"Café"},
 
   {v:"ELECTRICITE", label:"Électricité"},
 
@@ -1042,6 +1043,7 @@ const sortedStatuses = ()=> [...STATUSES].sort((a,b)=> a.label.localeCompare(b.l
 const STATUS_COLORS = {
 
   CHANTIER_COMPLET: "#1e3a8a",
+  CAFE:             "#0f766e",
 
   ELECTRICITE:      "#d97706",
 
