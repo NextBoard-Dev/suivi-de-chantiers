@@ -115,8 +115,8 @@ function isWeekday(date) {
 function computeMissingEntryCountsAligned(tasks = [], timeLogs = [], now = new Date()) {
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
-  const limit = new Date(today);
-  limit.setDate(limit.getDate() - 1);
+  const todayKey = toLocalDateKey(today);
+  if (!isWeekday(today)) return {};
   const logPresenceByDate = buildLogPresenceByDate(timeLogs);
   const out = {};
 
@@ -127,8 +127,7 @@ function computeMissingEntryCountsAligned(tasks = [], timeLogs = [], now = new D
     const startDate = new Date(`${toIsoDateKey(task?.start_date)}T00:00:00`);
     const endDate = new Date(`${toIsoDateKey(task?.end_date)}T00:00:00`);
     if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) return;
-    const rangeEnd = endDate < limit ? endDate : limit;
-    if (rangeEnd < startDate) {
+    if (today < startDate || today > endDate) {
       out[taskId] = 0;
       return;
     }
@@ -138,19 +137,12 @@ function computeMissingEntryCountsAligned(tasks = [], timeLogs = [], now = new D
       out[taskId] = 0;
       return;
     }
-
-    let missing = 0;
-    for (const d = new Date(startDate); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
-      if (!isWeekday(d)) continue;
-      const dayKey = toLocalDateKey(d);
-      const dayPresence = logPresenceByDate.get(dayKey) || new Set();
-      const hasAll = specs.every((spec) => {
-        const key = `${taskId}|${spec.roleKey}|${spec.internalTech || ""}`;
-        return dayPresence.has(key);
-      });
-      if (!hasAll) missing += 1;
-    }
-    out[taskId] = missing;
+    const dayPresence = logPresenceByDate.get(todayKey) || new Set();
+    const hasAll = specs.every((spec) => {
+      const key = `${taskId}|${spec.roleKey}|${spec.internalTech || ""}`;
+      return dayPresence.has(key);
+    });
+    out[taskId] = hasAll ? 0 : 1;
   });
 
   return out;
