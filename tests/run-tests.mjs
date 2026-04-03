@@ -90,14 +90,41 @@ function extractFunction(src, name) {
 
 function extractConstArrow(src, name) {
   const marker = `const ${name} =`;
-  const start = src.indexOf(marker);
+  let start = -1;
+  let searchFrom = 0;
+  while (true) {
+    const at = src.indexOf(marker, searchFrom);
+    if (at < 0) break;
+    const semiAt = src.indexOf(";", at);
+    if (semiAt < 0) throw new Error(`Const arrow missing ';': ${name}`);
+    const arrowAt = src.indexOf("=>", at);
+    if (arrowAt > -1 && arrowAt < semiAt) {
+      start = at;
+      break;
+    }
+    searchFrom = at + marker.length;
+  }
   if (start < 0) throw new Error(`Const arrow not found: ${name}`);
-  const openBrace = src.indexOf("{", start);
-  const closeBrace = findBalancedBlock(src, openBrace);
-  if (openBrace < 0 || closeBrace < 0) throw new Error(`Unbalanced const arrow: ${name}`);
-  const semi = src.indexOf(";", closeBrace);
+  const semi = src.indexOf(";", start);
   if (semi < 0) throw new Error(`Const arrow missing ';': ${name}`);
-  return src.slice(start, semi + 1);
+  const arrow = src.indexOf("=>", start);
+  const openBrace = src.indexOf("{", start);
+  if (arrow < 0 || arrow > semi || openBrace < 0 || openBrace > semi) {
+    // Flechee concise (sans bloc) : const x = (...) => 1;
+    return src.slice(start, semi + 1);
+  }
+  const closeBrace = findBalancedBlock(src, openBrace);
+  if (closeBrace < 0) throw new Error(`Unbalanced const arrow: ${name}`);
+  const semiAfter = src.indexOf(";", closeBrace);
+  if (semiAfter < 0) throw new Error(`Const arrow missing ';': ${name}`);
+  return src.slice(start, semiAfter + 1);
+}
+function extractFunctionOrConstArrow(src, name) {
+  try {
+    return extractFunction(src, name);
+  } catch (_) {
+    return extractConstArrow(src, name);
+  }
 }
 
 function loadCoreForTests() {
@@ -111,8 +138,8 @@ function loadCoreForTests() {
     extractFunction(appJs, "isoWeekInfo"),
     extractFunction(appJs, "barGeometry"),
     extractFunction(appJs, "getTaskRoleKey"),
-    (()=>{ try{ return extractFunction(appJs, "roleLabel"); }catch(_){ return extractConstArrow(appJs, "roleLabel"); } })(),
-    extractFunction(appJs, "roleHoursMultiplier"),
+    extractFunctionOrConstArrow(appJs, "roleLabel"),
+    extractFunctionOrConstArrow(appJs, "roleHoursMultiplier"),
     extractFunction(appJs, "normalizeTimeLogRole"),
     extractFunction(appJs, "normalizeTimeLogInternalTech"),
     extractFunction(appJs, "getExpectedLogSpecsForTask"),
