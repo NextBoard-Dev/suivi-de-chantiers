@@ -78,6 +78,78 @@ function dateToIsoKey(date) {
   return `${y}-${m}-${d}`;
 }
 
+function isUuidLike(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "").trim());
+}
+
+function normalizeStrictText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function normalizeOwnerTypeStrict(value) {
+  const up = normalizeStrictText(value);
+  if (up === "EQUIPE INTERNE") return "INTERNE";
+  if (up === "PRESTATAIRE" || up === "EXTERNE") return "PRESTATAIRE EXTERNE";
+  return up;
+}
+
+function normalizeIsoDateKey(value) {
+  return String(value || "").slice(0, 10);
+}
+
+async function resolveWritableTaskUuidFromSupabase(taskRef) {
+  const fallbackId = String(taskRef?.id || "").trim();
+  if (isUuidLike(fallbackId)) return fallbackId;
+
+  const projectId = String(taskRef?.project_id || "").trim();
+  if (!projectId) return "";
+
+  const target = {
+    project_id: projectId,
+    description: normalizeStrictText(taskRef?.description || ""),
+    owner_type: normalizeOwnerTypeStrict(taskRef?.owner_type || ""),
+    internal_tech: normalizeStrictText(taskRef?.internal_tech || ""),
+    vendor: normalizeStrictText(taskRef?.vendor || ""),
+    start_date: normalizeIsoDateKey(taskRef?.start_date || ""),
+    end_date: normalizeIsoDateKey(taskRef?.end_date || ""),
+  };
+
+  try {
+    const { data, error } = await supabase
+      .from(supabaseConfig.tasksTable)
+      .select("*")
+      .eq(supabaseConfig.taskProjectIdColumn, projectId)
+      .limit(500);
+    if (error) return "";
+    const rows = Array.isArray(data) ? data : [];
+    const match = rows.find((row) => {
+      const rowId = String(row?.id || "").trim();
+      if (!isUuidLike(rowId)) return false;
+      const rowOwnerRaw = String(row?.owner_type ?? row?.owner ?? "");
+      const rowInternalRaw = String(row?.internal_tech ?? row?.internalTech ?? row?.technician ?? row?.tech ?? "");
+      const rowVendorRaw = String(row?.vendor ?? "");
+      const rowStartRaw = String(row?.start_date ?? row?.start ?? "");
+      const rowEndRaw = String(row?.end_date ?? row?.end ?? "");
+      return (
+        normalizeStrictText(row?.description ?? row?.name ?? "") === target.description
+        && normalizeOwnerTypeStrict(rowOwnerRaw) === target.owner_type
+        && normalizeStrictText(rowInternalRaw) === target.internal_tech
+        && normalizeStrictText(rowVendorRaw) === target.vendor
+        && normalizeIsoDateKey(rowStartRaw) === target.start_date
+        && normalizeIsoDateKey(rowEndRaw) === target.end_date
+      );
+    });
+    return String(match?.id || "").trim();
+  } catch {
+    return "";
+  }
+}
+
 function defaultIntervenantByOwnerType(ownerType, internalTech, vendor) {
   const type = String(ownerType || "").trim();
   if (type === "INTERNE") return String(internalTech || "").trim();
@@ -361,8 +433,18 @@ export default function TaskEdit() {
       vendor = effectiveIntervenant;
     }
 
+    const writableTaskId = await resolveWritableTaskUuidFromSupabase(task);
+    if (!isUuidLike(writableTaskId)) {
+      toast({
+        title: "Tache non resolue",
+        description: "Impossible de retrouver l'identifiant UUID de la tache pour enregistrer les heures.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     await saveHoursMutation.mutateAsync({
-      task_id: task.id,
+      task_id: writableTaskId,
       project_id: task.project_id,
       date: hoursForm.date,
       role: ownerType,
