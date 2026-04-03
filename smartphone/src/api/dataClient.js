@@ -1296,17 +1296,17 @@ async function syncStateJsonTimeLogForCurrentUser({
   taskRef = null,
   persisted = null,
 } = {}) {
-  if (!appStatesTable) return;
+  if (!appStatesTable) return false;
   let session = null;
   try {
     const { data, error } = await supabase.auth.getSession();
-    if (error) return;
+    if (error) return false;
     session = data?.session || null;
   } catch {
-    return;
+    return false;
   }
   const userId = toStringId(session?.user?.id);
-  if (!userId) return;
+  if (!userId) return false;
 
   const { data, error } = await supabase
     .from(appStatesTable)
@@ -1317,6 +1317,7 @@ async function syncStateJsonTimeLogForCurrentUser({
   if (error) throw buildError("Sync state_json timeLogs impossible", error);
 
   const row = Array.isArray(data) ? data[0] : null;
+  if (!row) return false;
   const stateJson = row?.state_json && typeof row.state_json === "object" ? row.state_json : {};
   const tasks = Array.isArray(stateJson.tasks) ? stateJson.tasks : [];
   const logs = Array.isArray(stateJson.timeLogs) ? stateJson.timeLogs : [];
@@ -1337,7 +1338,7 @@ async function syncStateJsonTimeLogForCurrentUser({
       null;
     stateTaskId = toStringId(match?.id);
   }
-  if (!stateTaskId) return;
+  if (!stateTaskId) return false;
 
   const stateTask = tasks.find((t) => toStringId(t?.id) === stateTaskId) || null;
   const stateProjectId = toStringId(
@@ -1375,6 +1376,7 @@ async function syncStateJsonTimeLogForCurrentUser({
     .update(updatePayload)
     .eq("user_id", userId);
   if (updateError) throw buildError("Ecriture state_json timeLogs impossible", updateError);
+  return true;
 }
 
 function timeLogPayloadForWrite(normalized, { includeCreatedDate = false } = {}) {
@@ -1819,7 +1821,37 @@ export const dataClient = {
         const normalized = normalizeTimeLogInput(input);
         const requestedTaskId = toStringId(normalized.task_id);
         if (!isUuidLike(requestedTaskId)) {
-          throw new Error("Ecriture heures refusee: task_id doit etre un UUID valide.");
+          const fallbackNowIso = new Date().toISOString();
+          const fallbackPersisted = {
+            id: `legacy_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+            task_id: requestedTaskId,
+            project_id: normalized.project_id || null,
+            date_key: normalized.date,
+            date: normalized.date,
+            role_key: normalized.role_key || "",
+            role: normalized.role || "",
+            owner_type: normalized.role || "",
+            technician: normalized.technician || "",
+            internal_tech: normalized.technician || "",
+            vendor: normalized.vendor || "",
+            intervenant_label: normalized.technician || normalized.vendor || normalized.role || "",
+            minutes: normalized.minutes,
+            hours: normalized.hours,
+            note: normalized.note || "",
+            comment: normalized.note || "",
+            created_date: fallbackNowIso,
+            updated_date: fallbackNowIso,
+          };
+          const synced = await syncStateJsonTimeLogForCurrentUser({
+            requestedTaskId,
+            normalized,
+            taskRef: null,
+            persisted: fallbackPersisted,
+          });
+          if (!synced) {
+            throw new Error("Ecriture heures refusee: impossible d'enregistrer la saisie legacy dans state_json.");
+          }
+          return mapTimeLogRow(fallbackPersisted);
         }
         const taskRows = await fetchTasks({ id: requestedTaskId });
         const taskRef = Array.isArray(taskRows) ? taskRows[0] : null;

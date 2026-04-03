@@ -434,17 +434,19 @@ export default function TaskEdit() {
     }
 
     const writableTaskId = await resolveWritableTaskUuidFromSupabase(task);
-    if (!isUuidLike(writableTaskId)) {
+    const fallbackLegacyTaskId = String(task?.id || "").trim();
+    const targetTaskId = isUuidLike(writableTaskId) ? writableTaskId : fallbackLegacyTaskId;
+    if (!targetTaskId) {
       toast({
         title: "Tache non resolue",
-        description: "Impossible de retrouver l'identifiant UUID de la tache pour enregistrer les heures.",
+        description: "Impossible de retrouver l'identifiant de la tache pour enregistrer les heures.",
         variant: "destructive",
       });
       return;
     }
 
     await saveHoursMutation.mutateAsync({
-      task_id: writableTaskId,
+      task_id: targetTaskId,
       project_id: task.project_id,
       date: hoursForm.date,
       role: ownerType,
