@@ -203,6 +203,9 @@ function weekKey(d){
 }
 module.exports={ownerType,normalizeInternalTech,dedupInternalTechs,normalizeInternalTechList,isWeekday,countWeekdays,durationDays,startOfWeek,addDays,isoWeekInfo,weekKey,barGeometry,getTaskRoleKey,roleLabel,roleHoursMultiplier,normalizeTimeLogRole,normalizeTimeLogInternalTech,buildTimeLogKey,findTimeLogByRole,getExpectedLogSpecsForTask,hasAllExpectedLogsForTaskDate,getTaskTimeTotals,computeWorkloadData,setTestLogs};`;
   const sandbox = { module: { exports: {} }, exports: {}, console, Date, Math, Set, Map };
+  sandbox.window = sandbox;
+  sandbox.globalThis = sandbox;
+  sandbox.self = sandbox;
   fs.writeFileSync(path.join(root, "tests", "_debug-core-under-test.js"), code, "utf8");
   vm.runInNewContext(code, sandbox, { timeout: 2000, filename: "core-under-test.js" });
   return sandbox.module.exports;
