@@ -1,0 +1,8 @@
+{
+  "name": "suivi-de-chantiers-fuzz-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:fuzz:full": "node tests/fuzz/fuzzRunner.mjs"
+  }
+}
