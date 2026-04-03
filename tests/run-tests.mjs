@@ -111,7 +111,7 @@ function loadCoreForTests() {
     extractFunction(appJs, "isoWeekInfo"),
     extractFunction(appJs, "barGeometry"),
     extractFunction(appJs, "getTaskRoleKey"),
-    extractFunction(appJs, "roleLabel"),
+    (()=>{ try{ return extractFunction(appJs, "roleLabel"); }catch(_){ return extractConstArrow(appJs, "roleLabel"); } })(),
     extractFunction(appJs, "roleHoursMultiplier"),
     extractFunction(appJs, "normalizeTimeLogRole"),
     extractFunction(appJs, "normalizeTimeLogInternalTech"),
