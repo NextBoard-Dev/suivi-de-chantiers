@@ -80,6 +80,13 @@ export default function ProjectDetail() {
     () => computeMissingEntriesByTask(taskList, timeLogList),
     [taskList, timeLogList]
   );
+  const normalizedMap = React.useMemo(() => {
+    const out = {};
+    for (const k in (missingEntriesByTask || {})) {
+      out[String(k)] = missingEntriesByTask[k];
+    }
+    return out;
+  }, [missingEntriesByTask]);
 
   if (isLoading) {
     return (
@@ -214,15 +221,19 @@ export default function ProjectDetail() {
             <TabsTrigger value="gantt" className="flex-1 text-[10px] h-7">GANTT</TabsTrigger>
           </TabsList>
           <TabsContent value="tasks" className="space-y-2">
-            {taskList.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                showProject={false}
-                isLate={isLate(task)}
-                missingEntries={missingEntriesByTask[task.id] || 0}
-              />
-            ))}
+            {taskList.map((task) => {
+              const key = String(task.id || task.task_id);
+              const missing = normalizedMap[key] ?? 0;
+              return (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  showProject={false}
+                  isLate={isLate(task)}
+                  missingEntries={missing}
+                />
+              );
+            })}
             {taskList.length === 0 && (
               <div className="text-center py-8 text-muted-foreground text-sm">
                 Aucune tache dans ce chantier

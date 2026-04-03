@@ -16,7 +16,9 @@ function formatShortDateSafe(value) {
   }
 }
 
-export default function TaskCard({ task, showProject = true, isLate = false, missingEntries = 0 }) {
+export default function TaskCard(props) {
+  const { task, showProject = true, isLate = false } = props;
+  const missing = Number(props.missingEntries ?? 0);
   const startFmt = formatShortDateSafe(task.start_date);
   const endFmt   = formatShortDateSafe(task.end_date);
   const progress = task.progress || 0;
@@ -82,15 +84,15 @@ export default function TaskCard({ task, showProject = true, isLate = false, mis
       <div
         className="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md"
         style={{
-          background: missingEntries > 0 ? "rgba(234,179,8,0.16)" : "rgba(22,163,74,0.12)",
-          border: `1px solid ${missingEntries > 0 ? "rgba(180,83,9,0.24)" : "rgba(22,163,74,0.24)"}`,
+          background: missing > 0 ? "rgba(234,179,8,0.16)" : "rgba(22,163,74,0.12)",
+          border: `1px solid ${missing > 0 ? "rgba(180,83,9,0.24)" : "rgba(22,163,74,0.24)"}`,
         }}
       >
         <span
           className="text-[9px] font-extrabold uppercase tracking-wide"
-          style={{ color: missingEntries > 0 ? "#92400e" : "#166534" }}
+          style={{ color: missing > 0 ? "#92400e" : "#166534" }}
         >
-          Heures manquantes: {missingEntries} saisie{missingEntries > 1 ? "s" : ""}
+          Heures manquantes: {missing} saisie{missing > 1 ? "s" : ""}
         </span>
       </div>
     </Link>
