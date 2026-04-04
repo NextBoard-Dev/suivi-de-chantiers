@@ -58,6 +58,19 @@ function applyCorpsEtatFilter(task, corpsetat) {
   );
 }
 
+function buildTableData(tasks, logs) {
+  const missingEntriesByTask = computeMissingEntriesByTask(tasks, logs);
+  return (tasks || []).map((task) => {
+    const taskKey = String(task?.id || task?.task_id || "").trim();
+    return {
+      task,
+      taskKey,
+      isLate: isTaskLate(task),
+      missingEntries: missingEntriesByTask[taskKey] || 0,
+    };
+  });
+}
+
 export default function MasterTable() {
   const [search, setSearch]   = useState("");
   const [filters, setFilters] = useState(defaultFilters);
@@ -161,9 +174,9 @@ export default function MasterTable() {
   // Compteurs rapides (sur toutes les tâches, pas les filtrées)
   const lateCount       = useMemo(() => tasks.filter(isTaskLate).length, [tasks]);
   const inProgressCount = useMemo(() => tasks.filter(isTaskInProgressByDate).length, [tasks]);
-  const missingEntriesByTask = useMemo(
-    () => computeMissingEntriesByTask(tasks, timeLogs),
-    [tasks, timeLogs]
+  const tableData = useMemo(
+    () => buildTableData(filtered, timeLogs),
+    [filtered, timeLogs]
   );
 
   const isDefaultSort = sortBy === "site_project";
@@ -301,10 +314,9 @@ export default function MasterTable() {
         </div>
       ) : (
         <div className="space-y-1.5">
-          {filtered.map((task) => {
-            const taskKey = String(task?.id || task?.task_id || "").trim();
+          {tableData.map(({ task, taskKey, isLate, missingEntries }) => {
             return (
-              <TaskCard key={task.id} task={task} isLate={isTaskLate(task)} missingEntries={missingEntriesByTask[taskKey] || 0} />
+              <TaskCard key={task.id} task={task} isLate={isLate} missingEntries={missingEntries} />
             );
           })}
           {filtered.length === 0 && (
