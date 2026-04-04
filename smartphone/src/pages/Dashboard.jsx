@@ -6,8 +6,8 @@ import ProjectCard from "../components/common/ProjectCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { computeProjectHoursById } from "@/lib/projectHours";
-import { computeTaskProgressAuto, parseStatuses } from "@/lib/businessRules";
-import { computeMissingEntriesByTask } from "@/lib/missingHours";
+import { computeTaskProgressAuto } from "@/lib/businessRules";
+import { computeHoursToFillEntryCount, computeMissingEntriesByTask } from "@/lib/missingHours";
 
 export default function Dashboard() {
   const projectsQuery = useQuery({
@@ -41,31 +41,12 @@ export default function Dashboard() {
 
   const totalTasks      = tasksWithComputedProgress.length;
   const completedTasks  = tasksWithComputedProgress.filter((t) => t.progress_auto >= 100).length;
-  const inProgressTasks = tasks.filter((t) =>
-    parseStatuses(t.status).includes("EN_COURS")
-  ).length;
+  const inProgressTasks = tasksWithComputedProgress.filter((t) => t.progress_auto > 0 && t.progress_auto < 100).length;
   const todoTasks = totalTasks - completedTasks - inProgressTasks;
-  console.log("IN_PROGRESS_COUNT", inProgressTasks);
-  console.log(
-    "IN_PROGRESS_TASK_IDS",
-    tasks
-      .filter((t) => parseStatuses(t.status).includes("EN_COURS"))
-      .map((t) => t.id || t.taskId || t.task_id)
+  const hoursToFillCount = React.useMemo(
+    () => computeHoursToFillEntryCount(tasks, timeLogs),
+    [tasks, timeLogs]
   );
-  React.useEffect(() => {
-    console.log(
-      "DASHBOARD_TASK_BREAKDOWN",
-      (tasksWithComputedProgress || []).map((t) => ({
-        id: t?.id || t?.taskId || t?.task_id || "",
-        progress: t?.progress,
-        computedProgress: t?.progress_auto,
-        progressPct: t?.progressPct,
-        status: t?.status,
-        start: t?.start || t?.start_date || "",
-        end: t?.end || t?.end_date || "",
-      }))
-    );
-  }, [tasksWithComputedProgress]);
   const filteredTasks = React.useMemo(() => {
     const list = Array.isArray(tasks) ? tasks : [];
     const fsite = "";
@@ -195,9 +176,9 @@ export default function Dashboard() {
           <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "rgba(234,179,8,0.15)" }}>
             <Timer className="w-3.5 h-3.5" style={{ color: "#b45309" }} />
           </div>
-          <p className="text-xl font-black leading-none" style={{ color: "#b45309" }}>{inProgressTasks}</p>
-          <p className="text-[8px] font-bold tracking-widest uppercase" style={{ color: "#556d79" }}>EN COURS</p>
-          <p className="text-[8px] font-semibold" style={{ color: "#556d79" }}>{overdueTasks.length} en retard</p>
+          <p className="text-xl font-black leading-none" style={{ color: "#b45309" }}>{hoursToFillCount}</p>
+          <p className="text-[8px] font-bold tracking-widest uppercase" style={{ color: "#556d79" }}>HEURES A SAISIR</p>
+          <p className="text-[8px] font-semibold" style={{ color: "#556d79" }}>{hoursToFillCount} saisie(s) manquante(s)</p>
         </div>
       </div>
 

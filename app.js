@@ -7575,34 +7575,10 @@ function renderMasterQuickKpis(tasks){
   const todayKey = new Date().toISOString().slice(0,10);
   const today = new Date();
   today.setHours(0,0,0,0);
-  console.log("KPI SOURCE LIST", list.length);
-  console.log("KPI PROJECT IDS", [...new Set(list.map(t => t.projectId))]);
   const totalProjects = new Set(list.map(t=>String(t?.projectId||"")).filter(Boolean)).size;
   const activeTasksToday = list.filter(t=>t?.start && t?.end && t.start<=todayKey && t.end>=todayKey);
   const activeProjectsToday = new Set(activeTasksToday.map(t=>String(t?.projectId||"")).filter(Boolean)).size;
-  const isActive = (t) => {
-    const start = new Date(t?.start_date || t?.start || "");
-    const end = new Date(t?.end_date || t?.end || "");
-    if(Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false;
-    return start <= today && today <= end;
-  };
-  const inProgressProjects = new Set(
-    list
-      .filter(isActive)
-      .map(t=>String(t?.projectId || t?.project_id || ""))
-      .filter(Boolean)
-  ).size;
-  const lateProjects = new Set(
-    list
-      .filter(t=>{
-        const p = Number(taskProgress(t) || 0);
-        const end = new Date(t?.end_date || t?.end || "");
-        if(Number.isNaN(end.getTime())) return false;
-        return end < today && p < 100;
-      })
-      .map(t=>String(t?.projectId || t?.project_id || ""))
-      .filter(Boolean)
-  ).size;
+  const hoursToFillCount = getMissingLogEntriesCountAllTasks(list);
   host.innerHTML = `
     <div class="master-quick-kpi-card" title="Chantiers total et actifs au jour">
       <span class="master-quick-kpi-card-icon" aria-hidden="true">□</span>
@@ -7616,11 +7592,11 @@ function renderMasterQuickKpis(tasks){
       <div class="master-quick-kpi-card-title">TÂCHES</div>
       <div class="master-quick-kpi-card-sub">${activeTasksToday.length} actives</div>
     </div>
-    <div class="master-quick-kpi-card" title="Tâches en cours et en retard" style="background:linear-gradient(180deg, rgba(249,236,211,0.86) 0%, rgba(245,229,199,0.86) 100%); border-color:rgba(223,152,61,0.36);">
+    <div class="master-quick-kpi-card" title="Saisies heures réelles attendues manquantes" style="background:linear-gradient(180deg, rgba(249,236,211,0.86) 0%, rgba(245,229,199,0.86) 100%); border-color:rgba(223,152,61,0.36);">
       <span class="master-quick-kpi-card-icon" aria-hidden="true" style="background:rgba(217,119,6,0.14); color:#b45309;">○</span>
-      <div class="master-quick-kpi-card-value" style="color:#b45309;">${inProgressProjects}</div>
-      <div class="master-quick-kpi-card-title">EN COURS</div>
-      <div class="master-quick-kpi-card-sub">${lateProjects} en retard</div>
+      <div class="master-quick-kpi-card-value" style="color:#b45309;">${hoursToFillCount}</div>
+      <div class="master-quick-kpi-card-title">HEURES À SAISIR</div>
+      <div class="master-quick-kpi-card-sub">${hoursToFillCount} saisie(s) manquante(s)</div>
     </div>
   `;
 }
@@ -7742,13 +7718,6 @@ function filteredTasks(){
 
   let out = result;
   if(out.length===0 && state.tasks.length>0) out = state.tasks;
-  const filtered = out;
-  console.log("FILTERED TASKS COUNT", filtered.length);
-  console.log("ALL TASKS COUNT", state.tasks.length);
-  console.log(
-    "FILTERED projectIds",
-    [...new Set(filtered.map(t => t.projectId))]
-  );
   _filteredCache = { key, version:_stateVersion, tasks: out };
   return out;
 
@@ -8513,7 +8482,15 @@ function hasAllExpectedLogsForTaskDate(t, dateKey){
 function countMissingLogEntriesForTaskDate(t, dateKey){
   const specs = getExpectedLogSpecsForTask(t);
   if(!specs.length) return 0;
-  return specs.reduce((acc, spec)=> acc + (findTimeLogByRole(t.id, dateKey, spec.roleKey, spec.internalTech) ? 0 : 1), 0);
+  const isEmptyHoursValue = (value)=> value === null || value === undefined || value === "";
+  const hasFilledHoursValue = (log)=> {
+    if(!log) return false;
+    return !(isEmptyHoursValue(log.minutes) && isEmptyHoursValue(log.hours));
+  };
+  return specs.reduce((acc, spec)=>{
+    const log = findTimeLogByRole(t.id, dateKey, spec.roleKey, spec.internalTech);
+    return acc + (hasFilledHoursValue(log) ? 0 : 1);
+  }, 0);
 }
 function countMissingLogEntriesForTask(t){
   if(!t || !t.start || !t.end) return 0;

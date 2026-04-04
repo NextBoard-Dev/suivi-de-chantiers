@@ -107,6 +107,34 @@ function buildLogPresenceByDate(timeLogs = []) {
   return byDate;
 }
 
+function buildLogRowsByDate(timeLogs = []) {
+  const byDate = new Map();
+  (timeLogs || []).forEach((log) => {
+    const taskId = String(log?.task_id || log?.taskId || "").trim();
+    const logDateKey = toIsoDateKey(log?.date || log?.date_key || log?.log_date || log?.day || "");
+    if (!taskId || !logDateKey) return;
+    const roleKey = normalizeRoleKey(log?.role_key || log?.role || log?.owner_type || "");
+    const internalTech = roleKey === "interne"
+      ? normalizeInternalTech(log?.technician || log?.internal_tech || log?.intervenant_label || "")
+      : "";
+    const key = `${taskId}|${roleKey}|${internalTech}`;
+    if (!byDate.has(logDateKey)) byDate.set(logDateKey, new Map());
+    const byKey = byDate.get(logDateKey);
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push(log);
+  });
+  return byDate;
+}
+
+function isMissingHoursValue(value) {
+  return value === null || value === undefined || value === "";
+}
+
+function hasRealHoursFilled(log) {
+  if (!log) return false;
+  return !(isMissingHoursValue(log?.minutes) && isMissingHoursValue(log?.hours));
+}
+
 function isWeekday(date) {
   const day = date.getDay();
   return day >= 1 && day <= 5;
@@ -170,4 +198,34 @@ export function computeMissingEntriesByProject(tasks = [], timeLogs = [], now = 
 
 export function computeMissingEntriesByTask(tasks = [], timeLogs = [], now = new Date()) {
   return computeMissingEntryCountsAligned(tasks, timeLogs, now);
+}
+
+export function computeHoursToFillEntryCount(tasks = [], timeLogs = [], now = new Date()) {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  if (!isWeekday(today)) return 0;
+  const todayKey = toIsoDateKey(today);
+  const logRowsByDate = buildLogRowsByDate(timeLogs);
+  const byKey = logRowsByDate.get(todayKey) || new Map();
+
+  let total = 0;
+  (tasks || []).forEach((task) => {
+    const taskId = String(task?.id || "").trim();
+    if (!taskId) return;
+    const startDate = new Date(`${toIsoDateKey(task?.start_date)}T00:00:00`);
+    const endDate = new Date(`${toIsoDateKey(task?.end_date)}T00:00:00`);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) return;
+    if (today < startDate || today > endDate) return;
+
+    const specs = expectedSpecsForTask(task, timeLogs);
+    if (!specs.length) return;
+    specs.forEach((spec) => {
+      const key = `${taskId}|${spec.roleKey}|${spec.internalTech || ""}`;
+      const logs = byKey.get(key) || [];
+      const hasFilled = logs.some((log) => hasRealHoursFilled(log));
+      if (!hasFilled) total += 1;
+    });
+  });
+
+  return total;
 }
