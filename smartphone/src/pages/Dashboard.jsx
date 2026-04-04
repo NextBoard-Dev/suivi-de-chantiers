@@ -44,6 +44,13 @@ export default function Dashboard() {
   const inProgressTasks = tasks.filter((t) =>
     parseStatuses(t.status).includes("EN_COURS")
   ).length;
+  console.log("IN_PROGRESS_COUNT", inProgressTasks);
+  console.log(
+    "IN_PROGRESS_TASK_IDS",
+    tasks
+      .filter((t) => parseStatuses(t.status).includes("EN_COURS"))
+      .map((t) => t.id || t.taskId || t.task_id)
+  );
   const filteredTasks = React.useMemo(() => {
     const list = Array.isArray(tasks) ? tasks : [];
     const fsite = "";
