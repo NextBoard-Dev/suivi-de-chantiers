@@ -979,7 +979,7 @@ function buildTableData(tasks, logs){
 }
 
 function getTableData(tasks, logs){
-  const key = JSON.stringify({ tasks, logs });
+  const key = tasks.length + "_" + logs.length;
   if(_cacheKey === key) return _cache;
   _cache = buildTableData(tasks, logs);
   _cacheKey = key;
