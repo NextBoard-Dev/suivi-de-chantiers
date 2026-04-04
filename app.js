@@ -7575,6 +7575,8 @@ function renderMasterQuickKpis(tasks){
   const todayKey = new Date().toISOString().slice(0,10);
   const today = new Date();
   today.setHours(0,0,0,0);
+  console.log("KPI SOURCE LIST", list.length);
+  console.log("KPI PROJECT IDS", [...new Set(list.map(t => t.projectId))]);
   const totalProjects = new Set(list.map(t=>String(t?.projectId||"")).filter(Boolean)).size;
   const activeTasksToday = list.filter(t=>t?.start && t?.end && t.start<=todayKey && t.end>=todayKey);
   const activeProjectsToday = new Set(activeTasksToday.map(t=>String(t?.projectId||"")).filter(Boolean)).size;
