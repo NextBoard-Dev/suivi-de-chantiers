@@ -67,7 +67,7 @@ export default function SearchPage() {
   const q = query.toLowerCase().trim();
 
   const filteredTasks = useMemo(() => {
-    if (!q) return [];
+    if (!q) return tasks;
     return tasks.filter(
       (t) =>
         (t.description || "").toLowerCase().includes(q) ||
@@ -79,7 +79,7 @@ export default function SearchPage() {
   }, [tasks, q]);
 
   const filteredProjects = useMemo(() => {
-    if (!q) return [];
+    if (!q) return projects;
     return projects.filter(
       (p) =>
         (p.name || "").toLowerCase().includes(q) ||
