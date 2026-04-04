@@ -935,7 +935,7 @@ function buildTableData(tasks, logs){
   const todayKey = new Date().toISOString().slice(0,10);
   const projectById = new Map((state?.projects || []).map((p)=>[String(p.id || ""), p]));
   const missingMap = buildMissingDaysMap(list);
-  let h="";
+  const rows = [];
   list.forEach(t=>{
 
     const p = projectById.get(String(t.projectId || "")) || null;
@@ -957,7 +957,7 @@ function buildTableData(tasks, logs){
       : (isLate ? "rgba(254,226,226,0.55)" : rowBg);
     const miss = missingMap.get(t.id) || 0;
     const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
-    h+=`<tr class="${rowClass}" data-project="${t.projectId}" data-task="${t.id}" style="--site-bg:${rowBg};background:var(--site-bg);">
+    rows.push(`<tr class="${rowClass}" data-project="${t.projectId}" data-task="${t.id}" style="--site-bg:${rowBg};background:var(--site-bg);">
 
       <td>${p?.site||""}</td>
       <td>${projLabel}</td>
@@ -972,10 +972,10 @@ function buildTableData(tasks, logs){
       <td>${taskProgress(t)}%</td>
       <td>${durationLabelForTask(t)}</td>
 
-    </tr>`;
+    </tr>`);
 
   });
-  return h;
+  return rows.join("");
 }
 
 function getTableData(tasks, logs){
