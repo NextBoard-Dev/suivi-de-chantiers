@@ -44,6 +44,7 @@ export default function Dashboard() {
   const inProgressTasks = tasks.filter((t) =>
     parseStatuses(t.status).includes("EN_COURS")
   ).length;
+  const todoTasks = totalTasks - completedTasks - inProgressTasks;
   console.log("IN_PROGRESS_COUNT", inProgressTasks);
   console.log(
     "IN_PROGRESS_TASK_IDS",
@@ -51,6 +52,20 @@ export default function Dashboard() {
       .filter((t) => parseStatuses(t.status).includes("EN_COURS"))
       .map((t) => t.id || t.taskId || t.task_id)
   );
+  React.useEffect(() => {
+    console.log(
+      "DASHBOARD_TASK_BREAKDOWN",
+      (tasksWithComputedProgress || []).map((t) => ({
+        id: t?.id || t?.taskId || t?.task_id || "",
+        progress: t?.progress,
+        computedProgress: t?.progress_auto,
+        progressPct: t?.progressPct,
+        status: t?.status,
+        start: t?.start || t?.start_date || "",
+        end: t?.end || t?.end_date || "",
+      }))
+    );
+  }, [tasksWithComputedProgress]);
   const filteredTasks = React.useMemo(() => {
     const list = Array.isArray(tasks) ? tasks : [];
     const fsite = "";
@@ -224,7 +239,7 @@ export default function Dashboard() {
         <div className="flex justify-between mt-2 text-[8px] font-semibold tracking-widest uppercase" style={{ color: "#556d79" }}>
           <span className="flex items-center gap-0.5"><CheckCircle2 className="w-2.5 h-2.5" style={{ color: "#059669" }} />{completedTasks} TERM.</span>
           <span className="flex items-center gap-0.5"><Timer className="w-2.5 h-2.5" style={{ color: "#b45309" }} />{inProgressTasks} EN COURS</span>
-          <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" style={{ color: "#556d79" }} />{totalTasks - completedTasks - inProgressTasks} À FAIRE</span>
+          <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" style={{ color: "#556d79" }} />{todoTasks} À FAIRE</span>
         </div>
       </div>
 
