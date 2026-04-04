@@ -7573,15 +7573,20 @@ function renderMasterQuickKpis(tasks){
   if(!host) return;
   const list = Array.isArray(tasks) ? tasks : [];
   const todayKey = new Date().toISOString().slice(0,10);
+  const today = new Date();
+  today.setHours(0,0,0,0);
   const totalProjects = new Set(list.map(t=>String(t?.projectId||"")).filter(Boolean)).size;
   const activeTasksToday = list.filter(t=>t?.start && t?.end && t.start<=todayKey && t.end>=todayKey);
   const activeProjectsToday = new Set(activeTasksToday.map(t=>String(t?.projectId||"")).filter(Boolean)).size;
+  const isActive = (t) => {
+    const start = new Date(t?.start_date || t?.start || "");
+    const end = new Date(t?.end_date || t?.end || "");
+    if(Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false;
+    return start <= today && today <= end;
+  };
   const inProgressProjects = new Set(
     list
-      .filter(t=>{
-        const p = Number(taskProgress(t) || 0);
-        return p > 0 && p < 100;
-      })
+      .filter(isActive)
       .map(t=>String(t?.projectId || t?.project_id || ""))
       .filter(Boolean)
   ).size;
@@ -7589,8 +7594,9 @@ function renderMasterQuickKpis(tasks){
     list
       .filter(t=>{
         const p = Number(taskProgress(t) || 0);
-        const endKey = String(t?.end || t?.end_date || "");
-        return !!(endKey && p < 100 && endKey < todayKey);
+        const end = new Date(t?.end_date || t?.end || "");
+        if(Number.isNaN(end.getTime())) return false;
+        return end < today && p < 100;
       })
       .map(t=>String(t?.projectId || t?.project_id || ""))
       .filter(Boolean)
