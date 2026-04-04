@@ -1762,21 +1762,23 @@ export const dataClient = {
           fetchTimeLogs(),
           fetchLegacyStateTimeLogs(),
         ]);
-        return applyLimit(applySort(mergeTimeLogSources(logs, legacyLogs), sort), limit);
+        const sourceLogs = strictStateJsonRead ? legacyLogs : mergeTimeLogSources(logs, legacyLogs);
+        return applyLimit(applySort(sourceLogs, sort), limit);
       },
       filter: async (filters = {}, sort = "-date", limit = 1000) => {
         const [logs, legacyLogs] = await Promise.all([
           fetchTimeLogs(filters),
           fetchLegacyStateTimeLogs(filters),
         ]);
-        return applyLimit(applySort(mergeTimeLogSources(logs, legacyLogs), sort), limit);
+        const sourceLogs = strictStateJsonRead ? legacyLogs : mergeTimeLogSources(logs, legacyLogs);
+        return applyLimit(applySort(sourceLogs, sort), limit);
       },
       listForTask: async (taskRef = {}, sort = "-date", limit = 1000) => {
         const [logs, legacyLogs] = await Promise.all([
           fetchTimeLogs(),
           fetchLegacyStateTimeLogs(),
         ]);
-        const merged = mergeTimeLogSources(logs, legacyLogs);
+        const merged = strictStateJsonRead ? legacyLogs : mergeTimeLogSources(logs, legacyLogs);
         const taskId = toStringId(taskRef?.id ?? taskRef?.task_id ?? taskRef?.taskId);
         const exact = merged.filter((log) => toStringId(log?.task_id) === taskId);
 

@@ -9,6 +9,33 @@ import { computeProjectHoursById } from "@/lib/projectHours";
 import { computeTaskProgressAuto } from "@/lib/businessRules";
 import { computeHoursToFillEntryCount, computeMissingEntriesByTask } from "@/lib/missingHours";
 
+function isWeekday(date) {
+  const day = date.getDay();
+  return day >= 1 && day <= 5;
+}
+
+function countWeekdaysInclusive(startDate, endDate) {
+  if (!(startDate instanceof Date) || !(endDate instanceof Date)) return 0;
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) return 0;
+  let count = 0;
+  const cursor = new Date(startDate);
+  cursor.setHours(0, 0, 0, 0);
+  const last = new Date(endDate);
+  last.setHours(0, 0, 0, 0);
+  while (cursor <= last) {
+    if (isWeekday(cursor)) count += 1;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return count;
+}
+
+function getDurationWeight(startDate, endDate) {
+  const start = new Date(`${String(startDate || "").slice(0, 10)}T00:00:00`);
+  const end = new Date(`${String(endDate || "").slice(0, 10)}T00:00:00`);
+  const weekdays = countWeekdaysInclusive(start, end);
+  return Math.max(1, weekdays);
+}
+
 export default function Dashboard() {
   const projectsQuery = useQuery({
     queryKey: ["projects"],
@@ -41,7 +68,14 @@ export default function Dashboard() {
 
   const totalTasks      = tasksWithComputedProgress.length;
   const completedTasks  = tasksWithComputedProgress.filter((t) => t.progress_auto >= 100).length;
-  const inProgressTasks = tasksWithComputedProgress.filter((t) => t.progress_auto > 0 && t.progress_auto < 100).length;
+  const inProgressTasks = React.useMemo(() => {
+    const todayKey = new Date().toISOString().slice(0, 10);
+    return tasksWithComputedProgress.filter((t) => {
+      const start = String(t?.start_date || "").slice(0, 10);
+      const end = String(t?.end_date || "").slice(0, 10);
+      return !!start && !!end && start <= todayKey && todayKey <= end;
+    }).length;
+  }, [tasksWithComputedProgress]);
   const todoTasks = totalTasks - completedTasks - inProgressTasks;
   const hoursToFillCount = React.useMemo(
     () => computeHoursToFillEntryCount(tasks, timeLogs),
@@ -90,7 +124,18 @@ export default function Dashboard() {
     return new Date(t.end_date) < new Date();
   });
 
-  const globalPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const globalPct = React.useMemo(() => {
+    const dated = tasksWithComputedProgress.filter((t) => t?.start_date && t?.end_date);
+    if (!dated.length) return 0;
+    let weightedSum = 0;
+    let totalWeight = 0;
+    dated.forEach((t) => {
+      const weight = getDurationWeight(t.start_date, t.end_date);
+      weightedSum += (Number(t.progress_auto) || 0) * weight;
+      totalWeight += weight;
+    });
+    return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
+  }, [tasksWithComputedProgress]);
   const recentProjects = projects.slice(0, 6);
 
   const taskCountByProject = React.useMemo(() => {
