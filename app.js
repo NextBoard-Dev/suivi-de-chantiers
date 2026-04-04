@@ -5896,7 +5896,7 @@ function niceMax(v){
 
 
 
-function buildGantt(tasks){
+function buildGanttHtml(tasks){
 
   const list = Array.isArray(tasks) ? tasks : [];
   const missingMap = buildMissingDaysMap(list);
@@ -6034,12 +6034,12 @@ function buildGantt(tasks){
   return html;
 }
 
-function getGantt(tasks) {
-  const key = tasks.length;
+function getGanttHtml(tasks, lastUpdate) {
+  const key = lastUpdate || tasks.length;
 
   if (_ganttKey === key) return _ganttCache;
 
-  _ganttCache = buildGantt(tasks);
+  _ganttCache = buildGanttHtml(tasks);
   _ganttKey = key;
 
   return _ganttCache;
@@ -6076,56 +6076,58 @@ function renderGantt(projectId){
   }
 
   const visibleTasks = tasks;
-  const ganttHtml = getGantt(visibleTasks);
-  wrap.innerHTML=ganttHtml;
+  const ganttHtml = getGanttHtml(visibleTasks, state?.lastUpdate);
+  requestAnimationFrame(() => {
+    wrap.innerHTML=ganttHtml;
 
-  applyGanttColumnVisibility();
-  scheduleGanttScrollToCurrentWeek(wrap);
+    applyGanttColumnVisibility();
+    scheduleGanttScrollToCurrentWeek(wrap);
 
-  wrap.querySelectorAll(".bar-click")?.forEach(bar=>{
+    wrap.querySelectorAll(".bar-click")?.forEach(bar=>{
 
-    bar.onclick=()=>{
+      bar.onclick=()=>{
 
-      const taskId = bar.dataset.task;
+        const taskId = bar.dataset.task;
 
-      const task = state.tasks.find(x=>x.id===taskId);
+        const task = state.tasks.find(x=>x.id===taskId);
 
-      if(!task) return;
+        if(!task) return;
 
-      selectedProjectId = task.projectId;
+        selectedProjectId = task.projectId;
 
-      selectedTaskId = taskId;
+        selectedTaskId = taskId;
 
-      renderProject();
+        renderProject();
 
-    };
+      };
 
-  });
+    });
 
-  wrap.querySelectorAll("tbody tr[data-task] td")?.forEach(td=>{
+    wrap.querySelectorAll("tbody tr[data-task] td")?.forEach(td=>{
 
-    td.onclick=(e)=>{
+      td.onclick=(e)=>{
 
-      if(e.target && e.target.closest(".bar-click")) return;
+        if(e.target && e.target.closest(".bar-click")) return;
 
-      const row = e.currentTarget?.parentElement;
+        const row = e.currentTarget?.parentElement;
 
-      if(!row || !row.dataset.task) return;
+        if(!row || !row.dataset.task) return;
 
-      const taskId = row.dataset.task;
+        const taskId = row.dataset.task;
 
-      const task = state.tasks.find(x=>x.id===taskId);
+        const task = state.tasks.find(x=>x.id===taskId);
 
-      if(!task) return;
+        if(!task) return;
 
-      selectedProjectId = task.projectId;
+        selectedProjectId = task.projectId;
 
-      selectedTaskId = taskId;
+        selectedTaskId = taskId;
 
-      renderProject();
+        renderProject();
 
-    };
+      };
 
+    });
   });
 
 }
