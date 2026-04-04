@@ -67,6 +67,9 @@ const code = [
 ].join("\n\n");
 
 const sandbox = { module: { exports: {} }, exports: {}, console, Date, Math, Set, Map };
+sandbox.window = sandbox;
+sandbox.globalThis = sandbox;
+sandbox.self = sandbox;
 vm.runInNewContext(code, sandbox, { timeout: 2000, filename: "security-fuzz-core.js" });
 const core = sandbox.module.exports;
 
