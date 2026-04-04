@@ -4491,6 +4491,7 @@ function collectScalabilityReport(currentState=state){
 }
 
 function notifyScalabilityIfNeeded(scaleReport, source="runtime"){
+  if(getCurrentRole() !== "admin") return;
   try{
     if(!scaleReport || scaleReport.ok) return;
     const warnings = Array.isArray(scaleReport.warnings) ? scaleReport.warnings : [];
@@ -4545,11 +4546,16 @@ async function collectCloudAlignmentReport(currentState=state){
 }
 
 function updateDataQualityBanner(notify=false){
+  const isAdmin = getCurrentRole() === "admin";
   const brandSub = el("brandSub");
   if(!brandSub) return;
 
   const today = new Date();
   const fmt = today.toLocaleDateString("fr-FR",{weekday:"long", day:"2-digit", month:"long", year:"numeric"});
+  if(!isAdmin){
+    brandSub.innerHTML = `Tableau maître  Projets  Gantt  <span class="brand-date">${fmt}</span>`;
+    return;
+  }
   const report = collectDataQualityIssues(state);
   const scale = collectScalabilityReport(state);
   updateDegradedMode(scale);
