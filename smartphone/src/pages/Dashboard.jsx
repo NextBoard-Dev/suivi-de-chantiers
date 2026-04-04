@@ -23,7 +23,6 @@ export default function Dashboard() {
     refetchOnMount: false,
   });
   const { data: tasks = [], isLoading: loadingTasks } = tasksQuery;
-  const baseTasks = tasks;
   const { data: timeLogs = [], isLoading: loadingLogs } = useQuery({
     queryKey: ["time-logs", "project-hours-dashboard"],
     queryFn: () => dataClient.entities.TimeLog.list("-date", 0),
@@ -75,7 +74,7 @@ export default function Dashboard() {
       const projectId = String(project?.id || "").trim();
       if (!projectId) return;
       const projectTaskIds = (tasks || [])
-        .filter((task) => String(task?.project_id || "").trim() === projectId)
+        .filter((task) => String(task?.project_id || task?.projectId || "").trim() === projectId)
         .map((task) => String(task?.id || task?.task_id || "").trim())
         .filter(Boolean);
       const totalMissing = projectTaskIds.reduce(
@@ -92,38 +91,6 @@ export default function Dashboard() {
     const missingEntries = values.reduce((acc, count) => acc + (Number(count) || 0), 0);
     return { tasksWithMissing, missingEntries };
   }, [missingEntriesByTask]);
-  const distinctTaskProjectIds = React.useMemo(
-    () => new Set((baseTasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean)).size,
-    [baseTasks]
-  );
-  const sampleProjectIds = React.useMemo(
-    () => Array.from(new Set((baseTasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean))).slice(0, 10),
-    [baseTasks]
-  );
-  const firstTaskIds = React.useMemo(
-    () => (baseTasks || []).map((t) => String(t?.id || t?.task_id || "").trim()).filter(Boolean).slice(0, 10),
-    [baseTasks]
-  );
-  React.useEffect(() => {
-    if (loadingTasks || loadingProjects) return;
-    if (tasksQuery.isFetching || projectsQuery.isFetching) return;
-    console.log({
-      view: "Dashboard",
-      timestamp: new Date().toISOString(),
-      projectsCount: projects.length,
-      tasksCount: tasks.length,
-      distinctTaskProjectIds,
-      sampleProjectIds,
-      firstTaskIds,
-      tasksQueryDataUpdatedAt: tasksQuery.dataUpdatedAt,
-      tasksQueryFetchStatus: tasksQuery.fetchStatus,
-      tasksQueryIsFetching: tasksQuery.isFetching,
-      projectsQueryDataUpdatedAt: projectsQuery.dataUpdatedAt,
-      projectsQueryFetchStatus: projectsQuery.fetchStatus,
-      projectsQueryIsFetching: projectsQuery.isFetching,
-    });
-  }, [projects.length, tasks.length, distinctTaskProjectIds, sampleProjectIds, firstTaskIds, loadingTasks, loadingProjects, tasksQuery.isFetching, projectsQuery.isFetching, tasksQuery.dataUpdatedAt, tasksQuery.fetchStatus, projectsQuery.dataUpdatedAt, projectsQuery.fetchStatus]);
-
   if (isLoading) {
     return (
       <div className="p-4 space-y-4">
@@ -265,7 +232,7 @@ export default function Dashboard() {
                 project={project}
                 taskCount={taskCountByProject[projectId] || 0}
                 totalHoursMinutes={projectHoursById[project.id] || 0}
-                missingEntries={missingEntriesByProject[project.id] || 0}
+                missingEntries={missingEntriesByProject[projectId] || 0}
               />
             );
           })}

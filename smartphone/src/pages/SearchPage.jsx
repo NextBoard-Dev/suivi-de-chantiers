@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dataClient } from "@/api/dataClient";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,6 @@ export default function SearchPage() {
     refetchOnMount: false,
   });
   const { data: tasks = [], isLoading: loadingTasks } = tasksQuery;
-  const baseTasks = tasks;
 
   const projectsQuery = useQuery({
     queryKey: ["projects"],
@@ -53,7 +52,7 @@ export default function SearchPage() {
       const projectId = String(project?.id || "").trim();
       if (!projectId) return;
       const projectTaskIds = (tasks || [])
-        .filter((task) => String(task?.project_id || "").trim() === projectId)
+        .filter((task) => String(task?.project_id || task?.projectId || "").trim() === projectId)
         .map((task) => String(task?.id || task?.task_id || "").trim())
         .filter(Boolean);
       const totalMissing = projectTaskIds.reduce(
@@ -88,38 +87,6 @@ export default function SearchPage() {
         (p.subproject || "").toLowerCase().includes(q)
     );
   }, [projects, q]);
-  const distinctTaskProjectIds = useMemo(
-    () => new Set((baseTasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean)).size,
-    [baseTasks]
-  );
-  const sampleProjectIds = useMemo(
-    () => Array.from(new Set((baseTasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean))).slice(0, 10),
-    [baseTasks]
-  );
-  const firstTaskIds = useMemo(
-    () => (baseTasks || []).map((t) => String(t?.id || t?.task_id || "").trim()).filter(Boolean).slice(0, 10),
-    [baseTasks]
-  );
-  useEffect(() => {
-    if (loadingTasks || loadingProjects) return;
-    if (tasksQuery.isFetching || projectsQuery.isFetching) return;
-    console.log({
-      view: "SearchPage",
-      timestamp: new Date().toISOString(),
-      projectsCount: projects.length,
-      tasksCount: tasks.length,
-      distinctTaskProjectIds,
-      sampleProjectIds,
-      firstTaskIds,
-      tasksQueryDataUpdatedAt: tasksQuery.dataUpdatedAt,
-      tasksQueryFetchStatus: tasksQuery.fetchStatus,
-      tasksQueryIsFetching: tasksQuery.isFetching,
-      projectsQueryDataUpdatedAt: projectsQuery.dataUpdatedAt,
-      projectsQueryFetchStatus: projectsQuery.fetchStatus,
-      projectsQueryIsFetching: projectsQuery.isFetching,
-    });
-  }, [projects.length, tasks.length, distinctTaskProjectIds, sampleProjectIds, firstTaskIds, loadingTasks, loadingProjects, tasksQuery.isFetching, projectsQuery.isFetching, tasksQuery.dataUpdatedAt, tasksQuery.fetchStatus, projectsQuery.dataUpdatedAt, projectsQuery.fetchStatus]);
-
   return (
     <div className="p-4 space-y-4">
       <div className="relative">
@@ -154,9 +121,12 @@ export default function SearchPage() {
           </TabsList>
 
           <TabsContent value="tasks" className="mt-3 space-y-2.5">
-            {filteredTasks.map((task) => (
-              <TaskCard key={task.id} task={task} missingEntries={missingEntriesByTask[task.id] || 0} />
-            ))}
+            {filteredTasks.map((task) => {
+              const taskKey = String(task?.id || task?.task_id || "").trim();
+              return (
+                <TaskCard key={task.id} task={task} missingEntries={missingEntriesByTask[taskKey] || 0} />
+              );
+            })}
             {filteredTasks.length === 0 && (
               <p className="text-center py-8 text-sm text-muted-foreground">
                 Aucune tâche trouvée
@@ -173,7 +143,7 @@ export default function SearchPage() {
                   project={project}
                   taskCount={taskCountByProject[projectId] || 0}
                   totalHoursMinutes={projectHoursById[project.id] || 0}
-                  missingEntries={missingEntriesByProject[project.id] || 0}
+                  missingEntries={missingEntriesByProject[projectId] || 0}
                 />
               );
             })}

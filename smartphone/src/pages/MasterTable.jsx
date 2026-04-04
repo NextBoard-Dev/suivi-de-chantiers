@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dataClient } from "@/api/dataClient";
 import TaskCard from "../components/common/TaskCard";
@@ -63,7 +63,6 @@ export default function MasterTable() {
     refetchOnMount: false,
   });
   const { data: tasks = [], isLoading } = tasksQuery;
-  const baseTasks = tasks;
   const projectsQuery = useQuery({
     queryKey: ["projects-master-filter-sites"],
     queryFn: () => dataClient.entities.Project.list("-updated_date", 200),
@@ -166,38 +165,6 @@ export default function MasterTable() {
   ).length;
 
   const handleReset = () => { setFilters(defaultFilters); setSearch(""); setSortBy("site_project"); };
-  const distinctTaskProjectIds = useMemo(
-    () => new Set((baseTasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean)).size,
-    [baseTasks]
-  );
-  const sampleProjectIds = useMemo(
-    () => Array.from(new Set((baseTasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean))).slice(0, 10),
-    [baseTasks]
-  );
-  const firstTaskIds = useMemo(
-    () => (baseTasks || []).map((t) => String(t?.id || t?.task_id || "").trim()).filter(Boolean).slice(0, 10),
-    [baseTasks]
-  );
-  useEffect(() => {
-    if (isLoading || loadingProjects) return;
-    if (tasksQuery.isFetching || projectsQuery.isFetching) return;
-    console.log({
-      view: "MasterTable",
-      timestamp: new Date().toISOString(),
-      projectsCount: projectsList.length,
-      tasksCount: tasks.length,
-      distinctTaskProjectIds,
-      sampleProjectIds,
-      firstTaskIds,
-      tasksQueryDataUpdatedAt: tasksQuery.dataUpdatedAt,
-      tasksQueryFetchStatus: tasksQuery.fetchStatus,
-      tasksQueryIsFetching: tasksQuery.isFetching,
-      projectsQueryDataUpdatedAt: projectsQuery.dataUpdatedAt,
-      projectsQueryFetchStatus: projectsQuery.fetchStatus,
-      projectsQueryIsFetching: projectsQuery.isFetching,
-    });
-  }, [projectsList.length, tasks.length, distinctTaskProjectIds, sampleProjectIds, firstTaskIds, isLoading, loadingProjects, tasksQuery.isFetching, projectsQuery.isFetching, tasksQuery.dataUpdatedAt, tasksQuery.fetchStatus, projectsQuery.dataUpdatedAt, projectsQuery.fetchStatus]);
-
   return (
     <div className="space-y-0">
       {/* Header */}
@@ -326,9 +293,12 @@ export default function MasterTable() {
         </div>
       ) : (
         <div className="space-y-1.5">
-          {filtered.map((task) => (
-            <TaskCard key={task.id} task={task} isLate={isTaskLate(task)} missingEntries={missingEntriesByTask[task.id] || 0} />
-          ))}
+          {filtered.map((task) => {
+            const taskKey = String(task?.id || task?.task_id || "").trim();
+            return (
+              <TaskCard key={task.id} task={task} isLate={isTaskLate(task)} missingEntries={missingEntriesByTask[taskKey] || 0} />
+            );
+          })}
           {filtered.length === 0 && (
             <div className="text-center py-8">
               <p className="text-muted-foreground text-sm">Aucune tâche trouvée</p>

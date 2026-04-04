@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dataClient } from "@/api/dataClient";
 import ProjectCard from "../components/common/ProjectCard";
@@ -26,7 +26,6 @@ export default function ProjectsList() {
     refetchOnMount: false,
   });
   const { data: tasks = [], isLoading: loadingT } = tasksQuery;
-  const baseTasks = tasks;
   const { data: timeLogs = [], isLoading: loadingL } = useQuery({
     queryKey: ["time-logs", "project-hours-list"],
     queryFn: () => dataClient.entities.TimeLog.list("-date", 0),
@@ -58,7 +57,7 @@ export default function ProjectsList() {
       const projectId = String(project?.id || "").trim();
       if (!projectId) return;
       const projectTaskIds = (tasks || [])
-        .filter((task) => String(task?.project_id || "").trim() === projectId)
+        .filter((task) => String(task?.project_id || task?.projectId || "").trim() === projectId)
         .map((task) => String(task?.id || task?.task_id || "").trim())
         .filter(Boolean);
       const totalMissing = projectTaskIds.reduce(
@@ -91,38 +90,6 @@ export default function ProjectsList() {
     }
     return result;
   }, [projects, siteFilter, search]);
-  const distinctTaskProjectIds = useMemo(
-    () => new Set((baseTasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean)).size,
-    [baseTasks]
-  );
-  const sampleProjectIds = useMemo(
-    () => Array.from(new Set((baseTasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean))).slice(0, 10),
-    [baseTasks]
-  );
-  const firstTaskIds = useMemo(
-    () => (baseTasks || []).map((t) => String(t?.id || t?.task_id || "").trim()).filter(Boolean).slice(0, 10),
-    [baseTasks]
-  );
-  useEffect(() => {
-    if (loadingT || loadingP) return;
-    if (tasksQuery.isFetching || projectsQuery.isFetching) return;
-    console.log({
-      view: "ProjectsList",
-      timestamp: new Date().toISOString(),
-      projectsCount: projects.length,
-      tasksCount: tasks.length,
-      distinctTaskProjectIds,
-      sampleProjectIds,
-      firstTaskIds,
-      tasksQueryDataUpdatedAt: tasksQuery.dataUpdatedAt,
-      tasksQueryFetchStatus: tasksQuery.fetchStatus,
-      tasksQueryIsFetching: tasksQuery.isFetching,
-      projectsQueryDataUpdatedAt: projectsQuery.dataUpdatedAt,
-      projectsQueryFetchStatus: projectsQuery.fetchStatus,
-      projectsQueryIsFetching: projectsQuery.isFetching,
-    });
-  }, [projects.length, tasks.length, distinctTaskProjectIds, sampleProjectIds, firstTaskIds, loadingT, loadingP, tasksQuery.isFetching, projectsQuery.isFetching, tasksQuery.dataUpdatedAt, tasksQuery.fetchStatus, projectsQuery.dataUpdatedAt, projectsQuery.fetchStatus]);
-
   return (
     <div className="space-y-0">
       <div className="px-4 py-2 flex items-center justify-between" style={{ background: "rgba(235,230,220,0.6)" }}>
@@ -172,7 +139,7 @@ export default function ProjectsList() {
                 project={project}
                 taskCount={taskCountByProject[projectId] || 0}
                 totalHoursMinutes={projectHoursById[project.id] || 0}
-                missingEntries={missingEntriesByProject[project.id] || 0}
+                missingEntries={missingEntriesByProject[projectId] || 0}
               />
             );
           })}
