@@ -12970,7 +12970,7 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
       });
 
       const hasRowAwareTable = !!block.querySelector(
-        ".pdf-gantt-table tbody tr, .gantt-export-plain tbody tr"
+        ".table tbody tr, .report-table tbody tr, .pdf-gantt-table tbody tr, .gantt-export-plain tbody tr"
       );
       // Important: garder le canvas source pour préserver les coordonnées de lignes.
       const canvas = hasRowAwareTable ? renderedCanvas : trimCanvasWhitespace(renderedCanvas);
