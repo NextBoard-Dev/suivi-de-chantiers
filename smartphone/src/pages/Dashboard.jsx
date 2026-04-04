@@ -49,8 +49,9 @@ export default function Dashboard() {
   const taskCountByProject = React.useMemo(() => {
     const map = {};
     tasks.forEach((t) => {
-      if (t.project_id) {
-        map[t.project_id] = (map[t.project_id] || 0) + 1;
+      const projectKey = String(t?.project_id || t?.projectId || "").trim();
+      if (projectKey) {
+        map[projectKey] = (map[projectKey] || 0) + 1;
       }
     });
     return map;
@@ -90,13 +91,25 @@ export default function Dashboard() {
     () => new Set((tasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean)).size,
     [tasks]
   );
+  const sampleProjectIds = React.useMemo(
+    () => Array.from(new Set((tasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean))).slice(0, 10),
+    [tasks]
+  );
+  const firstTaskIds = React.useMemo(
+    () => (tasks || []).map((t) => String(t?.id || t?.task_id || "").trim()).filter(Boolean).slice(0, 10),
+    [tasks]
+  );
   React.useEffect(() => {
     console.log({
+      view: "Dashboard",
+      timestamp: new Date().toISOString(),
       projectsCount: projects.length,
       tasksCount: tasks.length,
       distinctTaskProjectIds,
+      sampleProjectIds,
+      firstTaskIds,
     });
-  }, [projects.length, tasks.length, distinctTaskProjectIds]);
+  }, [projects.length, tasks.length, distinctTaskProjectIds, sampleProjectIds, firstTaskIds]);
 
   if (isLoading) {
     return (
@@ -231,15 +244,18 @@ export default function Dashboard() {
           </Link>
         </div>
         <div className="space-y-2">
-          {recentProjects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              taskCount={taskCountByProject[project.id] || 0}
-              totalHoursMinutes={projectHoursById[project.id] || 0}
-              missingEntries={missingEntriesByProject[project.id] || 0}
-            />
-          ))}
+          {recentProjects.map((project) => {
+            const projectId = String(project?.id || "").trim();
+            return (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                taskCount={taskCountByProject[projectId] || 0}
+                totalHoursMinutes={projectHoursById[project.id] || 0}
+                missingEntries={missingEntriesByProject[project.id] || 0}
+              />
+            );
+          })}
           {recentProjects.length === 0 && (
             <div className="text-center py-10 text-muted-foreground text-sm">
               Aucun chantier pour le moment

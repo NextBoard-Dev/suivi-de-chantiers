@@ -165,13 +165,25 @@ export default function MasterTable() {
     () => new Set((tasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean)).size,
     [tasks]
   );
+  const sampleProjectIds = useMemo(
+    () => Array.from(new Set((tasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean))).slice(0, 10),
+    [tasks]
+  );
+  const firstTaskIds = useMemo(
+    () => (tasks || []).map((t) => String(t?.id || t?.task_id || "").trim()).filter(Boolean).slice(0, 10),
+    [tasks]
+  );
   useEffect(() => {
     console.log({
+      view: "MasterTable",
+      timestamp: new Date().toISOString(),
       projectsCount: projectsList.length,
       tasksCount: tasks.length,
       distinctTaskProjectIds,
+      sampleProjectIds,
+      firstTaskIds,
     });
-  }, [projectsList.length, tasks.length, distinctTaskProjectIds]);
+  }, [projectsList.length, tasks.length, distinctTaskProjectIds, sampleProjectIds, firstTaskIds]);
 
   return (
     <div className="space-y-0">
