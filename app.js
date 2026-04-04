@@ -7740,6 +7740,13 @@ function filteredTasks(){
 
   let out = result;
   if(out.length===0 && state.tasks.length>0) out = state.tasks;
+  const filtered = out;
+  console.log("FILTERED TASKS COUNT", filtered.length);
+  console.log("ALL TASKS COUNT", state.tasks.length);
+  console.log(
+    "FILTERED projectIds",
+    [...new Set(filtered.map(t => t.projectId))]
+  );
   _filteredCache = { key, version:_stateVersion, tasks: out };
   return out;
 
