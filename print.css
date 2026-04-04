@@ -35,8 +35,8 @@
     page-break-inside: avoid;
   }
   .print-order > * {
-    break-inside: avoid;
-    page-break-inside: avoid;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
   .print-order .table,
   .print-order table {
@@ -437,6 +437,68 @@ body.print-mode .badge.owner{
 
 
 
+
+@media print {
+  body.print-mode table,
+  body.print-mode .table,
+  body.print-mode .pdf-gantt-table,
+  body.print-mode .gantt-print-plain table,
+  body.print-mode .gantt-export-plain table,
+  body.print-mode .report-table {
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  body.print-mode thead,
+  body.print-mode .table thead,
+  body.print-mode .pdf-gantt-table thead,
+  body.print-mode .report-table thead {
+    display: table-header-group !important;
+  }
+
+  body.print-mode tfoot,
+  body.print-mode .table tfoot,
+  body.print-mode .pdf-gantt-table tfoot,
+  body.print-mode .report-table tfoot {
+    display: table-footer-group !important;
+  }
+
+  body.print-mode tbody,
+  body.print-mode .table tbody,
+  body.print-mode .pdf-gantt-table tbody,
+  body.print-mode .report-table tbody {
+    display: table-row-group !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  body.print-mode tr,
+  body.print-mode .table tr,
+  body.print-mode .pdf-gantt-table tr,
+  body.print-mode .gantt-print-plain tr,
+  body.print-mode .gantt-export-plain tr,
+  body.print-mode .report-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+
+  body.print-mode td,
+  body.print-mode th,
+  body.print-mode .table td,
+  body.print-mode .table th,
+  body.print-mode .pdf-gantt-table td,
+  body.print-mode .pdf-gantt-table th,
+  body.print-mode .report-table td,
+  body.print-mode .report-table th {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    vertical-align: middle !important;
+  }
+}
 
 
 

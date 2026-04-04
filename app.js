@@ -12960,12 +12960,12 @@ async function openPreparedPrintInNewWindow(title="Export PDF", viewerRef=null){
       const loopStartPct = 24 + Math.round((i / totalTargets) * 60);
       updateViewerProgress(loopStartPct, `Rendu du module ${i+1}/${totalTargets}...`, "Rendu des pages");
       const renderedCanvas = await window.html2canvas(block, {
-        scale: 2,
+        scale: 1.35,
         backgroundColor: "#ffffff",
         useCORS: true,
         allowTaint: true,
         logging: false,
-        windowWidth: Math.max(block.scrollWidth || block.clientWidth || 1800, 1800),
+        windowWidth: Math.max(block.scrollWidth || block.clientWidth || 1400, 1400),
         windowHeight: Math.max(block.scrollHeight || block.clientHeight || 300, 300)
       });
 
