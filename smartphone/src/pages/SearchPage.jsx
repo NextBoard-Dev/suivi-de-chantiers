@@ -100,61 +100,52 @@ export default function SearchPage() {
           />
       </div>
 
-      {!q ? (
-        <div className="text-center py-16">
-          <Search className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">
-            Tapez pour rechercher parmi les chantiers et taches
-          </p>
-        </div>
-      ) : (
-        <Tabs defaultValue="tasks">
-          <TabsList className="w-full bg-muted">
-            <TabsTrigger value="tasks" className="flex-1 text-xs gap-1.5">
-              <ClipboardList className="w-3.5 h-3.5" />
-              Tâches ({filteredTasks.length})
-            </TabsTrigger>
-            <TabsTrigger value="projects" className="flex-1 text-xs gap-1.5">
-              <Folder className="w-3.5 h-3.5" />
-              Chantiers ({filteredProjects.length})
-            </TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue="tasks">
+        <TabsList className="w-full bg-muted">
+          <TabsTrigger value="tasks" className="flex-1 text-xs gap-1.5">
+            <ClipboardList className="w-3.5 h-3.5" />
+            Tâches ({filteredTasks.length})
+          </TabsTrigger>
+          <TabsTrigger value="projects" className="flex-1 text-xs gap-1.5">
+            <Folder className="w-3.5 h-3.5" />
+            Chantiers ({filteredProjects.length})
+          </TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="tasks" className="mt-3 space-y-2.5">
-            {filteredTasks.map((task) => {
-              const taskKey = String(task?.id || task?.task_id || "").trim();
-              return (
-                <TaskCard key={task.id} task={task} missingEntries={missingEntriesByTask[taskKey] || 0} />
-              );
-            })}
-            {filteredTasks.length === 0 && (
-              <p className="text-center py-8 text-sm text-muted-foreground">
-                Aucune tâche trouvée
-              </p>
-            )}
-          </TabsContent>
+        <TabsContent value="tasks" className="mt-3 space-y-2.5">
+          {filteredTasks.map((task) => {
+            const taskKey = String(task?.id || task?.task_id || "").trim();
+            return (
+              <TaskCard key={task.id} task={task} missingEntries={missingEntriesByTask[taskKey] || 0} />
+            );
+          })}
+          {filteredTasks.length === 0 && (
+            <p className="text-center py-8 text-sm text-muted-foreground">
+              Aucune tâche trouvée
+            </p>
+          )}
+        </TabsContent>
 
-          <TabsContent value="projects" className="mt-3 space-y-2.5">
-            {filteredProjects.map((project) => {
-              const projectId = String(project?.id || "").trim();
-              return (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  taskCount={taskCountByProject[projectId] || 0}
-                  totalHoursMinutes={projectHoursById[project.id] || 0}
-                  missingEntries={missingEntriesByProject[projectId] || 0}
-                />
-              );
-            })}
-            {filteredProjects.length === 0 && (
-              <p className="text-center py-8 text-sm text-muted-foreground">
-                Aucun chantier trouve
-              </p>
-            )}
-          </TabsContent>
-        </Tabs>
-      )}
+        <TabsContent value="projects" className="mt-3 space-y-2.5">
+          {filteredProjects.map((project) => {
+            const projectId = String(project?.id || "").trim();
+            return (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                taskCount={taskCountByProject[projectId] || 0}
+                totalHoursMinutes={projectHoursById[project.id] || 0}
+                missingEntries={missingEntriesByProject[projectId] || 0}
+              />
+            );
+          })}
+          {filteredProjects.length === 0 && (
+            <p className="text-center py-8 text-sm text-muted-foreground">
+              Aucun chantier trouve
+            </p>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
