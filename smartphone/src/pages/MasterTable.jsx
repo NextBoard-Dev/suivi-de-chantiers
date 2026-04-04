@@ -56,14 +56,19 @@ export default function MasterTable() {
   const [filters, setFilters] = useState(defaultFilters);
   const [sortBy, setSortBy]   = useState("site_project");
 
-  const { data: tasks = [], isLoading } = useQuery({
+  const tasksQuery = useQuery({
     queryKey: ["tasks"],
     queryFn: () => dataClient.entities.Task.list("-updated_date", 500),
+    staleTime: 60000,
+    refetchOnMount: false,
   });
-  const { data: projectsList = [] } = useQuery({
+  const { data: tasks = [], isLoading } = tasksQuery;
+  const baseTasks = tasks;
+  const projectsQuery = useQuery({
     queryKey: ["projects-master-filter-sites"],
     queryFn: () => dataClient.entities.Project.list("-updated_date", 200),
   });
+  const { data: projectsList = [], isLoading: loadingProjects } = projectsQuery;
   const { data: timeLogs = [] } = useQuery({
     queryKey: ["time-logs", "tasks-missing-master"],
     queryFn: () => dataClient.entities.TimeLog.list("-date", 0),
@@ -162,18 +167,20 @@ export default function MasterTable() {
 
   const handleReset = () => { setFilters(defaultFilters); setSearch(""); setSortBy("site_project"); };
   const distinctTaskProjectIds = useMemo(
-    () => new Set((tasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean)).size,
-    [tasks]
+    () => new Set((baseTasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean)).size,
+    [baseTasks]
   );
   const sampleProjectIds = useMemo(
-    () => Array.from(new Set((tasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean))).slice(0, 10),
-    [tasks]
+    () => Array.from(new Set((baseTasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean))).slice(0, 10),
+    [baseTasks]
   );
   const firstTaskIds = useMemo(
-    () => (tasks || []).map((t) => String(t?.id || t?.task_id || "").trim()).filter(Boolean).slice(0, 10),
-    [tasks]
+    () => (baseTasks || []).map((t) => String(t?.id || t?.task_id || "").trim()).filter(Boolean).slice(0, 10),
+    [baseTasks]
   );
   useEffect(() => {
+    if (isLoading || loadingProjects) return;
+    if (tasksQuery.isFetching || projectsQuery.isFetching) return;
     console.log({
       view: "MasterTable",
       timestamp: new Date().toISOString(),
@@ -182,8 +189,14 @@ export default function MasterTable() {
       distinctTaskProjectIds,
       sampleProjectIds,
       firstTaskIds,
+      tasksQueryDataUpdatedAt: tasksQuery.dataUpdatedAt,
+      tasksQueryFetchStatus: tasksQuery.fetchStatus,
+      tasksQueryIsFetching: tasksQuery.isFetching,
+      projectsQueryDataUpdatedAt: projectsQuery.dataUpdatedAt,
+      projectsQueryFetchStatus: projectsQuery.fetchStatus,
+      projectsQueryIsFetching: projectsQuery.isFetching,
     });
-  }, [projectsList.length, tasks.length, distinctTaskProjectIds, sampleProjectIds, firstTaskIds]);
+  }, [projectsList.length, tasks.length, distinctTaskProjectIds, sampleProjectIds, firstTaskIds, isLoading, loadingProjects, tasksQuery.isFetching, projectsQuery.isFetching, tasksQuery.dataUpdatedAt, tasksQuery.fetchStatus, projectsQuery.dataUpdatedAt, projectsQuery.fetchStatus]);
 
   return (
     <div className="space-y-0">

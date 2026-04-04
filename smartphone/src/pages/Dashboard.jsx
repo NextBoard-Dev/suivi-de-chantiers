@@ -10,15 +10,20 @@ import { computeTaskProgressAuto } from "@/lib/businessRules";
 import { computeMissingEntriesByTask } from "@/lib/missingHours";
 
 export default function Dashboard() {
-  const { data: projects = [], isLoading: loadingProjects } = useQuery({
+  const projectsQuery = useQuery({
     queryKey: ["projects"],
     queryFn: () => dataClient.entities.Project.list("-updated_date", 200),
   });
+  const { data: projects = [], isLoading: loadingProjects } = projectsQuery;
 
-  const { data: tasks = [], isLoading: loadingTasks } = useQuery({
+  const tasksQuery = useQuery({
     queryKey: ["tasks"],
     queryFn: () => dataClient.entities.Task.list("-updated_date", 500),
+    staleTime: 60000,
+    refetchOnMount: false,
   });
+  const { data: tasks = [], isLoading: loadingTasks } = tasksQuery;
+  const baseTasks = tasks;
   const { data: timeLogs = [], isLoading: loadingLogs } = useQuery({
     queryKey: ["time-logs", "project-hours-dashboard"],
     queryFn: () => dataClient.entities.TimeLog.list("-date", 0),
@@ -88,18 +93,20 @@ export default function Dashboard() {
     return { tasksWithMissing, missingEntries };
   }, [missingEntriesByTask]);
   const distinctTaskProjectIds = React.useMemo(
-    () => new Set((tasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean)).size,
-    [tasks]
+    () => new Set((baseTasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean)).size,
+    [baseTasks]
   );
   const sampleProjectIds = React.useMemo(
-    () => Array.from(new Set((tasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean))).slice(0, 10),
-    [tasks]
+    () => Array.from(new Set((baseTasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean))).slice(0, 10),
+    [baseTasks]
   );
   const firstTaskIds = React.useMemo(
-    () => (tasks || []).map((t) => String(t?.id || t?.task_id || "").trim()).filter(Boolean).slice(0, 10),
-    [tasks]
+    () => (baseTasks || []).map((t) => String(t?.id || t?.task_id || "").trim()).filter(Boolean).slice(0, 10),
+    [baseTasks]
   );
   React.useEffect(() => {
+    if (loadingTasks || loadingProjects) return;
+    if (tasksQuery.isFetching || projectsQuery.isFetching) return;
     console.log({
       view: "Dashboard",
       timestamp: new Date().toISOString(),
@@ -108,8 +115,14 @@ export default function Dashboard() {
       distinctTaskProjectIds,
       sampleProjectIds,
       firstTaskIds,
+      tasksQueryDataUpdatedAt: tasksQuery.dataUpdatedAt,
+      tasksQueryFetchStatus: tasksQuery.fetchStatus,
+      tasksQueryIsFetching: tasksQuery.isFetching,
+      projectsQueryDataUpdatedAt: projectsQuery.dataUpdatedAt,
+      projectsQueryFetchStatus: projectsQuery.fetchStatus,
+      projectsQueryIsFetching: projectsQuery.isFetching,
     });
-  }, [projects.length, tasks.length, distinctTaskProjectIds, sampleProjectIds, firstTaskIds]);
+  }, [projects.length, tasks.length, distinctTaskProjectIds, sampleProjectIds, firstTaskIds, loadingTasks, loadingProjects, tasksQuery.isFetching, projectsQuery.isFetching, tasksQuery.dataUpdatedAt, tasksQuery.fetchStatus, projectsQuery.dataUpdatedAt, projectsQuery.fetchStatus]);
 
   if (isLoading) {
     return (
