@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dataClient } from "@/api/dataClient";
 import TaskCard from "../components/common/TaskCard";
@@ -62,7 +62,7 @@ export default function MasterTable() {
   });
   const { data: projectsList = [] } = useQuery({
     queryKey: ["projects-master-filter-sites"],
-    queryFn: () => dataClient.entities.Project.list("-updated_date", 500),
+    queryFn: () => dataClient.entities.Project.list("-updated_date", 200),
   });
   const { data: timeLogs = [] } = useQuery({
     queryKey: ["time-logs", "tasks-missing-master"],
@@ -161,6 +161,17 @@ export default function MasterTable() {
   ).length;
 
   const handleReset = () => { setFilters(defaultFilters); setSearch(""); setSortBy("site_project"); };
+  const distinctTaskProjectIds = useMemo(
+    () => new Set((tasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean)).size,
+    [tasks]
+  );
+  useEffect(() => {
+    console.log({
+      projectsCount: projectsList.length,
+      tasksCount: tasks.length,
+      distinctTaskProjectIds,
+    });
+  }, [projectsList.length, tasks.length, distinctTaskProjectIds]);
 
   return (
     <div className="space-y-0">

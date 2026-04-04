@@ -12,12 +12,12 @@ import { computeMissingEntriesByTask } from "@/lib/missingHours";
 export default function Dashboard() {
   const { data: projects = [], isLoading: loadingProjects } = useQuery({
     queryKey: ["projects"],
-    queryFn: () => dataClient.entities.Project.list("-updated_date", 100),
+    queryFn: () => dataClient.entities.Project.list("-updated_date", 200),
   });
 
   const { data: tasks = [], isLoading: loadingTasks } = useQuery({
     queryKey: ["tasks"],
-    queryFn: () => dataClient.entities.Task.list("-updated_date", 200),
+    queryFn: () => dataClient.entities.Task.list("-updated_date", 500),
   });
   const { data: timeLogs = [], isLoading: loadingLogs } = useQuery({
     queryKey: ["time-logs", "project-hours-dashboard"],
@@ -86,6 +86,17 @@ export default function Dashboard() {
     const missingEntries = values.reduce((acc, count) => acc + (Number(count) || 0), 0);
     return { tasksWithMissing, missingEntries };
   }, [missingEntriesByTask]);
+  const distinctTaskProjectIds = React.useMemo(
+    () => new Set((tasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean)).size,
+    [tasks]
+  );
+  React.useEffect(() => {
+    console.log({
+      projectsCount: projects.length,
+      tasksCount: tasks.length,
+      distinctTaskProjectIds,
+    });
+  }, [projects.length, tasks.length, distinctTaskProjectIds]);
 
   if (isLoading) {
     return (

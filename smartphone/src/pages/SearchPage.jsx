@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dataClient } from "@/api/dataClient";
 import { Input } from "@/components/ui/input";
@@ -82,6 +82,17 @@ export default function SearchPage() {
         (p.subproject || "").toLowerCase().includes(q)
     );
   }, [projects, q]);
+  const distinctTaskProjectIds = useMemo(
+    () => new Set((tasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean)).size,
+    [tasks]
+  );
+  useEffect(() => {
+    console.log({
+      projectsCount: projects.length,
+      tasksCount: tasks.length,
+      distinctTaskProjectIds,
+    });
+  }, [projects.length, tasks.length, distinctTaskProjectIds]);
 
   return (
     <div className="p-4 space-y-4">

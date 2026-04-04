@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dataClient } from "@/api/dataClient";
 import ProjectCard from "../components/common/ProjectCard";
@@ -85,6 +85,17 @@ export default function ProjectsList() {
     }
     return result;
   }, [projects, siteFilter, search]);
+  const distinctTaskProjectIds = useMemo(
+    () => new Set((tasks || []).map((t) => String(t?.project_id || t?.projectId || "").trim()).filter(Boolean)).size,
+    [tasks]
+  );
+  useEffect(() => {
+    console.log({
+      projectsCount: projects.length,
+      tasksCount: tasks.length,
+      distinctTaskProjectIds,
+    });
+  }, [projects.length, tasks.length, distinctTaskProjectIds]);
 
   return (
     <div className="space-y-0">
