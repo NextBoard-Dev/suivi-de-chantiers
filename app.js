@@ -7576,6 +7576,25 @@ function renderMasterQuickKpis(tasks){
   const totalProjects = new Set(list.map(t=>String(t?.projectId||"")).filter(Boolean)).size;
   const activeTasksToday = list.filter(t=>t?.start && t?.end && t.start<=todayKey && t.end>=todayKey);
   const activeProjectsToday = new Set(activeTasksToday.map(t=>String(t?.projectId||"")).filter(Boolean)).size;
+  const inProgressProjects = new Set(
+    list
+      .filter(t=>{
+        const p = Number(taskProgress(t) || 0);
+        return p > 0 && p < 100;
+      })
+      .map(t=>String(t?.projectId || t?.project_id || ""))
+      .filter(Boolean)
+  ).size;
+  const lateProjects = new Set(
+    list
+      .filter(t=>{
+        const p = Number(taskProgress(t) || 0);
+        const endKey = String(t?.end || t?.end_date || "");
+        return !!(endKey && p < 100 && endKey < todayKey);
+      })
+      .map(t=>String(t?.projectId || t?.project_id || ""))
+      .filter(Boolean)
+  ).size;
   host.innerHTML = `
     <div class="master-quick-kpi-card" title="Chantiers total et actifs au jour">
       <span class="master-quick-kpi-card-icon" aria-hidden="true">□</span>
@@ -7588,6 +7607,12 @@ function renderMasterQuickKpis(tasks){
       <div class="master-quick-kpi-card-value">${list.length}</div>
       <div class="master-quick-kpi-card-title">TÂCHES</div>
       <div class="master-quick-kpi-card-sub">${activeTasksToday.length} actives</div>
+    </div>
+    <div class="master-quick-kpi-card" title="Tâches en cours et en retard" style="background:linear-gradient(180deg, rgba(249,236,211,0.86) 0%, rgba(245,229,199,0.86) 100%); border-color:rgba(223,152,61,0.36);">
+      <span class="master-quick-kpi-card-icon" aria-hidden="true" style="background:rgba(217,119,6,0.14); color:#b45309;">○</span>
+      <div class="master-quick-kpi-card-value" style="color:#b45309;">${inProgressProjects}</div>
+      <div class="master-quick-kpi-card-title">EN COURS</div>
+      <div class="master-quick-kpi-card-sub">${lateProjects} en retard</div>
     </div>
   `;
 }
