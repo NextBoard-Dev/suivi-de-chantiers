@@ -31,6 +31,9 @@ const ID_BATCH_SIZE = 200;
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 let legacyAutoLoginAttempted = false;
 const strictStateJsonRead = String(stateJsonReadMode || "strict").toLowerCase() !== "auto";
+// MODE STRICT : lecture EXCLUSIVEMENT depuis state_json
+// NE PAS reintroduire de lecture Supabase ici
+// Toute modification doit conserver une source unique
 
 const PROJECT_SELECT_COLUMNS = [
   "id",
@@ -971,6 +974,46 @@ function dedupeTimeLogs(logs = []) {
   return Array.from(out.values());
 }
 
+function filterTaskLogs(logs = [], taskRef = {}) {
+  const taskId = toStringId(taskRef?.id ?? taskRef?.task_id ?? taskRef?.taskId);
+  const strictSignature = buildTaskSignature(taskRef);
+  const looseSignature = buildTaskSignatureLoose(taskRef);
+  const projectId = toStringId(taskRef?.project_id ?? taskRef?.projectId ?? taskRef?.chantier_id);
+  const startDate = pickDate(taskRef?.start_date ?? taskRef?.start ?? "");
+  const endDate = pickDate(taskRef?.end_date ?? taskRef?.end ?? "");
+  const ownerType = normalizeMobileOwnerType(taskRef?.owner_type ?? taskRef?.owner ?? "");
+  const expectedIntervenant = normalizeSigText(
+    taskRef?.internal_tech ??
+    taskRef?.internalTech ??
+    taskRef?.vendor ??
+    ""
+  );
+
+  return (logs || []).filter((log) => {
+    const logTaskId = toStringId(log?.task_id ?? log?.taskId);
+    if (taskId && logTaskId === taskId) return true;
+    if (strictSignature && String(log?.legacy_task_signature || "") === strictSignature) return true;
+    if (looseSignature && String(log?.legacy_task_signature_loose || "") === looseSignature) return true;
+
+    const logProjectId = toStringId(log?.project_id ?? log?.projectId ?? log?.chantier_id);
+    if (projectId && logProjectId && logProjectId !== projectId) return false;
+
+    const d = pickDate(log?.date ?? log?.date_key ?? log?.log_date ?? log?.day ?? "");
+    if (startDate && d && d < startDate) return false;
+    if (endDate && d && d > endDate) return false;
+
+    if (ownerType) {
+      const logOwner = normalizeMobileOwnerType(log?.role ?? log?.owner_type ?? "");
+      if (logOwner && logOwner !== ownerType) return false;
+    }
+    if (expectedIntervenant) {
+      const logInterv = normalizeSigText(log?.intervenant_label || log?.technician || log?.vendor || "");
+      if (logInterv && logInterv !== expectedIntervenant) return false;
+    }
+    return !!(projectId || strictSignature || looseSignature);
+  });
+}
+
 function applyLimit(items = [], limit = 0) {
   const max = Number(limit);
   if (!Number.isFinite(max) || max <= 0) return [...items];
@@ -1547,6 +1590,21 @@ export const dataClient = {
   entities: {
     Project: {
       list: async (sort = "-updated_date", limit = 200) => {
+        if (strictStateJsonRead) {
+          const legacyProjects = await fetchLegacyStateProjects();
+          const legacyTasks = await fetchLegacyStateTasks();
+          const tasksByProject = new Map();
+          for (const task of legacyTasks) {
+            const arr = tasksByProject.get(task.project_id) || [];
+            arr.push(task);
+            tasksByProject.set(task.project_id, arr);
+          }
+          const enriched = legacyProjects.map((project) => ({
+            ...project,
+            progress: computeProjectProgress(project, tasksByProject.get(project.id) || []),
+          }));
+          return applySort(enriched, sort).slice(0, limit);
+        }
         const [projects, legacyProjects, tasks, legacyTasks] = await Promise.all([
           fetchProjects(),
           fetchLegacyStateProjects(),
@@ -1575,6 +1633,22 @@ export const dataClient = {
       },
 
       filter: async (filters = {}, sort = "-updated_date", limit = 200) => {
+        if (strictStateJsonRead) {
+          const legacyProjects = await fetchLegacyStateProjects();
+          const legacyTasks = await fetchLegacyStateTasks();
+          const tasksByProject = new Map();
+          for (const task of legacyTasks) {
+            const arr = tasksByProject.get(task.project_id) || [];
+            arr.push(task);
+            tasksByProject.set(task.project_id, arr);
+          }
+          let enriched = legacyProjects.map((project) => ({
+            ...project,
+            progress: computeProjectProgress(project, tasksByProject.get(project.id) || []),
+          }));
+          enriched = enriched.filter((project) => matchesFiltersInMemory(project, filters));
+          return applySort(enriched, sort).slice(0, limit);
+        }
         const [projects, legacyProjects, tasks, legacyTasks] = await Promise.all([
           fetchProjects(),
           fetchLegacyStateProjects(),
@@ -1655,6 +1729,14 @@ export const dataClient = {
 
     Task: {
       list: async (sort = "-updated_date", limit = 500) => {
+        if (strictStateJsonRead) {
+          const legacyTasks = await fetchLegacyStateTasks();
+          const legacyProjects = await fetchLegacyStateProjects();
+          const projectMap = new Map(legacyProjects.map((p) => [p.id, p]));
+          const internalTechAllowBySite = new Map();
+          const enriched = enrichTasks(legacyTasks, projectMap, internalTechAllowBySite);
+          return applySort(enriched, sort).slice(0, limit);
+        }
         const [tasks, legacyTasks, projects, legacyProjects, internalTechRows] = await Promise.all([
           fetchTasks(),
           fetchLegacyStateTasks(),
@@ -1676,6 +1758,22 @@ export const dataClient = {
       },
 
       filter: async (filters = {}, sort = "-updated_date", limit = 500) => {
+        if (strictStateJsonRead) {
+          const legacyTasks = await fetchLegacyStateTasks();
+          const legacyProjects = await fetchLegacyStateProjects();
+          const projectMap = new Map(legacyProjects.map((p) => [p.id, p]));
+          const internalTechAllowBySite = new Map();
+          let enriched = enrichTasks(legacyTasks, projectMap, internalTechAllowBySite);
+          const requestedProjectId = toStringId(filters?.project_id ?? filters?.[taskProjectIdColumn] ?? "");
+          if (requestedProjectId) {
+            enriched = enriched.filter((task) => toStringId(task?.project_id) === requestedProjectId);
+          }
+          enriched = enriched.filter((task) => {
+            const local = { ...task, [taskProjectIdColumn]: task?.project_id };
+            return matchesFiltersInMemory(local, filters);
+          });
+          return applySort(enriched, sort).slice(0, limit);
+        }
         const [tasks, legacyTasks, projects, legacyProjects, internalTechRows] = await Promise.all([
           fetchTasks(),
           fetchLegacyStateTasks(),
@@ -1758,65 +1856,46 @@ export const dataClient = {
 
     TimeLog: {
       list: async (sort = "-date", limit = 1000) => {
+        if (strictStateJsonRead) {
+          const legacyLogs = await fetchLegacyStateTimeLogs();
+          return applyLimit(applySort(legacyLogs, sort), limit);
+        }
         const [logs, legacyLogs] = await Promise.all([
           fetchTimeLogs(),
           fetchLegacyStateTimeLogs(),
         ]);
-        const sourceLogs = strictStateJsonRead ? legacyLogs : mergeTimeLogSources(logs, legacyLogs);
-        return applyLimit(applySort(sourceLogs, sort), limit);
+        const mergedLogs = mergeTimeLogSources(logs, legacyLogs);
+        return applyLimit(applySort(mergedLogs, sort), limit);
       },
       filter: async (filters = {}, sort = "-date", limit = 1000) => {
+        if (strictStateJsonRead) {
+          const legacyLogs = await fetchLegacyStateTimeLogs(filters);
+          return applyLimit(applySort(legacyLogs, sort), limit);
+        }
         const [logs, legacyLogs] = await Promise.all([
           fetchTimeLogs(filters),
           fetchLegacyStateTimeLogs(filters),
         ]);
-        const sourceLogs = strictStateJsonRead ? legacyLogs : mergeTimeLogSources(logs, legacyLogs);
+        const sourceLogs = mergeTimeLogSources(logs, legacyLogs);
         return applyLimit(applySort(sourceLogs, sort), limit);
       },
       listForTask: async (taskRef = {}, sort = "-date", limit = 1000) => {
+        if (strictStateJsonRead) {
+          const legacyLogs = await fetchLegacyStateTimeLogs();
+          return applyLimit(
+            applySort(dedupeTimeLogs(filterTaskLogs(legacyLogs, taskRef)), sort),
+            limit
+          );
+        }
         const [logs, legacyLogs] = await Promise.all([
           fetchTimeLogs(),
           fetchLegacyStateTimeLogs(),
         ]);
-        const merged = strictStateJsonRead ? legacyLogs : mergeTimeLogSources(logs, legacyLogs);
-        const taskId = toStringId(taskRef?.id ?? taskRef?.task_id ?? taskRef?.taskId);
-        const exact = merged.filter((log) => toStringId(log?.task_id) === taskId);
-
-        const signature = buildTaskSignature(taskRef);
-        const bySignature = merged.filter((log) => String(log?.legacy_task_signature || "") === signature);
-        const signatureLoose = buildTaskSignatureLoose(taskRef);
-        const bySignatureLoose = merged.filter((log) => String(log?.legacy_task_signature_loose || "") === signatureLoose);
-
-        const directMatches = dedupeTimeLogs([...exact, ...bySignature, ...bySignatureLoose]);
-
-        const projectId = toStringId(taskRef?.project_id ?? taskRef?.projectId ?? taskRef?.chantier_id);
-        const startDate = pickDate(taskRef?.start_date ?? taskRef?.start ?? "");
-        const endDate = pickDate(taskRef?.end_date ?? taskRef?.end ?? "");
-        const ownerType = normalizeMobileOwnerType(taskRef?.owner_type ?? taskRef?.owner ?? "");
-        const expectedIntervenant = normalizeSigText(
-          taskRef?.internal_tech ??
-          taskRef?.internalTech ??
-          taskRef?.vendor ??
-          ""
+        const merged = mergeTimeLogSources(logs, legacyLogs);
+        return applyLimit(
+          applySort(dedupeTimeLogs(filterTaskLogs(merged, taskRef)), sort),
+          limit
         );
-        const byProjectHeuristic = merged.filter((log) => {
-          const logProjectId = toStringId(log?.project_id);
-          if (projectId && logProjectId && logProjectId !== projectId) return false;
-          const d = pickDate(log?.date ?? "");
-          if (startDate && d && d < startDate) return false;
-          if (endDate && d && d > endDate) return false;
-          if (ownerType) {
-            const logOwner = normalizeMobileOwnerType(log?.role ?? "");
-            if (logOwner && logOwner !== ownerType) return false;
-          }
-          if (expectedIntervenant) {
-            const logInterv = normalizeSigText(log?.intervenant_label || log?.technician || log?.vendor || "");
-            if (logInterv && logInterv !== expectedIntervenant) return false;
-          }
-          return true;
-        });
-        const mergedMatches = dedupeTimeLogs([...directMatches, ...byProjectHeuristic]);
-        return applyLimit(applySort(mergedMatches, sort), limit);
       },
       saveForTask: async (input) => {
         assertTimeLogWriteAllowed();
@@ -1856,7 +1935,9 @@ export const dataClient = {
           }
           return mapTimeLogRow(fallbackPersisted);
         }
-        const taskRows = await fetchTasks({ id: requestedTaskId });
+        const taskRows = strictStateJsonRead
+          ? await fetchLegacyStateTasks({ id: requestedTaskId })
+          : await fetchTasks({ id: requestedTaskId });
         const taskRef = Array.isArray(taskRows) ? taskRows[0] : null;
         if (!taskRef?.id || !isUuidLike(taskRef.id)) {
           throw new Error(`Ecriture heures refusee: tache UUID introuvable (${requestedTaskId}).`);
@@ -1897,7 +1978,9 @@ export const dataClient = {
           return finalizeSavedLog(updated, { ...updatePayload, id: naturalExistingId });
         }
 
-        const logs = await fetchTimeLogs();
+        const logs = strictStateJsonRead
+          ? await fetchLegacyStateTimeLogs()
+          : await fetchTimeLogs();
         const existing = logs.find((log) =>
           buildTimeLogIdentityKey({
             task_id: log.task_id,
@@ -1940,7 +2023,9 @@ export const dataClient = {
             });
             return finalizeSavedLog(updated, { ...updatePayload, id: duplicateId });
           }
-          const freshLogs = await fetchTimeLogs();
+          const freshLogs = strictStateJsonRead
+            ? await fetchLegacyStateTimeLogs()
+            : await fetchTimeLogs();
           const fallbackExisting = freshLogs.find((log) =>
             buildTimeLogIdentityKey({
               task_id: log.task_id,

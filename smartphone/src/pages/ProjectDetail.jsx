@@ -114,8 +114,10 @@ export default function ProjectDetail() {
 
   const completedCount = taskList.filter((t) => (t.progress || 0) >= 100).length;
   const inProgressCount = taskList.filter((t) => {
-    const p = t.progress || 0;
-    return p > 0 && p < 100;
+    const start = String(t?.start_date || "").slice(0, 10);
+    const end = String(t?.end_date || "").slice(0, 10);
+    if (!start || !end) return false;
+    return start <= TODAY && TODAY <= end;
   }).length;
   const lateTasks = taskList.filter(isLate);
   const avgProgress = taskList.length > 0

@@ -34,13 +34,20 @@ function isTaskLate(task) {
   return task.end_date < TODAY;
 }
 
+function isTaskInProgressByDate(task) {
+  const start = String(task?.start_date || "").slice(0, 10);
+  const end = String(task?.end_date || "").slice(0, 10);
+  if (!start || !end) return false;
+  return start <= TODAY && TODAY <= end;
+}
+
 function applyStateFilter(task, state) {
   if (!state || state === "all") return true;
   const p = task.progress || 0;
   if (state === "done")        return p >= 100;
   if (state === "not_started") return p === 0;
   if (state === "late")        return isTaskLate(task);
-  if (state === "in_progress") return p > 0 && p < 100;
+  if (state === "in_progress") return isTaskInProgressByDate(task);
   return true;
 }
 
@@ -153,7 +160,7 @@ export default function MasterTable() {
 
   // Compteurs rapides (sur toutes les tâches, pas les filtrées)
   const lateCount       = useMemo(() => tasks.filter(isTaskLate).length, [tasks]);
-  const inProgressCount = useMemo(() => tasks.filter((t) => { const p = t.progress || 0; return p > 0 && p < 100; }).length, [tasks]);
+  const inProgressCount = useMemo(() => tasks.filter(isTaskInProgressByDate).length, [tasks]);
   const missingEntriesByTask = useMemo(
     () => computeMissingEntriesByTask(tasks, timeLogs),
     [tasks, timeLogs]

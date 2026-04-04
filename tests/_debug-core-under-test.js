@@ -1,80 +1,71 @@
 const ownerType = (o="")=>{
+  const k = String(o || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .trim();
 
-  const k=o.toLowerCase();
+  if(!k) return "inconnu";
+  if(k === "RSG/RI" || k === "RSG RI") return "rsg";
+  if(k === "RSG") return "rsg";
+  if(k === "RI") return "ri";
 
-  if(k.includes("rsg/ri")) return "rsg";
-  if(k.includes("rsg")) return "rsg";
-  if(k.includes("ri")) return "ri";
-
-  const hasInt = k.includes("interne");
-
-  const hasExt = k.includes("externe");
-
-  // Plus de catégorie "mixte" : on priorise "interne" si exclusif, sinon "externe".
+  const hasInt = /\bINTERNE\b/.test(k);
+  const hasExt = /\bEXTERNE\b/.test(k) || /\bPRESTATAIRE\b/.test(k);
 
   if(hasInt && !hasExt) return "interne";
-
   if(hasExt) return "externe";
-
   return "inconnu";
 
 };
 
 function isWeekday(d){
-
   const day = d.getDay();
-
   return day >= 1 && day <= 5; // lundi-vendredi
-
 }
 
 function countWeekdays(start, end){
-
-  if(!start || !end || end < start) return 0;
-
-  let count = 0;
-
-  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
-
-    if(isWeekday(d)) count += 1;
-
+  if(typeof window.countWeekdays === "function" && window.countWeekdays !== countWeekdays){
+    return window.countWeekdays(start, end);
   }
-
+  if(!start || !end || end < start) return 0;
+  let count = 0;
+  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    if(isWeekday(d)) count += 1;
+  }
   return count;
 
 }
 
 function durationDays(start,end){
-
+  if(typeof window.durationDays === "function" && window.durationDays !== durationDays){
+    return window.durationDays(start, end);
+  }
   if(!start || !end) return "";
-
   const s=new Date(start+"T00:00:00");
-
   const e=new Date(end+"T00:00:00");
-
   if(isNaN(s) || isNaN(e) || e<s) return "";
-
   const days = countWeekdays(s, e);
-
   return days>0 ? days : "";
 
 }
 
 function startOfWeek(d){
-
   const x=new Date(d.getTime());
-
   const day=(x.getDay()+6)%7; // lundi=0
-
   x.setDate(x.getDate()-day);
-
   x.setHours(0,0,0,0);
-
   return x;
-
 }
 
-function addDays(d,n){ const x=new Date(d.getTime()); x.setDate(x.getDate()+n); return x; }
+function addDays(d,n){
+  if(typeof window.addDays === "function" && window.addDays !== addDays){
+    return window.addDays(d,n);
+  }
+  const x=new Date(d.getTime());
+  x.setDate(x.getDate()+n);
+  return x;
+}
 
 function isoWeekInfo(d){
 
@@ -131,34 +122,23 @@ function barGeometry(taskStart, taskEnd, weekStart){
 }
 
 function getTaskRoleKey(t){
-  const hasVendor = (t?.vendor || "").trim();
-  if(hasVendor) return "externe";
-  const hasInternalTechCsv = normalizeInternalTechList(t?.internalTech || "").length > 0;
-  const hasInternalTechArray = Array.isArray(t?.internalTechs) && t.internalTechs.some((x)=>!!normalizeInternalTech(x || ""));
-  if(hasInternalTechCsv || hasInternalTechArray) return "interne";
   const typ = ownerType(t?.owner);
   if(typ === "rsg") return "rsg";
   if(typ === "ri") return "ri";
+  if(typ === "interne") return "interne";
   if(typ === "externe") return "externe";
-  if(typ === "inconnu"){
-    const hasInternalTechCsv = normalizeInternalTechList(t?.internalTech || "").length > 0;
-    const hasInternalTechArray = Array.isArray(t?.internalTechs) && t.internalTechs.some((x)=>!!normalizeInternalTech(x || ""));
-    if(hasInternalTechCsv || hasInternalTechArray) return "interne";
-    return "externe";
-  }
-  return "interne";
+  return "inconnu";
 }
 
-function roleLabel(roleKey){
+const roleLabel = window.roleLabel || ((roleKey)=>{
   if(roleKey==="rsg") return "RSG";
   if(roleKey==="ri") return "RI";
   if(roleKey==="externe") return "EXTERNE";
+  if(roleKey==="inconnu") return "INCONNU";
   return "INTERNE";
-}
+});
 
-function roleHoursMultiplier(roleKey){
-  return 1;
-}
+const roleHoursMultiplier = window.roleHoursMultiplier || (()=>1);
 
 function normalizeTimeLogRole(log){
   const rawSource = (typeof log === "string")
@@ -182,6 +162,7 @@ function normalizeTimeLogInternalTech(log, roleKeyOverride=""){
 function getExpectedLogSpecsForTask(t){
   if(!t) return [];
   const roleKey = getTaskRoleKey(t);
+  if(roleKey === "inconnu") return [];
   if(roleKey !== "interne"){
     return [{ roleKey, internalTech:"" }];
   }

@@ -143,7 +143,7 @@ function isWeekday(date) {
 function computeMissingEntryCountsAligned(tasks = [], timeLogs = [], now = new Date()) {
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
-  const todayKey = toLocalDateKey(today);
+  const todayKey = toIsoDateKey(today);
   const out = {};
   if (!isWeekday(today)) {
     (tasks || []).forEach((t) => {
@@ -152,7 +152,7 @@ function computeMissingEntryCountsAligned(tasks = [], timeLogs = [], now = new D
     });
     return out;
   }
-  const logPresenceByDate = buildLogPresenceByDate(timeLogs);
+  const logRowsByDate = buildLogRowsByDate(timeLogs);
 
   (tasks || []).forEach((task) => {
     const taskId = String(task?.id || "").trim();
@@ -171,10 +171,11 @@ function computeMissingEntryCountsAligned(tasks = [], timeLogs = [], now = new D
       out[taskId] = 0;
       return;
     }
-    const dayPresence = logPresenceByDate.get(todayKey) || new Set();
+    const dayRows = logRowsByDate.get(todayKey) || new Map();
     const hasAll = specs.every((spec) => {
       const key = `${taskId}|${spec.roleKey}|${spec.internalTech || ""}`;
-      return dayPresence.has(key);
+      const logs = dayRows.get(key) || [];
+      return logs.some((log) => hasRealHoursFilled(log));
     });
     out[taskId] = hasAll ? 0 : 1;
   });

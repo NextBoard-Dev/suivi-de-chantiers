@@ -14,7 +14,6 @@ import StatusBadge from "../components/common/StatusBadge";
 import ProgressBar from "../components/common/ProgressBar";
 import { computeTaskProgressAuto } from "@/lib/businessRules";
 import { toast } from "@/components/ui/use-toast";
-import { supabase, supabaseConfig } from "@/api/supabaseClient";
 
 function todayIso() {
   const d = new Date();
@@ -133,26 +132,6 @@ function logMatchesTaskIntervenant(log = {}, form = {}) {
   return true;
 }
 
-function mapStrictTimeLogRow(row = {}) {
-  const minutesRaw = Number(row?.minutes);
-  const hoursRaw = Number(row?.hours);
-  const minutes = Number.isFinite(minutesRaw)
-    ? Math.max(0, Math.round(minutesRaw))
-    : (Number.isFinite(hoursRaw) ? Math.max(0, Math.round(hoursRaw * 60)) : 0);
-  return {
-    id: String(row?.id || ""),
-    task_id: String(row?.task_id || row?.tache_id || row?.taskId || ""),
-    date: String(row?.date_key || row?.date || row?.log_date || row?.day || "").slice(0, 10),
-    role_key: String(row?.role_key || "").trim().toLowerCase(),
-    role: String(row?.owner_type || row?.role || "").trim(),
-    intervenant_label: String(row?.intervenant_label || "").trim(),
-    technician: String(row?.technician || row?.internal_tech || "").trim(),
-    vendor: String(row?.vendor || "").trim(),
-    minutes,
-    note: String(row?.note || row?.comment || "").trim(),
-  };
-}
-
 export default function TaskEdit() {
   const { id: taskId = "" } = useParams();
   const navigate = useNavigate();
@@ -205,19 +184,6 @@ export default function TaskEdit() {
     queryFn: async () => dataClient.entities.TimeLog.listForTask(task, "-date", 5000),
     enabled: !!taskId && !!task,
   });
-  const { data: strictTaskLogs = [], refetch: refetchStrictTaskLogs } = useQuery({
-    queryKey: ["time-logs", "task", "strict", taskId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from(supabaseConfig.timeLogsTable)
-        .select("*")
-        .eq("task_id", taskId)
-        .limit(5000);
-      if (error) throw error;
-      return (Array.isArray(data) ? data : []).map(mapStrictTimeLogRow);
-    },
-    enabled: !!taskId,
-  });
   const { data: taskLogsById = [], refetch: refetchTaskLogsById } = useQuery({
     queryKey: ["time-logs", "task-id", taskId],
     queryFn: async () => dataClient.entities.TimeLog.filter({ task_id: taskId }, "-date", 5000),
@@ -239,16 +205,12 @@ export default function TaskEdit() {
       const key = buildLogKey(log);
       byId.set(key, log);
     });
-    (strictTaskLogs || []).forEach((log) => {
-      const key = buildLogKey(log);
-      byId.set(key, log);
-    });
     (localSavedLogs || []).forEach((log) => {
       const key = buildLogKey(log);
       byId.set(key, log);
     });
     return Array.from(byId.values()).sort((a, b) => String(b?.date || "").localeCompare(String(a?.date || "")));
-  }, [taskLogs, taskLogsById, strictTaskLogs, localSavedLogs]);
+  }, [taskLogs, taskLogsById, localSavedLogs]);
 
   const totalTaskMinutes = useMemo(
     () => displayTaskLogs.reduce((sum, log) => sum + (Number.isFinite(Number(log.minutes)) ? Number(log.minutes) : 0), 0),
@@ -284,7 +246,6 @@ export default function TaskEdit() {
       await queryClient.invalidateQueries({ queryKey: ["time-logs"] });
       try { await refetchTaskLogs(); } catch (_) {}
       try { await refetchTaskLogsById(); } catch (_) {}
-      try { await refetchStrictTaskLogs(); } catch (_) {}
       setHoursForm((prev) => ({
         ...prev,
         hours: "",
