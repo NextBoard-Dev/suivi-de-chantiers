@@ -979,7 +979,7 @@ function buildTableData(tasks, logs){
 }
 
 function getTableData(tasks, logs){
-  const key = tasks.length + "_" + logs.length;
+  const key = state?.lastUpdate || (tasks.length + "_" + logs.length);
   if(_cacheKey === key) return _cache;
   _cache = buildTableData(tasks, logs);
   _cacheKey = key;
@@ -4744,6 +4744,7 @@ function saveState(opts={}){
     const t0 = performance.now();
     const normalized = normalizeState(state || {});
     state = normalized;
+    state.lastUpdate = Date.now();
     const serialized = JSON.stringify(normalized);
     runtimePerf.lastStateBytes = new Blob([serialized]).size;
     runtimePerf.lastSaveMs = Math.max(0, performance.now() - t0);
@@ -7968,7 +7969,9 @@ function renderMaster(){
     _masterTableRowsHtmlCache = { key: masterRowsCacheKey, html: h };
   }
   if(tbody.dataset.masterRowsCacheKey !== masterRowsCacheKey){
-    tbody.innerHTML = h;
+    requestAnimationFrame(() => {
+      tbody.innerHTML = h;
+    });
     tbody.dataset.masterRowsCacheKey = masterRowsCacheKey;
   }
   runtimePerf.lastRenderMasterTableMs = Math.max(0, performance.now() - tableT0);
