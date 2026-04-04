@@ -897,6 +897,8 @@ let _missingDaysMapAllTasksCache = { version:-1, todayKey:"", totalTasks:-1, map
 let _masterTableRowsHtmlCache = { key:"", html:"" };
 let _cache = null;
 let _cacheKey = null;
+let _ganttCache = null;
+let _ganttKey = null;
 let _missingHoursFlow = null;
 let _outsideRangeFlow = null;
 let _lastMasterAnimSignature = "";
@@ -5894,40 +5896,13 @@ function niceMax(v){
 
 
 
-function renderGantt(projectId){
+function buildGantt(tasks){
 
-  const wrap = el("gantt");
+  const list = Array.isArray(tasks) ? tasks : [];
+  const missingMap = buildMissingDaysMap(list);
+  const minStart = list.map(t=>new Date(t.start+"T00:00:00")).reduce((a,b)=>a<b?a:b);
 
-  const legend = el("legend");
-
-  if(legend){
-
-    legend.innerHTML = sortedStatuses().map(s=>{
-
-      const c = STATUS_COLORS[s.v] || "#2563eb";
-
-      return `<span class="legend-item"><span class="legend-dot" style="background:${c};border-color:${c}"></span><span style="color:#111827;font-weight:600;">${s.label}</span></span>`;
-
-    }).join("");
-
-  }
-
-  if(!wrap) return;
-
-  const tasks = state.tasks.filter(t=>t.projectId===projectId && t.start && t.end);
-  const missingMap = buildMissingDaysMap(tasks);
-
-  if(tasks.length===0){
-
-    wrap.innerHTML="<div class='gantt-empty'>Aucune tâche date.</div>";
-
-    return;
-
-  }
-
-  const minStart = tasks.map(t=>new Date(t.start+"T00:00:00")).reduce((a,b)=>a<b?a:b);
-
-  const maxEnd   = tasks.map(t=>new Date(t.end+"T00:00:00")).reduce((a,b)=>a>b?a:b);
+  const maxEnd   = list.map(t=>new Date(t.end+"T00:00:00")).reduce((a,b)=>a>b?a:b);
 
   const weeks=[];
   for(let w=startOfWeek(minStart); w<=addDays(startOfWeek(maxEnd),0); w=addDays(w,7)) weeks.push(new Date(w));
@@ -5938,7 +5913,7 @@ function renderGantt(projectId){
 
   // tri pour garder un ordre stable
 
-  tasks.sort((a,b)=>{
+  list.sort((a,b)=>{
     const sa=Date.parse(a.start||"9999-12-31"), sb=Date.parse(b.start||"9999-12-31");
     if(sa!==sb) return sa-sb;
     const ea=Date.parse(a.end||"9999-12-31"), eb=Date.parse(b.end||"9999-12-31");
@@ -5977,7 +5952,7 @@ function renderGantt(projectId){
 
   // 1 ligne par tâche (plus de regroupement)
 
-  tasks.forEach((t,rowIdx)=>{
+  list.forEach((t,rowIdx)=>{
 
     const mainStatus = getTaskMainStatus(t);
 
@@ -6056,8 +6031,53 @@ function renderGantt(projectId){
 
 
   html+="</tbody></table></div>";
+  return html;
+}
 
-  wrap.innerHTML=html;
+function getGantt(tasks) {
+  const key = tasks.length;
+
+  if (_ganttKey === key) return _ganttCache;
+
+  _ganttCache = buildGantt(tasks);
+  _ganttKey = key;
+
+  return _ganttCache;
+}
+
+function renderGantt(projectId){
+
+  const wrap = el("gantt");
+
+  const legend = el("legend");
+
+  if(legend){
+
+    legend.innerHTML = sortedStatuses().map(s=>{
+
+      const c = STATUS_COLORS[s.v] || "#2563eb";
+
+      return `<span class="legend-item"><span class="legend-dot" style="background:${c};border-color:${c}"></span><span style="color:#111827;font-weight:600;">${s.label}</span></span>`;
+
+    }).join("");
+
+  }
+
+  if(!wrap) return;
+
+  const tasks = state.tasks.filter(t=>t.projectId===projectId && t.start && t.end);
+
+  if(tasks.length===0){
+
+    wrap.innerHTML="<div class='gantt-empty'>Aucune tâche date.</div>";
+
+    return;
+
+  }
+
+  const visibleTasks = tasks;
+  const ganttHtml = getGantt(visibleTasks);
+  wrap.innerHTML=ganttHtml;
 
   applyGanttColumnVisibility();
   scheduleGanttScrollToCurrentWeek(wrap);
