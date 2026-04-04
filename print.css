@@ -35,8 +35,13 @@
     page-break-inside: avoid;
   }
   .print-order > * {
-    break-inside: auto;
-    page-break-inside: auto;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-order .table,
+  .print-order table {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
   /* Permettre aux tableaux longs de s'etendre sur plusieurs pages */
   .tablewrap{
