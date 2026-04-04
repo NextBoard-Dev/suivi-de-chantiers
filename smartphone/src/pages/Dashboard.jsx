@@ -42,14 +42,17 @@ export default function Dashboard() {
   const totalTasks      = tasksWithComputedProgress.length;
   const completedTasks  = tasksWithComputedProgress.filter((t) => t.progress_auto >= 100).length;
   const inProgressTasks = tasksWithComputedProgress.filter((t) => t.progress_auto > 0 && t.progress_auto < 100).length;
-  const distinctTaskProjectIds = React.useMemo(
-    () => new Set(
+  const distinctTaskProjectIds = React.useMemo(() => {
+    const validProjectIds = new Set(
+      (projects || []).map((p) => String(p.id || p.projectId || "").trim()).filter(Boolean)
+    );
+
+    return new Set(
       (tasksWithComputedProgress || [])
-        .map((t) => String(t?.project_id || t?.projectId || "").trim())
-        .filter(Boolean)
-    ).size,
-    [tasksWithComputedProgress]
-  );
+        .map((t) => String(t.projectId || t.project_id || "").trim())
+        .filter((id) => id && validProjectIds.has(id))
+    ).size;
+  }, [projects, tasksWithComputedProgress]);
   const overdueTasks    = tasksWithComputedProgress.filter((t) => {
     if (!t.end_date || t.progress_auto >= 100) return false;
     return new Date(t.end_date) < new Date();
