@@ -936,7 +936,7 @@ function buildTableData(tasks, logs){
   const list = Array.isArray(tasks) ? tasks : [];
   const todayKey = new Date().toISOString().slice(0,10);
   const projectById = new Map((state?.projects || []).map((p)=>[String(p.id || ""), p]));
-  const missingMap = buildMissingDaysMap(list);
+  const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
   const rows = [];
   list.forEach(t=>{
 
@@ -5899,7 +5899,7 @@ function niceMax(v){
 function buildGanttHtml(tasks){
 
   const list = Array.isArray(tasks) ? tasks : [];
-  const missingMap = buildMissingDaysMap(list);
+  const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
   const minStart = list.map(t=>new Date(t.start+"T00:00:00")).reduce((a,b)=>a<b?a:b);
 
   const maxEnd   = list.map(t=>new Date(t.end+"T00:00:00")).reduce((a,b)=>a>b?a:b);
@@ -6077,58 +6077,60 @@ function renderGantt(projectId){
 
   const visibleTasks = tasks;
   const ganttHtml = getGanttHtml(visibleTasks, state?.lastUpdate);
-  requestAnimationFrame(() => {
-    wrap.innerHTML=ganttHtml;
+  setTimeout(() => {
+    requestAnimationFrame(() => {
+      wrap.innerHTML=ganttHtml;
 
-    applyGanttColumnVisibility();
-    scheduleGanttScrollToCurrentWeek(wrap);
+      applyGanttColumnVisibility();
+      scheduleGanttScrollToCurrentWeek(wrap);
 
-    wrap.querySelectorAll(".bar-click")?.forEach(bar=>{
+      wrap.querySelectorAll(".bar-click")?.forEach(bar=>{
 
-      bar.onclick=()=>{
+        bar.onclick=()=>{
 
-        const taskId = bar.dataset.task;
+          const taskId = bar.dataset.task;
 
-        const task = state.tasks.find(x=>x.id===taskId);
+          const task = state.tasks.find(x=>x.id===taskId);
 
-        if(!task) return;
+          if(!task) return;
 
-        selectedProjectId = task.projectId;
+          selectedProjectId = task.projectId;
 
-        selectedTaskId = taskId;
+          selectedTaskId = taskId;
 
-        renderProject();
+          renderProject();
 
-      };
+        };
 
+      });
+
+      wrap.querySelectorAll("tbody tr[data-task] td")?.forEach(td=>{
+
+        td.onclick=(e)=>{
+
+          if(e.target && e.target.closest(".bar-click")) return;
+
+          const row = e.currentTarget?.parentElement;
+
+          if(!row || !row.dataset.task) return;
+
+          const taskId = row.dataset.task;
+
+          const task = state.tasks.find(x=>x.id===taskId);
+
+          if(!task) return;
+
+          selectedProjectId = task.projectId;
+
+          selectedTaskId = taskId;
+
+          renderProject();
+
+        };
+
+      });
     });
-
-    wrap.querySelectorAll("tbody tr[data-task] td")?.forEach(td=>{
-
-      td.onclick=(e)=>{
-
-        if(e.target && e.target.closest(".bar-click")) return;
-
-        const row = e.currentTarget?.parentElement;
-
-        if(!row || !row.dataset.task) return;
-
-        const taskId = row.dataset.task;
-
-        const task = state.tasks.find(x=>x.id===taskId);
-
-        if(!task) return;
-
-        selectedProjectId = task.projectId;
-
-        selectedTaskId = taskId;
-
-        renderProject();
-
-      };
-
-    });
-  });
+  }, 0);
 
 }
 
@@ -6153,7 +6155,7 @@ function renderProjectTasks(projectId){
   }
 
   let h="";
-  const missingMap = buildMissingDaysMap(sorted);
+  const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
 
   sorted.forEach(t=>{
 
@@ -6229,7 +6231,7 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
   });
 
   if(tasks.length===0) return "<div class='gantt-empty'>Aucune tâche date.</div>";
-  const missingMap = buildMissingDaysMap(tasks);
+  const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
 
   const minStart = rs || tasks.map(t=>new Date(t.start+"T00:00:00")).reduce((a,b)=>a<b?a:b);
   const maxEnd   = re || tasks.map(t=>new Date(t.end+"T00:00:00")).reduce((a,b)=>a>b?a:b);
@@ -6324,7 +6326,7 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
     return e >= rs && s <= re;
   });
   if(tasks.length===0) return "<div class='gantt-empty'>Aucune tâche date.</div>";
-  const missingMap = buildMissingDaysMap(tasks);
+  const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
 
   const minStart = rs || tasks.map(t=>new Date(t.start+"T00:00:00")).reduce((a,b)=>a<b?a:b);
   const maxEnd   = re || tasks.map(t=>new Date(t.end+"T00:00:00")).reduce((a,b)=>a>b?a:b);
@@ -7916,7 +7918,7 @@ function renderMaster(){
   const tableT0 = performance.now();
   const sorted = sortTasks(tasks, sortMaster);
   const includeChantierCol = (new Set(sorted.map(t=>String(t.projectId||""))).size > 1);
-  const missingMap = buildMissingDaysMap(sorted);
+  const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
   const todayKey = new Date().toISOString().slice(0,10);
   const allTasks = Array.isArray(state?.tasks) ? state.tasks : [];
   const sameUniverseAsAllTasks = sorted.length === allTasks.length;
@@ -8618,7 +8620,7 @@ function getMissingDaysMapAllTasksCached(tasks){
 function getMissingTasksForMasterFlow(){
   const sorted = sortTasks((state?.tasks || []), sortMaster);
   const includeChantierCol = (new Set(sorted.map(t=>String(t.projectId||""))).size > 1);
-  const missingMap = buildMissingDaysMap(sorted);
+  const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
   return sorted
     .filter(t=> (missingMap.get(t.id) || 0) > 0)
     .map(t=>({ projectId: t.projectId, taskId: t.id }));
@@ -10263,7 +10265,7 @@ function buildProjectTasksExportHTML(projectId){
     return "<div class='tablewrap project-tasks-export'><table class='table'><tbody><tr><td class='empty-row'>Aucune tâche</td></tr></tbody></table></div>";
   }
 
-  const missingMap = buildMissingDaysMap(tasks);
+  const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
   let rows = "";
   tasks.forEach(t=>{
     const mainStatus = getTaskMainStatus(t);
@@ -10312,7 +10314,7 @@ function buildMasterTableExportHTML(){
   }
 
   const includeChantierCol = (new Set(sorted.map(t=>String(t.projectId||""))).size > 1);
-  const missingMap = buildMissingDaysMap(sorted);
+  const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
   const todayKey = new Date().toISOString().slice(0,10);
   let rows = "";
 
@@ -10396,7 +10398,7 @@ function buildGroupedProjectTasksExportHTML(projectIds){
     return "<div class='tablewrap project-tasks-export'><table class='table'><tbody><tr><td class='empty-row'>Aucune tâche</td></tr></tbody></table></div>";
   }
   const tasks = sortTasks(tasksRaw, sortMaster);
-  const missingMap = buildMissingDaysMap(tasks);
+  const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
   const todayKey = new Date().toISOString().slice(0,10);
   let rows = "";
   tasks.forEach((t)=>{
