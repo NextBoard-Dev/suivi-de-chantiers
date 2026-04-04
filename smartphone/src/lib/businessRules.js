@@ -97,6 +97,13 @@ export function validateDateOrder(startDate, endDate) {
   }
 }
 
+export function parseStatuses(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function toLocalMidnight(isoDate) {
   return new Date(`${isoDate}T00:00:00`);
 }

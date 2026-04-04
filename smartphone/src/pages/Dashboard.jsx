@@ -6,7 +6,7 @@ import ProjectCard from "../components/common/ProjectCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { computeProjectHoursById } from "@/lib/projectHours";
-import { computeTaskProgressAuto } from "@/lib/businessRules";
+import { computeTaskProgressAuto, parseStatuses } from "@/lib/businessRules";
 import { computeMissingEntriesByTask } from "@/lib/missingHours";
 
 export default function Dashboard() {
@@ -41,7 +41,9 @@ export default function Dashboard() {
 
   const totalTasks      = tasksWithComputedProgress.length;
   const completedTasks  = tasksWithComputedProgress.filter((t) => t.progress_auto >= 100).length;
-  const inProgressTasks = tasksWithComputedProgress.filter((t) => t.progress_auto > 0 && t.progress_auto < 100).length;
+  const inProgressTasks = tasks.filter((t) =>
+    parseStatuses(t.status).includes("EN_COURS")
+  ).length;
   const filteredTasks = React.useMemo(() => {
     const list = Array.isArray(tasks) ? tasks : [];
     const fsite = "";
