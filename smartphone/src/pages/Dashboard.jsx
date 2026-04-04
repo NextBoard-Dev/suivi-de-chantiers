@@ -42,17 +42,44 @@ export default function Dashboard() {
   const totalTasks      = tasksWithComputedProgress.length;
   const completedTasks  = tasksWithComputedProgress.filter((t) => t.progress_auto >= 100).length;
   const inProgressTasks = tasksWithComputedProgress.filter((t) => t.progress_auto > 0 && t.progress_auto < 100).length;
+  const filteredTasks = React.useMemo(() => {
+    const list = Array.isArray(tasks) ? tasks : [];
+    const fsite = "";
+    const fp = "";
+    const fs = "";
+    const q = "";
+    const startAfter = "";
+    const endBefore = "";
+
+    const result = list.filter((t) => {
+      if (fp && String(t?.project_id || t?.projectId || "").trim() !== fp) return false;
+      if (fs && !(Array.isArray(t?.statuses) ? t.statuses : []).includes(fs)) return false;
+      const p = (projects || []).find((x) => String(x?.id || "").trim() === String(t?.project_id || t?.projectId || "").trim());
+      const pSite = String(p?.site || t?.site || "");
+      if (fsite && pSite !== fsite) return false;
+      if (q) {
+        const hay = `${String(t?.description || "")} ${String(p?.name || t?.project_name || "")} ${String(p?.site || t?.site || "")} ${String(t?.owner_type || "")} ${Array.isArray(t?.statuses) ? t.statuses.join(" ") : ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (startAfter && (!t?.start_date || String(t.start_date) < startAfter)) return false;
+      if (endBefore && (!t?.end_date || String(t.end_date) > endBefore)) return false;
+      return true;
+    });
+
+    if (result.length === 0 && list.length > 0) return list;
+    return result;
+  }, [tasks, projects]);
   const distinctTaskProjectIds = React.useMemo(() => {
     const validProjectIds = new Set(
       (projects || []).map((p) => String(p.id || p.projectId || "").trim()).filter(Boolean)
     );
 
     return new Set(
-      (tasksWithComputedProgress || [])
+      (filteredTasks || [])
         .map((t) => String(t.projectId || t.project_id || "").trim())
         .filter((id) => id && validProjectIds.has(id))
     ).size;
-  }, [projects, tasksWithComputedProgress]);
+  }, [projects, filteredTasks]);
   const overdueTasks    = tasksWithComputedProgress.filter((t) => {
     if (!t.end_date || t.progress_auto >= 100) return false;
     return new Date(t.end_date) < new Date();

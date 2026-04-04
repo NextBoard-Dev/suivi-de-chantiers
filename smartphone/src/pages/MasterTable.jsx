@@ -165,6 +165,7 @@ export default function MasterTable() {
   ).length;
 
   const handleReset = () => { setFilters(defaultFilters); setSearch(""); setSortBy("site_project"); };
+
   return (
     <div className="space-y-0">
       {/* Header */}
