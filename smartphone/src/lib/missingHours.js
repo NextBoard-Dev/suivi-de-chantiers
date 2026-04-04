@@ -115,10 +115,16 @@ function isWeekday(date) {
 function computeMissingEntryCountsAligned(tasks = [], timeLogs = [], now = new Date()) {
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
-  const todayKey = toLocalDateKey(today);
-  if (!isWeekday(today)) return {};
-  const logPresenceByDate = buildLogPresenceByDate(timeLogs);
+  const todayKey = toIsoDateKey(today);
   const out = {};
+  if (!isWeekday(today)) {
+    (tasks || []).forEach((t) => {
+      const id = String(t?.id || "").trim();
+      if (id) out[id] = 0;
+    });
+    return out;
+  }
+  const logPresenceByDate = buildLogPresenceByDate(timeLogs);
 
   (tasks || []).forEach((task) => {
     const taskId = String(task?.id || "").trim();
