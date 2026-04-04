@@ -42,6 +42,14 @@ export default function Dashboard() {
   const totalTasks      = tasksWithComputedProgress.length;
   const completedTasks  = tasksWithComputedProgress.filter((t) => t.progress_auto >= 100).length;
   const inProgressTasks = tasksWithComputedProgress.filter((t) => t.progress_auto > 0 && t.progress_auto < 100).length;
+  const distinctTaskProjectIds = React.useMemo(
+    () => new Set(
+      (tasksWithComputedProgress || [])
+        .map((t) => String(t?.project_id || t?.projectId || "").trim())
+        .filter(Boolean)
+    ).size,
+    [tasksWithComputedProgress]
+  );
   const overdueTasks    = tasksWithComputedProgress.filter((t) => {
     if (!t.end_date || t.progress_auto >= 100) return false;
     return new Date(t.end_date) < new Date();
@@ -118,7 +126,7 @@ export default function Dashboard() {
           <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "rgba(63,97,112,0.15)" }}>
             <FolderKanban className="w-3.5 h-3.5" style={{ color: "#3f6170" }} />
           </div>
-          <p className="text-xl font-black leading-none" style={{ color: "#14242c" }}>{projects.length}</p>
+          <p className="text-xl font-black leading-none" style={{ color: "#14242c" }}>{distinctTaskProjectIds}</p>
           <p className="text-[8px] font-bold tracking-widest uppercase" style={{ color: "#556d79" }}>CHANTIERS</p>
         </div>
         <div className="flex flex-col items-center justify-center py-1.5 px-2 gap-0.5 rounded-xl" style={{ background: "rgba(217,226,231,0.85)", border: "1px solid rgba(63,97,112,0.2)" }}>
