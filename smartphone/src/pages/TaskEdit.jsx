@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import StatusBadge from "../components/common/StatusBadge";
 import ProgressBar from "../components/common/ProgressBar";
 import { computeTaskProgressAuto } from "@/lib/businessRules";
+import { computeMissingEntriesByTask } from "@/lib/missingHours";
 import { toast } from "@/components/ui/use-toast";
 
 function todayIso() {
@@ -232,6 +233,15 @@ export default function TaskEdit() {
     () => missingWeekdayKeys.map(parseIsoDateSafe).filter(Boolean),
     [missingWeekdayKeys]
   );
+  const missingEntriesByTask = useMemo(
+    () => computeMissingEntriesByTask(task ? [task] : [], displayTaskLogs),
+    [task, displayTaskLogs]
+  );
+  const taskMissingEntries = useMemo(() => {
+    const taskKey = String(task?.id || task?.task_id || "").trim();
+    if (!taskKey) return 0;
+    return Number(missingEntriesByTask[taskKey] || 0);
+  }, [task, missingEntriesByTask]);
   const selectedHoursDate = useMemo(
     () => parseIsoDateSafe(hoursForm.date),
     [hoursForm.date]
@@ -480,17 +490,17 @@ export default function TaskEdit() {
             <p className="text-[10px] font-semibold text-muted-foreground">Heures manquantes</p>
             <span
               className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                missingWeekdayKeys.length > 0
+                taskMissingEntries > 0
                   ? "bg-amber-100 text-amber-800"
                   : "bg-emerald-100 text-emerald-800"
               }`}
             >
-              {missingWeekdayKeys.length > 0 ? `${missingWeekdayKeys.length} j` : "0 j"}
+              {taskMissingEntries > 0 ? `${taskMissingEntries} j` : "0 j"}
             </span>
           </div>
-          <p className={`text-[10px] ${missingWeekdayKeys.length > 0 ? "text-amber-700" : "text-emerald-700"}`}>
-            {missingWeekdayKeys.length > 0
-              ? `Heures manquantes: ${missingWeekdayKeys.length} jour(s) ouvre(s) sans saisie.`
+          <p className={`text-[10px] ${taskMissingEntries > 0 ? "text-amber-700" : "text-emerald-700"}`}>
+            {taskMissingEntries > 0
+              ? `Heures manquantes: ${taskMissingEntries} jour(s) ouvre(s) sans saisie.`
               : "Heures manquantes: aucune."}
           </p>
         </div>
