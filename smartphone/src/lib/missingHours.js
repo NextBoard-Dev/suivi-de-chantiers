@@ -140,10 +140,21 @@ function isWeekday(date) {
   return day >= 1 && day <= 5;
 }
 
+let _missingDaysMapAllTasksCache = null;
+
+function getTaskDateRange(task) {
+  const startKey = toIsoDateKey(task?.start || task?.start_date);
+  const endKey = toIsoDateKey(task?.end || task?.end_date);
+  const startDate = new Date(`${startKey}T00:00:00`);
+  const endDate = new Date(`${endKey}T00:00:00`);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) return null;
+  return { startDate, endDate };
+}
+
 function computeMissingEntryCountsAligned(tasks = [], timeLogs = [], now = new Date()) {
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
-  const todayKey = toIsoDateKey(today);
+  const todayKey = toLocalDateKey(today);
   const out = {};
   if (!isWeekday(today)) {
     (tasks || []).forEach((t) => {
@@ -158,9 +169,12 @@ function computeMissingEntryCountsAligned(tasks = [], timeLogs = [], now = new D
     const taskId = String(task?.id || "").trim();
     if (!taskId) return;
 
-    const startDate = new Date(`${toIsoDateKey(task?.start_date)}T00:00:00`);
-    const endDate = new Date(`${toIsoDateKey(task?.end_date)}T00:00:00`);
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) return;
+    const range = getTaskDateRange(task);
+    if (!range) {
+      out[taskId] = 0;
+      return;
+    }
+    const { startDate, endDate } = range;
     if (today < startDate || today > endDate) {
       out[taskId] = 0;
       return;
@@ -183,8 +197,49 @@ function computeMissingEntryCountsAligned(tasks = [], timeLogs = [], now = new D
   return out;
 }
 
-export function computeMissingEntriesByProject(tasks = [], timeLogs = [], now = new Date()) {
+function buildMissingDaysMap(tasks = [], timeLogs = [], now = new Date()) {
+  const map = new Map();
   const missingByTask = computeMissingEntryCountsAligned(tasks, timeLogs, now);
+  (tasks || []).forEach((task) => {
+    const taskId = String(task?.id || "").trim();
+    if (!taskId) return;
+    map.set(taskId, Number(missingByTask[taskId] || 0));
+  });
+  return map;
+}
+
+function getMissingDaysMapAllTasksCached(tasks = [], timeLogs = [], now = new Date()) {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const todayKey = toLocalDateKey(today);
+  const totalTasks = Array.isArray(tasks) ? tasks.length : 0;
+  const totalLogs = Array.isArray(timeLogs) ? timeLogs.length : 0;
+  const cache = _missingDaysMapAllTasksCache;
+  if (
+    cache &&
+    cache.todayKey === todayKey &&
+    cache.totalTasks === totalTasks &&
+    cache.totalLogs === totalLogs &&
+    cache.tasksRef === tasks &&
+    cache.logsRef === timeLogs &&
+    cache.map instanceof Map
+  ) {
+    return cache.map;
+  }
+  const map = buildMissingDaysMap(tasks, timeLogs, now);
+  _missingDaysMapAllTasksCache = {
+    todayKey,
+    totalTasks,
+    totalLogs,
+    tasksRef: tasks,
+    logsRef: timeLogs,
+    map,
+  };
+  return map;
+}
+
+export function computeMissingEntriesByProject(tasks = [], timeLogs = [], now = new Date()) {
+  const missingByTask = computeMissingEntriesByTask(tasks, timeLogs, now);
   const out = {};
   (tasks || []).forEach((task) => {
     const taskId = String(task?.id || "").trim();
@@ -198,7 +253,12 @@ export function computeMissingEntriesByProject(tasks = [], timeLogs = [], now = 
 }
 
 export function computeMissingEntriesByTask(tasks = [], timeLogs = [], now = new Date()) {
-  return computeMissingEntryCountsAligned(tasks, timeLogs, now);
+  const map = getMissingDaysMapAllTasksCached(tasks, timeLogs, now);
+  const out = {};
+  map.forEach((value, taskId) => {
+    out[taskId] = Number(value || 0);
+  });
+  return out;
 }
 
 export function computeHoursToFillEntryCount(tasks = [], timeLogs = [], now = new Date()) {
