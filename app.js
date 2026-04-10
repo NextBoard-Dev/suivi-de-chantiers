@@ -6040,8 +6040,9 @@ function buildGanttHtml(tasks){
   return html;
 }
 
-function getGanttHtml(tasks, lastUpdate) {
-  const key = lastUpdate || tasks.length;
+function getGanttHtml(tasks, lastUpdate, scopeKey="") {
+  const taskSig = (Array.isArray(tasks) ? tasks : []).map((t)=>String(t?.id || "")).join(",");
+  const key = `${String(lastUpdate || "")}|${String(scopeKey || "")}|${taskSig}`;
 
   if (_ganttKey === key) return _ganttCache;
 
@@ -6082,7 +6083,7 @@ function renderGantt(projectId){
   }
 
   const visibleTasks = tasks;
-  const ganttHtml = getGanttHtml(visibleTasks, state?.lastUpdate);
+  const ganttHtml = getGanttHtml(visibleTasks, state?.lastUpdate, projectId);
   setTimeout(() => {
     requestAnimationFrame(() => {
       wrap.innerHTML=ganttHtml;
