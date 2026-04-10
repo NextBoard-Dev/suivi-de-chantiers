@@ -80,7 +80,7 @@ function dateToIsoKey(date) {
 
 function defaultIntervenantByOwnerType(ownerType, internalTech, vendor) {
   const type = String(ownerType || "").trim();
-  if (type === "INTERNE") return String(internalTech || "").trim();
+  if (type === "INTERNE") return String(internalTech || "").split(",").map((v) => String(v || "").trim()).filter(Boolean)[0] || "";
   if (type === "Prestataire externe") return String(vendor || "").trim();
   if (type === "RSG" || type === "RI") return type;
   return "";
@@ -217,6 +217,13 @@ export default function TaskEdit() {
     () => displayTaskLogs.reduce((sum, log) => sum + (Number.isFinite(Number(log.minutes)) ? Number(log.minutes) : 0), 0),
     [displayTaskLogs]
   );
+  const internalTechOptions = useMemo(() => {
+    const list = String(form?.internal_tech || "")
+      .split(",")
+      .map((name) => String(name || "").trim())
+      .filter(Boolean);
+    return Array.from(new Set(list));
+  }, [form?.internal_tech]);
 
   const missingWeekdayKeys = useMemo(() => {
     const expected = buildWeekdayDateKeys(form?.start_date || "", form?.end_date || "");
@@ -584,22 +591,38 @@ export default function TaskEdit() {
 
         <div>
           <Label className="text-xs font-semibold text-muted-foreground">Intervenant (saisie)</Label>
-          <div className="relative mt-1.5">
-            <Input
-              value={hoursForm.intervenant}
-              readOnly
-              disabled
-              className="h-11 pr-10 bg-muted/40 text-muted-foreground cursor-not-allowed"
-              placeholder="Nom tech interne ou prestataire"
-            />
-            <span
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/80"
-              title="Champ verrouille : recupere automatiquement depuis la tache."
-              aria-label="Information champ verrouille"
+          {form.owner_type === "INTERNE" && internalTechOptions.length > 1 ? (
+            <Select
+              value={hoursForm.intervenant || internalTechOptions[0]}
+              onValueChange={(value) => setHoursForm((prev) => ({ ...prev, intervenant: value }))}
             >
-              <Info className="h-4 w-4" />
-            </span>
-          </div>
+              <SelectTrigger className="mt-1.5 h-11">
+                <SelectValue placeholder="Choisir un technicien" />
+              </SelectTrigger>
+              <SelectContent>
+                {internalTechOptions.map((name) => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="relative mt-1.5">
+              <Input
+                value={hoursForm.intervenant}
+                readOnly
+                disabled
+                className="h-11 pr-10 bg-muted/40 text-muted-foreground cursor-not-allowed"
+                placeholder="Nom tech interne ou prestataire"
+              />
+              <span
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/80"
+                title="Champ verrouille : recupere automatiquement depuis la tache."
+                aria-label="Information champ verrouille"
+              >
+                <Info className="h-4 w-4" />
+              </span>
+            </div>
+          )}
         </div>
 
         <div>
