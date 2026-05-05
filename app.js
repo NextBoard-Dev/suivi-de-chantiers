@@ -7447,7 +7447,7 @@ function renderTabs(){
     const progress = getProjectCompletion(p.id);
     const isCompletedProject = progress >= 100;
     const hiddenCompletedClass = (!showCompletedMaster && isCompletedProject) ? " tab-completed-hidden" : "";
-    const completedBadge = isCompletedProject ? `<span class="tab-completed-badge" title="Chantier terminé à 100%">100%</span>` : "";
+    const completedBadge = "";
     h+=`<button class="tab ${selectedProjectId===p.id?"active":""}${hiddenCompletedClass}" data-tab="${p.id}" style="--tab-hue:${hue};--tab-progress:${progress}%;--tab-progress-color:hsl(${hue} 72% 45%);"><span class="tab-progress-fill" style="width:${progress}%;background:hsl(${hue} 78% 66% / .42);"></span><span class="tab-label">${p.name||"Projet"}</span>${completedBadge}<span class="tab-close" data-close="${p.id}" aria-label="Supprimer le projet"></span></button>`;
   });
   if(selectedProjectId && !projectsSorted.some((p)=>p.id===selectedProjectId)){
