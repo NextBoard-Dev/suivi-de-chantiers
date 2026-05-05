@@ -12,7 +12,7 @@ Ce journal sert de compteur manuel des heures de developpement pour ce projet.
 - Point central retenu (depart): 500 h
 
 ## Total cumule
-- 503.4 h
+- 504.0 h
 
 ## Historique des increments
 | Date       | Projet | Lot / Objet | Delta (h) | Total apres (h) | Note |
@@ -25,4 +25,5 @@ Ce journal sert de compteur manuel des heures de developpement pour ce projet.
 | 2026-05-05 | Suivi de Chantiers | Correctif perf UI passe uppercase globale | +0.4 | 502.5 | Initial pass unique puis observer |
 | 2026-05-05 | Suivi de Chantiers | Perf filtres sans invalidation dirty | +0.5 | 503.0 | Retrait markDirty sur filtres/recherche/toggle |
 | 2026-05-05 | Suivi de Chantiers | Suppression node_modules smartphone (depollution) | +0.4 | 503.4 | Nettoyage dependances portable |
+| 2026-05-05 | Suivi de Chantiers | Perf table master precompute real minutes | +0.6 | 504.0 | Suppression rescans logs par ligne |
 

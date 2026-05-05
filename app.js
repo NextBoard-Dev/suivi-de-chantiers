@@ -937,6 +937,26 @@ function buildTableData(tasks, logs){
   const todayKey = new Date().toISOString().slice(0,10);
   const projectById = new Map((state?.projects || []).map((p)=>[String(p.id || ""), p]));
   const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
+  const taskById = new Map(list.map((t)=>[String(t?.id || ""), t]));
+  const roleByTaskId = new Map(list.map((t)=>[String(t?.id || ""), getTaskRoleKey(t)]));
+  const realMinutesByTaskId = new Map();
+  // Perf: avoid rescanning all logs for each row via durationLabelForTask/getTaskTimeTotals.
+  getCanonicalTimeLogs().forEach((l)=>{
+    const taskId = String(l?.taskId || "");
+    const t = taskById.get(taskId);
+    if(!t) return;
+    const date = String(l?.date || "");
+    if(!date) return;
+    if(t.start && date < t.start) return;
+    if(t.end && date > t.end) return;
+    const roleExpected = roleByTaskId.get(taskId);
+    const role = normalizeTimeLogRole(l);
+    if(roleExpected && role !== roleExpected) return;
+    const m = Number(l?.minutes || 0);
+    if(!m) return;
+    const weighted = Math.round(m * roleHoursMultiplier(role));
+    realMinutesByTaskId.set(taskId, (realMinutesByTaskId.get(taskId) || 0) + weighted);
+  });
   const rows = [];
   list.forEach(t=>{
 
@@ -959,6 +979,9 @@ function buildTableData(tasks, logs){
       : (isLate ? "rgba(254,226,226,0.55)" : rowBg);
     const miss = missingMap.get(t.id) || 0;
     const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
+    const days = durationDays(t.start, t.end);
+    const realMinutes = Number(realMinutesByTaskId.get(String(t.id || "")) || 0);
+    const durationLabel = (days || days === 0) ? `${days} j (réel ${formatHoursMinutes(realMinutes)})` : "";
     rows.push(`<tr class="${rowClass}" data-project="${t.projectId}" data-task="${t.id}" style="--site-bg:${rowBg};background:var(--site-bg);">
 
       <td>${p?.site||""}</td>
@@ -972,7 +995,7 @@ function buildTableData(tasks, logs){
 
       <td>${formatDate(t.end)||""}</td>
       <td>${taskProgress(t)}%</td>
-      <td>${durationLabelForTask(t)}</td>
+      <td>${durationLabel}</td>
 
     </tr>`);
 
