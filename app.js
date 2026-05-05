@@ -1310,6 +1310,7 @@ function applyUiUpperNoAccent(root=document.body){
 }
 
 let uiUpperObserver = null;
+let uiUpperInitialPassDone = false;
 function ensureUiUpperNoAccentObserver(){
   if(uiUpperObserver || !document.body) return;
   uiUpperObserver = new MutationObserver((mutations)=>{
@@ -10158,7 +10159,10 @@ function renderAll(){
   );
   runtimePerf.lastRenderAt = new Date().toISOString();
   updateDataQualityBanner(false);
-  applyUiUpperNoAccent();
+  if(!uiUpperInitialPassDone){
+    applyUiUpperNoAccent();
+    uiUpperInitialPassDone = true;
+  }
   ensureUiUpperNoAccentObserver();
 
 }
@@ -11968,7 +11972,6 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
       if(id==="filterSite") updateSitePhoto(n.value || "");
       renderMaster(); 
       saveUIState(); 
-      markDirty(); 
     });
   });
 
@@ -12019,13 +12022,12 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
   });
   const search = el("filterSearch");
   if(search){
-    const onSearch = debounce(()=>{ renderMaster(); saveUIState(); markDirty(); }, 250);
+    const onSearch = debounce(()=>{ renderMaster(); saveUIState(); }, 250);
     search.addEventListener("input", onSearch);
   }
   el("toggleMissingOnly")?.addEventListener("change", ()=>{
     renderMaster();
     saveUIState();
-    markDirty();
   });
   el("btnProcessMissingHours")?.addEventListener("click", ()=>{
     startMissingHoursFlow();
