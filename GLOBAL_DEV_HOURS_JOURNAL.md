@@ -12,7 +12,7 @@ Ce journal sert de compteur manuel des heures de developpement pour ce projet.
 - Point central retenu (depart): 500 h
 
 ## Total cumule
-- 505.1 h
+- 505.6 h
 
 ## Historique des increments
 | Date       | Projet | Lot / Objet | Delta (h) | Total apres (h) | Note |
@@ -28,4 +28,5 @@ Ce journal sert de compteur manuel des heures de developpement pour ce projet.
 | 2026-05-05 | Suivi de Chantiers | Perf table master precompute real minutes | +0.6 | 504.0 | Suppression rescans logs par ligne |
 | 2026-05-05 | Suivi de Chantiers | Perf cache metrics/workload master | +0.5 | 504.5 | Skip recalcul si meme signature |
 | 2026-05-05 | Suivi de Chantiers | Masquage par defaut des taches 100% + toggle | +0.6 | 505.1 | Affichage des termines au clic |
+| 2026-05-05 | Suivi de Chantiers | Toggle termines + marquage badges sidebar | +0.5 | 505.6 | Bouton visible si termines masques |
 

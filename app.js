@@ -7441,7 +7441,10 @@ function renderTabs(){
   projectsSorted.forEach((p,idx)=>{
     const hue = 0 + (120 * (idx/(total-1 || 1))); // rouge -> vert
     const progress = getProjectCompletion(p.id);
-    h+=`<button class="tab ${selectedProjectId===p.id?"active":""}" data-tab="${p.id}" style="--tab-hue:${hue};--tab-progress:${progress}%;--tab-progress-color:hsl(${hue} 72% 45%);"><span class="tab-progress-fill" style="width:${progress}%;background:hsl(${hue} 78% 66% / .42);"></span><span>${p.name||"Projet"}</span><span class="tab-close" data-close="${p.id}" aria-label="Supprimer le projet"></span></button>`;
+    const isCompletedProject = progress >= 100;
+    const hiddenCompletedClass = (!showCompletedMaster && isCompletedProject) ? " tab-completed-hidden" : "";
+    const completedBadge = isCompletedProject ? `<span class="tab-completed-badge" title="Chantier terminé à 100%">100%</span>` : "";
+    h+=`<button class="tab ${selectedProjectId===p.id?"active":""}${hiddenCompletedClass}" data-tab="${p.id}" style="--tab-hue:${hue};--tab-progress:${progress}%;--tab-progress-color:hsl(${hue} 72% 45%);"><span class="tab-progress-fill" style="width:${progress}%;background:hsl(${hue} 78% 66% / .42);"></span><span>${p.name||"Projet"}</span>${completedBadge}<span class="tab-close" data-close="${p.id}" aria-label="Supprimer le projet"></span></button>`;
   });
 
   if(tabsMaster){ tabsMaster.innerHTML = masterBtn; }
@@ -7942,9 +7945,20 @@ function renderMaster(){
   const tasks = filteredTasks();
   const btnToggleCompleted = el("btnToggleCompleted");
   if(btnToggleCompleted){
+    const allTasksMaster = Array.isArray(state?.tasks) ? state.tasks : [];
+    const hiddenCompletedCount = showCompletedMaster
+      ? 0
+      : allTasksMaster.reduce((acc, t)=> acc + ((Number(taskProgress(t) || 0) >= 100) ? 1 : 0), 0);
     btnToggleCompleted.textContent = showCompletedMaster ? "Masquer terminés" : "Afficher terminés";
     btnToggleCompleted.classList.toggle("btn-primary", !!showCompletedMaster);
     btnToggleCompleted.classList.toggle("btn-ghost", !showCompletedMaster);
+    btnToggleCompleted.classList.toggle("btn-toggle-completed-attention", hiddenCompletedCount > 0 && !showCompletedMaster);
+    btnToggleCompleted.setAttribute(
+      "aria-label",
+      showCompletedMaster
+        ? "Masquer les éléments terminés"
+        : `Afficher terminés (${hiddenCompletedCount})`
+    );
   }
   const metricsT0 = performance.now();
   renderKPIs(tasks);

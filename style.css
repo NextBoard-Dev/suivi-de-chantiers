@@ -5947,3 +5947,26 @@ h3,
 #projectLive .live-item{
   display:none !important;
 }
+/* Toggle termines + marquage onglets termines */
+#btnToggleCompleted.btn-toggle-completed-attention{
+  border-color:#d97706;
+  background:linear-gradient(180deg,#fff7ed 0%, #ffedd5 100%);
+  color:#9a3412;
+  box-shadow:0 0 0 2px rgba(217,119,6,.14), 0 6px 14px rgba(217,119,6,.16);
+}
+.tab-completed-badge{
+  margin-left:6px;
+  padding:1px 6px;
+  border-radius:999px;
+  border:1px solid rgba(22,163,74,.35);
+  background:rgba(22,163,74,.12);
+  color:#166534;
+  font-size:10px;
+  font-weight:800;
+  line-height:1.4;
+}
+.tab.tab-completed-hidden .tab-completed-badge{
+  border-color:rgba(217,119,6,.45);
+  background:rgba(217,119,6,.16);
+  color:#9a3412;
+}
