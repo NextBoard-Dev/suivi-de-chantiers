@@ -5982,10 +5982,15 @@ h3,
   flex:0 0 auto;
 }
 .sidebar .tab .tab-completed-badge{
-  margin-left:auto;
+  margin-left:auto !important;
+  margin-right:0 !important;
 }
 .sidebar .tab .tab-close{
   margin-left:6px;
+}
+.sidebar .tabs .tab,
+.sidebar .tabs-master .tab{
+  justify-content:flex-start !important;
 }
 .sidebar .tab > span{
   min-width:0;
