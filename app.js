@@ -895,6 +895,8 @@ let _filteredCache = { key:"", version:-1, tasks:null };
 let _missingLogEntriesTotalCache = { version:-1, todayKey:"", totalTasks:-1, total:0 };
 let _missingDaysMapAllTasksCache = { version:-1, todayKey:"", totalTasks:-1, map:null };
 let _masterTableRowsHtmlCache = { key:"", html:"" };
+let _masterMetricsHtmlCache = { key:"", html:"" };
+let _masterWorkloadRenderKey = "";
 let _cache = null;
 let _cacheKey = null;
 let _ganttCache = null;
@@ -7284,6 +7286,16 @@ function renderWorkloadChartFor(tasks, chartId, pieId, uiIds=null, stateRef=null
 function renderWorkloadChart(tasks){
 
   const allTasks = state?.tasks || tasks || [];
+  const workloadKey = [
+    _stateVersion,
+    workloadRangeType,
+    workloadRangeYear,
+    workloadRangeStart,
+    workloadRangeEnd,
+    allTasks.map((t)=>String(t?.id || "")).join(",")
+  ].join("|");
+  if(_masterWorkloadRenderKey === workloadKey) return;
+  _masterWorkloadRenderKey = workloadKey;
   const masterRange = {type:workloadRangeType, year:workloadRangeYear, start:workloadRangeStart, end:workloadRangeEnd};
   renderWorkloadChartFor(
     allTasks,
@@ -7608,10 +7620,20 @@ function renderMasterMetrics(tasks){
   if(!metrics) return;
 
   const dated = tasks.filter(t=>t.start && t.end);
+  const metricsKey = `${_stateVersion}|${dated.map((t)=>String(t?.id || "")).join(",")}`;
+  if(_masterMetricsHtmlCache.key === metricsKey){
+    if(metrics.dataset.metricsCacheKey !== metricsKey){
+      metrics.innerHTML = _masterMetricsHtmlCache.html || "";
+      metrics.dataset.metricsCacheKey = metricsKey;
+    }
+    return;
+  }
 
   if(dated.length===0){
 
     metrics.innerHTML="";
+    metrics.dataset.metricsCacheKey = metricsKey;
+    _masterMetricsHtmlCache = { key: metricsKey, html: "" };
 
     return;
 
@@ -7665,7 +7687,7 @@ function renderMasterMetrics(tasks){
   });
   const avgProgressMaster = progWeightMaster ? Math.round(progSumMaster / progWeightMaster) : 0;
 
-  metrics.innerHTML = `
+  const html = `
 
     <span class="panel-chip">Durée totale : <span class="metric-val">${totalDays||0} j</span></span>
     <span class="panel-chip">Avancement : <span class="metric-val">${avgProgressMaster}%</span></span>
@@ -7678,6 +7700,9 @@ function renderMasterMetrics(tasks){
     <span class="panel-chip" style="background:#e8f0ff;color:#1f2937;border-color:#93c5fd;">RSG : <span class="metric-val">${rsgDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.rsgMinutes||0)}</span></span>
     <span class="panel-chip" style="background:#f2eaff;color:#1f2937;border-color:#c4b5fd;">RI : <span class="metric-val">${riDays.size||0} j</span> <span class="metric-val">${formatHoursMinutes(real.riMinutes||0)}</span></span>
   `;
+  metrics.innerHTML = html;
+  metrics.dataset.metricsCacheKey = metricsKey;
+  _masterMetricsHtmlCache = { key: metricsKey, html };
   animateMetricCounters(metrics);
 
 }
