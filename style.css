@@ -5982,15 +5982,20 @@ h3,
   flex:0 0 auto;
 }
 .sidebar .tab .tab-completed-badge{
-  margin-left:auto !important;
-  margin-right:0 !important;
+  position:absolute;
+  right:8px;
+  top:50%;
+  transform:translateY(-50%);
+  margin:0 !important;
 }
 .sidebar .tab .tab-close{
   margin-left:6px;
 }
 .sidebar .tabs .tab,
 .sidebar .tabs-master .tab{
+  position:relative;
   justify-content:flex-start !important;
+  padding-right:56px !important;
 }
 .sidebar .tab > span{
   min-width:0;
