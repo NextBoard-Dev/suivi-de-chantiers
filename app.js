@@ -1536,6 +1536,18 @@ function closeAllOverlays(){
   document.querySelectorAll(".desc-panel-open").forEach(n=>n.classList.remove("desc-panel-open"));
   floatingMap.forEach((anchor, el)=>{ closeFloating(el); });
 }
+function hasAnyOpenOverlay(){
+  if(document.querySelector(".vendor-open, .desc-open, .desc-panel-open")) return true;
+  const vBox = el("vendorDropdown");
+  if(vBox && (vBox.classList.contains("open") || vBox.style.display === "block")) return true;
+  const dBox = el("descDropdown");
+  if(dBox && (dBox.classList.contains("open") || dBox.style.display === "block")) return true;
+  const statusMenu = el("t_status_menu");
+  if(statusMenu && !statusMenu.classList.contains("hidden")) return true;
+  const overlay = el("descOverlay");
+  if(overlay && overlay.classList.contains("show")) return true;
+  return floatingMap.size > 0;
+}
 function loadConfig(){
   try{
     const raw = localStorage.getItem(CONFIG_KEY);
@@ -7939,7 +7951,7 @@ function renderMaster(){
   runtimePerf.lastRenderMasterTableMs = 0;
   computeTaskOrderMap();
   renderTabs();
-  closeAllOverlays();
+  if(hasAnyOpenOverlay()) closeAllOverlays();
   el("viewMaster")?.classList.remove("hidden");
   el("viewProject")?.classList.add("hidden");
 
