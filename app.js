@@ -907,6 +907,7 @@ let _lastMasterAnimSignature = "";
 let _lastScalabilityReport = null;
 let _lastScaleAlertSig = "";
 let _lastScaleAlertAt = 0;
+let showCompletedMaster = false;
 const SCALE_GUARDS = {
   warnTasks: 1000,
   warnTimeLogs: 20000,
@@ -7821,8 +7822,10 @@ function filteredTasks(){
   const q  = (el("filterSearch")?.value || "").toLowerCase().trim();
   const startAfter = el("filterStartAfter")?.value || "";
   const endBefore  = el("filterEndBefore")?.value || "";
+  const includeCompleted = showCompletedMaster ? "1" : "0";
+  const hasExplicitFilters = !!(fsite || fp || fs || q || startAfter || endBefore);
 
-  const key = `${_stateVersion}|${fsite}|${fp}|${fs}|${q}|${startAfter}|${endBefore}`;
+  const key = `${_stateVersion}|${fsite}|${fp}|${fs}|${q}|${startAfter}|${endBefore}|${includeCompleted}`;
   if(_filteredCache.key === key && _filteredCache.tasks){
     return _filteredCache.tasks;
   }
@@ -7848,6 +7851,7 @@ function filteredTasks(){
     if(startAfter && (!t.start || t.start < startAfter)) return false;
 
     if(endBefore && (!t.end || t.end > endBefore)) return false;
+    if(!showCompletedMaster && Number(taskProgress(t) || 0) >= 100) return false;
 
     return true;
 
@@ -7856,7 +7860,7 @@ function filteredTasks(){
   // Filet de secours : si les filtres vident tout alors qu'on a des données, on retourne toutes les tâches
 
   let out = result;
-  if(out.length===0 && state.tasks.length>0) out = state.tasks;
+  if(out.length===0 && state.tasks.length>0 && hasExplicitFilters) out = state.tasks;
   _filteredCache = { key, version:_stateVersion, tasks: out };
   return out;
 
@@ -7896,8 +7900,9 @@ function filtersActive(){
 
   const endBefore  = el("filterEndBefore")?.value || "";
   const onlyMissing = !!el("toggleMissingOnly")?.checked;
+  const showCompleted = !!showCompletedMaster;
 
-  return !!(fsite || fp || fs || q || startAfter || endBefore || onlyMissing);
+  return !!(fsite || fp || fs || q || startAfter || endBefore || onlyMissing || showCompleted);
 
 }
 
@@ -7935,6 +7940,12 @@ function renderMaster(){
   }
 
   const tasks = filteredTasks();
+  const btnToggleCompleted = el("btnToggleCompleted");
+  if(btnToggleCompleted){
+    btnToggleCompleted.textContent = showCompletedMaster ? "Masquer terminés" : "Afficher terminés";
+    btnToggleCompleted.classList.toggle("btn-primary", !!showCompletedMaster);
+    btnToggleCompleted.classList.toggle("btn-ghost", !showCompletedMaster);
+  }
   const metricsT0 = performance.now();
   renderKPIs(tasks);
   renderMasterMetrics(tasks);
@@ -12074,6 +12085,11 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     search.addEventListener("input", onSearch);
   }
   el("toggleMissingOnly")?.addEventListener("change", ()=>{
+    renderMaster();
+    saveUIState();
+  });
+  el("btnToggleCompleted")?.addEventListener("click", ()=>{
+    showCompletedMaster = !showCompletedMaster;
     renderMaster();
     saveUIState();
   });
