@@ -897,6 +897,8 @@ let _missingDaysMapAllTasksCache = { version:-1, todayKey:"", totalTasks:-1, map
 let _masterTableRowsHtmlCache = { key:"", html:"" };
 let _masterMetricsHtmlCache = { key:"", html:"" };
 let _masterWorkloadRenderKey = "";
+let _masterTabsRenderKey = "";
+let _masterMetricsWorkloadRenderKey = "";
 let _cache = null;
 let _cacheKey = null;
 let _ganttCache = null;
@@ -7950,7 +7952,16 @@ function renderMaster(){
   runtimePerf.lastRenderMasterWorkloadMs = 0;
   runtimePerf.lastRenderMasterTableMs = 0;
   computeTaskOrderMap();
-  renderTabs();
+  const tabsRenderKey = [
+    _stateVersion,
+    selectedProjectId || "",
+    showCompletedMaster ? "1" : "0",
+    tabsSortMode || ""
+  ].join("|");
+  if(_masterTabsRenderKey !== tabsRenderKey){
+    renderTabs();
+    _masterTabsRenderKey = tabsRenderKey;
+  }
   if(hasAnyOpenOverlay()) closeAllOverlays();
   el("viewMaster")?.classList.remove("hidden");
   el("viewProject")?.classList.add("hidden");
@@ -7980,17 +7991,6 @@ function renderMaster(){
         : `Afficher terminés (${hiddenCompletedCount})`
     );
   }
-  const metricsT0 = performance.now();
-  renderKPIs(tasks);
-  renderMasterMetrics(tasks);
-  renderMasterQuickKpis(tasks);
-  runtimePerf.lastRenderMasterMetricsMs = Math.max(0, performance.now() - metricsT0);
-
-  // Charge de travail
-  const workloadT0 = performance.now();
-  renderWorkloadChart(tasks);
-  runtimePerf.lastRenderMasterWorkloadMs = Math.max(0, performance.now() - workloadT0);
-
   // Bandeau live global (toutes tâches en cours aujourd'hui)
 
   const masterLive = el("masterLive");
@@ -8034,6 +8034,26 @@ function renderMaster(){
     ? sorted.filter(t=> (missingMap.get(t.id) || 0) > 0)
     : sorted;
   const visibleTaskIdsSig = visibleTasks.map((t)=>String(t.id || "")).join(",");
+  const metricsWorkloadKey = [
+    _stateVersion,
+    visibleTaskIdsSig,
+    workloadRangeType || "",
+    workloadRangeYear || "",
+    workloadRangeStart || "",
+    workloadRangeEnd || ""
+  ].join("|");
+  if(_masterMetricsWorkloadRenderKey !== metricsWorkloadKey){
+    const metricsT0 = performance.now();
+    renderKPIs(tasks);
+    renderMasterMetrics(tasks);
+    renderMasterQuickKpis(tasks);
+    runtimePerf.lastRenderMasterMetricsMs = Math.max(0, performance.now() - metricsT0);
+
+    const workloadT0 = performance.now();
+    renderWorkloadChart(tasks);
+    runtimePerf.lastRenderMasterWorkloadMs = Math.max(0, performance.now() - workloadT0);
+    _masterMetricsWorkloadRenderKey = metricsWorkloadKey;
+  }
   const masterRowsCacheKey = [
     _stateVersion,
     todayKey,
