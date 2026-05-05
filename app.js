@@ -7417,7 +7417,11 @@ function renderTabs(){
     return weight ? Math.round(sum / weight) : 0;
   };
 
-  const projectsSorted = [...state.projects].sort((a,b)=>{
+  const projectsForTabs = (showCompletedMaster
+    ? [...state.projects]
+    : [...state.projects].filter((p)=> getProjectCompletion(p.id) < 100)
+  );
+  const projectsSorted = projectsForTabs.sort((a,b)=>{
     if(tabsSortMode === "progress_asc" || tabsSortMode === "progress_desc"){
       const aProg = getProjectCompletion(a.id);
       const bProg = getProjectCompletion(b.id);
@@ -7446,6 +7450,10 @@ function renderTabs(){
     const completedBadge = isCompletedProject ? `<span class="tab-completed-badge" title="Chantier terminé à 100%">100%</span>` : "";
     h+=`<button class="tab ${selectedProjectId===p.id?"active":""}${hiddenCompletedClass}" data-tab="${p.id}" style="--tab-hue:${hue};--tab-progress:${progress}%;--tab-progress-color:hsl(${hue} 72% 45%);"><span class="tab-progress-fill" style="width:${progress}%;background:hsl(${hue} 78% 66% / .42);"></span><span>${p.name||"Projet"}</span>${completedBadge}<span class="tab-close" data-close="${p.id}" aria-label="Supprimer le projet"></span></button>`;
   });
+  if(selectedProjectId && !projectsSorted.some((p)=>p.id===selectedProjectId)){
+    selectedProjectId = null;
+    selectedTaskId = null;
+  }
 
   if(tabsMaster){ tabsMaster.innerHTML = masterBtn; }
   tabs.innerHTML=h;

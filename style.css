@@ -5970,3 +5970,17 @@ h3,
   background:rgba(217,119,6,.16);
   color:#9a3412;
 }
+/* Fix badge 100% sidebar: no truncation */
+.tab-completed-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:44px;
+  white-space:nowrap;
+  overflow:visible;
+  text-overflow:clip;
+  flex:0 0 auto;
+}
+.sidebar .tab > span{
+  min-width:0;
+}
