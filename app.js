@@ -9650,17 +9650,68 @@ function syncHoursTaskStatusFromCalendarDraft(t, dayKey, rawValue){
 
 let _hoursSummaryRefreshHandle = 0;
 let _hoursSummaryQueuedTask = null;
-function queueHoursTaskSummaryRefresh(task){
+let _hoursSummaryDraftEntriesCache = null;
+let _hoursSummaryDraftTaskId = "";
+function _cacheHoursDraftEntriesForTask(task, entries){
+  const taskId = String(task?.id || "");
+  if(!taskId || !Array.isArray(entries)){
+    _hoursSummaryDraftEntriesCache = null;
+    _hoursSummaryDraftTaskId = "";
+    return;
+  }
+  _hoursSummaryDraftTaskId = taskId;
+  _hoursSummaryDraftEntriesCache = entries;
+}
+function _clearHoursDraftEntriesCache(){
+  _hoursSummaryDraftEntriesCache = null;
+  _hoursSummaryDraftTaskId = "";
+}
+function _upsertHoursDraftEntryFromInput(task, input){
+  if(!task || !input) return;
+  if(!Array.isArray(_hoursSummaryDraftEntriesCache) || _hoursSummaryDraftTaskId !== String(task.id || "")){
+    _cacheHoursDraftEntriesForTask(task, collectHoursTaskCalendarEntries(task));
+  }
+  const date = (input.getAttribute("data-date") || "").trim();
+  const taskId = (input.getAttribute("data-task-id") || "").trim();
+  const projectId = (input.getAttribute("data-project-id") || "").trim();
+  const roleKey = normalizeTimeLogRole(input.getAttribute("data-role-key") || "");
+  const internalTech = normalizeInternalTech(input.getAttribute("data-internal-tech") || "");
+  const isActive = (input.getAttribute("data-active") || "0") === "1";
+  const isClearable = (input.getAttribute("data-clearable") || "0") === "1";
+  const todayKey = toLocalDateKey(new Date());
+  const key = buildTimeLogKey(taskId, date, roleKey, internalTech);
+  const next = [];
+  (_hoursSummaryDraftEntriesCache || []).forEach((e)=>{
+    if(buildTimeLogKey(e?.taskId, e?.date, e?.roleKey, e?.internalTech) !== key) next.push(e);
+  });
+  if(date && taskId && projectId && roleKey && (isActive || isClearable) && !(date > todayKey && !isClearable)){
+    const raw = (input.value || "").toString().replace(",", ".").trim();
+    if(raw === ""){
+      next.push({ taskId, projectId, roleKey, internalTech, date, empty:true, minutes:0, hours:0 });
+    }else{
+      const hours = parseFloat(raw);
+      if(isFinite(hours) && hours >= 0){
+        next.push({ taskId, projectId, roleKey, internalTech, date, empty:false, hours, minutes:Math.round(hours * 60) });
+      }
+    }
+  }
+  _cacheHoursDraftEntriesForTask(task, next);
+}
+function queueHoursTaskSummaryRefresh(task, draftEntriesOverride=null){
   if(task){
     _hoursSummaryQueuedTask = task;
   }
   const taskToRefresh = _hoursSummaryQueuedTask || getSelectedTaskForHoursModal();
   if(!taskToRefresh) return;
+  if(Array.isArray(draftEntriesOverride)){
+    _cacheHoursDraftEntriesForTask(taskToRefresh, draftEntriesOverride);
+  }
   if(_hoursSummaryRefreshHandle) return;
   _hoursSummaryRefreshHandle = requestAnimationFrame(()=>{
     _hoursSummaryRefreshHandle = 0;
     const t = taskToRefresh;
-    const draftEntries = collectHoursTaskCalendarEntries(t);
+    const useCache = _hoursSummaryDraftTaskId === String(t?.id || "") && Array.isArray(_hoursSummaryDraftEntriesCache);
+    const draftEntries = useCache ? _hoursSummaryDraftEntriesCache : collectHoursTaskCalendarEntries(t);
     renderHoursTaskWeeklySummary(t, draftEntries);
   });
 }
@@ -9834,6 +9885,7 @@ function openHoursTaskModal(){
   }
   updateTimeLogUI(t, true);
   syncHoursTaskModal(t);
+  _cacheHoursDraftEntriesForTask(t, collectHoursTaskCalendarEntries(t));
   showModalSafely(modal);
   requestAnimationFrame(()=>{
     requestAnimationFrame(()=>{
@@ -9844,6 +9896,7 @@ function openHoursTaskModal(){
 function closeHoursTaskModal(stopFlow=true){
   const modal = el("hoursTaskModal");
   hideModalSafely(modal, "#btnOpenHoursModal");
+  _clearHoursDraftEntriesCache();
   if(stopFlow && (_missingHoursFlow || _outsideRangeFlow)){
     _missingHoursFlow = null;
     _outsideRangeFlow = null;
@@ -11644,6 +11697,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     const t = getSelectedTaskForHoursModal();
     if(t){
       syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
+      _upsertHoursDraftEntryFromInput(t, input);
       queueHoursTaskSummaryRefresh(t);
     }
     });
