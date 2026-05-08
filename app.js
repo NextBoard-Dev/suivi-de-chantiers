@@ -799,6 +799,7 @@ window.loadAppStateFromSupabase = async function(){
     // Mode production stable: lecture unique state_json (sans fusion).
     if(isSingleSourceReadMode()){
       state = normalizeState(data.state_json || {});
+      invalidateCanonicalTimeLogsCache();
     }else{
       const supabaseTimeLogsRows = await _loadSupabaseTimeLogsRows(sb);
       const stateTaskIds = Array.from(new Set(
@@ -815,6 +816,7 @@ window.loadAppStateFromSupabase = async function(){
         timeLogs: _mergeStateTimeLogs(data?.state_json, supabaseTimeLogsRows, supabaseTaskRowsForLogs)
       };
       state = normalizeState(mergedStateJson);
+      invalidateCanonicalTimeLogsCache();
     }
     _lastStateLoadSource = "supabase_cloud";
 
@@ -895,6 +897,9 @@ let _filteredCache = { key:"", version:-1, tasks:null };
 let _missingLogEntriesTotalCache = { version:-1, todayKey:"", totalTasks:-1, total:0 };
 let _missingDaysMapAllTasksCache = { version:-1, todayKey:"", totalTasks:-1, map:null };
 let _canonicalTimeLogsCache = { version:-1, logs:null };
+function invalidateCanonicalTimeLogsCache(){
+  _canonicalTimeLogsCache = { version:-1, logs:null };
+}
 let _masterTableRowsHtmlCache = { key:"", html:"" };
 let _masterMetricsHtmlCache = { key:"", html:"" };
 let _masterWorkloadRenderKey = "";
@@ -4287,6 +4292,7 @@ function load(){
   // Mode Supabase-only (PC):
   // JSON hébergé et localStorage ne sont plus des sources actives.
   state = normalizeState(defaultState());
+  invalidateCanonicalTimeLogsCache();
   _lastStateLoadSource = "default_state";
   renderAll();
   clearDirty();
@@ -10258,6 +10264,7 @@ function renderAll(){
   // filet de sécurité : si localStorage est vide (ex : fichier ouvert en navigation privée), on recharge l'état par défaut
   if(!state || !Array.isArray(state.projects) || state.projects.length===0){
     state = defaultState();
+    invalidateCanonicalTimeLogsCache();
   }
   closeAllOverlays();
   refreshVendorsList();
