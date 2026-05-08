@@ -894,6 +894,7 @@ let _stateVersion = 0;
 let _filteredCache = { key:"", version:-1, tasks:null };
 let _missingLogEntriesTotalCache = { version:-1, todayKey:"", totalTasks:-1, total:0 };
 let _missingDaysMapAllTasksCache = { version:-1, todayKey:"", totalTasks:-1, map:null };
+let _canonicalTimeLogsCache = { version:-1, logs:null };
 let _masterTableRowsHtmlCache = { key:"", html:"" };
 let _masterMetricsHtmlCache = { key:"", html:"" };
 let _masterWorkloadRenderKey = "";
@@ -8354,6 +8355,10 @@ function buildSmartphoneCompatState(sourceState){
   };
 }
 function getCanonicalTimeLogs(){
+  if(_canonicalTimeLogsCache.version === _stateVersion && Array.isArray(_canonicalTimeLogsCache.logs)){
+    return _canonicalTimeLogsCache.logs;
+  }
+
   const logs = getTimeLogs();
   const tasksById = new Map((state?.tasks || []).map((t)=>[String(t?.id || ""), t]));
   const map = new Map(); // taskId|date|roleKey|internalTech -> merged log
@@ -8421,7 +8426,9 @@ function getCanonicalTimeLogs(){
       map.set(key, existing);
     });
   });
-  return Array.from(map.values());
+  const canonical = Array.from(map.values());
+  _canonicalTimeLogsCache = { version:_stateVersion, logs: canonical };
+  return canonical;
 }
 function findTimeLog(taskId, dateKey, userKey, userEmail="", userName=""){
   return getTimeLogs().find(l=>
@@ -9633,6 +9640,23 @@ function syncHoursTaskStatusFromCalendarDraft(t, dayKey, rawValue){
   if((hmStatus.textContent || "").toLowerCase().includes("non renseign")){
     hmStatus.textContent = "";
   }
+}
+
+let _hoursSummaryRefreshHandle = 0;
+let _hoursSummaryQueuedTask = null;
+function queueHoursTaskSummaryRefresh(task){
+  if(task){
+    _hoursSummaryQueuedTask = task;
+  }
+  const taskToRefresh = _hoursSummaryQueuedTask || getSelectedTaskForHoursModal();
+  if(!taskToRefresh) return;
+  if(_hoursSummaryRefreshHandle) return;
+  _hoursSummaryRefreshHandle = requestAnimationFrame(()=>{
+    _hoursSummaryRefreshHandle = 0;
+    const t = taskToRefresh;
+    const draftEntries = collectHoursTaskCalendarEntries(t);
+    renderHoursTaskWeeklySummary(t, draftEntries);
+  });
 }
 
 function applyHoursSaveButtonVisualState(btn){
@@ -11548,7 +11572,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     if(hmHours) hmHours.value = getHoursDraftForDate(hmDate.value || "");
     updateTimeLogUI(t, true);
     syncHoursTaskStatusFromCalendarDraft(t, hmDate.value || "", hmHours?.value || "");
-    renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+    queueHoursTaskSummaryRefresh(t);
     refreshHoursCalendarSelectedCard(hmDate.value || "");
     });
     el("hm_date")?.addEventListener("input", ()=>{
@@ -11561,7 +11585,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     if(hmHours) hmHours.value = getHoursDraftForDate(hmDate.value || "");
     updateTimeLogUI(t, true);
     syncHoursTaskStatusFromCalendarDraft(t, hmDate.value || "", hmHours?.value || "");
-    renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+    queueHoursTaskSummaryRefresh(t);
     refreshHoursCalendarSelectedCard(hmDate.value || "");
     });
 
@@ -11585,7 +11609,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     if(grid && clickTaskId) grid.dataset.currentTaskId = clickTaskId;
     if(hmHours) hmHours.value = dayInput ? (dayInput.value || "") : "";
     syncHoursTaskStatusFromCalendarDraft(t, day, dayInput ? dayInput.value : "");
-    renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+    queueHoursTaskSummaryRefresh(t);
     refreshHoursCalendarSelectedCard(day);
     });
     el("hoursTaskModal")?.addEventListener("input", (e)=>{
@@ -11613,7 +11637,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     const t = getSelectedTaskForHoursModal();
     if(t){
       syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
-      renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+      queueHoursTaskSummaryRefresh(t);
     }
     });
     el("hoursTaskModal")?.addEventListener("focusin", (e)=>{
@@ -11634,7 +11658,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     if(hmHours) hmHours.value = input.value || "";
     updateTimeLogUI(t, true);
     syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
-    renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+    queueHoursTaskSummaryRefresh(t);
     refreshHoursCalendarSelectedCard(day);
     });
     el("hoursTaskModal")?.addEventListener("keydown", (e)=>{
@@ -11656,7 +11680,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     const t = getSelectedTaskForHoursModal();
     if(t){
       syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
-      renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
+      queueHoursTaskSummaryRefresh(t);
     }
     const scopeTaskId = "";
     const nextInput = (e.key === "Tab" && e.shiftKey)
