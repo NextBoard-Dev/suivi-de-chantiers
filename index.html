@@ -79,6 +79,34 @@
       }
     })();
   </script>
+  <script>
+    (function(){
+      var hostedHint = /github\.io$/i.test(window.location.hostname || "");
+      if(!hostedHint) return;
+      if(new URLSearchParams(window.location.search || "").get("skip_local_fallback")==="1") return;
+
+      function fetchWithTimeout(url, timeoutMs){
+        var ctrl = new AbortController();
+        var timer = setTimeout(function(){ ctrl.abort(); }, timeoutMs);
+        return fetch(url, { method:"GET", signal: ctrl.signal }).finally(function(){ clearTimeout(timer); });
+      }
+
+      function triggerLocalFallback(){
+        return fetch("http://127.0.0.1:8765/fallback", { method:"GET", mode:"cors" }).catch(function(){});
+      }
+
+      Promise.all([
+        fetchWithTimeout("https://uioqchhbakcvemknqikh.supabase.co/auth/v1/health", 2500)
+      ]).then(function(results){
+        var supabaseOk = !!(results[0] && results[0].ok);
+        if(!supabaseOk){
+          triggerLocalFallback();
+        }
+      }).catch(function(){
+        triggerLocalFallback();
+      });
+    })();
+  </script>
 
   <link rel="icon" type="image/x-icon" href="favicon.ico?v=20260320_1521" />
 

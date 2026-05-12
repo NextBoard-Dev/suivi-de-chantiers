@@ -107,6 +107,35 @@ function refreshSingleSourceToggleButton(){
 const SUPABASE_AUTO_EMAIL = "sebastien_duc@outlook.fr";
 
 const SUPABASE_AUTO_PASSWORD = "Mililum@tt45";
+const LOCAL_FALLBACK_AGENT_BASE = "http://127.0.0.1:8765";
+
+async function _saveAppStateToLocalFallback(stateObj){
+  try{
+    const res = await fetch(`${LOCAL_FALLBACK_AGENT_BASE}/state/save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state_json: stateObj, updated_at: new Date().toISOString() })
+    });
+    if(!res.ok) return false;
+    return true;
+  }catch(e){
+    console.warn("local fallback save failed", e);
+    return false;
+  }
+}
+
+async function _loadAppStateFromLocalFallback(){
+  try{
+    const res = await fetch(`${LOCAL_FALLBACK_AGENT_BASE}/state/load`, { method: "GET" });
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(!data || !data.state_json) return null;
+    return data;
+  }catch(e){
+    console.warn("local fallback load failed", e);
+    return null;
+  }
+}
 
 
 
@@ -222,12 +251,12 @@ window.supabaseLogin = async function(email, password){
 
 window.saveAppStateToSupabase = async function(stateObj){
   const sb = _getSupabaseClient();
-  if(!sb) return false;
+  if(!sb) return await _saveAppStateToLocalFallback(stateObj);
 
 
   const session = await _ensureSession();
 
-  if(!session || !session.user) return false;
+  if(!session || !session.user) return await _saveAppStateToLocalFallback(stateObj);
 
 
 
@@ -261,7 +290,11 @@ window.saveAppStateToSupabase = async function(stateObj){
 
     const { error } = await sb.from(SUPABASE_TABLE).upsert(payload, { onConflict: "user_id" });
 
-    if(error){ console.warn("Supabase upsert error", error); return false; }
+    if(error){
+      console.warn("Supabase upsert error", error);
+      const localSaved = await _saveAppStateToLocalFallback(stateObj);
+      return !!localSaved;
+    }
     _lastCloudStateUpdatedAt = String(payload.updated_at || "");
 
     return true;
@@ -482,7 +515,8 @@ window.forceLoadUsersFromSupabase = async function(){
   try{
     return await loadUsersFromSupabase(true);
   }catch(e){
-    return false;
+    const localSaved = await _saveAppStateToLocalFallback(stateObj);
+    return !!localSaved;
   }
 };
 
@@ -764,13 +798,33 @@ window.loadAppStateFromSupabase = async function(){
 
   const sb = _getSupabaseClient();
 
-  if(!sb) return false;
+  if(!sb){
+    const localData = await _loadAppStateFromLocalFallback();
+    if(!localData || !localData.state_json) return false;
+    _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
+    state = normalizeState(localData.state_json || {});
+    invalidateCanonicalTimeLogsCache();
+    _lastStateLoadSource = "local_storage";
+    renderAll();
+    clearDirty();
+    return true;
+  }
 
 
 
   const session = await _ensureSession();
 
-  if(!session || !session.user) return false;
+  if(!session || !session.user){
+    const localData = await _loadAppStateFromLocalFallback();
+    if(!localData || !localData.state_json) return false;
+    _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
+    state = normalizeState(localData.state_json || {});
+    invalidateCanonicalTimeLogsCache();
+    _lastStateLoadSource = "local_storage";
+    renderAll();
+    clearDirty();
+    return true;
+  }
 
 
 
@@ -789,9 +843,30 @@ window.loadAppStateFromSupabase = async function(){
 
 
 
-    if(error){ console.warn("Supabase select error", error); return false; }
+    if(error){
+      console.warn("Supabase select error", error);
+      const localData = await _loadAppStateFromLocalFallback();
+      if(!localData || !localData.state_json) return false;
+      _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
+      state = normalizeState(localData.state_json || {});
+      invalidateCanonicalTimeLogsCache();
+      _lastStateLoadSource = "local_storage";
+      renderAll();
+      clearDirty();
+      return true;
+    }
 
-    if(!data || !data.state_json) return false;
+    if(!data || !data.state_json){
+      const localData = await _loadAppStateFromLocalFallback();
+      if(!localData || !localData.state_json) return false;
+      _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
+      state = normalizeState(localData.state_json || {});
+      invalidateCanonicalTimeLogsCache();
+      _lastStateLoadSource = "local_storage";
+      renderAll();
+      clearDirty();
+      return true;
+    }
     _lastCloudStateUpdatedAt = String(data.updated_at || "").trim();
 
 
@@ -837,7 +912,15 @@ window.loadAppStateFromSupabase = async function(){
 
     console.warn("loadAppStateFromSupabase failed", e);
 
-    return false;
+    const localData = await _loadAppStateFromLocalFallback();
+    if(!localData || !localData.state_json) return false;
+    _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
+    state = normalizeState(localData.state_json || {});
+    invalidateCanonicalTimeLogsCache();
+    _lastStateLoadSource = "local_storage";
+    renderAll();
+    clearDirty();
+    return true;
 
   }
 
