@@ -1877,7 +1877,8 @@ function updateRoleUI(){
     const roleLabel = role==="admin" ? "Admin" : "Utilisateur";
     const emailPart = email ? ` - ${email}` : "";
     const diagPart = role==="admin" ? buildAdminMiniDiagText() : "";
-    topUser.textContent = `Utilisateur connecté: ${name}${emailPart} - ${roleLabel}${diagPart}`;
+    const main = `Utilisateur connecté: ${name}${emailPart} - ${roleLabel}${diagPart}`;
+    topUser.innerHTML = `${attrEscape(main)} ${buildDataIoBadgeHtml()}`;
   }
   applyThemeForCurrentUser();
 }
@@ -4521,9 +4522,25 @@ function stateLoadSourceLabel(src){
   const k = String(src || "").toLowerCase();
   if(k === "supabase_cloud") return "Cloud";
   if(k === "backup_json") return "JSON disque";
-  if(k === "local_storage") return "LocalStorage";
+  if(k === "local_storage") return "J (secours)";
   if(k === "default_state") return "Etat par défaut";
   return "Inconnue";
+}
+
+function stateWriteTargetLabel(){
+  try{
+    const meta = _getLastWriteMeta();
+    const target = String(meta?.target || "").toLowerCase();
+    if(target === "supabase") return "Cloud";
+    if(target === "local_j") return "J (secours)";
+  }catch(e){ softCatch(e); }
+  return "Inconnue";
+}
+
+function buildDataIoBadgeHtml(){
+  const readLabel = stateLoadSourceLabel(_lastStateLoadSource);
+  const writeLabel = stateWriteTargetLabel();
+  return `<span class="data-io-badge"><img src="assets/database4.ico" alt="" aria-hidden="true"><span>L:${attrEscape(readLabel)} | E:${attrEscape(writeLabel)}</span></span>`;
 }
 
 function collectDataQualityIssues(currentState=state){

@@ -4035,28 +4035,6 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
   text-overflow:clip !important;
 }
 
-.data-io-badge{
-  display:inline-flex;
-  align-items:center;
-  gap:5px;
-  margin-left:8px;
-  padding:2px 7px;
-  border:1px solid rgba(26,43,53,.25);
-  border-radius:999px;
-  background:rgba(255,255,255,.75);
-  color:#1f313b;
-  font-size:11px;
-  font-weight:700;
-  line-height:1;
-  vertical-align:middle;
-}
-
-.data-io-badge img{
-  width:14px;
-  height:14px;
-  object-fit:contain;
-}
-
 .topbar-controls{
   grid-area:topbar-controls !important;
   display:flex !important;
