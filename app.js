@@ -108,6 +108,7 @@ const SUPABASE_AUTO_EMAIL = "sebastien_duc@outlook.fr";
 
 const SUPABASE_AUTO_PASSWORD = "Mililum@tt45";
 const LOCAL_FALLBACK_AGENT_BASE = "http://127.0.0.1:8765";
+const LOCAL_WRITE_META_KEY = "dashboard_last_write_meta_v1";
 
 async function _saveAppStateToLocalFallback(stateObj){
   try{
@@ -137,6 +138,43 @@ async function _loadAppStateFromLocalFallback(){
   }
 }
 
+function _safeTs(isoLike){
+  const raw = String(isoLike || "").trim();
+  if(!raw) return 0;
+  const ts = new Date(raw).getTime();
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+function _getLastWriteMeta(){
+  try{
+    const raw = localStorage.getItem(LOCAL_WRITE_META_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){
+    return null;
+  }
+}
+
+function _setLastWriteMeta(target, updatedAt){
+  try{
+    localStorage.setItem(LOCAL_WRITE_META_KEY, JSON.stringify({
+      target: String(target || "").trim(),
+      updated_at: String(updatedAt || new Date().toISOString()).trim()
+    }));
+  }catch(e){ softCatch(e); }
+}
+
+function _confirmLocalFallbackLoad(reason){
+  return window.confirm(
+    `Supabase indisponible (${reason}).\nCharger la sauvegarde locale depuis J:\\RÉGISSEUR INTENDANT\\DASBOARDS\\SUIVI DE CHANTIERS ?`
+  );
+}
+
+function _confirmLocalFallbackSave(reason){
+  return window.confirm(
+    `Supabase indisponible (${reason}).\nEnregistrer une sauvegarde locale dans J:\\RÉGISSEUR INTENDANT\\DASBOARDS\\SUIVI DE CHANTIERS ?`
+  );
+}
+
 async function _markLocalFallbackSynced(){
   try{
     await fetch(`${LOCAL_FALLBACK_AGENT_BASE}/state/mark-synced`, { method: "POST" });
@@ -145,42 +183,23 @@ async function _markLocalFallbackSynced(){
   }
 }
 
-function _safeTs(isoLike){
-  const raw = String(isoLike || "").trim();
-  if(!raw) return 0;
-  const ts = new Date(raw).getTime();
-  return Number.isFinite(ts) ? ts : 0;
-}
-
-async function _tryReplayLocalFallbackToSupabase(sb, userId, cloudUpdatedAt){
+async function _maybeUseLocalNewerState(cloudUpdatedAt){
   try{
-    if(!sb || !userId) return null;
     const localData = await _loadAppStateFromLocalFallback();
     if(!localData || !localData.state_json) return null;
-    if(localData.pending_sync !== true) return null;
-
     const localTs = _safeTs(localData.updated_at);
     const cloudTs = _safeTs(cloudUpdatedAt);
-    if(cloudTs >= localTs && cloudTs > 0){
-      await _markLocalFallbackSynced();
+    const meta = _getLastWriteMeta();
+    const localWasLastTarget = String(meta?.target || "") === "local_j";
+    const isLocalNewer = localTs > cloudTs;
+    if(!isLocalNewer && !localWasLastTarget) return null;
+    if(!window.confirm("Une sauvegarde locale plus recente a ete detectee dans J:. Voulez-vous la charger maintenant puis sauvegarder vers Supabase pour aligner le cloud ?")){
       return null;
     }
-
-    const payload = {
-      user_id: userId,
-      state_json: localData.state_json,
-      updated_at: String(localData.updated_at || new Date().toISOString())
-    };
-    const { error } = await sb.from(SUPABASE_TABLE).upsert(payload, { onConflict: "user_id" });
-    if(error){
-      console.warn("Supabase replay local fallback error", error);
-      return null;
-    }
-    await _markLocalFallbackSynced();
-    _lastCloudStateUpdatedAt = String(payload.updated_at || "").trim();
-    return payload;
+    showSaveToast("error", "Synchronisation requise", "Donnees locales chargees. Cliquez Sauvegarder pour aligner Supabase.");
+    return localData;
   }catch(e){
-    console.warn("replay local fallback failed", e);
+    console.warn("local newer state check failed", e);
     return null;
   }
 }
@@ -299,12 +318,22 @@ window.supabaseLogin = async function(email, password){
 
 window.saveAppStateToSupabase = async function(stateObj){
   const sb = _getSupabaseClient();
-  if(!sb) return await _saveAppStateToLocalFallback(stateObj);
+  if(!sb){
+    if(!_confirmLocalFallbackSave("client cloud indisponible")) return false;
+    const localSaved = await _saveAppStateToLocalFallback(stateObj);
+    if(localSaved) _setLastWriteMeta("local_j", new Date().toISOString());
+    return !!localSaved;
+  }
 
 
   const session = await _ensureSession();
 
-  if(!session || !session.user) return await _saveAppStateToLocalFallback(stateObj);
+  if(!session || !session.user){
+    if(!_confirmLocalFallbackSave("session cloud indisponible")) return false;
+    const localSaved = await _saveAppStateToLocalFallback(stateObj);
+    if(localSaved) _setLastWriteMeta("local_j", new Date().toISOString());
+    return !!localSaved;
+  }
 
 
 
@@ -340,11 +369,14 @@ window.saveAppStateToSupabase = async function(stateObj){
 
     if(error){
       console.warn("Supabase upsert error", error);
+      if(!_confirmLocalFallbackSave("erreur cloud")) return false;
       const localSaved = await _saveAppStateToLocalFallback(stateObj);
+      if(localSaved) _setLastWriteMeta("local_j", new Date().toISOString());
       return !!localSaved;
     }
     _lastCloudStateUpdatedAt = String(payload.updated_at || "");
     await _markLocalFallbackSynced();
+    _setLastWriteMeta("supabase", payload.updated_at);
 
     return true;
 
@@ -751,7 +783,10 @@ function _extractSupabaseTaskInternalTechList(row){
     if(!raw) return true;
     if(raw === "INTERNE" || raw === "EXTERNE" || raw === "PRESTATAIRE EXTERNE" || raw === "PRESTATAIRE") return true;
     if(raw === "RI" || raw === "RSG" || raw === "RSG RI" || raw === "RSG/RI") return true;
-    return false;
+    if(!_confirmLocalFallbackSave("exception cloud")) return false;
+    const localSaved = await _saveAppStateToLocalFallback(stateObj);
+    if(localSaved) _setLastWriteMeta("local_j", new Date().toISOString());
+    return !!localSaved;
   };
   const fromArray = Array.isArray(row?.internal_techs) ? row.internal_techs : [];
   const fromSingle = [row?.internal_tech, row?.internalTech, row?.technician, row?.tech, row?.intervenants]
@@ -848,6 +883,7 @@ window.loadAppStateFromSupabase = async function(){
   const sb = _getSupabaseClient();
 
   if(!sb){
+    if(!_confirmLocalFallbackLoad("client cloud indisponible")) return false;
     const localData = await _loadAppStateFromLocalFallback();
     if(!localData || !localData.state_json) return false;
     _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
@@ -864,6 +900,7 @@ window.loadAppStateFromSupabase = async function(){
   const session = await _ensureSession();
 
   if(!session || !session.user){
+    if(!_confirmLocalFallbackLoad("session cloud indisponible")) return false;
     const localData = await _loadAppStateFromLocalFallback();
     if(!localData || !localData.state_json) return false;
     _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
@@ -894,6 +931,7 @@ window.loadAppStateFromSupabase = async function(){
 
     if(error){
       console.warn("Supabase select error", error);
+      if(!_confirmLocalFallbackLoad("erreur lecture cloud")) return false;
       const localData = await _loadAppStateFromLocalFallback();
       if(!localData || !localData.state_json) return false;
       _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
@@ -906,6 +944,7 @@ window.loadAppStateFromSupabase = async function(){
     }
 
     if(!data || !data.state_json){
+      if(!_confirmLocalFallbackLoad("aucune donnee cloud")) return false;
       const localData = await _loadAppStateFromLocalFallback();
       if(!localData || !localData.state_json) return false;
       _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
@@ -916,15 +955,14 @@ window.loadAppStateFromSupabase = async function(){
       clearDirty();
       return true;
     }
-    const replayed = await _tryReplayLocalFallbackToSupabase(sb, session.user.id, data.updated_at);
-    if(replayed && replayed.state_json){
-      _lastCloudStateUpdatedAt = String(replayed.updated_at || "").trim();
-      state = normalizeState(replayed.state_json || {});
+    const localPreferred = await _maybeUseLocalNewerState(data.updated_at);
+    if(localPreferred && localPreferred.state_json){
+      _lastCloudStateUpdatedAt = String(localPreferred.updated_at || "").trim();
+      state = normalizeState(localPreferred.state_json || {});
       invalidateCanonicalTimeLogsCache();
-      _lastStateLoadSource = "supabase_cloud";
+      _lastStateLoadSource = "local_storage";
       renderAll();
       clearDirty();
-      showSaveToast("ok", "Resynchronisation", "Modifications locales envoyées vers Supabase.");
       return true;
     }
     _lastCloudStateUpdatedAt = String(data.updated_at || "").trim();
@@ -971,6 +1009,7 @@ window.loadAppStateFromSupabase = async function(){
   }catch(e){
 
     console.warn("loadAppStateFromSupabase failed", e);
+    if(!_confirmLocalFallbackLoad("exception cloud")) return false;
 
     const localData = await _loadAppStateFromLocalFallback();
     if(!localData || !localData.state_json) return false;
