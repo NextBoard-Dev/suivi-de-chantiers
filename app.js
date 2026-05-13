@@ -4536,7 +4536,10 @@ function stateWriteTargetLabel(){
 function buildDataIoBadgeHtml(){
   const readLabel = stateLoadSourceLabel(_lastStateLoadSource);
   const writeLabel = stateWriteTargetLabel();
-  return `<span class="data-io-badge"><img src="assets/database4.ico" alt="" aria-hidden="true"><span>L:${attrEscape(readLabel)} | E:${attrEscape(writeLabel)}</span></span>`;
+  const readClass = readLabel === "Cloud" ? "is-cloud" : (readLabel.includes("secours") ? "is-fallback" : "is-unknown");
+  const writeClass = writeLabel === "Cloud" ? "is-cloud" : (writeLabel.includes("secours") ? "is-fallback" : "is-unknown");
+  const tip = "Lecture = source chargee au demarrage | Ecriture = derniere cible de sauvegarde";
+  return `<span class="data-io-badge" title="${attrEscape(tip)}"><img src="assets/database4.ico" alt="" aria-hidden="true"><span class="data-io-item ${readClass}">Lecture: ${attrEscape(readLabel)}</span><span class="data-io-sep">|</span><span class="data-io-item ${writeClass}">Ecriture: ${attrEscape(writeLabel)}</span></span>`;
 }
 
 function collectDataQualityIssues(currentState=state){
