@@ -175,6 +175,12 @@ function _confirmLocalFallbackSave(reason){
   );
 }
 
+function _refreshDataIoBadge(){
+  try{
+    if(typeof updateRoleUI === "function") updateRoleUI();
+  }catch(e){ softCatch(e); }
+}
+
 async function _markLocalFallbackSynced(){
   try{
     await fetch(`${LOCAL_FALLBACK_AGENT_BASE}/state/mark-synced`, { method: "POST" });
@@ -321,7 +327,10 @@ window.saveAppStateToSupabase = async function(stateObj){
   if(!sb){
     if(!_confirmLocalFallbackSave("client cloud indisponible")) return false;
     const localSaved = await _saveAppStateToLocalFallback(stateObj);
-    if(localSaved) _setLastWriteMeta("local_j", new Date().toISOString());
+    if(localSaved){
+      _setLastWriteMeta("local_j", new Date().toISOString());
+      _refreshDataIoBadge();
+    }
     return !!localSaved;
   }
 
@@ -331,7 +340,10 @@ window.saveAppStateToSupabase = async function(stateObj){
   if(!session || !session.user){
     if(!_confirmLocalFallbackSave("session cloud indisponible")) return false;
     const localSaved = await _saveAppStateToLocalFallback(stateObj);
-    if(localSaved) _setLastWriteMeta("local_j", new Date().toISOString());
+    if(localSaved){
+      _setLastWriteMeta("local_j", new Date().toISOString());
+      _refreshDataIoBadge();
+    }
     return !!localSaved;
   }
 
@@ -371,12 +383,16 @@ window.saveAppStateToSupabase = async function(stateObj){
       console.warn("Supabase upsert error", error);
       if(!_confirmLocalFallbackSave("erreur cloud")) return false;
       const localSaved = await _saveAppStateToLocalFallback(stateObj);
-      if(localSaved) _setLastWriteMeta("local_j", new Date().toISOString());
+      if(localSaved){
+        _setLastWriteMeta("local_j", new Date().toISOString());
+        _refreshDataIoBadge();
+      }
       return !!localSaved;
     }
     _lastCloudStateUpdatedAt = String(payload.updated_at || "");
     await _markLocalFallbackSynced();
     _setLastWriteMeta("supabase", payload.updated_at);
+    _refreshDataIoBadge();
 
     return true;
 
@@ -887,6 +903,7 @@ window.loadAppStateFromSupabase = async function(){
     invalidateCanonicalTimeLogsCache();
     _lastStateLoadSource = "local_storage";
     renderAll();
+    _refreshDataIoBadge();
     clearDirty();
     return true;
   }
@@ -904,6 +921,7 @@ window.loadAppStateFromSupabase = async function(){
     invalidateCanonicalTimeLogsCache();
     _lastStateLoadSource = "local_storage";
     renderAll();
+    _refreshDataIoBadge();
     clearDirty();
     return true;
   }
@@ -935,6 +953,7 @@ window.loadAppStateFromSupabase = async function(){
       invalidateCanonicalTimeLogsCache();
       _lastStateLoadSource = "local_storage";
       renderAll();
+      _refreshDataIoBadge();
       clearDirty();
       return true;
     }
@@ -948,6 +967,7 @@ window.loadAppStateFromSupabase = async function(){
       invalidateCanonicalTimeLogsCache();
       _lastStateLoadSource = "local_storage";
       renderAll();
+      _refreshDataIoBadge();
       clearDirty();
       return true;
     }
@@ -958,6 +978,7 @@ window.loadAppStateFromSupabase = async function(){
       invalidateCanonicalTimeLogsCache();
       _lastStateLoadSource = "local_storage";
       renderAll();
+      _refreshDataIoBadge();
       clearDirty();
       return true;
     }
@@ -990,6 +1011,7 @@ window.loadAppStateFromSupabase = async function(){
     _lastStateLoadSource = "supabase_cloud";
 
     renderAll();
+    _refreshDataIoBadge();
     if(_supabaseOwnerFallbackCount > 0){
       showSaveToast(
         "error",
@@ -1014,6 +1036,7 @@ window.loadAppStateFromSupabase = async function(){
     invalidateCanonicalTimeLogsCache();
     _lastStateLoadSource = "local_storage";
     renderAll();
+    _refreshDataIoBadge();
     clearDirty();
     return true;
 
