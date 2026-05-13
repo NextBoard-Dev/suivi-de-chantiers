@@ -85,11 +85,33 @@ try {
           ok = $true
           source = "local_fallback"
           updated_at = (Get-Date).ToString("o")
+          pending_sync = $true
+          last_synced_at = $null
           state_json = $payload.state_json
         }
         $json = $outObj | ConvertTo-Json -Depth 100
         Set-Content -LiteralPath $stateFile -Value $json -Encoding UTF8
         $body = '{"ok":true,"saved":"local_state_fallback.json"}'
+      } catch {
+        $statusCode = 400
+        $msg = ($_.Exception.Message -replace '"', '\"')
+        $body = "{""ok"":false,""error"":""$msg""}"
+      }
+    } elseif ($path -eq "/state/mark-synced" -and $req.HttpMethod -eq "POST") {
+      try {
+        $stateFile = Get-StateFilePath
+        if (!(Test-Path -LiteralPath $stateFile)) {
+          $statusCode = 404
+          $body = '{"ok":false,"error":"no_local_state"}'
+        } else {
+          $raw = Get-Content -LiteralPath $stateFile -Raw
+          $obj = $raw | ConvertFrom-Json
+          $obj.pending_sync = $false
+          $obj.last_synced_at = (Get-Date).ToString("o")
+          $json = $obj | ConvertTo-Json -Depth 100
+          Set-Content -LiteralPath $stateFile -Value $json -Encoding UTF8
+          $body = '{"ok":true,"synced":true}'
+        }
       } catch {
         $statusCode = 400
         $msg = ($_.Exception.Message -replace '"', '\"')

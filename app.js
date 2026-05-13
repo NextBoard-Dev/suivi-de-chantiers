@@ -137,6 +137,54 @@ async function _loadAppStateFromLocalFallback(){
   }
 }
 
+async function _markLocalFallbackSynced(){
+  try{
+    await fetch(`${LOCAL_FALLBACK_AGENT_BASE}/state/mark-synced`, { method: "POST" });
+  }catch(e){
+    console.warn("local fallback mark synced failed", e);
+  }
+}
+
+function _safeTs(isoLike){
+  const raw = String(isoLike || "").trim();
+  if(!raw) return 0;
+  const ts = new Date(raw).getTime();
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+async function _tryReplayLocalFallbackToSupabase(sb, userId, cloudUpdatedAt){
+  try{
+    if(!sb || !userId) return null;
+    const localData = await _loadAppStateFromLocalFallback();
+    if(!localData || !localData.state_json) return null;
+    if(localData.pending_sync !== true) return null;
+
+    const localTs = _safeTs(localData.updated_at);
+    const cloudTs = _safeTs(cloudUpdatedAt);
+    if(cloudTs >= localTs && cloudTs > 0){
+      await _markLocalFallbackSynced();
+      return null;
+    }
+
+    const payload = {
+      user_id: userId,
+      state_json: localData.state_json,
+      updated_at: String(localData.updated_at || new Date().toISOString())
+    };
+    const { error } = await sb.from(SUPABASE_TABLE).upsert(payload, { onConflict: "user_id" });
+    if(error){
+      console.warn("Supabase replay local fallback error", error);
+      return null;
+    }
+    await _markLocalFallbackSynced();
+    _lastCloudStateUpdatedAt = String(payload.updated_at || "").trim();
+    return payload;
+  }catch(e){
+    console.warn("replay local fallback failed", e);
+    return null;
+  }
+}
+
 
 
 // ---- client ----
@@ -296,6 +344,7 @@ window.saveAppStateToSupabase = async function(stateObj){
       return !!localSaved;
     }
     _lastCloudStateUpdatedAt = String(payload.updated_at || "");
+    await _markLocalFallbackSynced();
 
     return true;
 
@@ -865,6 +914,17 @@ window.loadAppStateFromSupabase = async function(){
       _lastStateLoadSource = "local_storage";
       renderAll();
       clearDirty();
+      return true;
+    }
+    const replayed = await _tryReplayLocalFallbackToSupabase(sb, session.user.id, data.updated_at);
+    if(replayed && replayed.state_json){
+      _lastCloudStateUpdatedAt = String(replayed.updated_at || "").trim();
+      state = normalizeState(replayed.state_json || {});
+      invalidateCanonicalTimeLogsCache();
+      _lastStateLoadSource = "supabase_cloud";
+      renderAll();
+      clearDirty();
+      showSaveToast("ok", "Resynchronisation", "Modifications locales envoyées vers Supabase.");
       return true;
     }
     _lastCloudStateUpdatedAt = String(data.updated_at || "").trim();
