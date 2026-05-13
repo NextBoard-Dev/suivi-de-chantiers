@@ -596,8 +596,7 @@ window.forceLoadUsersFromSupabase = async function(){
   try{
     return await loadUsersFromSupabase(true);
   }catch(e){
-    const localSaved = await _saveAppStateToLocalFallback(stateObj);
-    return !!localSaved;
+    return false;
   }
 };
 
@@ -783,10 +782,7 @@ function _extractSupabaseTaskInternalTechList(row){
     if(!raw) return true;
     if(raw === "INTERNE" || raw === "EXTERNE" || raw === "PRESTATAIRE EXTERNE" || raw === "PRESTATAIRE") return true;
     if(raw === "RI" || raw === "RSG" || raw === "RSG RI" || raw === "RSG/RI") return true;
-    if(!_confirmLocalFallbackSave("exception cloud")) return false;
-    const localSaved = await _saveAppStateToLocalFallback(stateObj);
-    if(localSaved) _setLastWriteMeta("local_j", new Date().toISOString());
-    return !!localSaved;
+    return false;
   };
   const fromArray = Array.isArray(row?.internal_techs) ? row.internal_techs : [];
   const fromSingle = [row?.internal_tech, row?.internalTech, row?.technician, row?.tech, row?.intervenants]
