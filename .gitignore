@@ -1,5 +1,6 @@
 # Ne jamais versionner les snapshots locaux
 snapshots_ok/
+SNAPSHOTS/
 LATEST_MAJOR_SNAPSHOT.txt
 archives/snapshots_old/
 archives/backup_copies/

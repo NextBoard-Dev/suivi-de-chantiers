@@ -1,5 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 
+const mobileEnabled = String(import.meta.env.VITE_MOBILE_APP_ENABLED || "false").toLowerCase() === "true";
+
+if (!mobileEnabled) {
+  throw new Error(
+    "Version mobile desactivee: definir VITE_MOBILE_APP_ENABLED=true pour la reactiver explicitement."
+  );
+}
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
