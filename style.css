@@ -4918,7 +4918,7 @@ body,
   border-radius:0 !important;
   box-shadow:none !important;
   overflow:visible !important;
-  padding:0 12px !important;
+  padding:0 8px !important;
   background:var(--sidebar-bg-solid) !important;
   background-image:none !important;
   justify-content:center !important;
@@ -4932,7 +4932,7 @@ body,
   border:none !important;
   border-radius:0 !important;
   box-shadow:none !important;
-  width:calc(100% - 14px) !important;
+  width:100% !important;
   max-width:none !important;
   height:auto !important;
   object-fit:contain !important;
