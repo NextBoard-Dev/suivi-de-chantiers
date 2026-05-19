@@ -378,68 +378,17 @@ window.supabaseLogin = async function(email, password){
 
 
 window.saveAppStateToSupabase = async function(stateObj){
-  _isDataIoWriteBusy = true;
-  _refreshDataIoBadge();
-  try{
-  const sb = _getSupabaseClient();
-  if(!sb){
-    if(!_confirmLocalFallbackSave("client cloud indisponible")) return false;
-    const localSaved = await _saveAppStateToLocalFallback(stateObj);
-    if(localSaved){
-      _setLastWriteMeta("local_j", new Date().toISOString());
-      _refreshDataIoBadge();
-    }
-    return !!localSaved;
+  const stateKey = JSON.stringify(stateObj || {});
+  if(_saveAppStateToSupabaseFlight && _saveAppStateToSupabaseFlightKey === stateKey){
+    return await _saveAppStateToSupabaseFlight;
   }
 
-
-  const session = await _ensureSession();
-
-  if(!session || !session.user){
-    if(!_confirmLocalFallbackSave("session cloud indisponible")) return false;
-    const localSaved = await _saveAppStateToLocalFallback(stateObj);
-    if(localSaved){
-      _setLastWriteMeta("local_j", new Date().toISOString());
-      _refreshDataIoBadge();
-    }
-    return !!localSaved;
-  }
-
-
-
-  try{
-    const { data: remoteRow, error: remoteError } = await sb
-      .from(SUPABASE_TABLE)
-      .select("updated_at")
-      .eq("user_id", session.user.id)
-      .maybeSingle();
-    if(remoteError){
-      console.warn("Supabase pre-save check error", remoteError);
-    }
-    const remoteUpdatedAt = String(remoteRow?.updated_at || "").trim();
-    const localKnownUpdatedAt = String(_lastCloudStateUpdatedAt || "").trim();
-    const remoteTs = remoteUpdatedAt ? new Date(remoteUpdatedAt).getTime() : 0;
-    const localTs = localKnownUpdatedAt ? new Date(localKnownUpdatedAt).getTime() : 0;
-    if(remoteTs && localTs && remoteTs > (localTs + 1000)){
-      showSaveToast("error", "Sauvegarde cloud bloquée", "Version cloud plus récente détectée. Recharge la page.");
-      return false;
-    }
-
-    const payload = {
-
-      user_id: session.user.id,
-
-      state_json: stateObj,
-
-      updated_at: new Date().toISOString()
-
-    };
-
-    const { error } = await sb.from(SUPABASE_TABLE).upsert(payload, { onConflict: "user_id" });
-
-    if(error){
-      console.warn("Supabase upsert error", error);
-      if(!_confirmLocalFallbackSave("erreur cloud")) return false;
+  const run = async () => {
+    _isDataIoWriteBusy = true;
+    _refreshDataIoBadge();
+    const sb = _getSupabaseClient();
+    if(!sb){
+      if(!_confirmLocalFallbackSave("client cloud indisponible")) return false;
       const localSaved = await _saveAppStateToLocalFallback(stateObj);
       if(localSaved){
         _setLastWriteMeta("local_j", new Date().toISOString());
@@ -447,36 +396,89 @@ window.saveAppStateToSupabase = async function(stateObj){
       }
       return !!localSaved;
     }
-    _lastCloudStateUpdatedAt = String(payload.updated_at || "");
-    await _markLocalFallbackSynced();
-    _setLastWriteMeta("supabase", payload.updated_at);
-    _refreshDataIoBadge();
 
-    return true;
+    const session = await _ensureSession();
 
-  }catch(e){
-
-    console.warn("saveAppStateToSupabase failed", e);
-    console.error("[SUPABASE ERROR]", e);
-
-    const statusEl = document.getElementById("saveStatusMessage") || document.getElementById("saveToastDetail");
-    if (statusEl) {
-      statusEl.textContent = "Erreur de sauvegarde cloud.";
-      statusEl.style.color = "red";
+    if(!session || !session.user){
+      if(!_confirmLocalFallbackSave("session cloud indisponible")) return false;
+      const localSaved = await _saveAppStateToLocalFallback(stateObj);
+      if(localSaved){
+        _setLastWriteMeta("local_j", new Date().toISOString());
+        _refreshDataIoBadge();
+      }
+      return !!localSaved;
     }
 
-    setTimeout(() => {
-      const toast = document.getElementById("saveToast");
-      if(toast) toast.classList.remove("show");
-    }, 4000);
 
-    return false;
 
-  } 
-  }finally{
+    try{
+      const { data: remoteRow, error: remoteError } = await sb
+        .from(SUPABASE_TABLE)
+        .select("updated_at")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      if(remoteError){
+        console.warn("Supabase pre-save check error", remoteError);
+      }
+      const remoteUpdatedAt = String(remoteRow?.updated_at || "").trim();
+      const localKnownUpdatedAt = String(_lastCloudStateUpdatedAt || "").trim();
+      const remoteTs = remoteUpdatedAt ? new Date(remoteUpdatedAt).getTime() : 0;
+      const localTs = localKnownUpdatedAt ? new Date(localKnownUpdatedAt).getTime() : 0;
+      if(remoteTs && localTs && remoteTs > (localTs + 1000)){
+        showSaveToast("error", "Sauvegarde cloud bloquée", "Version cloud plus récente détectée. Recharge la page.");
+        return false;
+      }
+
+      const payload = {
+        user_id: session.user.id,
+        state_json: stateObj,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await sb.from(SUPABASE_TABLE).upsert(payload, { onConflict: "user_id" });
+      if(error){
+        console.warn("Supabase upsert error", error);
+        if(!_confirmLocalFallbackSave("erreur cloud")) return false;
+        const localSaved = await _saveAppStateToLocalFallback(stateObj);
+        if(localSaved){
+          _setLastWriteMeta("local_j", new Date().toISOString());
+          _refreshDataIoBadge();
+        }
+        return !!localSaved;
+      }
+      _lastCloudStateUpdatedAt = String(payload.updated_at || "");
+      await _markLocalFallbackSynced();
+      _setLastWriteMeta("supabase", payload.updated_at);
+      _refreshDataIoBadge();
+      return true;
+    }catch(e){
+      console.warn("saveAppStateToSupabase failed", e);
+      console.error("[SUPABASE ERROR]", e);
+
+      const statusEl = document.getElementById("saveStatusMessage") || document.getElementById("saveToastDetail");
+      if (statusEl) {
+        statusEl.textContent = "Erreur de sauvegarde cloud.";
+        statusEl.style.color = "red";
+      }
+
+      setTimeout(() => {
+        const toast = document.getElementById("saveToast");
+        if(toast) toast.classList.remove("show");
+      }, 4000);
+      return false;
+    }
+  };
+  const promise = run().finally(() => {
+    if(_saveAppStateToSupabaseFlight === promise){
+      _saveAppStateToSupabaseFlight = null;
+      _saveAppStateToSupabaseFlightKey = null;
+    }
     _isDataIoWriteBusy = false;
     _refreshDataIoBadge();
-  }
+  });
+  _saveAppStateToSupabaseFlight = promise;
+  _saveAppStateToSupabaseFlightKey = stateKey;
+  return await promise;
 
 };
 
@@ -486,15 +488,27 @@ async function saveUsersToSupabase(users){
   if(!sb) return false;
   const session = await _ensureSession();
   if(!session || !session.user) return false;
+  const userId = session.user.id;
+  const usersKey = `${userId}|${JSON.stringify(users || [])}`;
+  const inFlight = _saveUsersToSupabaseFlightByKey.get(usersKey);
+  if(inFlight) return inFlight;
   try{
     const payload = {
-      user_id: session.user.id,
+      user_id: userId,
       users_json: users,
       updated_at: new Date().toISOString()
     };
-    const { error } = await sb.from(SUPABASE_USERS_TABLE).upsert(payload, { onConflict: "user_id" });
-    if(error){ console.warn("Supabase users upsert error", error); return false; }
-    return true;
+    const promise = (async()=>{
+      const { error } = await sb.from(SUPABASE_USERS_TABLE).upsert(payload, { onConflict: "user_id" });
+      if(error){ console.warn("Supabase users upsert error", error); return false; }
+      return true;
+    })();
+    _saveUsersToSupabaseFlightByKey.set(usersKey, promise);
+    return await promise.finally(() => {
+      if(_saveUsersToSupabaseFlightByKey.get(usersKey) === promise){
+        _saveUsersToSupabaseFlightByKey.delete(usersKey);
+      }
+    });
   }catch(e){
     console.warn("saveUsersToSupabase failed", e);
     return false;
@@ -509,22 +523,34 @@ async function logLoginToSupabase(payload){
   if(!sb) return false;
   const session = await _ensureSession();
   const userId = session?.user?.id || "anon";
+  const rowTs = payload?.ts || new Date().toISOString();
+  const key = `${userId}|${payload?.email || ""}|${payload?.name || ""}|${payload?.role || "user"}|${rowTs}`;
+  const inFlight = _logLoginToSupabaseFlightByKey.get(key);
+  if(inFlight) return inFlight;
   try{
     const row = {
       user_id: userId,
       email: payload?.email || "",
       name: payload?.name || "",
       role: payload?.role || "user",
-      ts: payload?.ts || new Date().toISOString()
+      ts: rowTs
     };
-    const { error } = await sb.from(SUPABASE_LOGINS_TABLE).insert(row);
-    if(error){
-      console.warn("Supabase logins insert error", error);
-      try{ localStorage.setItem("login_log_last_error", error.message || "insert_failed"); }catch(e){ softCatch(e); }
-      return false;
-    }
-    try{ localStorage.removeItem("login_log_last_error"); }catch(e){ softCatch(e); }
-    return true;
+    const promise = (async()=>{
+      const { error } = await sb.from(SUPABASE_LOGINS_TABLE).insert(row);
+      if(error){
+        console.warn("Supabase logins insert error", error);
+        try{ localStorage.setItem("login_log_last_error", error.message || "insert_failed"); }catch(e){ softCatch(e); }
+        return false;
+      }
+      try{ localStorage.removeItem("login_log_last_error"); }catch(e){ softCatch(e); }
+      return true;
+    })();
+    _logLoginToSupabaseFlightByKey.set(key, promise);
+    return await promise.finally(() => {
+      if(_logLoginToSupabaseFlightByKey.get(key) === promise){
+        _logLoginToSupabaseFlightByKey.delete(key);
+      }
+    });
   }catch(e){
     console.warn("logLoginToSupabase failed", e);
     try{ localStorage.setItem("login_log_last_error", e?.message || "insert_failed"); }catch(err){}
@@ -572,29 +598,46 @@ async function createSessionToken(token, payload, ttlDays=30){
 async function validateSessionToken(token, renewDays=30){
   const sb = _getSupabaseClient();
   if(!sb) return null;
-  try{
   const tokenHash = await sha256Hex(token);
-  const { data, error } = await sb
-    .from(SUPABASE_SESSIONS_TABLE)
-    .select(SUPABASE_SESSIONS_SELECT_COLUMNS)
-      .eq("token_hash", tokenHash)
-      .maybeSingle();
-    if(error){ console.warn("Supabase sessions select error", error); return null; }
-    if(!data) return null;
-    const exp = data.expires_at ? new Date(data.expires_at) : null;
-    if(!exp || isNaN(exp) || exp < new Date()) return null;
-    if(renewDays){
-      const next = new Date();
-      next.setDate(next.getDate() + renewDays);
-      await sb.from(SUPABASE_SESSIONS_TABLE)
-        .update({ expires_at: next.toISOString() })
-        .eq("token_hash", tokenHash);
-    }
-    return { email: data.email || "", name: data.name || "", role: data.role || "user" };
-  }catch(e){
-    console.warn("validateSessionToken failed", e);
-    return null;
+  const now = Date.now();
+  const cached = _validateSessionTokenCacheByHash.get(tokenHash);
+  if(cached && cached.expiresAt > now){
+    return cached.value;
   }
+  const inFlight = _validateSessionTokenFlightByHash.get(tokenHash);
+  if(inFlight) return inFlight;
+  const promise = (async() => {
+    try{
+      const { data, error } = await sb
+        .from(SUPABASE_SESSIONS_TABLE)
+        .select(SUPABASE_SESSIONS_SELECT_COLUMNS)
+          .eq("token_hash", tokenHash)
+          .maybeSingle();
+      if(error){ console.warn("Supabase sessions select error", error); return null; }
+      if(!data) return null;
+      const exp = data.expires_at ? new Date(data.expires_at) : null;
+      if(!exp || isNaN(exp) || exp < new Date()) return null;
+      if(renewDays){
+        const next = new Date();
+        next.setDate(next.getDate() + renewDays);
+        await sb.from(SUPABASE_SESSIONS_TABLE)
+          .update({ expires_at: next.toISOString() })
+          .eq("token_hash", tokenHash);
+      }
+      return { email: data.email || "", name: data.name || "", role: data.role || "user" };
+    }catch(e){
+      console.warn("validateSessionToken failed", e);
+      return null;
+    }
+  })();
+  _validateSessionTokenFlightByHash.set(tokenHash, promise);
+  const result = await promise.finally(() => {
+    if(_validateSessionTokenFlightByHash.get(tokenHash) === promise){
+      _validateSessionTokenFlightByHash.delete(tokenHash);
+    }
+  });
+  _validateSessionTokenCacheByHash.set(tokenHash, { value: result, expiresAt: now + SESSION_TOKEN_VALIDATE_CACHE_MS });
+  return result;
 }
 
 window.createSessionToken = createSessionToken;
@@ -4640,8 +4683,15 @@ let _loadUsersFromSupabaseCache = null;
 let _loadUsersFromSupabaseCacheExpiresAt = 0;
 let _loadLoginsFromSupabaseFlightByKey = new Map();
 let _loadLoginsFromSupabaseCacheByKey = new Map();
+let _saveAppStateToSupabaseFlight = null;
+let _saveAppStateToSupabaseFlightKey = null;
 let _isDataIoReadBusy = false;
 let _isDataIoWriteBusy = false;
+let _saveUsersToSupabaseFlightByKey = new Map();
+let _logLoginToSupabaseFlightByKey = new Map();
+let _validateSessionTokenFlightByHash = new Map();
+let _validateSessionTokenCacheByHash = new Map();
+const SESSION_TOKEN_VALIDATE_CACHE_MS = 30_000;
 
 function showSaveToast(type, title, detail){
   const toast = el("saveToast");
