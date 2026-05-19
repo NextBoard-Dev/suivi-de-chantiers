@@ -2104,6 +2104,8 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   background-color:#b9f0cd !important;
   background-image:none !important;
   box-shadow:inset 0 0 0 1px rgba(34,197,94,0.30) !important;
+  border-left:2px solid #dc2626 !important;
+  border-right:2px solid #dc2626 !important;
 }
 .week-cell.week-today .gantt-week-date{
   color:#14532d;
@@ -2289,11 +2291,11 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 .gantt-today-line{
   position:absolute;
   top:0;
-  width:2px;
+  width:3px;
   background:linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
   opacity:0.95;
   pointer-events:none;
-  z-index:90;
+  z-index:120;
   box-shadow:0 0 0 1px rgba(185,28,28,0.45);
 }
 #viewMaster .tablewrap.gantt-table,

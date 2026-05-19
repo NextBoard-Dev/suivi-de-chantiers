@@ -1793,7 +1793,10 @@ function scrollGanttToCurrentWeek(ganttRoot){
       _removeGanttTodayLine(ganttRoot);
       return;
     }
-    const target = Math.max(0, currentWeekCell.offsetLeft - Math.round(scroller.clientWidth * 0.35));
+    const scrollerRect = scroller.getBoundingClientRect();
+    const cellRect = currentWeekCell.getBoundingClientRect();
+    const deltaLeft = cellRect.left - scrollerRect.left;
+    const target = Math.max(0, scroller.scrollLeft + deltaLeft - Math.round(scroller.clientWidth * 0.42));
     scroller.scrollLeft = target;
     _positionGanttTodayLine(ganttRoot);
   }catch(e){ softCatch(e); }
@@ -1804,6 +1807,10 @@ function scheduleGanttScrollToCurrentWeek(ganttRoot){
     requestAnimationFrame(()=>{
       scrollGanttToCurrentWeek(ganttRoot);
       _positionGanttTodayLine(ganttRoot);
+      setTimeout(()=>{
+        scrollGanttToCurrentWeek(ganttRoot);
+        _positionGanttTodayLine(ganttRoot);
+      }, 120);
     });
   });
 }
