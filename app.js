@@ -384,14 +384,20 @@ window.supabaseLogin = async function(email, password){
 window.saveAppStateToSupabase = async function(stateObj){
   const storage = _buildStorageHealth(stateObj || {});
   if(storage.block){
+    const localSaved = await _saveAppStateToLocalFallback(stateObj || {});
     _setLastWriteMeta("cloud_blocked", new Date().toISOString());
+    if(localSaved){
+      _setLastWriteMeta("local_j", new Date().toISOString());
+    }
     _refreshDataIoBadge();
     showSaveToast(
       "error",
-      "Sauvegarde cloud bloquée",
-      `Limite atteinte (${_formatBytes(storage.bytes)} / ${_formatBytes(SUPABASE_STORAGE_BUDGET_BYTES)}). Faites un export JSON avant d'utiliser un autre PC.`
+      localSaved ? "Sauvegarde locale secours" : "Sauvegarde cloud bloquée",
+      localSaved
+        ? `Cloud bloqué (>500 Mo). Sauvegarde locale faite (${_formatBytes(storage.bytes)}).`
+        : `Cloud bloqué (>500 Mo). Sauvegarde locale impossible (${_formatBytes(storage.bytes)}).`
     );
-    return false;
+    return !!localSaved;
   }
   const stateKey = JSON.stringify(stateObj || {});
   if(_saveAppStateToSupabaseFlight && _saveAppStateToSupabaseFlightKey === stateKey){
@@ -5322,12 +5328,21 @@ function _queueAppStateSupabaseSave(stateObj){
   const storage = _buildStorageHealth(normalized);
   if(storage.block){
     _setLastWriteMeta("cloud_blocked", new Date().toISOString());
+    (async ()=>{
+      const localSaved = await _saveAppStateToLocalFallback(normalized);
+      if(localSaved){
+        _setLastWriteMeta("local_j", new Date().toISOString());
+      }
+      _refreshDataIoBadge();
+      showSaveToast(
+        localSaved ? "ok" : "error",
+        localSaved ? "Sauvegarde locale secours" : "Sauvegarde cloud bloquée",
+        localSaved
+          ? `Cloud bloqué (>500 Mo). Sauvegarde locale faite (${_formatBytes(storage.bytes)}).`
+          : `Cloud bloqué (>500 Mo). Sauvegarde locale impossible (${_formatBytes(storage.bytes)}).`
+      );
+    })().catch(softCatch);
     _refreshDataIoBadge();
-    showSaveToast(
-      "error",
-      "Sauvegarde cloud bloquée",
-      `Dépassement de la limite (${_formatBytes(storage.bytes)} / ${_formatBytes(SUPABASE_STORAGE_BUDGET_BYTES)}). Export JSON avant reprise sur autre machine.`
-    );
     return;
   }
   if(storage.bytes > SUPABASE_STATE_MAX_UPLOAD_BYTES){
