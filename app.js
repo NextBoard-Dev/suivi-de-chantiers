@@ -4877,6 +4877,7 @@ let _rlsSessionsWriteBlocked = false;
 let _rlsLoginsWriteBlocked = false;
 let _loginJournalRefreshTimer = null;
 let _isLoginJournalBusy = false;
+let _lastLoginJournalRangeKey = "";
 
 function _isRlsDenied(error){
   const code = String(error?.code || "").trim();
@@ -6019,6 +6020,11 @@ async function initLoginJournalUI(){
   }
   if(!startInput.value) startInput.value = loginRangeStart;
   if(!endInput.value) endInput.value = loginRangeEnd;
+  const currentRangeKey = `${startInput.value || ""}|${endInput.value || ""}|${loginLogSortKey}|${loginLogSortDir}`;
+  if(_lastLoginJournalRangeKey === currentRangeKey){
+    return;
+  }
+  _lastLoginJournalRangeKey = currentRangeKey;
   const events = await loadLoginsFromSupabase(
     toISODateStart(parseInputDate(startInput.value)),
     toISODateEnd(parseInputDate(endInput.value))
