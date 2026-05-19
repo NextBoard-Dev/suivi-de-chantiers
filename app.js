@@ -4636,7 +4636,6 @@ function load(){
   state = normalizeState(defaultState());
   invalidateCanonicalTimeLogsCache();
   _lastStateLoadSource = "default_state";
-  renderAll();
   clearDirty();
   _scheduleSupabaseAutoLoad();
 
@@ -13120,7 +13119,7 @@ window.addEventListener("popstate",(e)=>{
   renderAll();
   setTimeout(()=> scrollViewToTop(), 0);
 });
-renderAll();
+requestAnimationFrame(()=>{ renderAll(); });
 
 
 // Préparation impression : cartouche + lgende
