@@ -4958,6 +4958,11 @@ function _formatLastSyncLabel(){
     if(!iso) return "Dernière synchro: --";
     const d = new Date(iso);
     if(isNaN(d.getTime())) return "Dernière synchro: --";
+    const now = Date.now();
+    const deltaMs = Math.max(0, now - d.getTime());
+    const deltaMin = Math.floor(deltaMs / 60000);
+    if(deltaMin <= 0) return "Dernière synchro: à l'instant";
+    if(deltaMin < 60) return `Dernière synchro: il y a ${deltaMin} min`;
     const txt = d.toLocaleString("fr-FR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
     return `Dernière synchro: ${txt}`;
   }catch(e){
