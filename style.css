@@ -2368,6 +2368,8 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   justify-content:center;
   gap:0;
   width:100%;
+  overflow:hidden;
+  background:transparent !important;
 }
 .gantt-row{
   display:table-row;
@@ -2391,10 +2393,12 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   flex-direction:row;
   align-items:center;
   gap:0;
-  width:calc(100% + 2px);
-  margin:0 -1px;
+  width:100%;
+  margin:0;
   flex-wrap:nowrap;
   white-space:nowrap;
+  overflow:hidden;
+  background:transparent !important;
 }
 
 /* Charge de travail */
