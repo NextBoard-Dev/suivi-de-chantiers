@@ -4867,6 +4867,7 @@ let _loginLogLastSentAtByKey = new Map();
 let _validateSessionTokenFlightByHash = new Map();
 let _validateSessionTokenCacheByHash = new Map();
 const SESSION_TOKEN_VALIDATE_CACHE_MS = 30_000;
+const LOGIN_JOURNAL_REFRESH_DEBOUNCE_MS = 250;
 let _usersSaveDebounceTimer = null;
 let _usersSavePendingUsers = null;
 let _usersSavePendingSignature = "";
@@ -4874,11 +4875,22 @@ let _usersSaveLastSavedSignature = "";
 let _rlsUsersWriteBlocked = false;
 let _rlsSessionsWriteBlocked = false;
 let _rlsLoginsWriteBlocked = false;
+let _loginJournalRefreshTimer = null;
 
 function _isRlsDenied(error){
   const code = String(error?.code || "").trim();
   const message = String(error?.message || "").toLowerCase();
   return code === "42501" || message.includes("row-level security") || message.includes("permission denied");
+}
+
+function queueLoginJournalRefresh(){
+  if(_loginJournalRefreshTimer){
+    clearTimeout(_loginJournalRefreshTimer);
+  }
+  _loginJournalRefreshTimer = setTimeout(()=>{
+    _loginJournalRefreshTimer = null;
+    initLoginJournalUI();
+  }, LOGIN_JOURNAL_REFRESH_DEBOUNCE_MS);
 }
 
 function showSaveToast(type, title, detail){
@@ -12310,11 +12322,11 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
   });
   el("cfg_login_start")?.addEventListener("change", ()=>{
     loginRangeStart = el("cfg_login_start")?.value || "";
-    initLoginJournalUI();
+    queueLoginJournalRefresh();
   });
   el("cfg_login_end")?.addEventListener("change", ()=>{
     loginRangeEnd = el("cfg_login_end")?.value || "";
-    initLoginJournalUI();
+    queueLoginJournalRefresh();
   });
   document.querySelectorAll(".login-log-sort").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -12325,7 +12337,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
         loginLogSortKey = key;
         loginLogSortDir = "asc";
       }
-      initLoginJournalUI();
+      queueLoginJournalRefresh();
     });
   });
   el("cfg_login_reset")?.addEventListener("click", (e)=>{
@@ -12339,7 +12351,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     const endInput = el("cfg_login_end");
     if(startInput) startInput.value = loginRangeStart;
     if(endInput) endInput.value = loginRangeEnd;
-    initLoginJournalUI();
+    queueLoginJournalRefresh();
   });
   el("btnSave")?.addEventListener("click", async ()=>{
     const currentTask = selectedProjectId && selectedTaskId
