@@ -2744,6 +2744,11 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 .gantt-table tbody tr td{
   background:transparent !important;
 }
+.gantt-table tbody tr td.gantt-cell,
+.gantt-table tbody tr td.gantt-cell:hover{
+  background:transparent !important;
+  background-image:none !important;
+}
 .gantt-table tbody tr td.gantt-col-task,
 .gantt-table tbody tr td.gantt-col-vendor,
 .gantt-table tbody tr td.gantt-col-status{
@@ -2757,6 +2762,11 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 }
 .gantt-table tbody tr.gantt-row.gantt-row-active td{
   background:rgba(241,245,249,0.85) !important;
+}
+.gantt-table tbody tr.gantt-row:hover td.gantt-cell,
+.gantt-table tbody tr.gantt-row.gantt-row-active td.gantt-cell{
+  background:transparent !important;
+  background-image:none !important;
 }
 .gantt-table tbody tr.today-row td{
   background:rgba(254,243,199,0.26) !important;
