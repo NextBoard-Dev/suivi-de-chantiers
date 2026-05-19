@@ -131,6 +131,9 @@ const SUPABASE_STORAGE_WARN_BYTES = Math.floor(SUPABASE_STORAGE_BUDGET_BYTES * 0
 const SUPABASE_STORAGE_CRIT_BYTES = Math.floor(SUPABASE_STORAGE_BUDGET_BYTES * 0.90);
 const SUPABASE_STORAGE_BLOCK_BYTES = SUPABASE_STORAGE_BUDGET_BYTES;
 const SUPABASE_STATE_MAX_UPLOAD_BYTES = 16 * 1024 * 1024;
+const SUPABASE_SYNC_NOTE_MAX_CHARS = 280;
+const SUPABASE_SYNC_USER_EMAIL_MAX_CHARS = 120;
+const SUPABASE_SYNC_USER_NAME_MAX_CHARS = 80;
 function isSingleSourceReadMode(){ return true; }
 
 
@@ -381,10 +384,11 @@ window.supabaseLogin = async function(email, password){
 
 
 
-window.saveAppStateToSupabase = async function(stateObj){
+window.saveAppStateToSupabase = async function(stateObj, options={}){
+  const localFallbackState = normalizeState(options?.fallbackPayload || stateObj || {});
   const storage = _buildStorageHealth(stateObj || {});
   if(storage.block){
-    const localSaved = await _saveAppStateToLocalFallback(stateObj || {});
+    const localSaved = await _saveAppStateToLocalFallback(localFallbackState);
     _setLastWriteMeta("cloud_blocked", new Date().toISOString());
     if(localSaved){
       _setLastWriteMeta("local_j", new Date().toISOString());
@@ -394,8 +398,8 @@ window.saveAppStateToSupabase = async function(stateObj){
       "error",
       localSaved ? "Sauvegarde locale secours" : "Sauvegarde distante bloquée",
       localSaved
-        ? `Synchronisation distante bloquée (>500 Mo). Sauvegarde locale faite (${_formatBytes(storage.bytes)}).`
-        : `Synchronisation distante bloquée (>500 Mo). Sauvegarde locale impossible (${_formatBytes(storage.bytes)}).`
+        ? `Capacité distante atteinte (${_formatBytes(storage.bytes)}). Sauvegarde locale faite.`
+        : `Capacité distante atteinte (${_formatBytes(storage.bytes)}). Sauvegarde locale impossible.`
     );
     return !!localSaved;
   }
@@ -410,7 +414,7 @@ window.saveAppStateToSupabase = async function(stateObj){
     const sb = _getSupabaseClient();
     if(!sb){
       if(!_confirmLocalFallbackSave("service distant indisponible")) return false;
-      const localSaved = await _saveAppStateToLocalFallback(stateObj);
+      const localSaved = await _saveAppStateToLocalFallback(localFallbackState);
       if(localSaved){
         _setLastWriteMeta("local_j", new Date().toISOString());
         _refreshDataIoBadge();
@@ -422,7 +426,7 @@ window.saveAppStateToSupabase = async function(stateObj){
 
     if(!session || !session.user){
       if(!_confirmLocalFallbackSave("session distante indisponible")) return false;
-      const localSaved = await _saveAppStateToLocalFallback(stateObj);
+      const localSaved = await _saveAppStateToLocalFallback(localFallbackState);
       if(localSaved){
         _setLastWriteMeta("local_j", new Date().toISOString());
         _refreshDataIoBadge();
@@ -460,7 +464,7 @@ window.saveAppStateToSupabase = async function(stateObj){
       if(error){
         console.warn("Supabase upsert error", error);
         if(!_confirmLocalFallbackSave("erreur synchronisation")) return false;
-        const localSaved = await _saveAppStateToLocalFallback(stateObj);
+        const localSaved = await _saveAppStateToLocalFallback(localFallbackState);
         if(localSaved){
           _setLastWriteMeta("local_j", new Date().toISOString());
           _refreshDataIoBadge();
@@ -4766,6 +4770,7 @@ let _loadLoginsFromSupabaseCacheByKey = new Map();
 let _stateSaveDebounceTimer = null;
 let _stateSavePendingSignature = "";
 let _stateSavePendingPayload = null;
+let _stateSavePendingFallbackPayload = null;
 let _stateSaveLastSavedSignature = "";
 let _lastStateByteEstimate = 0;
 let _saveAppStateToSupabaseFlight = null;
@@ -4822,6 +4827,7 @@ function stateWriteTargetLabel(){
     const meta = _getLastWriteMeta();
     const target = String(meta?.target || "").toLowerCase();
     if(target === "supabase") return "Données distantes";
+    if(target === "cloud_compact") return "Données distantes";
     if(target === "local_j") return "J (secours)";
     if(target === "cloud_blocked") return "Synchronisation bloquée";
   }catch(e){ softCatch(e); }
@@ -5323,6 +5329,38 @@ function _getStateByteEstimate(stateObj){
   return bytes;
 }
 
+function _compactText(value, maxLen){
+  const text = String(value || "");
+  const limit = Number.isFinite(maxLen) ? Math.max(0, Math.floor(maxLen)) : 0;
+  if(limit <= 0 || text.length <= limit){
+    return text;
+  }
+  return text.slice(0, limit);
+}
+
+function _buildCompactStateForRemoteSync(stateObj){
+  const normalized = normalizeState(stateObj || {});
+  const compact = {
+    projects: Array.isArray(normalized.projects) ? normalized.projects : [],
+    tasks: Array.isArray(normalized.tasks) ? normalized.tasks : [],
+    ui: normalized.ui && typeof normalized.ui === "object" ? normalized.ui : {},
+    timeLogs: [],
+  };
+  const compactTimeLogs = Array.isArray(normalized.timeLogs) ? normalized.timeLogs : [];
+  compact.timeLogs = compactTimeLogs.map((log)=>{
+    return {
+      ...log,
+      userName: _compactText(log?.userName, SUPABASE_SYNC_USER_NAME_MAX_CHARS),
+      userEmail: _compactText(log?.userEmail, SUPABASE_SYNC_USER_EMAIL_MAX_CHARS),
+      note: _compactText(log?.note, SUPABASE_SYNC_NOTE_MAX_CHARS)
+    };
+  });
+  if(Array.isArray(normalized.orphanTimeLogs) && normalized.orphanTimeLogs.length > 0){
+    compact.orphanTimeLogs = [];
+  }
+  return compact;
+}
+
 function _buildStorageHealth(stateObj){
   const bytes = _getStateByteEstimate(stateObj);
   const percent = Math.min(100, Math.round((bytes / SUPABASE_STORAGE_BUDGET_BYTES) * 1000) / 10);
@@ -5333,8 +5371,14 @@ function _buildStorageHealth(stateObj){
 
 function _queueAppStateSupabaseSave(stateObj){
   const normalized = normalizeState(stateObj || {});
+  const compactState = _buildCompactStateForRemoteSync(normalized);
+  const fullBytes = _getStateByteEstimate(normalized);
+  const compactBytes = _getStateByteEstimate(compactState);
+  const canUploadFull = fullBytes <= SUPABASE_STATE_MAX_UPLOAD_BYTES;
+  const canUploadCompact = compactBytes <= SUPABASE_STATE_MAX_UPLOAD_BYTES;
   const storage = _buildStorageHealth(normalized);
-  if(storage.block){
+
+  if(storage.block && !canUploadCompact){
     _setLastWriteMeta("cloud_blocked", new Date().toISOString());
     (async ()=>{
       const localSaved = await _saveAppStateToLocalFallback(normalized);
@@ -5346,37 +5390,56 @@ function _queueAppStateSupabaseSave(stateObj){
         localSaved ? "ok" : "error",
         localSaved ? "Sauvegarde locale secours" : "Sauvegarde distante bloquée",
         localSaved
-          ? `Synchronisation distante bloquée (>500 Mo). Sauvegarde locale faite (${_formatBytes(storage.bytes)}).`
-          : `Synchronisation distante bloquée (>500 Mo). Sauvegarde locale impossible (${_formatBytes(storage.bytes)}).`
+          ? `Capacité distante atteinte (${_formatBytes(storage.bytes)}). Sauvegarde locale faite.`
+          : `Capacité distante atteinte (${_formatBytes(storage.bytes)}). Sauvegarde locale impossible.`
       );
     })().catch(softCatch);
     _refreshDataIoBadge();
     return;
   }
-  if(storage.bytes > SUPABASE_STATE_MAX_UPLOAD_BYTES){
+
+  if(storage.block){
+    _setLastWriteMeta("cloud_compact", new Date().toISOString());
+  }
+
+  if(!canUploadFull && !canUploadCompact){
     showSaveToast(
       "error",
       "Sauvegarde distante bloquée",
-      `L'état est trop volumineux (${_formatBytes(storage.bytes)}). Compression locale uniquement avant export/archivage.`
+      `Payload trop gros (${_formatBytes(fullBytes)}). Sauvegarde locale uniquement.`
     );
+    (async ()=>{ const localSaved = await _saveAppStateToLocalFallback(normalized); if(localSaved){ _setLastWriteMeta("local_j", new Date().toISOString()); _refreshDataIoBadge(); } })().catch(softCatch);
     return;
   }
+  const stateForRemote = canUploadFull ? normalized : compactState;
+  if(!canUploadFull){
+    _refreshDataIoBadge();
+    showSaveToast(
+      "ok",
+      "Sauvegarde distante allégée",
+      `Mode compact activé (${_formatBytes(compactBytes)}) pour réduire la conso réseau.`
+    );
+  }
+
   const sig = _serializeStateSignature(normalized);
   if(!sig || sig === _stateSaveLastSavedSignature) return;
   _stateSavePendingSignature = sig;
-  _stateSavePendingPayload = normalized;
+  _stateSavePendingPayload = stateForRemote;
+  _stateSavePendingFallbackPayload = normalized;
   if(_stateSaveDebounceTimer){
     clearTimeout(_stateSaveDebounceTimer);
   }
   _stateSaveDebounceTimer = setTimeout(()=>{
     const nextSig = _stateSavePendingSignature;
     const payload = _stateSavePendingPayload;
+    const fallbackPayload = _stateSavePendingFallbackPayload;
     _stateSaveDebounceTimer = null;
     _stateSavePendingSignature = "";
     _stateSavePendingPayload = null;
+    _stateSavePendingFallbackPayload = null;
     if(!nextSig || nextSig === _stateSaveLastSavedSignature) return;
     if(!window.saveAppStateToSupabase) return;
-    const promise = window.saveAppStateToSupabase(payload);
+    const promise = window.saveAppStateToSupabase(payload, { fallbackPayload });
     promise.then((ok)=>{
       if(ok) _stateSaveLastSavedSignature = nextSig;
     }).catch(softCatch);
