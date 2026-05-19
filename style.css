@@ -2291,7 +2291,7 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 .gantt-today-line{
   position:absolute;
   top:0;
-  width:3px;
+  width:2px;
   background:linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
   opacity:0.95;
   pointer-events:none;
