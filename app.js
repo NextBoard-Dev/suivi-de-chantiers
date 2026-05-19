@@ -4876,6 +4876,7 @@ let _rlsUsersWriteBlocked = false;
 let _rlsSessionsWriteBlocked = false;
 let _rlsLoginsWriteBlocked = false;
 let _loginJournalRefreshTimer = null;
+let _isLoginJournalBusy = false;
 
 function _isRlsDenied(error){
   const code = String(error?.code || "").trim();
@@ -6004,6 +6005,9 @@ async function initLoginJournalUI(){
   const logBox = el("cfg_login_log");
   const logHead = document.querySelector(".login-log-head");
   if(!wrap || !startInput || !endInput) return;
+  if(_isLoginJournalBusy) return;
+  _isLoginJournalBusy = true;
+  try{
   if(!loginRangeEnd){
     const end = new Date();
     loginRangeEnd = end.toISOString().slice(0,10);
@@ -6058,6 +6062,9 @@ async function initLoginJournalUI(){
       btn.classList.toggle("asc", btn.dataset.sort === loginLogSortKey && loginLogSortDir === "asc");
       btn.classList.toggle("desc", btn.dataset.sort === loginLogSortKey && loginLogSortDir === "desc");
     });
+  }
+  }finally{
+    _isLoginJournalBusy = false;
   }
 }
 
