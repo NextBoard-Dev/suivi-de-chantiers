@@ -129,6 +129,7 @@ const APP_STATE_SAVE_DEBOUNCE_MS = 1800;
 const SUPABASE_STORAGE_BUDGET_BYTES = 500 * 1024 * 1024;
 const SUPABASE_STORAGE_WARN_BYTES = Math.floor(SUPABASE_STORAGE_BUDGET_BYTES * 0.80);
 const SUPABASE_STORAGE_CRIT_BYTES = Math.floor(SUPABASE_STORAGE_BUDGET_BYTES * 0.90);
+const SUPABASE_STORAGE_BLOCK_BYTES = SUPABASE_STORAGE_BUDGET_BYTES;
 const SUPABASE_STATE_MAX_UPLOAD_BYTES = 16 * 1024 * 1024;
 function isSingleSourceReadMode(){ return true; }
 
@@ -354,6 +355,17 @@ window.supabaseLogin = async function(email, password){
 
 
 window.saveAppStateToSupabase = async function(stateObj){
+  const storage = _buildStorageHealth(stateObj || {});
+  if(storage.block){
+    _setLastWriteMeta("cloud_blocked", new Date().toISOString());
+    _refreshDataIoBadge();
+    showSaveToast(
+      "error",
+      "Sauvegarde cloud bloquée",
+      `Limite atteinte (${_formatBytes(storage.bytes)} / ${_formatBytes(SUPABASE_STORAGE_BUDGET_BYTES)}). Faites un export JSON avant d'utiliser un autre PC.`
+    );
+    return false;
+  }
   const stateKey = JSON.stringify(stateObj || {});
   if(_saveAppStateToSupabaseFlight && _saveAppStateToSupabaseFlightKey === stateKey){
     return await _saveAppStateToSupabaseFlight;
@@ -4710,6 +4722,7 @@ function stateWriteTargetLabel(){
     const target = String(meta?.target || "").toLowerCase();
     if(target === "supabase") return "Cloud";
     if(target === "local_j") return "J (secours)";
+    if(target === "cloud_blocked") return "Cloud bloqué";
   }catch(e){ softCatch(e); }
   return "Inconnue";
 }
@@ -5211,12 +5224,23 @@ function _buildStorageHealth(stateObj){
   const bytes = _getStateByteEstimate(stateObj);
   const percent = Math.min(100, Math.round((bytes / SUPABASE_STORAGE_BUDGET_BYTES) * 1000) / 10);
   const warn = bytes >= SUPABASE_STORAGE_CRIT_BYTES ? "danger" : (bytes >= SUPABASE_STORAGE_WARN_BYTES ? "warning" : "");
-  return { bytes, percent, warn };
+  const block = bytes >= SUPABASE_STORAGE_BLOCK_BYTES;
+  return { bytes, percent, warn, block };
 }
 
 function _queueAppStateSupabaseSave(stateObj){
   const normalized = normalizeState(stateObj || {});
   const storage = _buildStorageHealth(normalized);
+  if(storage.block){
+    _setLastWriteMeta("cloud_blocked", new Date().toISOString());
+    _refreshDataIoBadge();
+    showSaveToast(
+      "error",
+      "Sauvegarde cloud bloquée",
+      `Limite atteinte (${_formatBytes(storage.bytes)} / ${_formatBytes(SUPABASE_STORAGE_BUDGET_BYTES)}). Export JSON avant reprise sur autre machine.`
+    );
+    return;
+  }
   if(storage.bytes > SUPABASE_STATE_MAX_UPLOAD_BYTES){
     showSaveToast(
       "error",
