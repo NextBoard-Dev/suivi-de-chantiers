@@ -125,6 +125,7 @@ const SUPABASE_USERS_SELECT_COLUMNS = "users_json, updated_at";
 const SUPABASE_SESSIONS_SELECT_COLUMNS = "email,name,role,expires_at";
 const SUPABASE_LOGINS_SELECT_COLUMNS = "email,name,role,ts";
 const EGRESS_SHORT_CACHE_MS = 600_000;
+const EGRESS_LOGINS_CACHE_MS = 1_200_000;
 const APP_STATE_SAVE_DEBOUNCE_MS = 1800;
 const USERS_SAVE_DEBOUNCE_MS = 1500;
 const LOGIN_LOG_THROTTLE_MS = 300_000;
@@ -792,7 +793,7 @@ async function loadLoginsFromSupabase(startISO, endISO){
       const { data, error } = await q;
       if(error){ console.warn("Supabase logins select error", error); return []; }
       const result = data || [];
-      _loadLoginsFromSupabaseCacheByKey.set(key, { value: result, expiresAt: now + EGRESS_SHORT_CACHE_MS });
+      _loadLoginsFromSupabaseCacheByKey.set(key, { value: result, expiresAt: now + EGRESS_LOGINS_CACHE_MS });
       return result;
     })();
     _loadLoginsFromSupabaseFlightByKey.set(key, promise);
