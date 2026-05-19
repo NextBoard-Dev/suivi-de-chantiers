@@ -5382,13 +5382,22 @@ button,
 .topbar .btn:not(.btn-primary):not(.btn-danger):not(.btn-success),
 .btn:not(.btn-primary):not(.btn-danger):not(.btn-success),
 button.btn:not(.btn-primary):not(.btn-danger):not(.btn-success),
-.btn.btn-ghost,
-.btn.btn-save-idle{
+.btn.btn-ghost{
   background:#edf1f3 !important;
   background-image:none !important;
   border:1px solid rgba(63,97,112,0.16) !important;
   color:#2f4350 !important;
   -webkit-text-fill-color:#2f4350 !important;
+}
+
+.btn.btn-save-idle{
+  background:#e5eaee !important;
+  background-image:none !important;
+  border:1px solid rgba(63,97,112,0.10) !important;
+  color:#5f7380 !important;
+  -webkit-text-fill-color:#5f7380 !important;
+  opacity:.78 !important;
+  cursor:not-allowed !important;
 }
 
 .topbar .btn.btn-primary,
