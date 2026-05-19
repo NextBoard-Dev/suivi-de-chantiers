@@ -4905,6 +4905,8 @@ body,
   border-radius:0 !important;
   box-shadow:none !important;
   overflow:visible !important;
+  padding:0 12px;
+  background:transparent !important;
 }
 .sidebar-logo-wrap::after{
   content:none !important;
@@ -4914,6 +4916,14 @@ body,
   border:none !important;
   border-radius:0 !important;
   box-shadow:none !important;
+  width:auto !important;
+  max-width:100% !important;
+  height:auto !important;
+  object-fit:contain !important;
+  display:block !important;
+  margin:0 auto !important;
+  padding:0 !important;
+  background:transparent !important;
 }
 
 /* Consolidation sidebar: anciens verrous redondants supprimes */
@@ -4927,7 +4937,7 @@ body,
 
 .sidebar-logo-wrap,
 .sidebar-logo-img{
-  background:var(--sidebar-bg-solid) !important;
+  background:transparent !important;
   background-image:none !important;
 }
 
