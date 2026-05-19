@@ -5400,6 +5400,14 @@ button.btn:not(.btn-primary):not(.btn-danger):not(.btn-success),
   cursor:not-allowed !important;
 }
 
+/* Lisibilité tableau maître: alternance de lignes plus nette */
+#viewMaster .table tbody tr:nth-child(2n) td{
+  background:rgba(236, 238, 241, 0.96) !important;
+}
+#viewMaster .table tbody tr:nth-child(2n+1) td{
+  background:rgba(246, 247, 249, 0.96) !important;
+}
+
 .topbar .btn.btn-primary,
 .btn.btn-primary,
 button.btn.btn-primary,
