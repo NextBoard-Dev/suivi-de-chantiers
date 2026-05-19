@@ -127,6 +127,7 @@ const SUPABASE_LOGINS_SELECT_COLUMNS = "email,name,role,ts";
 const EGRESS_SHORT_CACHE_MS = 600_000;
 const APP_STATE_SAVE_DEBOUNCE_MS = 1800;
 const USERS_SAVE_DEBOUNCE_MS = 1500;
+const LOGIN_LOG_THROTTLE_MS = 90_000;
 const SUPABASE_STORAGE_BUDGET_BYTES = 500 * 1024 * 1024;
 const SUPABASE_STORAGE_WARN_BYTES = Math.floor(SUPABASE_STORAGE_BUDGET_BYTES * 0.80);
 const SUPABASE_STORAGE_CRIT_BYTES = Math.floor(SUPABASE_STORAGE_BUDGET_BYTES * 0.90);
@@ -566,6 +567,12 @@ async function logLoginToSupabase(payload){
     try{ localStorage.setItem("login_log_last_error", "sync_unavailable"); }catch(e){ softCatch(e); }
     return false;
   }
+  const dedupeKey = `${userId}|${payload?.email || ""}|${payload?.name || ""}|${payload?.role || "user"}`;
+  const nowMs = Date.now();
+  const lastSentAt = _loginLogLastSentAtByKey.get(dedupeKey) || 0;
+  if((nowMs - lastSentAt) < LOGIN_LOG_THROTTLE_MS){
+    return true;
+  }
   const rowTs = payload?.ts || new Date().toISOString();
   const key = `${userId}|${payload?.email || ""}|${payload?.name || ""}|${payload?.role || "user"}|${rowTs}`;
   const inFlight = _logLoginToSupabaseFlightByKey.get(key);
@@ -590,6 +597,7 @@ async function logLoginToSupabase(payload){
         return false;
       }
       try{ localStorage.removeItem("login_log_last_error"); }catch(e){ softCatch(e); }
+      _loginLogLastSentAtByKey.set(dedupeKey, Date.now());
       return true;
     })();
     _logLoginToSupabaseFlightByKey.set(key, promise);
@@ -4852,6 +4860,7 @@ let _isDataIoReadBusy = false;
 let _isDataIoWriteBusy = false;
 let _saveUsersToSupabaseFlightByKey = new Map();
 let _logLoginToSupabaseFlightByKey = new Map();
+let _loginLogLastSentAtByKey = new Map();
 let _validateSessionTokenFlightByHash = new Map();
 let _validateSessionTokenCacheByHash = new Map();
 const SESSION_TOKEN_VALIDATE_CACHE_MS = 30_000;
