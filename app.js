@@ -5276,7 +5276,7 @@ function _buildStorageHealth(stateObj){
   const bytes = _getStateByteEstimate(stateObj);
   const percent = Math.min(100, Math.round((bytes / SUPABASE_STORAGE_BUDGET_BYTES) * 1000) / 10);
   const warn = bytes >= SUPABASE_STORAGE_CRIT_BYTES ? "danger" : (bytes >= SUPABASE_STORAGE_WARN_BYTES ? "warning" : "");
-  const block = bytes >= SUPABASE_STORAGE_BLOCK_BYTES;
+  const block = bytes > SUPABASE_STORAGE_BLOCK_BYTES;
   return { bytes, percent, warn, block };
 }
 
@@ -5289,7 +5289,7 @@ function _queueAppStateSupabaseSave(stateObj){
     showSaveToast(
       "error",
       "Sauvegarde cloud bloquée",
-      `Limite atteinte (${_formatBytes(storage.bytes)} / ${_formatBytes(SUPABASE_STORAGE_BUDGET_BYTES)}). Export JSON avant reprise sur autre machine.`
+      `Dépassement de la limite (${_formatBytes(storage.bytes)} / ${_formatBytes(SUPABASE_STORAGE_BUDGET_BYTES)}). Export JSON avant reprise sur autre machine.`
     );
     return;
   }
