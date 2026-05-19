@@ -2768,6 +2768,14 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   background:transparent !important;
   background-image:none !important;
 }
+.gantt-table table td.gantt-cell::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:transparent !important;
+  background-image:none !important;
+  pointer-events:none;
+}
 .gantt-table tbody tr.today-row td{
   background:rgba(254,243,199,0.26) !important;
 }
