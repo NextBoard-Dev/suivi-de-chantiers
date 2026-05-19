@@ -4889,6 +4889,8 @@ function _isRlsDenied(error){
 }
 
 function queueLoginJournalRefresh(){
+  const modal = el("configModal");
+  if(modal && modal.classList.contains("hidden")) return;
   if(_loginJournalRefreshTimer){
     clearTimeout(_loginJournalRefreshTimer);
   }
