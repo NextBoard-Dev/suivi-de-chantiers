@@ -2295,7 +2295,7 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   background:linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
   opacity:0.95;
   pointer-events:none;
-  z-index:120;
+  z-index:50;
   box-shadow:0 0 0 1px rgba(185,28,28,0.45);
 }
 #viewMaster .tablewrap.gantt-table,

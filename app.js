@@ -1776,7 +1776,7 @@ function _positionGanttTodayLine(ganttRoot){
   const headerHeight = header ? header.offsetHeight : 0;
   const table = scroller.querySelector("table");
   const bodyHeight = table ? table.offsetHeight : 0;
-  marker.style.left = `${currentWeekCell.offsetLeft}px`;
+  marker.style.left = `${Math.round(currentWeekCell.offsetLeft)}px`;
   marker.style.top = `${headerHeight}px`;
   marker.style.height = `${Math.max(0, bodyHeight - headerHeight)}px`;
 }
