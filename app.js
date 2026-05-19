@@ -6091,14 +6091,13 @@ async function initLoginJournalUI(){
       if(va > vb) return 1 * dir;
       return 0;
     });
-    const html = rows.slice(0, 200).map((ev, idx)=>{
+    const html = rows.slice(0, 200).map((ev)=>{
       const d = ev.ts ? new Date(ev.ts) : null;
       const dateStr = d && !isNaN(d) ? d.toLocaleString("fr-FR") : "";
       const name = ev.name || "";
       const email = ev.email || "";
       const role = (ev.role||"") === "admin" ? "Admin" : "Utilisateur";
-      const delay = Math.min(idx * 24, 300);
-      return `<div class="login-log-row" style="animation-delay:${delay}ms"><span>${dateStr}</span><span>${name}</span><span>${email}</span><span>${role}</span><span>1</span></div>`;
+      return `<div class="login-log-row"><span>${dateStr}</span><span>${name}</span><span>${email}</span><span>${role}</span><span>1</span></div>`;
     }).join("");
     logBox.innerHTML = html || `<div class="login-empty">Aucune connexion dans la période.</div>`;
   }
