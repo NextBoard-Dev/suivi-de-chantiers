@@ -70,6 +70,57 @@ const SUPABASE_TASKS_TABLE = "chantier_tasks";
 const SUPABASE_USERS_TABLE = "dashboard_users";
 const SUPABASE_LOGINS_TABLE = "dashboard_logins";
 const SUPABASE_SESSIONS_TABLE = "dashboard_sessions";
+const SUPABASE_TASKS_SELECT_COLUMNS = [
+  "id",
+  "project_id",
+  "chantier_id",
+  "description",
+  "name",
+  "owner_type",
+  "owner",
+  "internal_tech",
+  "internalTech",
+  "internalTechs",
+  "technician",
+  "tech",
+  "intervenants",
+  "vendor",
+  "start_date",
+  "start",
+  "end_date",
+  "end",
+  "statuses",
+  "status",
+].join(",");
+const SUPABASE_TIME_LOGS_SELECT_COLUMNS = [
+  "id",
+  "task_id",
+  "tache_id",
+  "taskId",
+  "project_id",
+  "chantier_id",
+  "date_key",
+  "date",
+  "log_date",
+  "day",
+  "role_key",
+  "role",
+  "owner_type",
+  "owner",
+  "intervenant_label",
+  "technician",
+  "tech",
+  "internal_tech",
+  "vendor",
+  "minutes",
+  "hours",
+  "note",
+  "comment",
+  "created_date",
+  "created_at",
+  "updated_date",
+  "updated_at",
+].join(",");
 const FEATURE_SINGLE_SOURCE_STATEJSON_KEY = "feature_single_source_statejson_v1";
 function isSingleSourceReadMode(){
   try{
@@ -749,7 +800,7 @@ async function _loadSupabaseTimeLogsRows(sb){
   try{
     const { data, error } = await sb
       .from(SUPABASE_TIME_LOGS_TABLE)
-      .select("*");
+      .select(SUPABASE_TIME_LOGS_SELECT_COLUMNS);
     if(error){
       console.warn("Supabase time logs select error", error);
       return [];
@@ -771,7 +822,7 @@ async function _loadSupabaseTasksRowsByIds(sb, ids){
     try{
       const { data, error } = await sb
         .from(SUPABASE_TASKS_TABLE)
-        .select("*")
+        .select(SUPABASE_TASKS_SELECT_COLUMNS)
         .in("id", chunk);
       if(error){
         console.warn("Supabase tasks select error", error);
@@ -889,63 +940,21 @@ function _mergeStateTimeLogs(stateJson, supabaseRows, supabaseTaskRows){
   return Array.from(map.values());
 }
 
+function _isSupabaseStateMetadataFresh(remoteUpdatedAt){
+  const remoteTs = _safeTs(remoteUpdatedAt);
+  const localTs = _safeTs(_lastCloudStateUpdatedAt);
+  return remoteTs > 0 && localTs > 0 && remoteTs <= localTs;
+}
+
 
 window.loadAppStateFromSupabase = async function(){
+  if(_loadAppStateFromSupabaseFlight) return _loadAppStateFromSupabaseFlight;
 
-  const sb = _getSupabaseClient();
+  const run = async () => {
+    const sb = _getSupabaseClient();
 
-  if(!sb){
-    if(!_confirmLocalFallbackLoad("client cloud indisponible")) return false;
-    const localData = await _loadAppStateFromLocalFallback();
-    if(!localData || !localData.state_json) return false;
-    _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
-    state = normalizeState(localData.state_json || {});
-    invalidateCanonicalTimeLogsCache();
-    _lastStateLoadSource = "local_storage";
-    renderAll();
-    _refreshDataIoBadge();
-    clearDirty();
-    return true;
-  }
-
-
-
-  const session = await _ensureSession();
-
-  if(!session || !session.user){
-    if(!_confirmLocalFallbackLoad("session cloud indisponible")) return false;
-    const localData = await _loadAppStateFromLocalFallback();
-    if(!localData || !localData.state_json) return false;
-    _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
-    state = normalizeState(localData.state_json || {});
-    invalidateCanonicalTimeLogsCache();
-    _lastStateLoadSource = "local_storage";
-    renderAll();
-    _refreshDataIoBadge();
-    clearDirty();
-    return true;
-  }
-
-
-
-  try{
-    _supabaseOwnerFallbackCount = 0;
-
-    const { data, error } = await sb
-
-      .from(SUPABASE_TABLE)
-
-      .select("state_json, updated_at")
-
-      .eq("user_id", session.user.id)
-
-      .maybeSingle();
-
-
-
-    if(error){
-      console.warn("Supabase select error", error);
-      if(!_confirmLocalFallbackLoad("erreur lecture cloud")) return false;
+    if(!sb){
+      if(!_confirmLocalFallbackLoad("client cloud indisponible")) return false;
       const localData = await _loadAppStateFromLocalFallback();
       if(!localData || !localData.state_json) return false;
       _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
@@ -958,8 +967,12 @@ window.loadAppStateFromSupabase = async function(){
       return true;
     }
 
-    if(!data || !data.state_json){
-      if(!_confirmLocalFallbackLoad("aucune donnee cloud")) return false;
+
+
+    const session = await _ensureSession();
+
+    if(!session || !session.user){
+      if(!_confirmLocalFallbackLoad("session cloud indisponible")) return false;
       const localData = await _loadAppStateFromLocalFallback();
       if(!localData || !localData.state_json) return false;
       _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
@@ -971,77 +984,139 @@ window.loadAppStateFromSupabase = async function(){
       clearDirty();
       return true;
     }
-    const localPreferred = await _maybeUseLocalNewerState(data.updated_at);
-    if(localPreferred && localPreferred.state_json){
-      _lastCloudStateUpdatedAt = String(localPreferred.updated_at || "").trim();
-      state = normalizeState(localPreferred.state_json || {});
+
+
+
+    try{
+      _supabaseOwnerFallbackCount = 0;
+
+      if(_lastStateLoadSource === "supabase_cloud" && _isSupabaseStateMetadataFresh(_lastCloudStateUpdatedAt)){
+        const { data: remoteMeta, error: metaError } = await sb
+          .from(SUPABASE_TABLE)
+          .select("updated_at")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        if(metaError){
+          console.warn("Supabase metadata select error", metaError);
+        }else if(_isSupabaseStateMetadataFresh(String(remoteMeta?.updated_at || ""))){
+          return true;
+        }
+      }
+
+      const { data, error } = await sb
+        .from(SUPABASE_TABLE)
+        .select("state_json, updated_at")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+
+      if(error){
+        console.warn("Supabase select error", error);
+        if(!_confirmLocalFallbackLoad("erreur lecture cloud")) return false;
+        const localData = await _loadAppStateFromLocalFallback();
+        if(!localData || !localData.state_json) return false;
+        _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
+        state = normalizeState(localData.state_json || {});
+        invalidateCanonicalTimeLogsCache();
+        _lastStateLoadSource = "local_storage";
+        renderAll();
+        _refreshDataIoBadge();
+        clearDirty();
+        return true;
+      }
+
+      if(!data || !data.state_json){
+        if(!_confirmLocalFallbackLoad("aucune donnee cloud")) return false;
+        const localData = await _loadAppStateFromLocalFallback();
+        if(!localData || !localData.state_json) return false;
+        _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
+        state = normalizeState(localData.state_json || {});
+        invalidateCanonicalTimeLogsCache();
+        _lastStateLoadSource = "local_storage";
+        renderAll();
+        _refreshDataIoBadge();
+        clearDirty();
+        return true;
+      }
+      const localPreferred = await _maybeUseLocalNewerState(data.updated_at);
+      if(localPreferred && localPreferred.state_json){
+        _lastCloudStateUpdatedAt = String(localPreferred.updated_at || "").trim();
+        state = normalizeState(localPreferred.state_json || {});
+        invalidateCanonicalTimeLogsCache();
+        _lastStateLoadSource = "local_storage";
+        renderAll();
+        _refreshDataIoBadge();
+        clearDirty();
+        return true;
+      }
+      _lastCloudStateUpdatedAt = String(data.updated_at || "").trim();
+
+
+
+      // Mode production stable: lecture unique state_json (sans fusion).
+      if(isSingleSourceReadMode()){
+        state = normalizeState(data.state_json || {});
+        invalidateCanonicalTimeLogsCache();
+      }else{
+        const supabaseTimeLogsRows = await _loadSupabaseTimeLogsRows(sb);
+        const stateTaskIds = Array.from(new Set(
+          (Array.isArray(data?.state_json?.tasks) ? data.state_json.tasks : [])
+            .map((t)=>normId(t?.id))
+            .filter(Boolean)
+        ));
+        const supabaseTasksRows = await _loadSupabaseTasksRowsByIds(sb, stateTaskIds);
+        const supabaseTaskIds = Array.from(new Set(supabaseTimeLogsRows.map((r)=>normId(r?.task_id || r?.tache_id || r?.taskId)).filter(Boolean)));
+        const supabaseTaskRowsForLogs = await _loadSupabaseTasksRowsByIds(sb, supabaseTaskIds);
+        const mergedStateJson = {
+          ...(data.state_json || {}),
+          tasks: _mergeStateTasksFromSupabase(data?.state_json, supabaseTasksRows),
+          timeLogs: _mergeStateTimeLogs(data?.state_json, supabaseTimeLogsRows, supabaseTaskRowsForLogs)
+        };
+        state = normalizeState(mergedStateJson);
+        invalidateCanonicalTimeLogsCache();
+      }
+      _lastStateLoadSource = "supabase_cloud";
+
+      renderAll();
+      _refreshDataIoBadge();
+      if(_supabaseOwnerFallbackCount > 0){
+        showSaveToast(
+          "error",
+          "Données invalides (owner)",
+          `${_supabaseOwnerFallbackCount} tâche(s) avec owner invalide détectée(s) depuis Supabase.`
+        );
+      }
+
+      clearDirty();
+
+      return true;
+
+    }catch(e){
+
+      console.warn("loadAppStateFromSupabase failed", e);
+      if(!_confirmLocalFallbackLoad("exception cloud")) return false;
+
+      const localData = await _loadAppStateFromLocalFallback();
+      if(!localData || !localData.state_json) return false;
+      _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
+      state = normalizeState(localData.state_json || {});
       invalidateCanonicalTimeLogsCache();
       _lastStateLoadSource = "local_storage";
       renderAll();
       _refreshDataIoBadge();
       clearDirty();
       return true;
+
     }
-    _lastCloudStateUpdatedAt = String(data.updated_at || "").trim();
+  };
 
-
-
-    // Mode production stable: lecture unique state_json (sans fusion).
-    if(isSingleSourceReadMode()){
-      state = normalizeState(data.state_json || {});
-      invalidateCanonicalTimeLogsCache();
-    }else{
-      const supabaseTimeLogsRows = await _loadSupabaseTimeLogsRows(sb);
-      const stateTaskIds = Array.from(new Set(
-        (Array.isArray(data?.state_json?.tasks) ? data.state_json.tasks : [])
-          .map((t)=>normId(t?.id))
-          .filter(Boolean)
-      ));
-      const supabaseTasksRows = await _loadSupabaseTasksRowsByIds(sb, stateTaskIds);
-      const supabaseTaskIds = Array.from(new Set(supabaseTimeLogsRows.map((r)=>normId(r?.task_id || r?.tache_id || r?.taskId)).filter(Boolean)));
-      const supabaseTaskRowsForLogs = await _loadSupabaseTasksRowsByIds(sb, supabaseTaskIds);
-      const mergedStateJson = {
-        ...(data.state_json || {}),
-        tasks: _mergeStateTasksFromSupabase(data?.state_json, supabaseTasksRows),
-        timeLogs: _mergeStateTimeLogs(data?.state_json, supabaseTimeLogsRows, supabaseTaskRowsForLogs)
-      };
-      state = normalizeState(mergedStateJson);
-      invalidateCanonicalTimeLogsCache();
+  const promise = run();
+  _loadAppStateFromSupabaseFlight = promise.finally(() => {
+    if(_loadAppStateFromSupabaseFlight === promise){
+      _loadAppStateFromSupabaseFlight = null;
     }
-    _lastStateLoadSource = "supabase_cloud";
-
-    renderAll();
-    _refreshDataIoBadge();
-    if(_supabaseOwnerFallbackCount > 0){
-      showSaveToast(
-        "error",
-        "Données invalides (owner)",
-        `${_supabaseOwnerFallbackCount} tâche(s) avec owner invalide détectée(s) depuis Supabase.`
-      );
-    }
-
-    clearDirty();
-
-    return true;
-
-  }catch(e){
-
-    console.warn("loadAppStateFromSupabase failed", e);
-    if(!_confirmLocalFallbackLoad("exception cloud")) return false;
-
-    const localData = await _loadAppStateFromLocalFallback();
-    if(!localData || !localData.state_json) return false;
-    _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
-    state = normalizeState(localData.state_json || {});
-    invalidateCanonicalTimeLogsCache();
-    _lastStateLoadSource = "local_storage";
-    renderAll();
-    _refreshDataIoBadge();
-    clearDirty();
-    return true;
-
-  }
-
+  });
+  return promise;
 };
 
 
@@ -1049,6 +1124,7 @@ window.loadAppStateFromSupabase = async function(){
 // ---- auto-load apres 1er rendu UI ----
 
 let _supabaseAutoloadScheduled = false;
+let _loadAppStateFromSupabaseFlight = null;
 function _scheduleSupabaseAutoLoad(){
   if(_supabaseAutoloadScheduled) return;
   _supabaseAutoloadScheduled = true;

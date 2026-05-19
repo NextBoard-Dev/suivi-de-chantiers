@@ -1469,7 +1469,7 @@ async function writeTimeLogWithColumnPruning({ mode, payload, id = "", onConflic
     } else {
       query = query.update(currentPayload).eq("id", id);
     }
-    const { data, error } = await query.select("*").maybeSingle();
+    const { data, error } = await query.select(TIME_LOG_SELECT_COLUMNS).maybeSingle();
     if (!error) return data || null;
 
     const missingColumn = extractMissingColumnName(error);
@@ -1571,7 +1571,7 @@ async function fetchTimeLogById(id = "") {
   try {
     const { data, error } = await supabase
       .from(timeLogsTable)
-      .select("*")
+      .select(TIME_LOG_SELECT_COLUMNS)
       .eq("id", targetId)
       .maybeSingle();
     if (error) return null;
@@ -1682,7 +1682,7 @@ export const dataClient = {
         assertProjectWriteAllowed();
         const payload = normalizeChantierInput(input);
 
-        const { data, error } = await supabase.from(projectsTable).insert(payload).select("*").single();
+        const { data, error } = await supabase.from(projectsTable).insert(payload).select(PROJECT_SELECT_COLUMNS).single();
         if (error) throw buildError("Creation chantier impossible", error);
 
         return mapProjectRow(data);
@@ -1692,7 +1692,7 @@ export const dataClient = {
         assertProjectWriteAllowed();
         const { data: current, error: readError } = await supabase
           .from(projectsTable)
-          .select("*")
+          .select(PROJECT_SELECT_COLUMNS)
           .eq("id", id)
           .maybeSingle();
 
@@ -1706,7 +1706,7 @@ export const dataClient = {
           .from(projectsTable)
           .update(payload)
           .eq("id", id)
-          .select("*")
+          .select(PROJECT_SELECT_COLUMNS)
           .single();
 
         if (error) throw buildError("Mise a jour chantier impossible", error);
@@ -1807,7 +1807,7 @@ export const dataClient = {
         const normalized = normalizeTaskInput(input);
         const payload = taskPayloadForWrite(normalized);
 
-        const { data, error } = await supabase.from(tasksTable).insert(payload).select("*").single();
+        const { data, error } = await supabase.from(tasksTable).insert(payload).select(TASK_SELECT_COLUMNS).single();
         if (error) throw buildError("Creation tache impossible", error);
 
         const mapped = mapTaskRow(data);
@@ -1820,7 +1820,7 @@ export const dataClient = {
         assertTaskWriteAllowed();
         const { data: current, error: readError } = await supabase
           .from(tasksTable)
-          .select("*")
+          .select(TASK_SELECT_COLUMNS)
           .eq("id", id)
           .maybeSingle();
 
@@ -1835,7 +1835,7 @@ export const dataClient = {
           .from(tasksTable)
           .update(payload)
           .eq("id", id)
-          .select("*")
+          .select(TASK_SELECT_COLUMNS)
           .single();
 
         if (error) throw buildError("Mise a jour tache impossible", error);
