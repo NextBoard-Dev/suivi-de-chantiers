@@ -2932,7 +2932,10 @@ function openConfigModal(){
     if(wrap) wrap.style.display = role==="admin" ? "block" : "none";
     loginSection.style.display = "";
   }
-  if(role==="admin") initLoginJournalUI();
+  if(role==="admin"){
+    _lastLoginJournalRangeKey = "";
+    setTimeout(()=>{ queueLoginJournalRefresh(); }, 220);
+  }
   initVacationConfigUI();
   modal.classList.remove("hidden");
   modal.style.display = "flex";
