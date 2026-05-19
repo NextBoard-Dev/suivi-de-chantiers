@@ -2292,10 +2292,10 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   position:absolute;
   top:0;
   width:1px;
-  background:linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
-  opacity:0.95;
+  background:#dc2626;
+  opacity:0.9;
   pointer-events:none;
-  z-index:50;
+  z-index:65;
   box-shadow:none;
 }
 #viewMaster .tablewrap.gantt-table,

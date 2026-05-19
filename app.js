@@ -1822,11 +1822,13 @@ function _positionGanttTodayLine(ganttRoot){
   const weekdayIndex = Math.max(0, Math.min(6, Math.round((today - monday) / 86400000)));
   const dayColumn = currentWeekCell.offsetWidth / 7;
   const markerLeft = currentWeekCell.offsetLeft + (weekdayIndex * dayColumn);
+  const markerWidth = 1;
 
   const header = scroller.querySelector("thead");
   const headerHeight = header ? header.offsetHeight : 0;
   const table = scroller.querySelector("table");
   const bodyHeight = table ? table.offsetHeight : 0;
+  marker.style.width = `${markerWidth}px`;
   marker.style.left = `${Math.round(markerLeft)}px`;
   marker.style.top = `${headerHeight}px`;
   marker.style.height = `${Math.max(0, bodyHeight - headerHeight)}px`;
@@ -1844,10 +1846,14 @@ function scrollGanttToCurrentWeek(ganttRoot){
       _removeGanttTodayLine(ganttRoot);
       return;
     }
-    const scrollerRect = scroller.getBoundingClientRect();
-    const cellRect = currentWeekCell.getBoundingClientRect();
-    const deltaLeft = cellRect.left - scrollerRect.left;
-    const target = Math.max(0, scroller.scrollLeft + deltaLeft - Math.round(scroller.clientWidth * 0.42));
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const monday = new Date(today.getTime());
+    monday.setDate(today.getDate()-((today.getDay()+6)%7));
+    const weekdayIndex = Math.max(0, Math.min(6, Math.round((today - monday) / 86400000)));
+    const dayColumn = currentWeekCell.offsetWidth / 7;
+    const markerXInWeek = currentWeekCell.offsetLeft + (weekdayIndex * dayColumn);
+    const target = Math.max(0, Math.round(markerXInWeek - (scroller.clientWidth * 0.42)));
     scroller.scrollLeft = target;
     _positionGanttTodayLine(ganttRoot);
   }catch(e){ softCatch(e); }
