@@ -5,5 +5,8 @@ LATEST_MAJOR_SNAPSHOT.txt
 archives/snapshots_old/
 archives/backup_copies/
 
+desktop.ini
+
 sauvegarde github/
-sauvegarde github/
+backup-*.bundle
+backup-*.bundle
