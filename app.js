@@ -510,6 +510,7 @@ window.saveAppStateToSupabase = async function(stateObj, options={}){
 
 // ---- users (simple, sans RLS) ----
 async function saveUsersToSupabase(users){
+  if(_rlsUsersWriteBlocked) return false;
   const sb = _getSupabaseClient();
   if(!sb) return false;
   const session = await _ensureSession();
@@ -526,7 +527,14 @@ async function saveUsersToSupabase(users){
     };
     const promise = (async()=>{
       const { error } = await sb.from(SUPABASE_USERS_TABLE).upsert(payload, { onConflict: "user_id" });
-      if(error){ console.warn("Supabase users upsert error", error); return false; }
+      if(error){
+        if(_isRlsDenied(error)){
+          _rlsUsersWriteBlocked = true;
+          return false;
+        }
+        console.warn("Supabase users upsert error", error);
+        return false;
+      }
       return true;
     })();
     _saveUsersToSupabaseFlightByKey.set(usersKey, promise);
@@ -545,6 +553,10 @@ async function saveUsersToSupabase(users){
 window.saveUsersToSupabase = saveUsersToSupabase;
 
 async function logLoginToSupabase(payload){
+  if(_rlsLoginsWriteBlocked){
+    try{ localStorage.setItem("login_log_last_error", "sync_unavailable"); }catch(e){ softCatch(e); }
+    return false;
+  }
   const sb = _getSupabaseClient();
   if(!sb) return false;
   const session = await _ensureSession();
@@ -568,7 +580,11 @@ async function logLoginToSupabase(payload){
     const promise = (async()=>{
       const { error } = await sb.from(SUPABASE_LOGINS_TABLE).insert(row);
       if(error){
-        console.warn("Supabase logins insert error", error);
+        if(_isRlsDenied(error)){
+          _rlsLoginsWriteBlocked = true;
+        }else{
+          console.warn("Supabase logins insert error", error);
+        }
         try{ localStorage.setItem("login_log_last_error", "sync_unavailable"); }catch(e){ softCatch(e); }
         return false;
       }
@@ -602,6 +618,7 @@ async function sha256Hex(str){
 }
 
 async function createSessionToken(token, payload, ttlDays=30){
+  if(_rlsSessionsWriteBlocked) return false;
   const sb = _getSupabaseClient();
   if(!sb) return false;
   const tokenHash = await sha256Hex(token);
@@ -617,7 +634,14 @@ async function createSessionToken(token, payload, ttlDays=30){
       created_at: new Date().toISOString()
     };
     const { error } = await sb.from(SUPABASE_SESSIONS_TABLE).insert(row);
-    if(error){ console.warn("Supabase sessions insert error", error); return false; }
+    if(error){
+      if(_isRlsDenied(error)){
+        _rlsSessionsWriteBlocked = true;
+        return false;
+      }
+      console.warn("Supabase sessions insert error", error);
+      return false;
+    }
     return true;
   }catch(e){
     console.warn("createSessionToken failed", e);
@@ -674,6 +698,7 @@ window.createSessionToken = createSessionToken;
 window.validateSessionToken = validateSessionToken;
 
 async function cleanupExpiredSessions(){
+  if(_rlsSessionsWriteBlocked) return false;
   const sb = _getSupabaseClient();
   if(!sb) return false;
   try{
@@ -682,7 +707,14 @@ async function cleanupExpiredSessions(){
       .from(SUPABASE_SESSIONS_TABLE)
       .delete()
       .lt("expires_at", nowIso);
-    if(error){ console.warn("Supabase sessions cleanup error", error); return false; }
+    if(error){
+      if(_isRlsDenied(error)){
+        _rlsSessionsWriteBlocked = true;
+        return false;
+      }
+      console.warn("Supabase sessions cleanup error", error);
+      return false;
+    }
     return true;
   }catch(e){
     console.warn("cleanupExpiredSessions failed", e);
@@ -4786,6 +4818,15 @@ let _logLoginToSupabaseFlightByKey = new Map();
 let _validateSessionTokenFlightByHash = new Map();
 let _validateSessionTokenCacheByHash = new Map();
 const SESSION_TOKEN_VALIDATE_CACHE_MS = 30_000;
+let _rlsUsersWriteBlocked = false;
+let _rlsSessionsWriteBlocked = false;
+let _rlsLoginsWriteBlocked = false;
+
+function _isRlsDenied(error){
+  const code = String(error?.code || "").trim();
+  const message = String(error?.message || "").toLowerCase();
+  return code === "42501" || message.includes("row-level security") || message.includes("permission denied");
+}
 
 function showSaveToast(type, title, detail){
   const toast = el("saveToast");
