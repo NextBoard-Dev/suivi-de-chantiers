@@ -125,6 +125,7 @@ const SUPABASE_USERS_SELECT_COLUMNS = "users_json, updated_at";
 const SUPABASE_SESSIONS_SELECT_COLUMNS = "email,name,role,expires_at";
 const SUPABASE_LOGINS_SELECT_COLUMNS = "email,name,role,ts";
 const EGRESS_SHORT_CACHE_MS = 45_000;
+const APP_STATE_SAVE_DEBOUNCE_MS = 1800;
 function isSingleSourceReadMode(){ return true; }
 
 
@@ -4646,6 +4647,10 @@ let _loadUsersFromSupabaseCache = null;
 let _loadUsersFromSupabaseCacheExpiresAt = 0;
 let _loadLoginsFromSupabaseFlightByKey = new Map();
 let _loadLoginsFromSupabaseCacheByKey = new Map();
+let _stateSaveDebounceTimer = null;
+let _stateSavePendingSignature = "";
+let _stateSavePendingPayload = null;
+let _stateSaveLastSavedSignature = "";
 let _saveAppStateToSupabaseFlight = null;
 let _saveAppStateToSupabaseFlightKey = null;
 let _isDataIoReadBusy = false;
@@ -5167,6 +5172,39 @@ function animateCardsInView(viewId){
   });
 }
 
+function _serializeStateSignature(stateObj){
+  try{
+    return JSON.stringify(stateObj || {});
+  }catch(e){
+    softCatch(e);
+    return "";
+  }
+}
+
+function _queueAppStateSupabaseSave(stateObj){
+  const normalized = normalizeState(stateObj || {});
+  const sig = _serializeStateSignature(normalized);
+  if(!sig || sig === _stateSaveLastSavedSignature) return;
+  _stateSavePendingSignature = sig;
+  _stateSavePendingPayload = normalized;
+  if(_stateSaveDebounceTimer){
+    clearTimeout(_stateSaveDebounceTimer);
+  }
+  _stateSaveDebounceTimer = setTimeout(()=>{
+    const nextSig = _stateSavePendingSignature;
+    const payload = _stateSavePendingPayload;
+    _stateSaveDebounceTimer = null;
+    _stateSavePendingSignature = "";
+    _stateSavePendingPayload = null;
+    if(!nextSig || nextSig === _stateSaveLastSavedSignature) return;
+    if(!window.saveAppStateToSupabase) return;
+    const promise = window.saveAppStateToSupabase(payload);
+    promise.then((ok)=>{
+      if(ok) _stateSaveLastSavedSignature = nextSig;
+    }).catch(softCatch);
+  }, APP_STATE_SAVE_DEBOUNCE_MS);
+}
+
 function saveState(opts={}){
 
   try{
@@ -5193,10 +5231,7 @@ function saveState(opts={}){
     const skipSupabase = !!opts.skipSupabase || _suppressSupabaseSave;
     if(!skipSupabase){
       try{
-        if(window.saveAppStateToSupabase){
-          // Sauvegarde cloud en format natif PC pour eviter toute perte de champs.
-          window.saveAppStateToSupabase(normalized);
-        }
+        _queueAppStateSupabaseSave(normalized);
       }catch(e){ softCatch(e); }
     }
 
