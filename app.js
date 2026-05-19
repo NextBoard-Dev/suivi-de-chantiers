@@ -6035,6 +6035,8 @@ function buildLoginHeatmap(container, events, rangeStart, rangeEnd){
 }
 
 async function initLoginJournalUI(){
+  const modal = el("configModal");
+  if(modal && modal.classList.contains("hidden")) return;
   const wrap = el("cfg_login_heatmap");
   const startInput = el("cfg_login_start");
   const endInput = el("cfg_login_end");
