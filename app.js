@@ -125,36 +125,7 @@ const SUPABASE_USERS_SELECT_COLUMNS = "users_json, updated_at";
 const SUPABASE_SESSIONS_SELECT_COLUMNS = "email,name,role,expires_at";
 const SUPABASE_LOGINS_SELECT_COLUMNS = "email,name,role,ts";
 const EGRESS_SHORT_CACHE_MS = 45_000;
-const FEATURE_SINGLE_SOURCE_STATEJSON_KEY = "feature_single_source_statejson_v1";
-function isSingleSourceReadMode(){
-  try{
-    // Mode force pour stabiliser la prod PC : toujours lecture unique state_json.
-    localStorage.setItem(FEATURE_SINGLE_SOURCE_STATEJSON_KEY, "1");
-    return true;
-  }catch(e){
-    return true;
-  }
-}
-window.setSingleSourceReadMode = function(enabled){
-  try{
-    // OFF desactive en prod PC pour eviter toute re-fusion legacy.
-    localStorage.setItem(FEATURE_SINGLE_SOURCE_STATEJSON_KEY, "1");
-    return true;
-  }catch(e){
-    return false;
-  }
-};
-function refreshSingleSourceToggleButton(){
-  const btn = el("btnToggleSingleSource");
-  if(!btn) return;
-  const enabled = isSingleSourceReadMode();
-  btn.textContent = `Lecture unique: ${enabled ? "ON" : "OFF"}`;
-  btn.title = enabled
-    ? "Mode stable (state_json seul)"
-    : "Mode legacy (fusion state_json + tables)";
-  btn.classList.toggle("btn-primary", enabled);
-  btn.classList.toggle("btn-ghost", !enabled);
-}
+function isSingleSourceReadMode(){ return true; }
 
 
 // Auto-login (pour ne PAS utiliser la console)
@@ -2058,9 +2029,6 @@ function updateRoleUI(){
   const role = getCurrentRole();
   const cfgBtn = el("btnConfig");
   if(cfgBtn) cfgBtn.style.display = (role==="admin") ? "inline-flex" : "none";
-  const sourceBtn = el("btnToggleSingleSource");
-  if(sourceBtn) sourceBtn.style.display = (role==="admin") ? "inline-flex" : "none";
-  refreshSingleSourceToggleButton();
   const topUser = el("topbarUser");
   if(topUser){
     const name = sessionStorage.getItem("current_user") || "Invité";
@@ -2093,11 +2061,6 @@ function applyRoleAccess(){
   if(cfgBtn){
     cfgBtn.style.display = role==="admin" ? "inline-flex" : "none";
   }
-  const sourceBtn = el("btnToggleSingleSource");
-  if(sourceBtn){
-    sourceBtn.style.display = role==="admin" ? "inline-flex" : "none";
-  }
-  refreshSingleSourceToggleButton();
   const switchBtn = el("btnSwitchUser");
   if(switchBtn){
     switchBtn.style.display = "inline-flex";
@@ -11694,17 +11657,6 @@ function bind(){
   el("btnConfig")?.addEventListener("click", ()=>{
     if(getCurrentRole()!=="admin") return;
     openConfigModal();
-  });
-  el("btnToggleSingleSource")?.addEventListener("click", ()=>{
-    if(getCurrentRole()!=="admin") return;
-    const ok = window.setSingleSourceReadMode(true);
-    if(!ok){
-      showSaveToast("error", "Mode lecture", "Impossible de changer le mode.");
-      return;
-    }
-    refreshSingleSourceToggleButton();
-    showSaveToast("ok", "Mode lecture", "Lecture unique ON (mode legacy OFF desactive) · rechargement...");
-    setTimeout(()=>{ window.location.reload(); }, 250);
   });
   el("btnHelp")?.addEventListener("click", ()=>{
     const modal = el("helpModal");
