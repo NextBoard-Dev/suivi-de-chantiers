@@ -5414,6 +5414,7 @@ button.btn.btn-primary,
   border:1px solid #365563 !important;
   color:#ffffff !important;
   -webkit-text-fill-color:#ffffff !important;
+  box-shadow:0 0 0 2px rgba(63,97,112,0.16) !important;
 }
 
 /* Feedback clic global: micro animation de confirmation */
