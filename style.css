@@ -4971,7 +4971,10 @@ body,
 .sidebar .section-filters .input{
   background:var(--sidebar-bg-solid) !important;
   background-image:none !important;
-  border:1px solid rgba(63,97,112,0.22) !important;
+  border:1px solid rgba(47,67,80,0.32) !important;
+  color:#1f3440 !important;
+  -webkit-text-fill-color:#1f3440 !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.42) !important;
 }
 
 /* Harmonisation visuelle modale heures (UI uniquement) */
