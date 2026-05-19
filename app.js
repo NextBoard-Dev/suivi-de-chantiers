@@ -4955,18 +4955,18 @@ function _formatLastSyncLabel(){
   try{
     const meta = _getLastWriteMeta();
     const iso = String(meta?.updated_at || "").trim();
-    if(!iso) return "Dernière synchro: --";
+    if(!iso) return "Synchro: --";
     const d = new Date(iso);
-    if(isNaN(d.getTime())) return "Dernière synchro: --";
+    if(isNaN(d.getTime())) return "Synchro: --";
     const now = Date.now();
     const deltaMs = Math.max(0, now - d.getTime());
     const deltaMin = Math.floor(deltaMs / 60000);
-    if(deltaMin <= 0) return "Dernière synchro: à l'instant";
-    if(deltaMin < 60) return `Dernière synchro: il y a ${deltaMin} min`;
+    if(deltaMin <= 0) return "Synchro: à l'instant";
+    if(deltaMin < 60) return `Synchro: il y a ${deltaMin} min`;
     const txt = d.toLocaleString("fr-FR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
-    return `Dernière synchro: ${txt}`;
+    return `Synchro: ${txt}`;
   }catch(e){
-    return "Dernière synchro: --";
+    return "Synchro: --";
   }
 }
 
