@@ -548,7 +548,11 @@ async function logLoginToSupabase(payload){
   const sb = _getSupabaseClient();
   if(!sb) return false;
   const session = await _ensureSession();
-  const userId = session?.user?.id || "anon";
+  const userId = session?.user?.id || "";
+  if(!userId){
+    try{ localStorage.setItem("login_log_last_error", "sync_unavailable"); }catch(e){ softCatch(e); }
+    return false;
+  }
   const rowTs = payload?.ts || new Date().toISOString();
   const key = `${userId}|${payload?.email || ""}|${payload?.name || ""}|${payload?.role || "user"}|${rowTs}`;
   const inFlight = _logLoginToSupabaseFlightByKey.get(key);
@@ -565,7 +569,7 @@ async function logLoginToSupabase(payload){
       const { error } = await sb.from(SUPABASE_LOGINS_TABLE).insert(row);
       if(error){
         console.warn("Supabase logins insert error", error);
-        try{ localStorage.setItem("login_log_last_error", error.message || "insert_failed"); }catch(e){ softCatch(e); }
+        try{ localStorage.setItem("login_log_last_error", "sync_unavailable"); }catch(e){ softCatch(e); }
         return false;
       }
       try{ localStorage.removeItem("login_log_last_error"); }catch(e){ softCatch(e); }
@@ -579,7 +583,7 @@ async function logLoginToSupabase(payload){
     });
   }catch(e){
     console.warn("logLoginToSupabase failed", e);
-    try{ localStorage.setItem("login_log_last_error", e?.message || "insert_failed"); }catch(err){}
+    try{ localStorage.setItem("login_log_last_error", "sync_unavailable"); }catch(err){}
     return false;
   }
 }
@@ -5909,7 +5913,7 @@ async function initLoginJournalUI(){
     const err = localStorage.getItem("login_log_last_error");
     const count = (events || []).length;
     if(err){
-      status.textContent = `Erreur synchronisation: ${err}`;
+      status.textContent = "Synchronisation du journal indisponible.";
     }else{
       const extra = info?.clamped ? " (affichage limité à 30 jours)" : "";
       status.textContent = `Connexions: ${count}${extra}`;
