@@ -4871,6 +4871,7 @@ let _validateSessionTokenFlightByHash = new Map();
 let _validateSessionTokenCacheByHash = new Map();
 const SESSION_TOKEN_VALIDATE_CACHE_MS = 30_000;
 const LOGIN_JOURNAL_REFRESH_DEBOUNCE_MS = 250;
+const LOGIN_JOURNAL_REFRESH_MIN_INTERVAL_MS = 20_000;
 let _usersSaveDebounceTimer = null;
 let _usersSavePendingUsers = null;
 let _usersSavePendingSignature = "";
@@ -4881,6 +4882,7 @@ let _rlsLoginsWriteBlocked = false;
 let _loginJournalRefreshTimer = null;
 let _isLoginJournalBusy = false;
 let _lastLoginJournalRangeKey = "";
+let _lastLoginJournalRefreshAt = 0;
 
 function _isRlsDenied(error){
   const code = String(error?.code || "").trim();
@@ -4891,6 +4893,8 @@ function _isRlsDenied(error){
 function queueLoginJournalRefresh(){
   const modal = el("configModal");
   if(modal && modal.classList.contains("hidden")) return;
+  const now = Date.now();
+  if(now - _lastLoginJournalRefreshAt < LOGIN_JOURNAL_REFRESH_MIN_INTERVAL_MS) return;
   if(_loginJournalRefreshTimer){
     clearTimeout(_loginJournalRefreshTimer);
   }
@@ -6033,6 +6037,7 @@ async function initLoginJournalUI(){
   if(!wrap || !startInput || !endInput) return;
   if(_isLoginJournalBusy) return;
   _isLoginJournalBusy = true;
+  _lastLoginJournalRefreshAt = Date.now();
   try{
   if(!loginRangeEnd){
     const end = new Date();
