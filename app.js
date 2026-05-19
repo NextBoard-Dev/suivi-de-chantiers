@@ -1350,7 +1350,7 @@ function _scheduleSupabaseAutoLoad(){
       }
       loadUsersFromSupabase();
     }catch(e){ softCatch(e); }
-  }, 120);
+  }, 1200);
 }
 
 
