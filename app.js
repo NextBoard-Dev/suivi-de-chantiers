@@ -141,6 +141,7 @@ const SUPABASE_AUTO_EMAIL = "sebastien_duc@outlook.fr";
 const SUPABASE_AUTO_PASSWORD = "Mililum@tt45";
 const LOCAL_FALLBACK_AGENT_BASE = "http://127.0.0.1:8765";
 const LOCAL_WRITE_META_KEY = "dashboard_last_write_meta_v1";
+const LOCAL_CLOUD_STATE_CACHE_KEY = "dashboard_cloud_state_cache_v1";
 
 async function _saveAppStateToLocalFallback(stateObj){
   try{
@@ -193,6 +194,32 @@ function _setLastWriteMeta(target, updatedAt){
       updated_at: String(updatedAt || new Date().toISOString()).trim()
     }));
   }catch(e){ softCatch(e); }
+}
+
+function _readCloudStateCache(){
+  try{
+    const raw = localStorage.getItem(LOCAL_CLOUD_STATE_CACHE_KEY);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    if(!parsed || typeof parsed !== "object") return null;
+    if(!parsed.updated_at || !parsed.state_json) return null;
+    return parsed;
+  }catch(e){
+    return null;
+  }
+}
+
+function _saveCloudStateCache(stateJson, updatedAt){
+  try{
+    if(!updatedAt || !stateJson) return;
+    localStorage.setItem(LOCAL_CLOUD_STATE_CACHE_KEY, JSON.stringify({
+      updated_at: String(updatedAt || "").trim(),
+      state_json: stateJson
+    }));
+  }catch(e){
+    // Si le cache local est plein, on ignore sans bloquer l'UI.
+    softCatch(e);
+  }
 }
 
 function _confirmLocalFallbackLoad(reason){
@@ -435,6 +462,7 @@ window.saveAppStateToSupabase = async function(stateObj){
         return !!localSaved;
       }
       _lastCloudStateUpdatedAt = String(payload.updated_at || "");
+      _saveCloudStateCache(stateObj, payload.updated_at);
       await _markLocalFallbackSynced();
       _setLastWriteMeta("supabase", payload.updated_at);
       _refreshDataIoBadge();
@@ -1071,7 +1099,8 @@ window.loadAppStateFromSupabase = async function(){
     try{
       _supabaseOwnerFallbackCount = 0;
 
-      if(_lastStateLoadSource === "supabase_cloud" && _isSupabaseStateMetadataFresh(_lastCloudStateUpdatedAt)){
+      const localCloudCache = _readCloudStateCache();
+      if(localCloudCache && localCloudCache.state_json && localCloudCache.updated_at){
         const { data: remoteMeta, error: metaError } = await sb
           .from(SUPABASE_TABLE)
           .select("updated_at")
@@ -1079,7 +1108,14 @@ window.loadAppStateFromSupabase = async function(){
           .maybeSingle();
         if(metaError){
           console.warn("Supabase metadata select error", metaError);
-        }else if(_isSupabaseStateMetadataFresh(String(remoteMeta?.updated_at || ""))){
+        }else if(String(remoteMeta?.updated_at || "").trim() === String(localCloudCache.updated_at || "").trim()){
+          _lastCloudStateUpdatedAt = String(localCloudCache.updated_at || "").trim();
+          state = normalizeState(localCloudCache.state_json || {});
+          invalidateCanonicalTimeLogsCache();
+          _lastStateLoadSource = "supabase_cloud";
+          renderAll();
+          _refreshDataIoBadge();
+          clearDirty();
           return true;
         }
       }
@@ -1131,6 +1167,7 @@ window.loadAppStateFromSupabase = async function(){
         return true;
       }
       _lastCloudStateUpdatedAt = String(data.updated_at || "").trim();
+      _saveCloudStateCache(data.state_json || {}, data.updated_at);
 
 
 
