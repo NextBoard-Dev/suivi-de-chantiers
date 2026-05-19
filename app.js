@@ -5431,9 +5431,11 @@ function updateSaveButton(){
   buttons.forEach((btn)=>{
     btn.classList.remove("btn-danger","btn-success");
     if(unsavedChanges){
+      btn.disabled = false;
       btn.classList.add("btn-primary");
       btn.classList.remove("btn-save-idle");
     }else{
+      btn.disabled = true;
       btn.classList.remove("btn-primary");
       btn.classList.add("btn-save-idle");
     }
