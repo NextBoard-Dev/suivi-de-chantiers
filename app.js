@@ -13472,9 +13472,6 @@ window.addEventListener("popstate",(e)=>{
   renderAll();
   setTimeout(()=> scrollViewToTop(), 0);
 });
-requestAnimationFrame(()=>{ renderAll(); });
-
-
 // Préparation impression : cartouche + lgende
 
 function setPrintPageFormat(size, margin="6mm"){
