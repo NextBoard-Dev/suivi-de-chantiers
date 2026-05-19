@@ -121,6 +121,10 @@ const SUPABASE_TIME_LOGS_SELECT_COLUMNS = [
   "updated_date",
   "updated_at",
 ].join(",");
+const SUPABASE_USERS_SELECT_COLUMNS = "users_json, updated_at";
+const SUPABASE_SESSIONS_SELECT_COLUMNS = "email,name,role,expires_at";
+const SUPABASE_LOGINS_SELECT_COLUMNS = "email,name,role,ts";
+const EGRESS_SHORT_CACHE_MS = 45_000;
 const FEATURE_SINGLE_SOURCE_STATEJSON_KEY = "feature_single_source_statejson_v1";
 function isSingleSourceReadMode(){
   try{
@@ -374,6 +378,9 @@ window.supabaseLogin = async function(email, password){
 
 
 window.saveAppStateToSupabase = async function(stateObj){
+  _isDataIoWriteBusy = true;
+  _refreshDataIoBadge();
+  try{
   const sb = _getSupabaseClient();
   if(!sb){
     if(!_confirmLocalFallbackSave("client cloud indisponible")) return false;
@@ -465,6 +472,10 @@ window.saveAppStateToSupabase = async function(stateObj){
 
     return false;
 
+  } 
+  }finally{
+    _isDataIoWriteBusy = false;
+    _refreshDataIoBadge();
   }
 
 };
@@ -562,10 +573,10 @@ async function validateSessionToken(token, renewDays=30){
   const sb = _getSupabaseClient();
   if(!sb) return null;
   try{
-    const tokenHash = await sha256Hex(token);
-    const { data, error } = await sb
-      .from(SUPABASE_SESSIONS_TABLE)
-      .select("email,name,role,expires_at")
+  const tokenHash = await sha256Hex(token);
+  const { data, error } = await sb
+    .from(SUPABASE_SESSIONS_TABLE)
+    .select(SUPABASE_SESSIONS_SELECT_COLUMNS)
       .eq("token_hash", tokenHash)
       .maybeSingle();
     if(error){ console.warn("Supabase sessions select error", error); return null; }
@@ -613,15 +624,35 @@ async function loadLoginsFromSupabase(startISO, endISO){
   const session = await _ensureSession();
   const userId = session?.user?.id || null;
   try{
+    const key = `${startISO || ""}|${endISO || ""}|${userId || "anon"}`;
+    const now = Date.now();
+    const cache = _loadLoginsFromSupabaseCacheByKey.get(key);
+    if(cache && cache.expiresAt > now){
+      return cache.value;
+    }
+    const inflight = _loadLoginsFromSupabaseFlightByKey.get(key);
+    if(inflight) return inflight;
+
     let q = sb.from(SUPABASE_LOGINS_TABLE)
-      .select("email,name,role,ts")
+      .select(SUPABASE_LOGINS_SELECT_COLUMNS)
       .order("ts", { ascending: true });
     if(userId) q = q.in("user_id", [userId, "anon"]);
     if(startISO) q = q.gte("ts", startISO);
     if(endISO) q = q.lte("ts", endISO);
-    const { data, error } = await q;
-    if(error){ console.warn("Supabase logins select error", error); return []; }
-    return data || [];
+
+    const promise = (async () => {
+      const { data, error } = await q;
+      if(error){ console.warn("Supabase logins select error", error); return []; }
+      const result = data || [];
+      _loadLoginsFromSupabaseCacheByKey.set(key, { value: result, expiresAt: now + EGRESS_SHORT_CACHE_MS });
+      return result;
+    })();
+    _loadLoginsFromSupabaseFlightByKey.set(key, promise);
+    return await promise.finally(() => {
+      if(_loadLoginsFromSupabaseFlightByKey.get(key) === promise){
+        _loadLoginsFromSupabaseFlightByKey.delete(key);
+      }
+    });
   }catch(e){
     console.warn("loadLoginsFromSupabase failed", e);
     return [];
@@ -634,26 +665,43 @@ async function loadUsersFromSupabase(force=false){
   const session = await _ensureSession();
   if(!session || !session.user) return false;
   try{
+    const userId = session.user.id;
+    const now = Date.now();
+    if(!force && _loadUsersFromSupabaseCache && _loadUsersFromSupabaseCache.userId === userId && _loadUsersFromSupabaseCacheExpiresAt > now){
+      return _loadUsersFromSupabaseCache.value;
+    }
+    if(_loadUsersFromSupabaseFlight) return _loadUsersFromSupabaseFlight;
+
     if(!force){
       const localUsers = loadUsers();
       if(localUsers && localUsers.length > 0 && !isHostedGithubPages()){
         return false;
       }
     }
-    const { data, error } = await sb
-      .from(SUPABASE_USERS_TABLE)
-      .select("users_json, updated_at")
-      .eq("user_id", session.user.id)
-      .maybeSingle();
-    if(error){ console.warn("Supabase users select error", error); return false; }
-    if(!data || !data.users_json) return false;
-    const normalized = (data.users_json || []).map(u=>{
-      if(!u || typeof u !== "object") return u;      if(!u.id) u.id = uid();
-      return u;
+    const promise = (async () => {
+      const { data, error } = await sb
+        .from(SUPABASE_USERS_TABLE)
+        .select(SUPABASE_USERS_SELECT_COLUMNS)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if(error){ console.warn("Supabase users select error", error); return false; }
+      if(!data || !data.users_json) return false;
+      const normalized = (data.users_json || []).map(u=>{
+        if(!u || typeof u !== "object") return u;        if(!u.id) u.id = uid();
+        return u;
+      });
+      saveUsers(normalized);
+      if(typeof window.populateLoginUsers === "function") window.populateLoginUsers();
+      _loadUsersFromSupabaseCache = { userId, value: true };
+      _loadUsersFromSupabaseCacheExpiresAt = now + EGRESS_SHORT_CACHE_MS;
+      return true;
+    })();
+    _loadUsersFromSupabaseFlight = promise;
+    return await promise.finally(() => {
+      if(_loadUsersFromSupabaseFlight === promise){
+        _loadUsersFromSupabaseFlight = null;
+      }
     });
-    saveUsers(normalized);
-    if(typeof window.populateLoginUsers === "function") window.populateLoginUsers();
-    return true;
   }catch(e){
     console.warn("loadUsersFromSupabase failed", e);
     return false;
@@ -951,6 +999,8 @@ window.loadAppStateFromSupabase = async function(){
   if(_loadAppStateFromSupabaseFlight) return _loadAppStateFromSupabaseFlight;
 
   const run = async () => {
+    _isDataIoReadBusy = true;
+    _refreshDataIoBadge();
     const sb = _getSupabaseClient();
 
     if(!sb){
@@ -1107,6 +1157,9 @@ window.loadAppStateFromSupabase = async function(){
       clearDirty();
       return true;
 
+    }finally{
+      _isDataIoReadBusy = false;
+      _refreshDataIoBadge();
     }
   };
 
@@ -4582,6 +4635,13 @@ function load(){
 
 let _suppressSupabaseSave = false;
 let _saveToastTimer = null;
+let _loadUsersFromSupabaseFlight = null;
+let _loadUsersFromSupabaseCache = null;
+let _loadUsersFromSupabaseCacheExpiresAt = 0;
+let _loadLoginsFromSupabaseFlightByKey = new Map();
+let _loadLoginsFromSupabaseCacheByKey = new Map();
+let _isDataIoReadBusy = false;
+let _isDataIoWriteBusy = false;
 
 function showSaveToast(type, title, detail){
   const toast = el("saveToast");
@@ -4633,12 +4693,15 @@ function stateWriteTargetLabel(){
 }
 
 function buildDataIoBadgeHtml(){
+  const isReadBusy = !!_isDataIoReadBusy;
+  const isWriteBusy = !!_isDataIoWriteBusy;
   const readLabel = stateLoadSourceLabel(_lastStateLoadSource);
   const writeLabel = stateWriteTargetLabel();
   const readClass = readLabel === "Cloud" ? "is-cloud" : (readLabel.includes("secours") ? "is-fallback" : "is-unknown");
   const writeClass = writeLabel === "Cloud" ? "is-cloud" : (writeLabel.includes("secours") ? "is-fallback" : "is-unknown");
   const tip = "Lecture = source chargee au demarrage | Ecriture = derniere cible de sauvegarde";
-  return `<span class="data-io-badge" title="${attrEscape(tip)}"><img src="assets/database4.ico" alt="" aria-hidden="true"><span class="data-io-item ${readClass}">Lecture: ${attrEscape(readLabel)}</span><span class="data-io-sep">|</span><span class="data-io-item ${writeClass}">Ecriture: ${attrEscape(writeLabel)}</span></span>`;
+  const syncClass = (isReadBusy || isWriteBusy) ? " is-syncing" : "";
+  return `<span class="data-io-badge${syncClass}" title="${attrEscape(tip)}"><img src="assets/database4.ico" alt="" aria-hidden="true"><span class="data-io-item ${readClass}">Lect.: ${attrEscape(readLabel)}${isReadBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${writeClass}">Ecr.: ${attrEscape(writeLabel)}${isWriteBusy ? " (sync)" : ""}</span></span>`;
 }
 
 function collectDataQualityIssues(currentState=state){

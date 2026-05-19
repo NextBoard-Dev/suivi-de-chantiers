@@ -4051,10 +4051,18 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
   vertical-align:middle;
 }
 
+.data-io-badge.is-syncing{
+  border-color: rgba(37,99,235,.55);
+  box-shadow: 0 0 0 1px rgba(37,99,235,.22);
+  animation: dataIoSyncPulse 1.2s ease-in-out infinite;
+}
+
 .data-io-badge img{
   width:14px;
   height:14px;
   object-fit:contain;
+  animation: dataIoDatabaseSpin 1.6s linear infinite;
+  animation-play-state: paused;
 }
 
 .data-io-sep{
@@ -4085,6 +4093,25 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
   background:rgba(71,85,105,.14);
   border-color:rgba(71,85,105,.45);
   color:#334155;
+}
+
+.data-io-badge.is-syncing .data-io-item{
+  border-color: rgba(37,99,235,.45);
+}
+
+.data-io-badge.is-syncing img{
+  animation-play-state: running;
+}
+
+@keyframes dataIoSyncPulse{
+  0% { box-shadow: 0 0 0 0 rgba(37,99,235,.25); }
+  70% { box-shadow: 0 0 0 6px rgba(37,99,235,0); }
+  100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
+}
+
+@keyframes dataIoDatabaseSpin{
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .topbar-controls{
