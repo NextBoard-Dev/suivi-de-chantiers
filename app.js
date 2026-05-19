@@ -4951,6 +4951,20 @@ function stateWriteTargetLabel(){
   return "Inconnue";
 }
 
+function _formatLastSyncLabel(){
+  try{
+    const meta = _getLastWriteMeta();
+    const iso = String(meta?.updated_at || "").trim();
+    if(!iso) return "Dernière synchro: --";
+    const d = new Date(iso);
+    if(isNaN(d.getTime())) return "Dernière synchro: --";
+    const txt = d.toLocaleString("fr-FR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+    return `Dernière synchro: ${txt}`;
+  }catch(e){
+    return "Dernière synchro: --";
+  }
+}
+
 function buildDataIoBadgeHtml(){
   const isReadBusy = !!_isDataIoReadBusy;
   const isWriteBusy = !!_isDataIoWriteBusy;
@@ -4965,7 +4979,8 @@ function buildDataIoBadgeHtml(){
   const storageLabel = `Stockage: ${storage.percent}%`;
   const tip = `Lecture = source chargée au démarrage | Ecriture = derniere cible de synchronisation | Estimation: ${_formatBytes(storage.bytes)} sur ${_formatBytes(SUPABASE_STORAGE_BUDGET_BYTES)}`;
   const syncClass = (isReadBusy || isWriteBusy) ? " is-syncing" : "";
-  return `<span class="data-io-badge${syncClass}" title="${attrEscape(tip)}"><img src="assets/database4.ico" alt="" aria-hidden="true"><span class="data-io-item ${readClass}">Lect.: ${attrEscape(readLabel)}${isReadBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${writeClass}">Ecr.: ${attrEscape(writeLabel)}${isWriteBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${storageClass}">${attrEscape(storageLabel)} (${attrEscape(_formatBytes(storage.bytes))})</span></span>`;
+  const lastSyncLabel = _formatLastSyncLabel();
+  return `<span class="data-io-badge${syncClass}" title="${attrEscape(tip)}"><img src="assets/database4.ico" alt="" aria-hidden="true"><span class="data-io-item ${readClass}">Lect.: ${attrEscape(readLabel)}${isReadBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${writeClass}">Ecr.: ${attrEscape(writeLabel)}${isWriteBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${storageClass}">${attrEscape(storageLabel)} (${attrEscape(_formatBytes(storage.bytes))})</span><span class="data-io-sep">|</span><span class="data-io-item is-unknown">${attrEscape(lastSyncLabel)}</span></span>`;
 }
 
 function collectDataQualityIssues(currentState=state){
