@@ -5407,6 +5407,9 @@ button.btn:not(.btn-primary):not(.btn-danger):not(.btn-success),
 #viewMaster .table tbody tr:nth-child(2n+1) td{
   background:rgba(246, 247, 249, 0.96) !important;
 }
+#viewMaster .table tbody tr:hover td{
+  background:rgba(224, 235, 245, 0.98) !important;
+}
 
 .topbar .btn.btn-primary,
 .btn.btn-primary,
