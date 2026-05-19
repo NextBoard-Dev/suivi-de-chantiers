@@ -4976,6 +4976,17 @@ body,
   -webkit-text-fill-color:#1f3440 !important;
   box-shadow:inset 0 1px 0 rgba(255,255,255,0.42) !important;
 }
+.sidebar #filterSite::placeholder,
+.sidebar #filterProject::placeholder,
+.sidebar #filterStatus::placeholder,
+.sidebar #filterSearch::placeholder,
+.sidebar #filterStartAfter::placeholder,
+.sidebar #filterEndBefore::placeholder,
+.sidebar .section-filters input::placeholder,
+.sidebar .section-filters .input::placeholder{
+  color:rgba(31,52,64,0.68) !important;
+  -webkit-text-fill-color:rgba(31,52,64,0.68) !important;
+}
 
 /* Harmonisation visuelle modale heures (UI uniquement) */
 #hoursTaskModal .modal-card.hours-modal-compact{
