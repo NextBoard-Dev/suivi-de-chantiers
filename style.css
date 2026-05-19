@@ -4095,6 +4095,18 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
   color:#334155;
 }
 
+.data-io-item.is-warning{
+  background:rgba(234,179,8,.16);
+  border-color:rgba(202,138,4,.45);
+  color:#854d0e;
+}
+
+.data-io-item.is-danger{
+  background:rgba(239,68,68,.15);
+  border-color:rgba(220,38,38,.45);
+  color:#991b1b;
+}
+
 .data-io-badge.is-syncing .data-io-item{
   border-color: rgba(37,99,235,.45);
 }

@@ -126,6 +126,10 @@ const SUPABASE_SESSIONS_SELECT_COLUMNS = "email,name,role,expires_at";
 const SUPABASE_LOGINS_SELECT_COLUMNS = "email,name,role,ts";
 const EGRESS_SHORT_CACHE_MS = 45_000;
 const APP_STATE_SAVE_DEBOUNCE_MS = 1800;
+const SUPABASE_STORAGE_BUDGET_BYTES = 500 * 1024 * 1024;
+const SUPABASE_STORAGE_WARN_BYTES = Math.floor(SUPABASE_STORAGE_BUDGET_BYTES * 0.80);
+const SUPABASE_STORAGE_CRIT_BYTES = Math.floor(SUPABASE_STORAGE_BUDGET_BYTES * 0.90);
+const SUPABASE_STATE_MAX_UPLOAD_BYTES = 16 * 1024 * 1024;
 function isSingleSourceReadMode(){ return true; }
 
 
@@ -4651,6 +4655,7 @@ let _stateSaveDebounceTimer = null;
 let _stateSavePendingSignature = "";
 let _stateSavePendingPayload = null;
 let _stateSaveLastSavedSignature = "";
+let _lastStateByteEstimate = 0;
 let _saveAppStateToSupabaseFlight = null;
 let _saveAppStateToSupabaseFlightKey = null;
 let _isDataIoReadBusy = false;
@@ -4717,9 +4722,12 @@ function buildDataIoBadgeHtml(){
   const writeLabel = stateWriteTargetLabel();
   const readClass = readLabel === "Cloud" ? "is-cloud" : (readLabel.includes("secours") ? "is-fallback" : "is-unknown");
   const writeClass = writeLabel === "Cloud" ? "is-cloud" : (writeLabel.includes("secours") ? "is-fallback" : "is-unknown");
-  const tip = "Lecture = source chargee au demarrage | Ecriture = derniere cible de sauvegarde";
+  const storage = _buildStorageHealth(state || {});
+  const storageClass = storage.warn === "danger" ? "is-danger" : (storage.warn === "warning" ? "is-warning" : "is-cloud");
+  const storageLabel = `Stockage: ${storage.percent}%`;
+  const tip = `Lecture = source chargee au demarrage | Ecriture = derniere cible de sauvegarde | Estimation: ${_formatBytes(storage.bytes)} sur ${_formatBytes(SUPABASE_STORAGE_BUDGET_BYTES)}`;
   const syncClass = (isReadBusy || isWriteBusy) ? " is-syncing" : "";
-  return `<span class="data-io-badge${syncClass}" title="${attrEscape(tip)}"><img src="assets/database4.ico" alt="" aria-hidden="true"><span class="data-io-item ${readClass}">Lect.: ${attrEscape(readLabel)}${isReadBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${writeClass}">Ecr.: ${attrEscape(writeLabel)}${isWriteBusy ? " (sync)" : ""}</span></span>`;
+  return `<span class="data-io-badge${syncClass}" title="${attrEscape(tip)}"><img src="assets/database4.ico" alt="" aria-hidden="true"><span class="data-io-item ${readClass}">Lect.: ${attrEscape(readLabel)}${isReadBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${writeClass}">Ecr.: ${attrEscape(writeLabel)}${isWriteBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${storageClass}">${attrEscape(storageLabel)} (${attrEscape(_formatBytes(storage.bytes))})</span></span>`;
 }
 
 function collectDataQualityIssues(currentState=state){
@@ -5181,8 +5189,43 @@ function _serializeStateSignature(stateObj){
   }
 }
 
+function _formatBytes(bytes){
+  const n = Number(bytes || 0);
+  if(!n || !Number.isFinite(n) || n <= 0) return "0 Ko";
+  const units = ["Ko","Mo","Go"];
+  let value = n / 1024;
+  let unit = 0;
+  while(value >= 1024 && unit < units.length - 1){
+    value /= 1024;
+    unit += 1;
+  }
+  return `${Math.round(value * 10) / 10} ${units[unit]}`;
+}
+
+function _getStateByteEstimate(stateObj){
+  const bytes = estimateStateBytes(stateObj || {});
+  _lastStateByteEstimate = bytes;
+  return bytes;
+}
+
+function _buildStorageHealth(stateObj){
+  const bytes = _getStateByteEstimate(stateObj);
+  const percent = Math.min(100, Math.round((bytes / SUPABASE_STORAGE_BUDGET_BYTES) * 1000) / 10);
+  const warn = bytes >= SUPABASE_STORAGE_CRIT_BYTES ? "danger" : (bytes >= SUPABASE_STORAGE_WARN_BYTES ? "warning" : "");
+  return { bytes, percent, warn };
+}
+
 function _queueAppStateSupabaseSave(stateObj){
   const normalized = normalizeState(stateObj || {});
+  const storage = _buildStorageHealth(normalized);
+  if(storage.bytes > SUPABASE_STATE_MAX_UPLOAD_BYTES){
+    showSaveToast(
+      "error",
+      "Sauvegarde cloud bloquée",
+      `L'état est trop volumineux (${_formatBytes(storage.bytes)}). Compression locale uniquement avant export/archivage.`
+    );
+    return;
+  }
   const sig = _serializeStateSignature(normalized);
   if(!sig || sig === _stateSaveLastSavedSignature) return;
   _stateSavePendingSignature = sig;
@@ -5212,8 +5255,7 @@ function saveState(opts={}){
     const normalized = normalizeState(state || {});
     state = normalized;
     state.lastUpdate = Date.now();
-    const serialized = JSON.stringify(normalized);
-    runtimePerf.lastStateBytes = new Blob([serialized]).size;
+    runtimePerf.lastStateBytes = _getStateByteEstimate(normalized);
     runtimePerf.lastSaveMs = Math.max(0, performance.now() - t0);
     runtimePerf.lastSaveAt = new Date().toISOString();
     refreshStateSegmentationDiagnostics(normalized);
@@ -5234,6 +5276,7 @@ function saveState(opts={}){
         _queueAppStateSupabaseSave(normalized);
       }catch(e){ softCatch(e); }
     }
+    _refreshDataIoBadge();
 
   }catch(e){
 
