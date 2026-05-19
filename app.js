@@ -412,6 +412,7 @@ window.saveAppStateToSupabase = async function(stateObj, options={}){
 
   const run = async () => {
     _isDataIoWriteBusy = true;
+    updateSaveButton();
     _refreshDataIoBadge();
     const sb = _getSupabaseClient();
     if(!sb){
@@ -502,6 +503,7 @@ window.saveAppStateToSupabase = async function(stateObj, options={}){
       _saveAppStateToSupabaseFlightKey = null;
     }
     _isDataIoWriteBusy = false;
+    updateSaveButton();
     _refreshDataIoBadge();
   });
   _saveAppStateToSupabaseFlight = promise;
@@ -5592,9 +5594,14 @@ function updateSaveButton(){
   ];
   const buttons = saveButtonIds.map((id)=>el(id)).filter(Boolean);
   if(!buttons.length) return;
+  const isSaving = !!_isDataIoWriteBusy;
   buttons.forEach((btn)=>{
     btn.classList.remove("btn-danger","btn-success");
-    if(unsavedChanges){
+    if(isSaving){
+      btn.disabled = true;
+      btn.classList.remove("btn-primary");
+      btn.classList.add("btn-save-idle");
+    }else if(unsavedChanges){
       btn.disabled = false;
       btn.classList.add("btn-primary");
       btn.classList.remove("btn-save-idle");
