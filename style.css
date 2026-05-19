@@ -4919,8 +4919,8 @@ body,
   border:none !important;
   border-radius:0 !important;
   box-shadow:none !important;
-  width:auto !important;
-  max-width:100% !important;
+  width:calc(100% - 14px) !important;
+  max-width:none !important;
   height:auto !important;
   object-fit:contain !important;
   display:block !important;
