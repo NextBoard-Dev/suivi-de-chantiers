@@ -1749,6 +1749,38 @@ function scrollViewToTop(){
   });
 }
 
+function _removeGanttTodayLine(ganttRoot){
+  const existing = ganttRoot?.querySelector(".gantt-today-line");
+  if(existing) existing.remove();
+}
+
+function _positionGanttTodayLine(ganttRoot){
+  if(!ganttRoot) return;
+  const scroller = ganttRoot.querySelector(".tablewrap.gantt-table");
+  if(!scroller) return;
+  const currentWeekCell = scroller.querySelector("th.week-cell.week-today");
+  if(!currentWeekCell){
+    _removeGanttTodayLine(ganttRoot);
+    return;
+  }
+
+  let marker = scroller.querySelector(".gantt-today-line");
+  if(!marker){
+    marker = document.createElement("div");
+    marker.className = "gantt-today-line";
+    marker.setAttribute("aria-hidden", "true");
+    scroller.appendChild(marker);
+  }
+
+  const header = scroller.querySelector("thead");
+  const headerHeight = header ? header.offsetHeight : 0;
+  const table = scroller.querySelector("table");
+  const bodyHeight = table ? table.offsetHeight : 0;
+  marker.style.left = `${currentWeekCell.offsetLeft}px`;
+  marker.style.top = `${headerHeight}px`;
+  marker.style.height = `${Math.max(0, bodyHeight - headerHeight)}px`;
+}
+
 // verrouille la position de la sidebar une fois la mise en page stabilisée
 
 function scrollGanttToCurrentWeek(ganttRoot){
@@ -1757,9 +1789,13 @@ function scrollGanttToCurrentWeek(ganttRoot){
     const scroller = ganttRoot.querySelector(".tablewrap.gantt-table");
     if(!scroller) return;
     const currentWeekCell = scroller.querySelector("th.week-cell.week-today");
-    if(!currentWeekCell) return;
+    if(!currentWeekCell){
+      _removeGanttTodayLine(ganttRoot);
+      return;
+    }
     const target = Math.max(0, currentWeekCell.offsetLeft - Math.round(scroller.clientWidth * 0.35));
     scroller.scrollLeft = target;
+    _positionGanttTodayLine(ganttRoot);
   }catch(e){ softCatch(e); }
 }
 
@@ -1767,6 +1803,7 @@ function scheduleGanttScrollToCurrentWeek(ganttRoot){
   requestAnimationFrame(()=>{
     requestAnimationFrame(()=>{
       scrollGanttToCurrentWeek(ganttRoot);
+      _positionGanttTodayLine(ganttRoot);
     });
   });
 }

@@ -2284,6 +2284,17 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   overflow-x:auto !important;
   overflow-y:auto !important;
   scrollbar-width:auto !important;
+  position:relative;
+}
+.gantt-today-line{
+  position:absolute;
+  top:0;
+  width:2px;
+  background:linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
+  opacity:0.95;
+  pointer-events:none;
+  z-index:90;
+  box-shadow:0 0 0 1px rgba(185,28,28,0.45);
 }
 #viewMaster .tablewrap.gantt-table,
 #viewProject .tablewrap.gantt-table{
