@@ -666,6 +666,10 @@ async function createSessionToken(token, payload, ttlDays=30){
   const sb = _getSupabaseClient();
   if(!sb) return false;
   const tokenHash = await sha256Hex(token);
+  const lastSentAt = _createSessionLastSentAtByHash.get(tokenHash) || 0;
+  if(Date.now() - lastSentAt < SESSION_CREATE_THROTTLE_MS){
+    return true;
+  }
   const expires = new Date();
   expires.setDate(expires.getDate() + (ttlDays || 30));
   try{
@@ -686,6 +690,7 @@ async function createSessionToken(token, payload, ttlDays=30){
       console.warn("Supabase sessions insert error", error);
       return false;
     }
+    _createSessionLastSentAtByHash.set(tokenHash, Date.now());
     return true;
   }catch(e){
     console.warn("createSessionToken failed", e);
@@ -4869,7 +4874,9 @@ let _logLoginToSupabaseFlightByKey = new Map();
 let _loginLogLastSentAtByKey = new Map();
 let _validateSessionTokenFlightByHash = new Map();
 let _validateSessionTokenCacheByHash = new Map();
+let _createSessionLastSentAtByHash = new Map();
 const SESSION_TOKEN_VALIDATE_CACHE_MS = 30_000;
+const SESSION_CREATE_THROTTLE_MS = 60_000;
 const LOGIN_JOURNAL_REFRESH_DEBOUNCE_MS = 250;
 const LOGIN_JOURNAL_REFRESH_MIN_INTERVAL_MS = 20_000;
 let _usersSaveDebounceTimer = null;
