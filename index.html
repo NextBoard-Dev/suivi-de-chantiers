@@ -2322,6 +2322,16 @@
 
   window.refreshLoginUsers = refreshLoginUsers;
 
+  function deferNonCritical(task, timeoutMs){
+    const delay = Number.isFinite(timeoutMs) ? Math.max(0, timeoutMs) : 1200;
+    const run = ()=>{ try{ task(); }catch(e){} };
+    if(typeof window.requestIdleCallback === "function"){
+      window.requestIdleCallback(run, { timeout: delay });
+      return;
+    }
+    setTimeout(run, delay);
+  }
+
   function ensureDefaultAdmin(){
 
     if(localStorage.getItem(SKIP_DEFAULT_ADMIN_FLAG)==="1") return;
@@ -2646,7 +2656,7 @@
 
   ensureDefaultAdmin();
 
-  refreshLoginUsers();
+  deferNonCritical(()=>{ refreshLoginUsers(); }, 900);
 
   sessionStorage.removeItem("unlocked");
 
@@ -2712,7 +2722,7 @@
 
   })();
 
-  try{ window.cleanupExpiredSessions?.(); }catch(e){}
+  deferNonCritical(()=>{ try{ window.cleanupExpiredSessions?.(); }catch(e){} }, 2600);
 
   // remember me : pré-remplissage email + mot de passe
 
