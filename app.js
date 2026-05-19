@@ -10234,19 +10234,68 @@ let _hoursSummaryRefreshHandle = 0;
 let _hoursSummaryQueuedTask = null;
 let _hoursSummaryDraftEntriesCache = null;
 let _hoursSummaryDraftTaskId = "";
+let _hoursSummaryDraftBaseSignature = "";
 function _cacheHoursDraftEntriesForTask(task, entries){
   const taskId = String(task?.id || "");
   if(!taskId || !Array.isArray(entries)){
     _hoursSummaryDraftEntriesCache = null;
     _hoursSummaryDraftTaskId = "";
+    _hoursSummaryDraftBaseSignature = "";
     return;
   }
   _hoursSummaryDraftTaskId = taskId;
   _hoursSummaryDraftEntriesCache = entries;
 }
+function _makeHoursDraftSignature(entries){
+  if(!Array.isArray(entries)) return "";
+  const normalized = entries.map((e)=>({
+    taskId: String(e?.taskId || ""),
+    projectId: String(e?.projectId || ""),
+    roleKey: normalizeTimeLogRole(e?.roleKey || ""),
+    internalTech: normalizeInternalTech(e?.internalTech || ""),
+    date: String(e?.date || ""),
+    empty: !!e?.empty,
+    minutes: Math.max(0, Number(e?.minutes || 0)),
+    hours: Math.max(0, Number(e?.hours || 0))
+  })).sort((a,b)=>{
+    if(a.taskId !== b.taskId) return a.taskId.localeCompare(b.taskId);
+    if(a.date !== b.date) return a.date.localeCompare(b.date);
+    if(a.roleKey !== b.roleKey) return a.roleKey.localeCompare(b.roleKey);
+    return a.internalTech.localeCompare(b.internalTech);
+  });
+  return JSON.stringify(normalized);
+}
+function _cacheHoursDraftBaseForTask(task, entries){
+  const taskId = String(task?.id || "");
+  if(!taskId){
+    _hoursSummaryDraftBaseSignature = "";
+    return;
+  }
+  _hoursSummaryDraftBaseSignature = _makeHoursDraftSignature(Array.isArray(entries) ? entries : []);
+}
+function _setHoursModalSaveButtonFromDraftState(task){
+  const btnSave = el("btnSaveHoursModal");
+  if(!btnSave){
+    return;
+  }
+  if(!task){
+    btnSave.disabled = true;
+    applyHoursSaveButtonVisualState(btnSave);
+    return;
+  }
+  let currentEntries = _hoursSummaryDraftEntriesCache;
+  if(!Array.isArray(currentEntries) || _hoursSummaryDraftTaskId !== String(task.id || "")){
+    currentEntries = collectHoursTaskCalendarEntries(task);
+  }
+  const currentSignature = _makeHoursDraftSignature(currentEntries || []);
+  const hasBase = !!_hoursSummaryDraftBaseSignature;
+  btnSave.disabled = !hasBase || currentSignature === _hoursSummaryDraftBaseSignature;
+  applyHoursSaveButtonVisualState(btnSave);
+}
 function _clearHoursDraftEntriesCache(){
   _hoursSummaryDraftEntriesCache = null;
   _hoursSummaryDraftTaskId = "";
+  _hoursSummaryDraftBaseSignature = "";
 }
 function _upsertHoursDraftEntryFromInput(task, input){
   if(!task || !input) return;
@@ -10278,6 +10327,7 @@ function _upsertHoursDraftEntryFromInput(task, input){
     }
   }
   _cacheHoursDraftEntriesForTask(task, next);
+  _setHoursModalSaveButtonFromDraftState(task);
 }
 function queueHoursTaskSummaryRefresh(task, draftEntriesOverride=null){
   if(task){
@@ -10412,10 +10462,7 @@ function syncHoursTaskModal(taskOverride=null){
   if(hmHours) hmHours.value = (hoursInput?.value || "").toString();
   syncHoursTaskStatusFromMain();
   renderHoursTaskWeeklySummary(t);
-  if(btnSave){
-    btnSave.disabled = false;
-    applyHoursSaveButtonVisualState(btnSave);
-  }
+  if(btnSave) _setHoursModalSaveButtonFromDraftState(t);
   renderHoursTaskCalendar(t);
 }
 function scrollHoursTaskModalToFirstMissing(){
@@ -10466,8 +10513,10 @@ function openHoursTaskModal(){
     return;
   }
   updateTimeLogUI(t, true);
+  const initialDraftEntries = collectHoursTaskCalendarEntries(t);
+  _cacheHoursDraftEntriesForTask(t, initialDraftEntries);
+  _cacheHoursDraftBaseForTask(t, initialDraftEntries);
   syncHoursTaskModal(t);
-  _cacheHoursDraftEntriesForTask(t, collectHoursTaskCalendarEntries(t));
   showModalSafely(modal);
   requestAnimationFrame(()=>{
     requestAnimationFrame(()=>{
@@ -10503,6 +10552,14 @@ function saveHoursTaskModal(){
   const emptyEntries = draftEntries.filter(e=>!!e.empty);
   if(!filledEntries.length && !emptyEntries.length){
     alert("Saisis le temps passé (heures).");
+    return;
+  }
+  if(_makeHoursDraftSignature(draftEntries) === _hoursSummaryDraftBaseSignature){
+    const btnSave = el("btnSaveHoursModal");
+    if(btnSave){
+      btnSave.disabled = true;
+      applyHoursSaveButtonVisualState(btnSave);
+    }
     return;
   }
 
