@@ -5571,6 +5571,7 @@ function _queueAppStateSupabaseSave(stateObj){
 
   const sig = _serializeStateSignature(normalized);
   if(!sig || sig === _stateSaveLastSavedSignature) return;
+  if(_stateSaveDebounceTimer && sig === _stateSavePendingSignature) return;
   _stateSavePendingSignature = sig;
   _stateSavePendingPayload = stateForRemote;
   _stateSavePendingFallbackPayload = normalized;
