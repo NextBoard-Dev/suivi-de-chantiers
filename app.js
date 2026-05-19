@@ -126,6 +126,7 @@ const SUPABASE_SESSIONS_SELECT_COLUMNS = "email,name,role,expires_at";
 const SUPABASE_LOGINS_SELECT_COLUMNS = "email,name,role,ts";
 const EGRESS_SHORT_CACHE_MS = 600_000;
 const APP_STATE_SAVE_DEBOUNCE_MS = 1800;
+const USERS_SAVE_DEBOUNCE_MS = 1500;
 const SUPABASE_STORAGE_BUDGET_BYTES = 500 * 1024 * 1024;
 const SUPABASE_STORAGE_WARN_BYTES = Math.floor(SUPABASE_STORAGE_BUDGET_BYTES * 0.80);
 const SUPABASE_STORAGE_CRIT_BYTES = Math.floor(SUPABASE_STORAGE_BUDGET_BYTES * 0.90);
@@ -603,6 +604,38 @@ async function logLoginToSupabase(payload){
     return false;
   }
 }
+
+function _serializeUsersSignature(list){
+  try{
+    return JSON.stringify(Array.isArray(list) ? list : []);
+  }catch(e){
+    return "";
+  }
+}
+
+function _queueUsersSupabaseSave(users){
+  const nextUsers = Array.isArray(users) ? users : [];
+  const nextSig = _serializeUsersSignature(nextUsers);
+  if(!nextSig || nextSig === _usersSaveLastSavedSignature) return;
+  _usersSavePendingUsers = nextUsers;
+  _usersSavePendingSignature = nextSig;
+  if(_usersSaveDebounceTimer){
+    clearTimeout(_usersSaveDebounceTimer);
+  }
+  _usersSaveDebounceTimer = setTimeout(()=>{
+    const payload = _usersSavePendingUsers;
+    const signature = _usersSavePendingSignature;
+    _usersSaveDebounceTimer = null;
+    _usersSavePendingUsers = null;
+    _usersSavePendingSignature = "";
+    if(!signature || signature === _usersSaveLastSavedSignature) return;
+    saveUsersToSupabase(payload).then((ok)=>{
+      if(ok){
+        _usersSaveLastSavedSignature = signature;
+      }
+    }).catch(softCatch);
+  }, USERS_SAVE_DEBOUNCE_MS);
+}
 window.logUserLogin = async function(payload){
   try{
     return await logLoginToSupabase(payload);
@@ -795,6 +828,10 @@ async function loadUsersFromSupabase(force=false){
         if(!u || typeof u !== "object") return u;        if(!u.id) u.id = uid();
         return u;
       });
+      const usersSig = _serializeUsersSignature(normalized);
+      if(usersSig){
+        _usersSaveLastSavedSignature = usersSig;
+      }
       saveUsers(normalized);
       if(typeof window.populateLoginUsers === "function") window.populateLoginUsers();
       _loadUsersFromSupabaseCache = { userId, value: true };
@@ -2123,7 +2160,7 @@ function saveUsers(list){
     try{
       if(typeof window.populateLoginUsers === "function") window.populateLoginUsers();
     }catch(e){ softCatch(e); }
-    try{ saveUsersToSupabase(list||[]); }catch(e){ softCatch(e); }
+    try{ _queueUsersSupabaseSave(list||[]); }catch(e){ softCatch(e); }
   }catch(e){ softCatch(e); }
 }
 
@@ -4818,6 +4855,10 @@ let _logLoginToSupabaseFlightByKey = new Map();
 let _validateSessionTokenFlightByHash = new Map();
 let _validateSessionTokenCacheByHash = new Map();
 const SESSION_TOKEN_VALIDATE_CACHE_MS = 30_000;
+let _usersSaveDebounceTimer = null;
+let _usersSavePendingUsers = null;
+let _usersSavePendingSignature = "";
+let _usersSaveLastSavedSignature = "";
 let _rlsUsersWriteBlocked = false;
 let _rlsSessionsWriteBlocked = false;
 let _rlsLoginsWriteBlocked = false;
