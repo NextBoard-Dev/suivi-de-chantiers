@@ -258,10 +258,10 @@ async function _maybeUseLocalNewerState(cloudUpdatedAt){
     const localWasLastTarget = String(meta?.target || "") === "local_j";
     const isLocalNewer = localTs > cloudTs;
     if(!isLocalNewer && !localWasLastTarget) return null;
-    if(!window.confirm("Une sauvegarde locale plus récente a été détectée dans J:. Voulez-vous la charger maintenant puis l'envoyer vers le cloud pour aligner les données ?")){
+    if(!window.confirm("Une sauvegarde locale plus récente a été détectée dans J:. Voulez-vous la charger maintenant puis la synchroniser pour aligner les données ?")){
       return null;
     }
-    showSaveToast("error", "Synchronisation requise", "Données locales chargées. Cliquez Sauvegarder pour envoyer vers le cloud.");
+    showSaveToast("error", "Synchronisation requise", "Données locales chargées. Cliquez Sauvegarder pour synchroniser.");
     return localData;
   }catch(e){
     console.warn("local newer state check failed", e);
@@ -392,10 +392,10 @@ window.saveAppStateToSupabase = async function(stateObj){
     _refreshDataIoBadge();
     showSaveToast(
       "error",
-      localSaved ? "Sauvegarde locale secours" : "Sauvegarde cloud bloquée",
+      localSaved ? "Sauvegarde locale secours" : "Sauvegarde distante bloquée",
       localSaved
-        ? `Cloud bloqué (>500 Mo). Sauvegarde locale faite (${_formatBytes(storage.bytes)}).`
-        : `Cloud bloqué (>500 Mo). Sauvegarde locale impossible (${_formatBytes(storage.bytes)}).`
+        ? `Synchronisation distante bloquée (>500 Mo). Sauvegarde locale faite (${_formatBytes(storage.bytes)}).`
+        : `Synchronisation distante bloquée (>500 Mo). Sauvegarde locale impossible (${_formatBytes(storage.bytes)}).`
     );
     return !!localSaved;
   }
@@ -409,7 +409,7 @@ window.saveAppStateToSupabase = async function(stateObj){
     _refreshDataIoBadge();
     const sb = _getSupabaseClient();
     if(!sb){
-      if(!_confirmLocalFallbackSave("client cloud indisponible")) return false;
+      if(!_confirmLocalFallbackSave("service distant indisponible")) return false;
       const localSaved = await _saveAppStateToLocalFallback(stateObj);
       if(localSaved){
         _setLastWriteMeta("local_j", new Date().toISOString());
@@ -421,7 +421,7 @@ window.saveAppStateToSupabase = async function(stateObj){
     const session = await _ensureSession();
 
     if(!session || !session.user){
-      if(!_confirmLocalFallbackSave("session cloud indisponible")) return false;
+      if(!_confirmLocalFallbackSave("session distante indisponible")) return false;
       const localSaved = await _saveAppStateToLocalFallback(stateObj);
       if(localSaved){
         _setLastWriteMeta("local_j", new Date().toISOString());
@@ -446,7 +446,7 @@ window.saveAppStateToSupabase = async function(stateObj){
       const remoteTs = remoteUpdatedAt ? new Date(remoteUpdatedAt).getTime() : 0;
       const localTs = localKnownUpdatedAt ? new Date(localKnownUpdatedAt).getTime() : 0;
       if(remoteTs && localTs && remoteTs > (localTs + 1000)){
-        showSaveToast("error", "Sauvegarde cloud bloquée", "Version cloud plus récente détectée. Recharge la page.");
+        showSaveToast("error", "Sauvegarde distante bloquée", "Version distante plus récente détectée. Recharge la page.");
         return false;
       }
 
@@ -459,7 +459,7 @@ window.saveAppStateToSupabase = async function(stateObj){
       const { error } = await sb.from(SUPABASE_TABLE).upsert(payload, { onConflict: "user_id" });
       if(error){
         console.warn("Supabase upsert error", error);
-        if(!_confirmLocalFallbackSave("erreur cloud")) return false;
+        if(!_confirmLocalFallbackSave("erreur synchronisation")) return false;
         const localSaved = await _saveAppStateToLocalFallback(stateObj);
         if(localSaved){
           _setLastWriteMeta("local_j", new Date().toISOString());
@@ -479,7 +479,7 @@ window.saveAppStateToSupabase = async function(stateObj){
 
       const statusEl = document.getElementById("saveStatusMessage") || document.getElementById("saveToastDetail");
       if (statusEl) {
-        statusEl.textContent = "Erreur de sauvegarde cloud.";
+        statusEl.textContent = "Erreur de sauvegarde distante.";
         statusEl.style.color = "red";
       }
 
@@ -1069,7 +1069,7 @@ window.loadAppStateFromSupabase = async function(){
     const sb = _getSupabaseClient();
 
     if(!sb){
-      if(!_confirmLocalFallbackLoad("client cloud indisponible")) return false;
+      if(!_confirmLocalFallbackLoad("service distant indisponible")) return false;
       const localData = await _loadAppStateFromLocalFallback();
       if(!localData || !localData.state_json) return false;
       _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
@@ -1087,7 +1087,7 @@ window.loadAppStateFromSupabase = async function(){
     const session = await _ensureSession();
 
     if(!session || !session.user){
-      if(!_confirmLocalFallbackLoad("session cloud indisponible")) return false;
+      if(!_confirmLocalFallbackLoad("session distante indisponible")) return false;
       const localData = await _loadAppStateFromLocalFallback();
       if(!localData || !localData.state_json) return false;
       _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
@@ -1135,7 +1135,7 @@ window.loadAppStateFromSupabase = async function(){
 
       if(error){
         console.warn("Supabase select error", error);
-        if(!_confirmLocalFallbackLoad("erreur lecture cloud")) return false;
+        if(!_confirmLocalFallbackLoad("erreur lecture distante")) return false;
         const localData = await _loadAppStateFromLocalFallback();
         if(!localData || !localData.state_json) return false;
         _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
@@ -1149,7 +1149,7 @@ window.loadAppStateFromSupabase = async function(){
       }
 
       if(!data || !data.state_json){
-        if(!_confirmLocalFallbackLoad("aucune donnee cloud")) return false;
+        if(!_confirmLocalFallbackLoad("aucune donnée distante")) return false;
         const localData = await _loadAppStateFromLocalFallback();
         if(!localData || !localData.state_json) return false;
         _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
@@ -1218,7 +1218,7 @@ window.loadAppStateFromSupabase = async function(){
     }catch(e){
 
       console.warn("loadAppStateFromSupabase failed", e);
-      if(!_confirmLocalFallbackLoad("exception cloud")) return false;
+        if(!_confirmLocalFallbackLoad("exception synchronisation")) return false;
 
       const localData = await _loadAppStateFromLocalFallback();
       if(!localData || !localData.state_json) return false;
@@ -4804,7 +4804,7 @@ let _lastCloudStateUpdatedAt = "";
 
 function stateLoadSourceLabel(src){
   const k = String(src || "").toLowerCase();
-  if(k === "supabase_cloud") return "Cloud";
+  if(k === "supabase_cloud") return "Données distantes";
   if(k === "backup_json") return "JSON disque";
   if(k === "local_storage") return "J (secours)";
   if(k === "default_state") return "Etat par défaut";
@@ -4815,9 +4815,9 @@ function stateWriteTargetLabel(){
   try{
     const meta = _getLastWriteMeta();
     const target = String(meta?.target || "").toLowerCase();
-    if(target === "supabase") return "Cloud";
+    if(target === "supabase") return "Données distantes";
     if(target === "local_j") return "J (secours)";
-    if(target === "cloud_blocked") return "Cloud bloqué";
+    if(target === "cloud_blocked") return "Synchronisation bloquée";
   }catch(e){ softCatch(e); }
   return "Inconnue";
 }
@@ -4827,12 +4827,14 @@ function buildDataIoBadgeHtml(){
   const isWriteBusy = !!_isDataIoWriteBusy;
   const readLabel = stateLoadSourceLabel(_lastStateLoadSource);
   const writeLabel = stateWriteTargetLabel();
-  const readClass = readLabel === "Cloud" ? "is-cloud" : (readLabel.includes("secours") ? "is-fallback" : "is-unknown");
-  const writeClass = writeLabel === "Cloud" ? "is-cloud" : (writeLabel.includes("secours") ? "is-fallback" : "is-unknown");
+  const isRemoteReadLabel = (readLabel === "Données distantes") || (readLabel === "Synchronisation bloquée");
+  const isRemoteWriteLabel = (writeLabel === "Données distantes") || (writeLabel === "Synchronisation bloquée");
+  const readClass = isRemoteReadLabel ? "is-cloud" : (readLabel.includes("secours") ? "is-fallback" : "is-unknown");
+  const writeClass = isRemoteWriteLabel ? "is-cloud" : (writeLabel.includes("secours") ? "is-fallback" : "is-unknown");
   const storage = _buildStorageHealth(state || {});
   const storageClass = storage.warn === "danger" ? "is-danger" : (storage.warn === "warning" ? "is-warning" : "is-cloud");
   const storageLabel = `Stockage: ${storage.percent}%`;
-  const tip = `Lecture = source chargee au demarrage | Ecriture = derniere cible de sauvegarde | Estimation: ${_formatBytes(storage.bytes)} sur ${_formatBytes(SUPABASE_STORAGE_BUDGET_BYTES)}`;
+  const tip = `Lecture = source chargée au démarrage | Ecriture = derniere cible de synchronisation | Estimation: ${_formatBytes(storage.bytes)} sur ${_formatBytes(SUPABASE_STORAGE_BUDGET_BYTES)}`;
   const syncClass = (isReadBusy || isWriteBusy) ? " is-syncing" : "";
   return `<span class="data-io-badge${syncClass}" title="${attrEscape(tip)}"><img src="assets/database4.ico" alt="" aria-hidden="true"><span class="data-io-item ${readClass}">Lect.: ${attrEscape(readLabel)}${isReadBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${writeClass}">Ecr.: ${attrEscape(writeLabel)}${isWriteBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${storageClass}">${attrEscape(storageLabel)} (${attrEscape(_formatBytes(storage.bytes))})</span></span>`;
 }
@@ -5104,7 +5106,7 @@ function updateDataQualityBanner(notify=false){
   _lastScalabilityReport = scale;
 
   const cloudSuffix = _lastCloudAlignmentReport?.available
-    ? (_lastCloudAlignmentReport.okBusiness ? " · Cloud OK" : ` · Cloud ${_lastCloudAlignmentReport.business.total} écart(s)`)
+    ? (_lastCloudAlignmentReport.okBusiness ? " · Synchronisation OK" : ` · Synchronisation: ${_lastCloudAlignmentReport.business.total} écart(s)`)
     : "";
   const scaleSuffix = scale.ok ? " · Charge OK" : ` · Charge ${scale.warnings.length} alerte(s)`;
   const degradedSuffix = runtimePerf.degradedMode ? " · Mode allégé" : "";
@@ -5125,10 +5127,10 @@ function updateDataQualityBanner(notify=false){
       const cloud = await collectCloudAlignmentReport(state);
       _lastCloudAlignmentReport = cloud;
       const cloudMsg = !cloud.available
-        ? "Cloud: contrôle indisponible"
+        ? "Synchronisation: contrôle indisponible"
         : (cloud.okBusiness
-            ? `Cloud: OK (seul updatedAt peut différer, ${cloud.strict.total} écart(s) technique(s))`
-            : `Cloud: ${cloud.business.total} écart(s) métier`);
+            ? `Synchronisation: OK (seul updatedAt peut différer, ${cloud.strict.total} écart(s) technique(s))`
+            : `Synchronisation: ${cloud.business.total} écart(s) métier`);
       const scaleNow = collectScalabilityReport(state);
       _lastScalabilityReport = scaleNow;
       const scaleMsg = scaleNow.ok
@@ -5336,10 +5338,10 @@ function _queueAppStateSupabaseSave(stateObj){
       _refreshDataIoBadge();
       showSaveToast(
         localSaved ? "ok" : "error",
-        localSaved ? "Sauvegarde locale secours" : "Sauvegarde cloud bloquée",
+        localSaved ? "Sauvegarde locale secours" : "Sauvegarde distante bloquée",
         localSaved
-          ? `Cloud bloqué (>500 Mo). Sauvegarde locale faite (${_formatBytes(storage.bytes)}).`
-          : `Cloud bloqué (>500 Mo). Sauvegarde locale impossible (${_formatBytes(storage.bytes)}).`
+          ? `Synchronisation distante bloquée (>500 Mo). Sauvegarde locale faite (${_formatBytes(storage.bytes)}).`
+          : `Synchronisation distante bloquée (>500 Mo). Sauvegarde locale impossible (${_formatBytes(storage.bytes)}).`
       );
     })().catch(softCatch);
     _refreshDataIoBadge();
@@ -5348,7 +5350,7 @@ function _queueAppStateSupabaseSave(stateObj){
   if(storage.bytes > SUPABASE_STATE_MAX_UPLOAD_BYTES){
     showSaveToast(
       "error",
-      "Sauvegarde cloud bloquée",
+      "Sauvegarde distante bloquée",
       `L'état est trop volumineux (${_formatBytes(storage.bytes)}). Compression locale uniquement avant export/archivage.`
     );
     return;
@@ -12123,7 +12125,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     const quality = collectDataQualityIssues(state);
     if(!quality.ok){
-      showSaveToast("error", "Alerte qualité", `${formatQualityIssuesForToast(quality)} | Sauvegarde cloud maintenue.`);
+      showSaveToast("error", "Alerte qualité", `${formatQualityIssuesForToast(quality)} | Sauvegarde distante maintenue.`);
       if((quality?.counts?.logsOutsideTaskRange || 0) > 0){
         const launchFlow = window.confirm("Des erreurs de saisie hors période sont détectées.\nVoulez-vous démarrer le parcours de correction maintenant ?");
         if(launchFlow) startOutsideRangeFlow();
