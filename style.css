@@ -5410,6 +5410,11 @@ button.btn:not(.btn-primary):not(.btn-danger):not(.btn-success),
 #viewMaster .table tbody tr:hover td{
   background:rgba(224, 235, 245, 0.98) !important;
 }
+#viewMaster .table thead th{
+  color:#0a1322 !important;
+  border-bottom:1px solid rgba(16,24,40,0.18) !important;
+  text-shadow:0 1px 0 rgba(255,255,255,0.45) !important;
+}
 
 .topbar .btn.btn-primary,
 .btn.btn-primary,
