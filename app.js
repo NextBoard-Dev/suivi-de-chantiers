@@ -197,13 +197,13 @@ function _setLastWriteMeta(target, updatedAt){
 
 function _confirmLocalFallbackLoad(reason){
   return window.confirm(
-    `Supabase indisponible (${reason}).\nCharger la sauvegarde locale depuis J:\\RÉGISSEUR INTENDANT\\DASBOARDS\\SUIVI DE CHANTIERS ?`
+    `Service distant indisponible (${reason}).\nCharger la sauvegarde locale depuis J:\\RÉGISSEUR INTENDANT\\DASBOARDS\\SUIVI DE CHANTIERS ?`
   );
 }
 
 function _confirmLocalFallbackSave(reason){
   return window.confirm(
-    `Supabase indisponible (${reason}).\nEnregistrer une sauvegarde locale dans J:\\RÉGISSEUR INTENDANT\\DASBOARDS\\SUIVI DE CHANTIERS ?`
+    `Service distant indisponible (${reason}).\nEnregistrer une sauvegarde locale dans J:\\RÉGISSEUR INTENDANT\\DASBOARDS\\SUIVI DE CHANTIERS ?`
   );
 }
 
@@ -231,10 +231,10 @@ async function _maybeUseLocalNewerState(cloudUpdatedAt){
     const localWasLastTarget = String(meta?.target || "") === "local_j";
     const isLocalNewer = localTs > cloudTs;
     if(!isLocalNewer && !localWasLastTarget) return null;
-    if(!window.confirm("Une sauvegarde locale plus recente a ete detectee dans J:. Voulez-vous la charger maintenant puis sauvegarder vers Supabase pour aligner le cloud ?")){
+    if(!window.confirm("Une sauvegarde locale plus récente a été détectée dans J:. Voulez-vous la charger maintenant puis l'envoyer vers le cloud pour aligner les données ?")){
       return null;
     }
-    showSaveToast("error", "Synchronisation requise", "Donnees locales chargees. Cliquez Sauvegarder pour aligner Supabase.");
+    showSaveToast("error", "Synchronisation requise", "Données locales chargées. Cliquez Sauvegarder pour envoyer vers le cloud.");
     return localData;
   }catch(e){
     console.warn("local newer state check failed", e);
@@ -1218,7 +1218,7 @@ function _scheduleSupabaseAutoLoad(){
     try{
       const ok = await window.loadAppStateFromSupabase();
       if(!ok){
-        showSaveToast("error", "Chargement Supabase", "Impossible de charger les données cloud. Vérifie la connexion.");
+        showSaveToast("error", "Chargement distant", "Impossible de charger les données distantes. Vérifie la connexion.");
       }
       loadUsersFromSupabase();
     }catch(e){ softCatch(e); }
@@ -5732,7 +5732,7 @@ async function initLoginJournalUI(){
     const err = localStorage.getItem("login_log_last_error");
     const count = (events || []).length;
     if(err){
-      status.textContent = `Erreur Supabase: ${err}`;
+      status.textContent = `Erreur synchronisation: ${err}`;
     }else{
       const extra = info?.clamped ? " (affichage limité à 30 jours)" : "";
       status.textContent = `Connexions: ${count}${extra}`;
@@ -12041,7 +12041,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     const backupEnabled = false;
 
     const detailParts = [];
-    detailParts.push(`Supabase: ${supabaseOk ? "OK" : "ERREUR"}`);
+    detailParts.push(`Service: ${supabaseOk ? "OK" : "ERREUR"}`);
     if(usersOk === false) detailParts.push(`Users: ERREUR`);
     if(getCurrentRole() === "admin"){
       detailParts.push("Backup local: désactivé");

@@ -444,13 +444,13 @@
 
               <a class="cfg-link" id="cfg_http_link" target="_blank" rel="noopener">Ouvrir</a>
 
-              <label class="label">URL Front (GitHub)</label>
+              <label class="label">URL Front</label>
 
               <input class="input" id="cfg_front" placeholder="https://github.com/..." />
 
               <a class="cfg-link" id="cfg_front_link" target="_blank" rel="noopener">Ouvrir</a>
 
-              <label class="label">URL Back (Supabase)</label>
+              <label class="label">URL Back</label>
 
               <input class="input" id="cfg_back" placeholder="https://..." />
 
@@ -814,7 +814,7 @@
 
               <div class="help-figure">
 
-                <div class="help-box"><span class="help-tag primary">Sauvegarder</span> envoie les données vers Supabase</div>
+                <div class="help-box"><span class="help-tag primary">Sauvegarder</span> envoie les données vers la zone cloud</div>
 
                 <div class="help-box"><span class="help-tag">Exporter PDF</span> génère un PDF</div>
 
@@ -1133,7 +1133,7 @@
 
                   <circle cx="45" cy="50" r="10" fill="#22c55e"/>
 
-                  <text x="64" y="54" font-size="12" font-weight="800" fill="#0f172a">Sauvegarde Supabase réussie</text>
+                  <text x="64" y="54" font-size="12" font-weight="800" fill="#0f172a">Sauvegarde cloud réussie</text>
 
                 </svg>
 
@@ -2397,7 +2397,7 @@
 
           const msg = document.querySelector(".lock-msg");
 
-          if(msg) msg.textContent = "Session non mémorisée (erreur Supabase).";
+          if(msg) msg.textContent = "Session non mémorisée (erreur de synchronisation).";
 
         }
 
