@@ -5242,7 +5242,7 @@ function updateDataQualityBanner(notify=false){
   const today = new Date();
   const fmt = today.toLocaleDateString("fr-FR",{weekday:"long", day:"2-digit", month:"long", year:"numeric"});
   if(!isAdmin){
-    brandSub.innerHTML = `Tableau maître  Projets  Gantt  <span class="brand-date">${fmt}</span>`;
+    brandSub.innerHTML = `<span class="brand-date">${fmt}</span>`;
     return;
   }
   const report = collectDataQualityIssues(state);
@@ -5265,7 +5265,7 @@ function updateDataQualityBanner(notify=false){
         ? "color:#c2410c;border:1px solid #c2410c33;background:#c2410c14;padding:2px 8px;border-radius:10px;cursor:pointer;"
         : "color:#16a34a;border:1px solid #16a34a33;background:#16a34a14;padding:2px 8px;border-radius:10px;cursor:pointer;");
 
-  brandSub.innerHTML = `Tableau maître  Projets  Gantt  <span class="brand-date">${fmt}</span>  <span id="dataQualityBadge" style="${badgeStyle}">${badgeLabel}</span>`;
+  brandSub.innerHTML = `<span class="brand-date">${fmt}</span>  <span id="dataQualityBadge" style="${badgeStyle}">${badgeLabel}</span>`;
   const badge = el("dataQualityBadge");
   if(badge){
     badge.onclick = async ()=>{
@@ -13186,7 +13186,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     const fmt = today.toLocaleDateString("fr-FR",{weekday:"long", day:"2-digit", month:"long", year:"numeric"});
 
-    brandSub.innerHTML = `Tableau maître  Projets  Gantt  <span class="brand-date">${fmt}</span>`;
+    brandSub.innerHTML = `<span class="brand-date">${fmt}</span>`;
 
   }
 
