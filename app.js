@@ -444,21 +444,26 @@ window.saveAppStateToSupabase = async function(stateObj, options={}){
 
 
     try{
-      const { data: remoteRow, error: remoteError } = await sb
-        .from(SUPABASE_TABLE)
-        .select("updated_at")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-      if(remoteError){
-        console.warn("Supabase pre-save check error", remoteError);
-      }
-      const remoteUpdatedAt = String(remoteRow?.updated_at || "").trim();
+      const now = Date.now();
       const localKnownUpdatedAt = String(_lastCloudStateUpdatedAt || "").trim();
-      const remoteTs = remoteUpdatedAt ? new Date(remoteUpdatedAt).getTime() : 0;
-      const localTs = localKnownUpdatedAt ? new Date(localKnownUpdatedAt).getTime() : 0;
-      if(remoteTs && localTs && remoteTs > (localTs + 1000)){
-        showSaveToast("error", "Sauvegarde distante bloquée", "Version distante plus récente détectée. Recharge la page.");
-        return false;
+      const shouldRunPreSaveCheck = !localKnownUpdatedAt || (now - _lastSupabasePreSaveCheckAt >= SUPABASE_PRE_SAVE_CHECK_INTERVAL_MS);
+      if(shouldRunPreSaveCheck){
+        const { data: remoteRow, error: remoteError } = await sb
+          .from(SUPABASE_TABLE)
+          .select("updated_at")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        _lastSupabasePreSaveCheckAt = now;
+        if(remoteError){
+          console.warn("Supabase pre-save check error", remoteError);
+        }
+        const remoteUpdatedAt = String(remoteRow?.updated_at || "").trim();
+        const remoteTs = remoteUpdatedAt ? new Date(remoteUpdatedAt).getTime() : 0;
+        const localTs = localKnownUpdatedAt ? new Date(localKnownUpdatedAt).getTime() : 0;
+        if(remoteTs && localTs && remoteTs > (localTs + 1000)){
+          showSaveToast("error", "Sauvegarde distante bloquée", "Version distante plus récente détectée. Recharge la page.");
+          return false;
+        }
       }
 
       const payload = {
@@ -4908,6 +4913,7 @@ let _createSessionLastSentAtByHash = new Map();
 const SESSION_TOKEN_VALIDATE_CACHE_MS = 30_000;
 const SESSION_CREATE_THROTTLE_MS = 60_000;
 const SESSION_CREATE_SIGNATURE_TTL_MS = 60 * 60_000;
+const SUPABASE_PRE_SAVE_CHECK_INTERVAL_MS = 45_000;
 const LOGIN_JOURNAL_REFRESH_DEBOUNCE_MS = 250;
 const LOGIN_JOURNAL_REFRESH_MIN_INTERVAL_MS = 20_000;
 let _usersSaveDebounceTimer = null;
@@ -4971,6 +4977,7 @@ let _lastCloudAlignmentReport = null;
 let _lastStateLoadSource = "inconnu";
 let _supabaseOwnerFallbackCount = 0;
 let _lastCloudStateUpdatedAt = "";
+let _lastSupabasePreSaveCheckAt = 0;
 
 function stateLoadSourceLabel(src){
   const k = String(src || "").toLowerCase();
