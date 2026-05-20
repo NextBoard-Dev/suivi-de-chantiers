@@ -6385,6 +6385,28 @@ textarea.input:focus{
 }
 
 /* =========================
+   V19 - Lisibilite des onglets (reversible)
+   ========================= */
+.tabs .tab,
+.tabs-master .tab{
+  border: 1px solid rgba(15,23,42,0.12) !important;
+  background: rgba(248,247,243,0.84) !important;
+}
+
+.tabs .tab:hover,
+.tabs-master .tab:hover{
+  background: rgba(238,242,247,0.96) !important;
+  border-color: rgba(15,23,42,0.20) !important;
+}
+
+.tabs .tab.active,
+.tabs-master .tab.active{
+  background: linear-gradient(180deg, #e7f0f5 0%, #d1e2ec 100%) !important;
+  border-color: #2f4b58 !important;
+  box-shadow: inset 3px 0 0 #2f4b58, 0 0 0 1px rgba(47,75,88,0.16) !important;
+}
+
+/* =========================
    V2 - Typo et lisibilite (reversible)
    ========================= */
 :root{
