@@ -10560,8 +10560,10 @@ function _setHoursModalSaveButtonFromDraftState(task){
   if(!btnSave){
     return;
   }
+  // Bouton Valider toujours disponible quand la modale est ouverte.
+  // Les contrôles métier restent dans la logique de sauvegarde.
   if(!task){
-    btnSave.disabled = true;
+    btnSave.disabled = false;
     applyHoursSaveButtonVisualState(btnSave);
     return;
   }
@@ -10677,7 +10679,7 @@ function syncHoursTaskModal(taskOverride=null){
     if(hmStatus) hmStatus.textContent = "";
     if(hmSummary) hmSummary.textContent = "";
     if(btnSave){
-      btnSave.disabled = true;
+      btnSave.disabled = false;
       applyHoursSaveButtonVisualState(btnSave);
     }
     return;
@@ -10829,7 +10831,7 @@ function closeHoursTaskModal(stopFlow=true){
 function saveHoursTaskModal(){
   const t = resolveHoursTaskForModal();
   if(!t){
-    alert("Sélectionne une tâche.");
+    closeHoursTaskModal(false);
     return;
   }
   const taskKey = `${t.projectId}::${t.id}`;
@@ -10850,28 +10852,22 @@ function saveHoursTaskModal(){
   const draftEntries = collectHoursTaskCalendarEntries(t);
   const filledEntries = draftEntries.filter(e=>!e.empty);
   const emptyEntries = draftEntries.filter(e=>!!e.empty);
-  if(!filledEntries.length && !emptyEntries.length){
-    alert("Saisis le temps passé (heures).");
-    return;
-  }
   const hasChanges = _makeHoursDraftSignature(draftEntries) !== _hoursSummaryDraftBaseSignature;
   if(!hasChanges){
     if(_outsideRangeFlow){
       const remainingOutside = countOutsideRangeLogsForTask(t);
-      if(remainingOutside > 0){
-        showSaveToast("error", "Correction incomplète", `${remainingOutside} log(s) hors période restant(s) pour cette tâche`);
-        return;
-      }
       advanceOutsideRangeFlow();
+      closeHoursTaskModal(false);
       return;
     }
     if(_missingHoursFlow){
-      const missingDays = countMissingDaysForTask(t);
-      if(missingDays > 0){
-        showSaveToast("error", "Saisie incomplète", "Renseigne une valeur avant de valider pour cette tâche.");
-        return;
-      }
       advanceMissingHoursFlow();
+      closeHoursTaskModal(false);
+      return;
+    }
+    if(!filledEntries.length && !emptyEntries.length){
+      closeHoursTaskModal(false);
+      return;
     }
     return;
   }
