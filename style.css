@@ -6057,6 +6057,45 @@ h3,
   color:#1e293b !important;
 }
 
+@media (max-width: 760px){
+  #hoursTaskModal .modal-card.hours-modal-compact{
+    width:calc(100vw - 8px) !important;
+    max-width:calc(100vw - 8px) !important;
+    max-height:98vh !important;
+    padding:8px 8px 8px !important;
+  }
+  #hoursTaskModal .grid2{
+    grid-template-columns:1fr !important;
+    gap:6px !important;
+  }
+  #hoursTaskModal .label{
+    font-size:11px !important;
+  }
+  #hoursTaskModal .input,
+  #hoursTaskModal select,
+  #hoursTaskModal textarea{
+    height:34px !important;
+    min-height:34px !important;
+    font-size:13px !important;
+    padding:5px 9px !important;
+  }
+  #hoursTaskModal #hm_calendarWrap{
+    max-height:66vh !important;
+  }
+  #hoursTaskModal #hm_calendar .hm-day-input{
+    height:22px !important;
+    font-size:12px !important;
+    padding:2px 6px !important;
+  }
+  #hoursTaskModal .btn,
+  #hoursTaskModal #btnSaveHoursModal,
+  #hoursTaskModal #btnCloseHoursModal{
+    min-height:36px !important;
+    height:36px !important;
+    font-size:12px !important;
+  }
+}
+
 
 
 
