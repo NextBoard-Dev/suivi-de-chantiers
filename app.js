@@ -13652,13 +13652,13 @@ load();
 
 bind();
 
-// Auto‑sauvegarde toutes les 5 minutes
+// Auto‑sauvegarde toutes les 10 minutes
 setInterval(()=>{
   if(typeof document !== "undefined" && document.hidden) return;
   if(_isDataIoWriteBusy) return;
   if(!unsavedChanges) return;
   try{ saveState(); }catch(e){ softCatch(e); }
-}, 5 * 60 * 1000);
+}, 10 * 60 * 1000);
 
 try{
   history.replaceState({projectId:selectedProjectId, taskId:selectedTaskId}, "");
