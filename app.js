@@ -5648,19 +5648,24 @@ function updateSaveButton(){
   if(!buttons.length) return;
   const isSaving = !!_isDataIoWriteBusy;
   buttons.forEach((btn)=>{
+    const defaultLabel = btn.dataset.defaultLabel || btn.textContent || "";
+    if(!btn.dataset.defaultLabel) btn.dataset.defaultLabel = defaultLabel;
     btn.classList.remove("btn-danger","btn-success");
     if(isSaving){
       btn.disabled = true;
       btn.classList.remove("btn-primary");
       btn.classList.add("btn-save-idle");
+      btn.textContent = "Sauvegarde...";
     }else if(unsavedChanges){
       btn.disabled = false;
       btn.classList.add("btn-primary");
       btn.classList.remove("btn-save-idle");
+      btn.textContent = defaultLabel;
     }else{
       btn.disabled = true;
       btn.classList.remove("btn-primary");
       btn.classList.add("btn-save-idle");
+      btn.textContent = defaultLabel;
     }
   });
 
