@@ -6398,3 +6398,41 @@ textarea.input{
   font-size: var(--ui-font-body) !important;
   line-height: 1.25 !important;
 }
+
+/* =========================
+   V3 - Confort de saisie (reversible)
+   ========================= */
+.modal-card{
+  border-radius: 12px !important;
+}
+
+.modal .grid2{
+  gap: 8px !important;
+}
+
+.modal .modal-actions{
+  gap: 8px !important;
+}
+
+.input:focus-visible,
+select.input:focus-visible,
+textarea.input:focus-visible,
+button:focus-visible,
+.btn:focus-visible{
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(63, 97, 112, 0.2), 0 0 0 4px rgba(63, 97, 112, 0.12) !important;
+}
+
+.btn{
+  min-height: 32px !important;
+  border-radius: 9px !important;
+}
+
+.btn.btn-primary{
+  font-weight: 700 !important;
+}
+
+#hoursTaskModal .hm-day-input:focus{
+  border-color: #3f6170 !important;
+  box-shadow: 0 0 0 2px rgba(63, 97, 112, 0.16) !important;
+}
