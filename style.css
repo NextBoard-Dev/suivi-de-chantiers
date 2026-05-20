@@ -6728,3 +6728,28 @@ input[type="date"]:focus::-webkit-calendar-picker-indicator{
   border-radius: 999px;
   border: 2px solid rgba(248,247,243,0.9);
 }
+
+/* =========================
+   V14 - Etats visuels feedback (reversible)
+   ========================= */
+#saveToast{
+  border: 1px solid rgba(15,23,42,0.16) !important;
+  box-shadow: 0 10px 24px rgba(15,23,42,0.24) !important;
+}
+
+#saveToast:not(.is-error){
+  background: rgba(236, 253, 243, 0.98) !important;
+}
+
+#saveToast.is-error{
+  background: rgba(254, 242, 242, 0.98) !important;
+  border-color: rgba(220,38,38,0.34) !important;
+}
+
+#saveToastTitle{
+  font-weight: 700 !important;
+}
+
+#saveToastDetail{
+  color: #1f2937 !important;
+}
