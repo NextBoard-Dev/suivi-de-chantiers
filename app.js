@@ -9804,6 +9804,21 @@ function getSelectedTaskForHoursModal(){
   if(!selectedProjectId || !selectedTaskId) return null;
   return state?.tasks?.find(x=>x.id===selectedTaskId && x.projectId===selectedProjectId) || null;
 }
+function resolveHoursTaskForModal(){
+  const direct = getSelectedTaskForHoursModal();
+  if(direct) return direct;
+
+  const firstInput = document.querySelector("#hm_calendar .hm-day-input[data-task-id][data-project-id]");
+  if(!firstInput) return null;
+  const taskId = (firstInput.getAttribute("data-task-id") || "").trim();
+  const projectId = (firstInput.getAttribute("data-project-id") || "").trim();
+  if(!taskId || !projectId) return null;
+  const task = (state?.tasks || []).find((x)=>x.id===taskId && x.projectId===projectId) || null;
+  if(!task) return null;
+  selectedTaskId = taskId;
+  selectedProjectId = projectId;
+  return task;
+}
 function isHoursTaskModalOpen(){
   const modal = el("hoursTaskModal");
   return !!(modal && !modal.classList.contains("hidden"));
@@ -10613,7 +10628,7 @@ function applyHoursSaveButtonVisualState(btn){
 function syncHoursTaskModal(taskOverride=null){
   const modal = el("hoursTaskModal");
   if(!modal) return;
-  const t = taskOverride || getSelectedTaskForHoursModal();
+  const t = taskOverride || resolveHoursTaskForModal();
   const p = t ? (state?.projects || []).find(x=>x.id===t.projectId) : null;
 
   const hmProject = el("hm_project");
@@ -10746,7 +10761,7 @@ function scrollHoursTaskModalToFirstMissing(){
 function openHoursTaskModal(){
   const modal = el("hoursTaskModal");
   if(!modal) return;
-  const t = getSelectedTaskForHoursModal();
+  const t = resolveHoursTaskForModal();
   if(!t){
     alert("Sélectionne une tâche.");
     return;
@@ -10774,7 +10789,7 @@ function closeHoursTaskModal(stopFlow=true){
   }
 }
 function saveHoursTaskModal(){
-  const t = getSelectedTaskForHoursModal();
+  const t = resolveHoursTaskForModal();
   if(!t){
     alert("Sélectionne une tâche.");
     return;
