@@ -130,6 +130,7 @@ const APP_STATE_SAVE_DEBOUNCE_MS = 1800;
 const USERS_SAVE_DEBOUNCE_MS = 1500;
 const LOGIN_LOG_THROTTLE_MS = 300_000;
 const LOGIN_LOG_SIGNATURE_TTL_MS = 60 * 60_000;
+const SESSION_RENEW_LEEWAY_MS = 12 * 60 * 60_000;
 const SUPABASE_STORAGE_BUDGET_BYTES = 500 * 1024 * 1024;
 const SUPABASE_STORAGE_WARN_BYTES = Math.floor(SUPABASE_STORAGE_BUDGET_BYTES * 0.80);
 const SUPABASE_STORAGE_CRIT_BYTES = Math.floor(SUPABASE_STORAGE_BUDGET_BYTES * 0.90);
@@ -745,13 +746,17 @@ async function validateSessionToken(token, renewDays=30){
       if(error){ console.warn("Supabase sessions select error", error); return null; }
       if(!data) return null;
       const exp = data.expires_at ? new Date(data.expires_at) : null;
-      if(!exp || isNaN(exp) || exp < new Date()) return null;
+      const nowDate = new Date();
+      if(!exp || isNaN(exp) || exp < nowDate) return null;
       if(renewDays){
-        const next = new Date();
-        next.setDate(next.getDate() + renewDays);
-        await sb.from(SUPABASE_SESSIONS_TABLE)
-          .update({ expires_at: next.toISOString() })
-          .eq("token_hash", tokenHash);
+        const ttlMs = exp.getTime() - nowDate.getTime();
+        if(ttlMs < SESSION_RENEW_LEEWAY_MS){
+          const next = new Date();
+          next.setDate(next.getDate() + renewDays);
+          await sb.from(SUPABASE_SESSIONS_TABLE)
+            .update({ expires_at: next.toISOString() })
+            .eq("token_hash", tokenHash);
+        }
       }
       return { email: data.email || "", name: data.name || "", role: data.role || "user" };
     }catch(e){
