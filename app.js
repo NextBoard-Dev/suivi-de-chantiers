@@ -5646,11 +5646,11 @@ function updateSaveButton(){
   ];
   const buttons = saveButtonIds.map((id)=>el(id)).filter(Boolean);
   if(!buttons.length) return;
-  const isSaving = !!_isDataIoWriteBusy;
-  buttons.forEach((btn)=>{
-    const defaultLabel = btn.dataset.defaultLabel || btn.textContent || "";
-    if(!btn.dataset.defaultLabel) btn.dataset.defaultLabel = defaultLabel;
-    btn.classList.remove("btn-danger","btn-success");
+    const isSaving = !!_isDataIoWriteBusy;
+    buttons.forEach((btn)=>{
+      const defaultLabel = btn.dataset.defaultLabel || btn.textContent || "";
+      if(!btn.dataset.defaultLabel) btn.dataset.defaultLabel = defaultLabel;
+      btn.classList.remove("btn-danger","btn-success");
     if(isSaving){
       btn.disabled = true;
       btn.classList.remove("btn-primary");
@@ -5665,7 +5665,7 @@ function updateSaveButton(){
       btn.disabled = true;
       btn.classList.remove("btn-primary");
       btn.classList.add("btn-save-idle");
-      btn.textContent = defaultLabel;
+      btn.textContent = btn.id === "btnSave" ? "Aucune modification" : defaultLabel;
     }
   });
 
