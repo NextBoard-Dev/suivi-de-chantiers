@@ -6298,6 +6298,10 @@ h3,
   --ui-btn-primary: #3f6170;
   --ui-btn-primary-hover: #365563;
   --ui-btn-primary-border-hover: #2f4b57;
+  --ui-btn-danger: #b42318;
+  --ui-btn-danger-hover: #9f1f16;
+  --ui-btn-success: #2f855a;
+  --ui-btn-success-hover: #276f4b;
 }
 
 .panel,
@@ -6352,6 +6356,32 @@ textarea.input:focus{
 .btn-ghost:hover{
   background: #eef2f7 !important;
   border-color: var(--ui-border-strong) !important;
+}
+
+.btn.btn-danger,
+.btn-danger{
+  background: var(--ui-btn-danger) !important;
+  border-color: var(--ui-btn-danger) !important;
+  color: #ffffff !important;
+}
+
+.btn.btn-danger:hover,
+.btn-danger:hover{
+  background: var(--ui-btn-danger-hover) !important;
+  border-color: var(--ui-btn-danger-hover) !important;
+}
+
+.btn.btn-success,
+.btn-success{
+  background: var(--ui-btn-success) !important;
+  border-color: var(--ui-btn-success) !important;
+  color: #ffffff !important;
+}
+
+.btn.btn-success:hover,
+.btn-success:hover{
+  background: var(--ui-btn-success-hover) !important;
+  border-color: var(--ui-btn-success-hover) !important;
 }
 
 /* =========================
