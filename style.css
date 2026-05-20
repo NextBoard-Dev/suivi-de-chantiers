@@ -6449,6 +6449,22 @@ textarea.input:focus{
 }
 
 /* =========================
+   V23 - Lisibilite des statuts (reversible)
+   ========================= */
+.status-row span,
+.status-cell span{
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 1px 8px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(15,23,42,0.14) !important;
+  background: rgba(248,247,243,0.94) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08px !important;
+}
+
+/* =========================
    V2 - Typo et lisibilite (reversible)
    ========================= */
 :root{
