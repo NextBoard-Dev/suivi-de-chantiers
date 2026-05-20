@@ -10528,8 +10528,7 @@ function _setHoursModalSaveButtonFromDraftState(task){
   if(!Array.isArray(currentEntries) || _hoursSummaryDraftTaskId !== String(task.id || "")){
     currentEntries = collectHoursTaskCalendarEntries(task);
   }
-  const hasBase = !!_hoursSummaryDraftBaseSignature;
-  btnSave.disabled = !hasBase || !currentEntries || currentEntries.length === 0;
+  btnSave.disabled = false;
   applyHoursSaveButtonVisualState(btnSave);
 }
 function _clearHoursDraftEntriesCache(){
@@ -10809,11 +10808,6 @@ function saveHoursTaskModal(){
       }
       advanceMissingHoursFlow();
       return;
-    }
-    const btnSave = el("btnSaveHoursModal");
-    if(btnSave){
-      btnSave.disabled = true;
-      applyHoursSaveButtonVisualState(btnSave);
     }
     return;
   }
