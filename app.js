@@ -11303,7 +11303,6 @@ function renderAll(){
     Number(runtimePerf.totalMissingMapCalls || 0) - Number(runtimePerf._missingMapCallsAtRenderStart || 0)
   );
   runtimePerf.lastRenderAt = new Date().toISOString();
-  updateDataQualityBanner(false);
   if(!uiUpperInitialPassDone){
     applyUiUpperNoAccent();
     uiUpperInitialPassDone = true;
@@ -12502,7 +12501,6 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
         const launchFlow = window.confirm("Des erreurs de saisie hors période sont détectées.\nVoulez-vous démarrer le parcours de correction maintenant ?");
         if(launchFlow) startOutsideRangeFlow();
       }
-      updateDataQualityBanner(false);
       markDirty();
     }
 
