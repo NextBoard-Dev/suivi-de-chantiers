@@ -6675,3 +6675,24 @@ input[type="date"]::-webkit-calendar-picker-indicator{
 input[type="date"]:focus::-webkit-calendar-picker-indicator{
   opacity: 1;
 }
+
+/* =========================
+   V12 - Rythme visuel des blocs (reversible)
+   ========================= */
+.panel{
+  margin-bottom: 8px !important;
+}
+
+.card{
+  margin-bottom: 8px !important;
+}
+
+.panel-head{
+  padding-bottom: 6px !important;
+  margin-bottom: 6px !important;
+}
+
+.tablewrap{
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
