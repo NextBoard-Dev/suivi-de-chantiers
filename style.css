@@ -6753,3 +6753,24 @@ input[type="date"]:focus::-webkit-calendar-picker-indicator{
 #saveToastDetail{
   color: #1f2937 !important;
 }
+
+/* =========================
+   V15 - Harmonisation separateurs (reversible)
+   ========================= */
+hr,
+.separator,
+.divider{
+  border: none !important;
+  border-top: 1px solid rgba(15,23,42,0.12) !important;
+}
+
+.panel + .panel,
+.card + .card{
+  margin-top: 2px !important;
+}
+
+.panel-head,
+.modal-card .modal-actions,
+.table thead th{
+  border-color: rgba(15,23,42,0.12) !important;
+}
