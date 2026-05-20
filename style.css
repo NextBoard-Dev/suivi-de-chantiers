@@ -6590,3 +6590,35 @@ button:focus-visible,
   color: var(--text) !important;
   font-weight: 700 !important;
 }
+
+/* =========================
+   V9 - Harmonisation topbar/sidebar (reversible)
+   ========================= */
+.topbar{
+  border-bottom: 1px solid rgba(15,23,42,0.12) !important;
+  background: rgba(248,247,243,0.94) !important;
+}
+
+.topbar .title,
+.topbar .subtitle{
+  color: var(--text) !important;
+}
+
+.sidebar{
+  border-right: 1px solid rgba(15,23,42,0.14) !important;
+}
+
+.sidebar .section-title{
+  color: var(--muted) !important;
+  letter-spacing: 0.15px !important;
+}
+
+.sidebar .tab{
+  border: 1px solid rgba(15,23,42,0.10) !important;
+  background: rgba(248,247,243,0.88) !important;
+}
+
+.sidebar .tab:hover{
+  background: rgba(238,242,247,0.95) !important;
+  border-color: rgba(15,23,42,0.18) !important;
+}
