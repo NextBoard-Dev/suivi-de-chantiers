@@ -389,6 +389,7 @@ window.supabaseLogin = async function(email, password){
 
 window.saveAppStateToSupabase = async function(stateObj, options={}){
   const localFallbackState = normalizeState(options?.fallbackPayload || stateObj || {});
+  const stateBytes = _getStateByteEstimate(localFallbackState);
   const storage = _buildStorageHealth(stateObj || {});
   if(storage.block){
     const localSaved = await _saveAppStateToLocalFallback(localFallbackState);
@@ -477,6 +478,7 @@ window.saveAppStateToSupabase = async function(stateObj, options={}){
       }
       _lastCloudStateUpdatedAt = String(payload.updated_at || "");
       _saveCloudStateCache(stateObj, payload.updated_at);
+      _lastCloudStateByteEstimate = Number.isFinite(stateBytes) ? stateBytes : 0;
       await _markLocalFallbackSynced();
       _setLastWriteMeta("supabase", payload.updated_at);
       _refreshDataIoBadge();
@@ -4845,11 +4847,13 @@ let _loadLoginsFromSupabaseFlightByKey = new Map();
 let _loadLoginsFromSupabaseCacheByKey = new Map();
 let _stateSaveDebounceTimer = null;
 let _stateSavePendingSignature = "";
+let _stateSavePendingBytes = 0;
 let _stateSavePendingPayload = null;
 let _stateSavePendingFallbackPayload = null;
 let _stateSaveLastSavedSignature = "";
 let _lastStorageWarnToastAt = 0;
 let _lastStateByteEstimate = 0;
+let _lastCloudStateByteEstimate = 0;
 let _saveAppStateToSupabaseFlight = null;
 let _saveAppStateToSupabaseFlightKey = null;
 let _isDataIoReadBusy = false;
@@ -5508,6 +5512,10 @@ function _queueAppStateSupabaseSave(stateObj){
   const compactState = _buildCompactStateForRemoteSync(normalized);
   const fullBytes = _getStateByteEstimate(normalized);
   const compactBytes = _getStateByteEstimate(compactState);
+  const sig = _serializeStateSignature(normalized);
+  if(!sig) return;
+  const sameAsCloud = _lastCloudStateByteEstimate > 0 && fullBytes === _lastCloudStateByteEstimate;
+  if(sig === _stateSaveLastSavedSignature && sameAsCloud) return;
   const canUploadFull = fullBytes <= SUPABASE_STATE_MAX_UPLOAD_BYTES;
   const canUploadCompact = compactBytes <= SUPABASE_STATE_MAX_UPLOAD_BYTES;
   const storage = _buildStorageHealth(normalized);
@@ -5563,10 +5571,10 @@ function _queueAppStateSupabaseSave(stateObj){
     );
   }
 
-  const sig = _serializeStateSignature(normalized);
-  if(!sig || sig === _stateSaveLastSavedSignature) return;
+  if(sig === _stateSavePendingSignature) return;
   if(_stateSaveDebounceTimer && sig === _stateSavePendingSignature) return;
   _stateSavePendingSignature = sig;
+  _stateSavePendingBytes = fullBytes;
   _stateSavePendingPayload = stateForRemote;
   _stateSavePendingFallbackPayload = normalized;
   if(_stateSaveDebounceTimer){
@@ -5574,17 +5582,24 @@ function _queueAppStateSupabaseSave(stateObj){
   }
   _stateSaveDebounceTimer = setTimeout(()=>{
     const nextSig = _stateSavePendingSignature;
+    const nextBytes = _stateSavePendingBytes;
     const payload = _stateSavePendingPayload;
     const fallbackPayload = _stateSavePendingFallbackPayload;
     _stateSaveDebounceTimer = null;
     _stateSavePendingSignature = "";
+    _stateSavePendingBytes = 0;
     _stateSavePendingPayload = null;
     _stateSavePendingFallbackPayload = null;
-    if(!nextSig || nextSig === _stateSaveLastSavedSignature) return;
+    if(!nextSig) return;
+    const cloudBytesMatch = nextBytes > 0 && nextBytes === _lastCloudStateByteEstimate;
+    if(nextSig === _stateSaveLastSavedSignature && cloudBytesMatch) return;
     if(!window.saveAppStateToSupabase) return;
     const promise = window.saveAppStateToSupabase(payload, { fallbackPayload });
     promise.then((ok)=>{
-      if(ok) _stateSaveLastSavedSignature = nextSig;
+      if(ok){
+        _stateSaveLastSavedSignature = nextSig;
+        _lastCloudStateByteEstimate = nextBytes > 0 ? nextBytes : _lastCloudStateByteEstimate;
+      }
     }).catch(softCatch);
   }, APP_STATE_SAVE_DEBOUNCE_MS);
 }
