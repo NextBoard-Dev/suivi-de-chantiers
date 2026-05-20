@@ -5598,10 +5598,6 @@ function saveState(opts={}){
     runtimePerf.lastStateBytes = _getStateByteEstimate(normalized);
     runtimePerf.lastSaveMs = Math.max(0, performance.now() - t0);
     runtimePerf.lastSaveAt = new Date().toISOString();
-    refreshStateSegmentationDiagnostics(normalized);
-    const scaleOnSave = collectScalabilityReport(normalized);
-    updateDegradedMode(scaleOnSave);
-    notifyScalabilityIfNeeded(scaleOnSave, "save");
     if(getCurrentRole() === "admin"){
       updateRoleUI();
     }
