@@ -12430,6 +12430,10 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     queueLoginJournalRefresh();
   });
   el("btnSave")?.addEventListener("click", async ()=>{
+    if(!unsavedChanges){
+      showSaveToast("error", "Sauvegarde bloquée", "Aucune modification détectée.");
+      return;
+    }
     const currentTask = selectedProjectId && selectedTaskId
       ? (state.tasks || []).find((x)=>x.id===selectedTaskId && x.projectId===selectedProjectId)
       : null;
