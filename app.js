@@ -1397,14 +1397,6 @@ function _scheduleSupabaseAutoLoad(){
       if(!ok){
         showSaveToast("error", "Chargement distant", "Impossible de charger les données distantes. Vérifie la connexion.");
       }
-      const lazyUsersLoad = ()=> {
-        try{ loadUsersFromSupabase(); }catch(e){ softCatch(e); }
-      };
-      if(typeof window !== "undefined" && typeof window.requestIdleCallback === "function"){
-        window.requestIdleCallback(lazyUsersLoad, { timeout: 4000 });
-      }else{
-        setTimeout(lazyUsersLoad, 2500);
-      }
     }catch(e){ softCatch(e); }
   }, 1200);
 }
