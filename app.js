@@ -9578,9 +9578,10 @@ function getMissingTasksForMasterFlow(){
   const sorted = sortTasks((state?.tasks || []), sortMaster);
   const includeChantierCol = (new Set(sorted.map(t=>String(t.projectId||""))).size > 1);
   const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
-  return sorted
+  const raw = sorted
     .filter(t=> (missingMap.get(t.id) || 0) > 0)
     .map(t=>({ projectId: t.projectId, taskId: t.id }));
+  return dedupeTaskFlowSteps(raw);
 }
 function finishMissingHoursFlow(){
   _missingHoursFlow = null;
@@ -9618,6 +9619,7 @@ function openMissingHoursFlowStep(){
   finishMissingHoursFlow();
 }
 function startMissingHoursFlow(){
+  if(_missingHoursFlow || _outsideRangeFlow) return;
   const tasks = getMissingTasksForMasterFlow();
   if(!tasks.length){
     showSaveToast("ok", "A compléter", "Aucune tâche à compléter.");
@@ -9655,9 +9657,24 @@ function buildOutsideRangeLogsMap(tasks){
 function getOutsideRangeTasksForMasterFlow(){
   const sorted = sortTasks((state?.tasks || []), sortMaster);
   const outsideMap = buildOutsideRangeLogsMap(sorted);
-  return sorted
+  const raw = sorted
     .filter(t=> (outsideMap.get(t.id) || 0) > 0)
     .map(t=>({ projectId: t.projectId, taskId: t.id }));
+  return dedupeTaskFlowSteps(raw);
+}
+function dedupeTaskFlowSteps(steps){
+  const seen = new Set();
+  const out = [];
+  (steps || []).forEach((step)=>{
+    const projectId = (step?.projectId || "").toString();
+    const taskId = (step?.taskId || "").toString();
+    if(!projectId || !taskId) return;
+    const key = `${projectId}::${taskId}`;
+    if(seen.has(key)) return;
+    seen.add(key);
+    out.push(step);
+  });
+  return out;
 }
 function finishOutsideRangeFlow(){
   _outsideRangeFlow = null;
@@ -9697,6 +9714,7 @@ function openOutsideRangeFlowStep(){
   finishOutsideRangeFlow();
 }
 function startOutsideRangeFlow(){
+  if(_outsideRangeFlow || _missingHoursFlow) return;
   const tasks = getOutsideRangeTasksForMasterFlow();
   if(!tasks.length){
     showSaveToast("ok", "Erreurs de saisie", "Aucune tâche en défaut hors période.");
