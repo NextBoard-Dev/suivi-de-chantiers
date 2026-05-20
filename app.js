@@ -10509,6 +10509,8 @@ let _hoursSummaryQueuedTask = null;
 let _hoursSummaryDraftEntriesCache = null;
 let _hoursSummaryDraftTaskId = "";
 let _hoursSummaryDraftBaseSignature = "";
+let _hoursTaskModalLastOpenAt = 0;
+let _hoursTaskModalLastTaskKey = "";
 function _cacheHoursDraftEntriesForTask(task, entries){
   const taskId = String(task?.id || "");
   if(!taskId || !Array.isArray(entries)){
@@ -10784,6 +10786,16 @@ function openHoursTaskModal(){
     alert("Sélectionne une tâche.");
     return;
   }
+  const taskKey = `${t.projectId}::${t.id}`;
+  const now = Date.now();
+  if(_hoursTaskModalLastTaskKey === taskKey && (now - _hoursTaskModalLastOpenAt < 250)){
+    return;
+  }
+  if(_hoursTaskModalLastTaskKey === taskKey && !modal.classList.contains("hidden")){
+    return;
+  }
+  _hoursTaskModalLastTaskKey = taskKey;
+  _hoursTaskModalLastOpenAt = now;
   updateTimeLogUI(t, true);
   const initialDraftEntries = collectHoursTaskCalendarEntries(t);
   _cacheHoursDraftEntriesForTask(t, initialDraftEntries);
@@ -10800,6 +10812,8 @@ function closeHoursTaskModal(stopFlow=true){
   const modal = el("hoursTaskModal");
   hideModalSafely(modal, "#btnOpenHoursModal");
   _clearHoursDraftEntriesCache();
+  _hoursTaskModalLastTaskKey = "";
+  _hoursTaskModalLastOpenAt = 0;
   if(stopFlow && (_missingHoursFlow || _outsideRangeFlow)){
     _missingHoursFlow = null;
     _outsideRangeFlow = null;
