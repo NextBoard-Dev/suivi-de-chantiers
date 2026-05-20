@@ -9596,7 +9596,7 @@ function openMissingHoursFlowStep(){
   while(_missingHoursFlow.index < _missingHoursFlow.tasks.length){
     const step = _missingHoursFlow.tasks[_missingHoursFlow.index];
     const t = state?.tasks?.find(x=>x.id===step.taskId && x.projectId===step.projectId);
-    if(!t){
+    if(!t || !countMissingDaysForTask(t)){
       _missingHoursFlow.index += 1;
       continue;
     }
