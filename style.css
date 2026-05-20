@@ -6440,6 +6440,15 @@ textarea.input:focus{
 }
 
 /* =========================
+   V22 - Lisibilite ligne selectionnee (reversible)
+   ========================= */
+.table tbody tr.row-selected td,
+.gantt-table tbody tr.gantt-row.gantt-row-active td{
+  background: rgba(37,99,235,0.10) !important;
+  box-shadow: inset 3px 0 0 rgba(37,99,235,0.55) !important;
+}
+
+/* =========================
    V2 - Typo et lisibilite (reversible)
    ========================= */
 :root{
