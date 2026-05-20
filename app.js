@@ -10790,7 +10790,7 @@ function openHoursTaskModal(){
   if(!modal) return;
   const t = resolveHoursTaskForModal();
   if(!t){
-    alert("Sélectionne une tâche.");
+    closeHoursTaskModal(false);
     return;
   }
   const taskKey = `${t.projectId}::${t.id}`;
@@ -10902,15 +10902,10 @@ function saveHoursTaskModal(){
   renderMaster();
   renderProject();
   saveState();
-  if(!_outsideRangeFlow && !_missingHoursFlow){
-    const qualityAfterSave = collectDataQualityIssues(state);
-    if((qualityAfterSave?.counts?.logsOutsideTaskRange || 0) > 0){
-      const launchFlow = window.confirm("Des erreurs de saisie hors période restent présentes.\nVoulez-vous démarrer le parcours de correction maintenant ?");
-      if(launchFlow){
-        startOutsideRangeFlow();
-        return;
-      }
-    }
+  const qualityAfterSave = collectDataQualityIssues(state);
+  const pendingOutside = Number(qualityAfterSave?.counts?.logsOutsideTaskRange || 0);
+  if(pendingOutside > 0){
+    showSaveToast("warning", "Validation terminée", `${pendingOutside} log(s) hors période restant(s)`);
   }
   if(_outsideRangeFlow){
     const remainingOutside = countOutsideRangeLogsForTask(t);
