@@ -4078,8 +4078,8 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
   padding:2px 7px;
   border:1px solid rgba(26,43,53,.25);
   border-radius:999px;
-  background:rgba(255,255,255,.75);
-  color:#1f313b;
+  background:rgba(255,255,255,.9);
+  color:#13232c;
   font-size:11px;
   font-weight:700;
   line-height:1;
@@ -4125,9 +4125,9 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
 }
 
 .data-io-item.is-unknown{
-  background:rgba(71,85,105,.14);
-  border-color:rgba(71,85,105,.45);
-  color:#334155;
+  background:rgba(51,65,85,.18);
+  border-color:rgba(51,65,85,.52);
+  color:#1e293b;
 }
 
 .data-io-item.is-warning{
