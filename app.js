@@ -10861,16 +10861,14 @@ function scrollHoursTaskModalToFirstMissing(){
   let grid = el("hm_calendar");
   if(!grid) return;
   const selectedTaskId = (getSelectedTaskForHoursModal()?.id || "").trim();
-  const todayKey = toLocalDateKey(new Date());
   const initialTargetInput =
     findFirstHoursInputTarget(selectedTaskId, true) ||
-    Array.from(grid.querySelectorAll(`.hm-day[data-active='1'][data-date='${todayKey}'] .hm-day-input[data-active='1']`))
-      .find((input)=> !selectedTaskId || ((input.getAttribute("data-task-id") || "").trim() === selectedTaskId)) ||
-    findFirstHoursInputTarget(selectedTaskId, false) ||
-    findFirstHoursInputTarget("", true) ||
-    findFirstHoursInputTarget("", false);
+    findFirstHoursInputTarget("", true);
   if(!initialTargetInput) return;
   const targetDate = (initialTargetInput.getAttribute("data-date") || "").trim();
+  const targetTaskId = (initialTargetInput.getAttribute("data-task-id") || "").trim();
+  const targetRoleKey = normalizeTimeLogRole(initialTargetInput.getAttribute("data-role-key") || "");
+  const targetInternalTech = normalizeInternalTech(initialTargetInput.getAttribute("data-internal-tech") || "");
   const hmDate = el("hm_date");
   const dateInput = el("t_time_date_input");
   let selectedDate = targetDate;
@@ -10885,16 +10883,23 @@ function scrollHoursTaskModalToFirstMissing(){
   }else{
     selectedDate = (hmDate?.value || "").trim();
   }
-  const targetInput = selectedDate
-    ? grid.querySelector(`.hm-day-input[data-date="${selectedDate}"][data-active='1']`)
-    : initialTargetInput;
-  if(!targetInput) return;
-  const targetCard = targetInput.closest(".hm-day");
+  const targetInput = selectedDate ? (
+    Array.from(grid.querySelectorAll(`.hm-day-input[data-date="${selectedDate}"][data-active='1']`)).find((input)=>{
+      const taskId = (input.getAttribute("data-task-id") || "").trim();
+      const roleKey = normalizeTimeLogRole(input.getAttribute("data-role-key") || "");
+      const internalTech = normalizeInternalTech(input.getAttribute("data-internal-tech") || "");
+      return taskId === targetTaskId && roleKey === targetRoleKey && internalTech === targetInternalTech && isHoursCalendarInputMissing(input);
+    }) ||
+    Array.from(grid.querySelectorAll(`.hm-day-input[data-date="${selectedDate}"][data-active='1']`)).find(isHoursCalendarInputMissing)
+  ) : null;
+  const finalTarget = targetInput || initialTargetInput;
+  if(!finalTarget) return;
+  const targetCard = finalTarget.closest(".hm-day");
   if(!targetCard) return;
   refreshHoursCalendarSelectedCard(selectedDate);
   targetCard.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
-  try{ targetInput.focus({ preventScroll: true }); }
-  catch(_){ targetInput.focus(); }
+  try{ finalTarget.focus({ preventScroll: true }); }
+  catch(_){ finalTarget.focus(); }
 }
 function openHoursTaskModal(){
   const modal = el("hoursTaskModal");
