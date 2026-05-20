@@ -5336,11 +5336,6 @@ function exportDataQualityReportPdf(){
   const lines = report.ok
     ? ["Aucune incohérence métier détectée."]
     : report.issues.slice();
-  if(scale.ok){
-    lines.push(`Charge données: OK (${scale.tasksCount} tâches, ${scale.timeLogsCount} logs, ${scale.stateKb} Ko).`);
-  }else{
-    lines.push(`Charge données: ${scale.warnings.join(" ; ")}`);
-  }
 
   const listHtml = lines.map((x,i)=>`<li>${attrEscape(String(i+1))}. ${attrEscape(x)}</li>`).join("");
   card.innerHTML = `
