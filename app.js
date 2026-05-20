@@ -5654,8 +5654,8 @@ function updateSaveButton(){
     "btnConfigSave",
     "btnVacSave"
   ];
-  const buttons = saveButtonIds.map((id)=>el(id)).filter(Boolean);
-  if(!buttons.length) return;
+    const buttons = saveButtonIds.map((id)=>el(id)).filter(Boolean);
+    if(!buttons.length) return;
     const isSaving = !!_isDataIoWriteBusy;
     buttons.forEach((btn)=>{
       const defaultLabel = btn.dataset.defaultLabel || btn.textContent || "";
@@ -5665,7 +5665,7 @@ function updateSaveButton(){
       btn.disabled = true;
       btn.classList.remove("btn-primary");
       btn.classList.add("btn-save-idle");
-      btn.textContent = "Sauvegarde...";
+      btn.textContent = (btn.id === "btnSave") ? "Sauvegarde active" : defaultLabel;
     }else if(unsavedChanges){
       btn.disabled = false;
       btn.classList.add("btn-primary");
