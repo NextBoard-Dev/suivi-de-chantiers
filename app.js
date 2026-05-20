@@ -2246,8 +2246,7 @@ function updateRoleUI(){
     const email = sessionStorage.getItem("current_email") || "";
     const roleLabel = role==="admin" ? "Admin" : "Utilisateur";
     const emailPart = email ? ` - ${email}` : "";
-    const diagPart = role==="admin" ? buildAdminMiniDiagText() : "";
-    const main = `Utilisateur connecté: ${name}${emailPart} - ${roleLabel}${diagPart}`;
+    const main = `Utilisateur connecté: ${name}${emailPart} - ${roleLabel}`;
     topUser.innerHTML = `${attrEscape(main)} ${buildDataIoBadgeHtml()}`;
   }
   applyThemeForCurrentUser();
