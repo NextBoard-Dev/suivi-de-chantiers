@@ -10856,19 +10856,22 @@ function saveHoursTaskModal(){
   }
   const hasChanges = _makeHoursDraftSignature(draftEntries) !== _hoursSummaryDraftBaseSignature;
   if(!hasChanges){
-    if(_outsideRangeFlow || _missingHoursFlow){
-      if(_outsideRangeFlow){
-        const remainingOutside = countOutsideRangeLogsForTask(t);
-        if(remainingOutside > 0){
-          showSaveToast("error", "Correction incomplète", `${remainingOutside} log(s) hors période restant(s) pour cette tâche`);
-          setTimeout(()=>{ if(_outsideRangeFlow) openHoursTaskModal(); }, 0);
-          return;
-        }
-        advanceOutsideRangeFlow();
+    if(_outsideRangeFlow){
+      const remainingOutside = countOutsideRangeLogsForTask(t);
+      if(remainingOutside > 0){
+        showSaveToast("error", "Correction incomplète", `${remainingOutside} log(s) hors période restant(s) pour cette tâche`);
+        return;
+      }
+      advanceOutsideRangeFlow();
+      return;
+    }
+    if(_missingHoursFlow){
+      const missingDays = countMissingDaysForTask(t);
+      if(missingDays > 0){
+        showSaveToast("error", "Saisie incomplète", "Renseigne une valeur avant de valider pour cette tâche.");
         return;
       }
       advanceMissingHoursFlow();
-      return;
     }
     return;
   }
