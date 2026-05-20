@@ -5162,25 +5162,11 @@ function updateDegradedMode(scaleReport){
   }
 }
 
-function refreshStateSegmentationDiagnostics(currentState=state){
-  try{
-    if(typeof window.estimateSegmentSizes !== "function") return null;
-    const metrics = window.estimateSegmentSizes(currentState || {});
-    runtimePerf.lastSegmentSizes = metrics;
-    runtimePerf.lastSegmentationAt = new Date().toISOString();
-    window.__stateSegmentationDiag = metrics;
-    return metrics;
-  }catch(e){
-    softCatch(e);
-    return null;
-  }
-}
-
 function collectScalabilityReport(currentState=state){
   const tasksCount = Array.isArray(currentState?.tasks) ? currentState.tasks.length : 0;
   const timeLogsCount = Array.isArray(currentState?.timeLogs) ? currentState.timeLogs.length : 0;
   const stateBytes = runtimePerf.lastStateBytes || estimateStateBytes(currentState || {});
-  const segmentMetrics = runtimePerf.lastSegmentSizes || refreshStateSegmentationDiagnostics(currentState);
+  const segmentMetrics = null;
   const warnings = [];
 
   if(tasksCount >= SCALE_GUARDS.warnTasks){
@@ -5207,7 +5193,7 @@ function collectScalabilityReport(currentState=state){
     stateBytes,
     stateKb: Math.round(stateBytes/1024),
     segmentMetrics: segmentMetrics || null,
-    lastSegmentationAt: runtimePerf.lastSegmentationAt || "",
+    lastSegmentationAt: "",
     lastRenderMs: runtimePerf.lastRenderMs || 0,
     lastRenderMasterMs: runtimePerf.lastRenderMasterMs || 0,
     lastRenderMasterGanttMs: runtimePerf.lastRenderMasterGanttMs || 0,
