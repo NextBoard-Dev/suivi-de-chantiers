@@ -2219,22 +2219,7 @@ function getCurrentRole(){
   return sessionStorage.getItem("current_role") || "user";
 }
 function buildAdminMiniDiagText(){
-  try{
-    const m = runtimePerf?.lastSegmentSizes;
-    if(!m) return "";
-    const seg = m.segmentsBytes || {};
-    const kb = (v)=>`${Math.round((Number(v||0))/1024)} Ko`;
-    const rm = Number(runtimePerf?.lastRenderMasterMs || 0).toFixed(0);
-    const rg = Number(runtimePerf?.lastRenderMasterGanttMs || 0).toFixed(0);
-    const rmm = Number(runtimePerf?.lastRenderMasterMetricsMs || 0).toFixed(0);
-    const rwl = Number(runtimePerf?.lastRenderMasterWorkloadMs || 0).toFixed(0);
-    const rtb = Number(runtimePerf?.lastRenderMasterTableMs || 0).toFixed(0);
-    const mm = Number(runtimePerf?.lastMissingMapCalls || 0);
-    return ` | Diag: etat ${kb(m.totalBytes)} | projets ${kb(seg.projects)} | taches ${kb(seg.tasks)} | logs ${kb(seg.timeLogs)} | rm ${rm} ms | rg ${rg} ms | rmm ${rmm} | rwl ${rwl} | rtb ${rtb} | mm ${mm}`;
-  }catch(e){
-    softCatch(e);
-    return "";
-  }
+  return "";
 }
 function updateRoleUI(){
   const role = getCurrentRole();
