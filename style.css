@@ -6622,3 +6622,30 @@ button:focus-visible,
   background: rgba(238,242,247,0.95) !important;
   border-color: rgba(15,23,42,0.18) !important;
 }
+
+/* =========================
+   V10 - Harmonisation modales (reversible)
+   ========================= */
+.modal{
+  background: rgba(15,23,42,0.42) !important;
+  backdrop-filter: blur(2px) !important;
+}
+
+.modal-card{
+  border: 1px solid rgba(15,23,42,0.18) !important;
+  box-shadow: 0 14px 32px rgba(15,23,42,0.28) !important;
+}
+
+.modal-card .modal-title{
+  color: var(--text) !important;
+  letter-spacing: 0.12px !important;
+}
+
+.modal-card .modal-sub{
+  color: var(--muted) !important;
+}
+
+.modal-card .modal-actions{
+  border-top: 1px solid rgba(15,23,42,0.10) !important;
+  padding-top: 8px !important;
+}
