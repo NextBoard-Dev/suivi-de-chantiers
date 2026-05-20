@@ -6696,3 +6696,35 @@ input[type="date"]:focus::-webkit-calendar-picker-indicator{
   padding-top: 4px !important;
   padding-bottom: 4px !important;
 }
+
+/* =========================
+   V13 - Harmonisation scrollbars (reversible)
+   ========================= */
+.tablewrap,
+.modal-card,
+#hm_calendarWrap{
+  scrollbar-width: thin;
+  scrollbar-color: rgba(63,97,112,0.55) rgba(15,23,42,0.10);
+}
+
+.tablewrap::-webkit-scrollbar,
+.modal-card::-webkit-scrollbar,
+#hm_calendarWrap::-webkit-scrollbar{
+  width: 10px;
+  height: 10px;
+}
+
+.tablewrap::-webkit-scrollbar-track,
+.modal-card::-webkit-scrollbar-track,
+#hm_calendarWrap::-webkit-scrollbar-track{
+  background: rgba(15,23,42,0.08);
+  border-radius: 999px;
+}
+
+.tablewrap::-webkit-scrollbar-thumb,
+.modal-card::-webkit-scrollbar-thumb,
+#hm_calendarWrap::-webkit-scrollbar-thumb{
+  background: rgba(63,97,112,0.62);
+  border-radius: 999px;
+  border: 2px solid rgba(248,247,243,0.9);
+}
