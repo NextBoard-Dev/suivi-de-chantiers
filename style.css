@@ -2224,6 +2224,12 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   background-color:#e8e7e4 !important;
   background-image:none !important;
 }
+.gantt-table table td.gantt-cell:not(.vac-week):not(.vac-week-internal),
+.gantt-table .table td.gantt-cell:not(.vac-week):not(.vac-week-internal){
+  background:transparent !important;
+  background-color:transparent !important;
+  background-image:none !important;
+}
 .gantt-table table td.gantt-cell{
   z-index:0;
 }
