@@ -6514,6 +6514,25 @@ textarea.input:focus{
 }
 
 /* =========================
+   V27 - Lisibilite numeriques (reversible)
+   ========================= */
+.table td.num,
+.table th.num,
+.metric-val,
+.gantt-progress,
+.gantt-progress-out,
+#hm_summary,
+#masterHoursReportCard,
+#projectHoursReportCard{
+  font-variant-numeric: tabular-nums !important;
+}
+
+.table td.num,
+.table th.num{
+  text-align: right !important;
+}
+
+/* =========================
    V2 - Typo et lisibilite (reversible)
    ========================= */
 :root{
