@@ -10040,6 +10040,8 @@ function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missing
   const orderedTaskIds = getMissingHoursModalTaskOrder(ordered);
   const currentTaskId = (currentInput?.getAttribute("data-task-id") || "").trim();
   const currentDate = (currentInput?.getAttribute("data-date") || "").trim();
+  const taskInputs = ordered.filter((input)=>(input.getAttribute("data-task-id") || "").trim()===currentTaskId);
+  const taskPosInOrdered = taskInputs.indexOf(currentInput);
 
   const grouped = new Map();
   missingOrdered.forEach((input)=>{
@@ -10078,6 +10080,26 @@ function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missing
         }
       }
       return null;
+    }
+  }
+
+  if(currentTaskId && taskPosInOrdered >= 0 && taskInputs.length > 0){
+    if(step > 0){
+      for(let i = taskPosInOrdered + 1; i < taskInputs.length; i++){
+        const cand = taskInputs[i];
+        if(!cand) continue;
+        if(isHoursCalendarInputMissing(cand)){
+          return cand;
+        }
+      }
+    }else{
+      for(let i = taskPosInOrdered - 1; i >= 0; i--){
+        const cand = taskInputs[i];
+        if(!cand) continue;
+        if(isHoursCalendarInputMissing(cand)){
+          return cand;
+        }
+      }
     }
   }
 
@@ -12767,8 +12789,8 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     }
     const scopeTaskId = (input?.getAttribute("data-task-id") || "").trim();
     const nextInput = (e.key === "Tab" && e.shiftKey)
-      ? getHoursCalendarNextInput(input, -1, scopeTaskId, false)
-      : getHoursCalendarNextInput(input, 1, scopeTaskId, false);
+      ? getHoursCalendarNextInput(input, -1, scopeTaskId, true)
+      : getHoursCalendarNextInput(input, 1, scopeTaskId, true);
     if(nextInput){
       const nextDay = (nextInput.getAttribute("data-date") || "").trim();
       refreshHoursCalendarSelectedCard(nextDay);
