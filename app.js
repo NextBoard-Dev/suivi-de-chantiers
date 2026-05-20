@@ -4921,6 +4921,7 @@ const SESSION_TOKEN_VALIDATE_CACHE_MS = 30_000;
 const SESSION_CREATE_THROTTLE_MS = 60_000;
 const SESSION_CREATE_SIGNATURE_TTL_MS = 60 * 60_000;
 const SUPABASE_PRE_SAVE_CHECK_INTERVAL_MS = 45_000;
+const UI_ANIMATION_MAX_NODES = 60;
 const LOGIN_JOURNAL_REFRESH_DEBOUNCE_MS = 250;
 const LOGIN_JOURNAL_REFRESH_MIN_INTERVAL_MS = 20_000;
 let _usersSaveDebounceTimer = null;
@@ -5415,6 +5416,7 @@ const _badgeChangeSignatures = new Map();
 function animateBadgeChanges(root){
   if(!root) return;
   const nodes = root.querySelectorAll(".num-badge, .badge.owner, .panel-chip .metric-val");
+  if(nodes.length > UI_ANIMATION_MAX_NODES) return;
   nodes.forEach((node, idx)=>{
     const key = `${root.id || "root"}:${idx}:${node.className}`;
     const sig = `${(node.textContent || "").trim()}|${node.getAttribute("style") || ""}`;
@@ -5432,6 +5434,7 @@ function animateCardsInView(viewId){
   const view = el(viewId);
   if(!view) return;
   const cards = view.querySelectorAll(".card, .tablewrap");
+  if(cards.length > UI_ANIMATION_MAX_NODES) return;
   cards.forEach((node, idx)=>{
     node.style.setProperty("--card-fade-delay", `${Math.min(idx * 0.025, 0.18)}s`);
     node.classList.remove("card-fade-in");
