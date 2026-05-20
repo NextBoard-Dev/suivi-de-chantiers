@@ -789,6 +789,8 @@ window.validateSessionToken = validateSessionToken;
 
 async function cleanupExpiredSessions(){
   if(_rlsSessionsWriteBlocked) return false;
+  const now = Date.now();
+  if(now - _lastSessionCleanupAt < SESSION_CLEANUP_MIN_INTERVAL_MS) return true;
   const sb = _getSupabaseClient();
   if(!sb) return false;
   try{
@@ -805,6 +807,7 @@ async function cleanupExpiredSessions(){
       console.warn("Supabase sessions cleanup error", error);
       return false;
     }
+    _lastSessionCleanupAt = now;
     return true;
   }catch(e){
     console.warn("cleanupExpiredSessions failed", e);
@@ -4917,6 +4920,7 @@ let _createSessionLastSentAtByHash = new Map();
 const SESSION_TOKEN_VALIDATE_CACHE_MS = 30_000;
 const SESSION_CREATE_THROTTLE_MS = 60_000;
 const SESSION_CREATE_SIGNATURE_TTL_MS = 60 * 60_000;
+const SESSION_CLEANUP_MIN_INTERVAL_MS = 10 * 60_000;
 const SUPABASE_PRE_SAVE_CHECK_INTERVAL_MS = 45_000;
 const UI_ANIMATION_MAX_NODES = 60;
 const LOGIN_JOURNAL_REFRESH_DEBOUNCE_MS = 250;
@@ -4932,6 +4936,7 @@ let _loginJournalRefreshTimer = null;
 let _isLoginJournalBusy = false;
 let _lastLoginJournalRangeKey = "";
 let _lastLoginJournalRefreshAt = 0;
+let _lastSessionCleanupAt = 0;
 
 function _isRlsDenied(error){
   const code = String(error?.code || "").trim();
