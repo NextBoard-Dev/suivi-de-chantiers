@@ -6465,6 +6465,18 @@ textarea.input:focus{
 }
 
 /* =========================
+   V24 - Lisibilite filtres actifs (reversible)
+   ========================= */
+.section-filters .input:not(:placeholder-shown),
+.panel-controls .input:not(:placeholder-shown),
+.section-filters select:not([value=""]),
+.panel-controls select:not([value=""]){
+  border-color: rgba(37,99,235,0.45) !important;
+  box-shadow: 0 0 0 1px rgba(37,99,235,0.14) inset !important;
+  background: rgba(239,246,255,0.72) !important;
+}
+
+/* =========================
    V2 - Typo et lisibilite (reversible)
    ========================= */
 :root{
