@@ -1945,14 +1945,17 @@ function _positionGanttTodayLine(ganttRoot){
   monday.setDate(today.getDate()-((today.getDay()+6)%7));
   const weekdayIndex = Math.max(0, Math.min(6, Math.round((today - monday) / 86400000)));
   const dayColumn = currentWeekCell.offsetWidth / 7;
-  const markerLeft = currentWeekCell.offsetLeft + (weekdayIndex * dayColumn);
+  const statusCell = scroller.querySelector("th.gantt-col-status");
+  const weekBandStart = currentWeekCell.offsetLeft;
+  const stickyLimit = statusCell ? (statusCell.offsetLeft + statusCell.offsetWidth) : weekBandStart;
+  const markerLeft = Math.max(weekBandStart, stickyLimit) + (weekdayIndex * dayColumn);
   const markerWidth = 1;
 
   const header = scroller.querySelector("thead");
   const headerHeight = header ? header.offsetHeight : 0;
   const table = scroller.querySelector("table");
   const bodyHeight = table ? table.offsetHeight : 0;
-  marker.style.width = `${markerWidth}px`;
+  marker.style.width = `${Math.max(1, markerWidth)}px`;
   marker.style.left = `${Math.round(markerLeft)}px`;
   marker.style.top = `${headerHeight}px`;
   marker.style.height = `${Math.max(0, bodyHeight - headerHeight)}px`;

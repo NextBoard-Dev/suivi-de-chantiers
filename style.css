@@ -2292,11 +2292,11 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   position:absolute;
   top:0;
   width:1px;
-  background:rgba(185, 28, 28, 0.82);
-  opacity:0.72;
+  background:rgba(185, 28, 28, 0.9);
+  opacity:1;
   pointer-events:none;
-  z-index:48;
-  transform:translateX(-0.5px);
+  z-index:70;
+  transform:none;
   box-shadow:none;
 }
 #viewMaster .tablewrap.gantt-table,
