@@ -6774,3 +6774,27 @@ hr,
 .table thead th{
   border-color: rgba(15,23,42,0.12) !important;
 }
+
+/* =========================
+   V16 - Confort visuel filtres (reversible)
+   ========================= */
+.section-filters,
+.panel-controls{
+  background: rgba(241,239,233,0.72) !important;
+  border: 1px solid rgba(15,23,42,0.10) !important;
+  border-radius: 10px !important;
+  padding: 6px !important;
+}
+
+.section-filters .input,
+.panel-controls .input,
+.section-filters select,
+.panel-controls select{
+  min-height: 30px !important;
+}
+
+.section-filters label,
+.panel-controls label{
+  color: var(--muted) !important;
+  font-size: 11px !important;
+}
