@@ -12570,9 +12570,18 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     _suppressSupabaseSave = false;
 
     let supabaseOk = false;
-    let usersOk = false;
+    let usersOk = true;
     try{ if(window.saveAppStateToSupabase) supabaseOk = await window.saveAppStateToSupabase(state); }catch(e){ softCatch(e); }
-    try{ usersOk = await saveUsersToSupabase(loadUsers()); }catch(e){ softCatch(e); }
+    try{
+      const usersNow = loadUsers();
+      const usersSigNow = _serializeUsersSignature(usersNow);
+      if(usersSigNow && usersSigNow !== _usersSaveLastSavedSignature){
+        usersOk = await saveUsersToSupabase(usersNow);
+      }
+    }catch(e){
+      usersOk = false;
+      softCatch(e);
+    }
 
     // Backup local JSON volontairement désactivé: sauvegarde via Supabase uniquement.
     const backupEnabled = false;
