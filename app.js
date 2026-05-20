@@ -1921,6 +1921,12 @@ function _removeGanttTodayLine(ganttRoot){
   if(existing) existing.remove();
 }
 
+function _getWeekdayIndexForToday(date){
+  const d = date || new Date();
+  const wd = d.getDay(); // 0 = dim, 1 = lun...
+  return wd === 0 ? 6 : wd - 1;
+}
+
 function _positionGanttTodayLine(ganttRoot){
   if(!ganttRoot) return;
   const scroller = ganttRoot.querySelector(".tablewrap.gantt-table");
@@ -1943,7 +1949,7 @@ function _positionGanttTodayLine(ganttRoot){
   today.setHours(0,0,0,0);
   const monday = new Date(today.getTime());
   monday.setDate(today.getDate()-((today.getDay()+6)%7));
-  const weekdayIndex = Math.max(0, Math.min(6, Math.round((today - monday) / 86400000)));
+  const weekdayIndex = _getWeekdayIndexForToday(today);
   const dayColumn = currentWeekCell.offsetWidth / 7;
   const statusCell = scroller.querySelector("th.gantt-col-status");
   const weekBandStart = currentWeekCell.offsetLeft;
@@ -1977,7 +1983,7 @@ function scrollGanttToCurrentWeek(ganttRoot){
     today.setHours(0,0,0,0);
     const monday = new Date(today.getTime());
     monday.setDate(today.getDate()-((today.getDay()+6)%7));
-    const weekdayIndex = Math.max(0, Math.min(6, Math.round((today - monday) / 86400000)));
+    const weekdayIndex = _getWeekdayIndexForToday(today);
     const dayColumn = currentWeekCell.offsetWidth / 7;
     const markerXInWeek = currentWeekCell.offsetLeft + (weekdayIndex * dayColumn);
     const target = Math.max(0, Math.round(markerXInWeek - (scroller.clientWidth * 0.42)));
