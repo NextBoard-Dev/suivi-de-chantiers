@@ -5256,63 +5256,12 @@ async function collectCloudAlignmentReport(currentState=state){
 }
 
 function updateDataQualityBanner(notify=false){
-  const isAdmin = getCurrentRole() === "admin";
   const brandSub = el("brandSub");
   if(!brandSub) return;
 
   const today = new Date();
   const fmt = today.toLocaleDateString("fr-FR",{weekday:"long", day:"2-digit", month:"long", year:"numeric"});
-  if(!isAdmin){
-    brandSub.innerHTML = `<span class="brand-date">${fmt}</span>`;
-    return;
-  }
-  const report = collectDataQualityIssues(state);
-  const scale = collectScalabilityReport(state);
-  updateDegradedMode(scale);
-  _lastDataQualityReport = report;
-  _lastScalabilityReport = scale;
-
-  const cloudSuffix = _lastCloudAlignmentReport?.available
-    ? (_lastCloudAlignmentReport.okBusiness ? " · Synchronisation OK" : ` · Synchronisation: ${_lastCloudAlignmentReport.business.total} écart(s)`)
-    : "";
-  const scaleSuffix = scale.ok ? " · Charge OK" : ` · Charge ${scale.warnings.length} alerte(s)`;
-  const degradedSuffix = runtimePerf.degradedMode ? " · Mode allégé" : "";
-  const badgeLabel = report.ok
-    ? `Qualité données: OK${cloudSuffix}${scaleSuffix}${degradedSuffix}`
-    : `Qualité données: ${report.issues.length} incohérence(s)${cloudSuffix}${scaleSuffix}${degradedSuffix}`;
-  const badgeStyle = (!report.ok)
-    ? "color:#b91c1c;border:1px solid #b91c1c33;background:#b91c1c14;padding:2px 8px;border-radius:10px;cursor:pointer;"
-    : (!scale.ok
-        ? "color:#c2410c;border:1px solid #c2410c33;background:#c2410c14;padding:2px 8px;border-radius:10px;cursor:pointer;"
-        : "color:#16a34a;border:1px solid #16a34a33;background:#16a34a14;padding:2px 8px;border-radius:10px;cursor:pointer;");
-
-  brandSub.innerHTML = `<span class="brand-date">${fmt}</span>  <span id="dataQualityBadge" style="${badgeStyle}">${badgeLabel}</span>`;
-  const badge = el("dataQualityBadge");
-  if(badge){
-    badge.onclick = async ()=>{
-      const r = _lastDataQualityReport || collectDataQualityIssues(state);
-      const cloud = await collectCloudAlignmentReport(state);
-      _lastCloudAlignmentReport = cloud;
-      const cloudMsg = !cloud.available
-        ? "Synchronisation: contrôle indisponible"
-        : (cloud.okBusiness
-            ? `Synchronisation: OK (seul updatedAt peut différer, ${cloud.strict.total} écart(s) technique(s))`
-            : `Synchronisation: ${cloud.business.total} écart(s) métier`);
-      const scaleNow = collectScalabilityReport(state);
-      _lastScalabilityReport = scaleNow;
-      const scaleMsg = scaleNow.ok
-        ? `Charge: OK (${scaleNow.tasksCount} tâches, ${scaleNow.timeLogsCount} logs, ${scaleNow.stateKb} Ko)`
-        : `Charge: ${scaleNow.warnings.join(" ; ")}`;
-      const detail = `${formatQualityIssuesForToast(r)} | ${cloudMsg} | ${scaleMsg}`;
-      const isOk = r.ok && (!cloud.available || cloud.okBusiness) && scaleNow.ok;
-      showSaveToast(isOk ? "ok" : "error", "Contrôle qualité", detail);
-      updateDataQualityBanner(false);
-    };
-  }
-
-  if(notify && !report.ok){
-    showSaveToast("error", "Contrôle qualité", formatQualityIssuesForToast(report));
-  }
+  brandSub.innerHTML = `<span class="brand-date">${fmt}</span>`;
 }
 function applyDataQualityCleanup(){
   const before = collectDataQualityIssues(state);
