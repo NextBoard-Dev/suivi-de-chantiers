@@ -6427,6 +6427,19 @@ textarea.input:focus{
 }
 
 /* =========================
+   V21 - Lisibilite entetes sticky (reversible)
+   ========================= */
+.table thead th,
+.gantt-table table thead th,
+.gantt-table .table thead th{
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  backdrop-filter: saturate(110%) blur(1px);
+  border-bottom: 1px solid rgba(15,23,42,0.18) !important;
+}
+
+/* =========================
    V2 - Typo et lisibilite (reversible)
    ========================= */
 :root{
