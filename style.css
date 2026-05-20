@@ -6295,6 +6295,9 @@ h3,
   --ui-border-soft: rgba(15, 23, 42, 0.14);
   --ui-border-strong: rgba(15, 23, 42, 0.22);
   --ui-focus: #3f6170;
+  --ui-btn-primary: #3f6170;
+  --ui-btn-primary-hover: #365563;
+  --ui-btn-primary-border-hover: #2f4b57;
 }
 
 .panel,
@@ -6327,15 +6330,15 @@ textarea.input:focus{
 
 .btn.btn-primary,
 .btn-primary{
-  background: #3f6170 !important;
-  border-color: #365563 !important;
+  background: var(--ui-btn-primary) !important;
+  border-color: var(--ui-btn-primary-hover) !important;
   color: #ffffff !important;
 }
 
 .btn.btn-primary:hover,
 .btn-primary:hover{
-  background: #365563 !important;
-  border-color: #2f4b57 !important;
+  background: var(--ui-btn-primary-hover) !important;
+  border-color: var(--ui-btn-primary-border-hover) !important;
 }
 
 .btn.btn-ghost,
