@@ -9687,7 +9687,7 @@ function openOutsideRangeFlowStep(){
   while(_outsideRangeFlow.index < _outsideRangeFlow.tasks.length){
     const step = _outsideRangeFlow.tasks[_outsideRangeFlow.index];
     const t = state?.tasks?.find(x=>x.id===step.taskId && x.projectId===step.projectId);
-    if(!t){
+    if(!t || countOutsideRangeLogsForTask(t) <= 0){
       _outsideRangeFlow.index += 1;
       continue;
     }
