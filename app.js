@@ -4864,6 +4864,7 @@ let _stateSavePendingSignature = "";
 let _stateSavePendingPayload = null;
 let _stateSavePendingFallbackPayload = null;
 let _stateSaveLastSavedSignature = "";
+let _lastStorageWarnToastAt = 0;
 let _lastStateByteEstimate = 0;
 let _saveAppStateToSupabaseFlight = null;
 let _saveAppStateToSupabaseFlightKey = null;
@@ -5526,6 +5527,14 @@ function _queueAppStateSupabaseSave(stateObj){
   const canUploadFull = fullBytes <= SUPABASE_STATE_MAX_UPLOAD_BYTES;
   const canUploadCompact = compactBytes <= SUPABASE_STATE_MAX_UPLOAD_BYTES;
   const storage = _buildStorageHealth(normalized);
+  if(storage.warn === "warning" && Date.now() - _lastStorageWarnToastAt >= 180000){
+    _lastStorageWarnToastAt = Date.now();
+    showSaveToast(
+      "ok",
+      "Stockage Supabase élevé",
+      `Stockage utilisé: ${storage.percent}%. Sauvegarde compacte activée si nécessaire.`
+    );
+  }
 
   if(storage.block && !canUploadCompact){
     _setLastWriteMeta("cloud_blocked", new Date().toISOString());
