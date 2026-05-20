@@ -10031,96 +10031,23 @@ function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missing
     return ordered[idx + step] || null;
   }
 
-  const missingOrdered = ordered.filter(isHoursCalendarInputMissing);
-  if(!missingOrdered.length){
-    const idx = ordered.indexOf(currentInput);
-    return step > 0 ? (ordered[idx + 1] || null) : (ordered[idx - 1] || null);
-  }
-
-  const orderedTaskIds = getMissingHoursModalTaskOrder(ordered);
-  const currentTaskId = (currentInput?.getAttribute("data-task-id") || "").trim();
-  const currentDate = (currentInput?.getAttribute("data-date") || "").trim();
-  const taskInputs = ordered.filter((input)=>(input.getAttribute("data-task-id") || "").trim()===currentTaskId);
-  const taskPosInOrdered = taskInputs.indexOf(currentInput);
-
-  const grouped = new Map();
-  missingOrdered.forEach((input)=>{
-    const t = (input.getAttribute("data-task-id") || "").trim();
-    if(!t) return;
-    const row = grouped.get(t);
-    if(!row) grouped.set(t, []);
-    grouped.get(t).push(input);
-  });
-
-  const currentTaskIdx = orderedTaskIds.indexOf(currentTaskId);
-  const sameTaskInputs = grouped.get(currentTaskId) || [];
-  const currentTaskPos = sameTaskInputs.indexOf(currentInput);
-
-  if(currentTaskPos >= 0){
-    if(step > 0){
-      for(let i = currentTaskPos + 1; i < sameTaskInputs.length; i++){
-        if(isHoursCalendarInputMissing(sameTaskInputs[i])) return sameTaskInputs[i];
-      }
-      if(currentTaskIdx >= 0){
-        for(let t = currentTaskIdx + 1; t < orderedTaskIds.length; t++){
-          const candidate = grouped.get(orderedTaskIds[t])?.[0];
-          if(candidate) return candidate;
-        }
-      }
-      return null;
-    }else{
-      for(let i = currentTaskPos - 1; i >= 0; i--){
-        if(isHoursCalendarInputMissing(sameTaskInputs[i])) return sameTaskInputs[i];
-      }
-      if(currentTaskIdx >= 0){
-        for(let t = currentTaskIdx - 1; t >= 0; t--){
-          const list = grouped.get(orderedTaskIds[t]) || [];
-          if(!list.length) continue;
-          return list[list.length - 1];
-        }
-      }
-      return null;
-    }
-  }
-
-  if(currentTaskId && taskPosInOrdered >= 0 && taskInputs.length > 0){
-    if(step > 0){
-      for(let i = taskPosInOrdered + 1; i < taskInputs.length; i++){
-        const cand = taskInputs[i];
-        if(!cand) continue;
-        if(isHoursCalendarInputMissing(cand)){
-          return cand;
-        }
-      }
-    }else{
-      for(let i = taskPosInOrdered - 1; i >= 0; i--){
-        const cand = taskInputs[i];
-        if(!cand) continue;
-        if(isHoursCalendarInputMissing(cand)){
-          return cand;
-        }
-      }
-    }
+  const idx = ordered.indexOf(currentInput);
+  if(idx < 0){
+    const firstMissing = ordered.find(isHoursCalendarInputMissing);
+    if(firstMissing) return firstMissing;
+    return step > 0 ? (ordered[0] || null) : (ordered[ordered.length - 1] || null);
   }
 
   if(step > 0){
-    for(let i = 0; i < orderedTaskIds.length; i++){
-      const candidate = (grouped.get(orderedTaskIds[i]) || [])[0];
-      if(candidate) return candidate;
+    for(let i = idx + 1; i < ordered.length; i++){
+      if(isHoursCalendarInputMissing(ordered[i])) return ordered[i];
     }
     return null;
   }
 
-  for(let i = orderedTaskIds.length - 1; i >= 0; i--){
-    const list = grouped.get(orderedTaskIds[i]) || [];
-    if(!list.length) continue;
-    const dayInputs = list.filter((input)=> ((input.getAttribute("data-date") || "").trim() <= currentDate));
-    if(dayInputs.length){
-      return dayInputs[dayInputs.length - 1];
-    }
-    return list[list.length - 1];
+  for(let i = idx - 1; i >= 0; i--){
+    if(isHoursCalendarInputMissing(ordered[i])) return ordered[i];
   }
-
   return null;
 }
 function findFirstHoursInputTarget(taskId="", preferMissing=true){
