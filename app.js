@@ -5665,7 +5665,9 @@ function updateSaveButton(){
       btn.disabled = true;
       btn.classList.remove("btn-primary");
       btn.classList.add("btn-save-idle");
-      btn.textContent = (btn.id === "btnSave") ? "Sauvegarde active" : defaultLabel;
+      if(btn.id === "btnSave"){
+        btn.textContent = "Sauvegarde active";
+      }
     }else if(unsavedChanges){
       btn.disabled = false;
       btn.classList.add("btn-primary");
@@ -5675,7 +5677,11 @@ function updateSaveButton(){
       btn.disabled = true;
       btn.classList.remove("btn-primary");
       btn.classList.add("btn-save-idle");
-      btn.textContent = btn.id === "btnSave" ? "Aucune modification" : defaultLabel;
+      if(btn.id === "btnSave"){
+        btn.textContent = "Aucune modification";
+      }else{
+        btn.textContent = defaultLabel;
+      }
     }
   });
 
