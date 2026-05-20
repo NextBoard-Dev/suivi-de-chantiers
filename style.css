@@ -6477,6 +6477,22 @@ textarea.input:focus{
 }
 
 /* =========================
+   V25 - Zones actions (reversible)
+   ========================= */
+.panel-controls,
+.modal-actions,
+.gantt-toggle-row{
+  gap: 8px !important;
+}
+
+.gantt-toggle-row{
+  padding: 6px !important;
+  border: 1px solid rgba(15,23,42,0.10) !important;
+  border-radius: 10px !important;
+  background: rgba(248,247,243,0.84) !important;
+}
+
+/* =========================
    V2 - Typo et lisibilite (reversible)
    ========================= */
 :root{
