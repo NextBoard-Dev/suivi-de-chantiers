@@ -9974,7 +9974,7 @@ function getHoursCalendarOrderedInputs(taskId=""){
 
 function isHoursCalendarInputMissing(input){
   const raw = (input?.value || "").toString().trim();
-  return raw === "";
+  return raw === "" || /^h$/i.test(raw);
 }
 
 function getMissingHoursModalTaskOrder(orderedInputs){
