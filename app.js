@@ -390,9 +390,10 @@ window.supabaseLogin = async function(email, password){
 
 
 window.saveAppStateToSupabase = async function(stateObj, options={}){
-  const localFallbackState = normalizeState(options?.fallbackPayload || stateObj || {});
+  const remoteState = normalizeState(deepClone(stateObj || {}));
+  const localFallbackState = normalizeState(options?.fallbackPayload || remoteState || {});
   const stateBytes = _getStateByteEstimate(localFallbackState);
-  const storage = _buildStorageHealth(stateObj || {});
+  const storage = _buildStorageHealth(remoteState || {});
   if(storage.block){
     const localSaved = await _saveAppStateToLocalFallback(localFallbackState);
     _setLastWriteMeta("cloud_blocked", new Date().toISOString());
@@ -409,7 +410,7 @@ window.saveAppStateToSupabase = async function(stateObj, options={}){
     );
     return !!localSaved;
   }
-  const stateKey = _serializeStateSignature(stateObj || {});
+  const stateKey = _serializeStateSignature(remoteState || {});
   const sameAsLastSavedSignature = !!stateKey && stateKey === _stateSaveLastSavedSignature;
   const sameAsLastSavedBytes = stateBytes > 0 && stateBytes === _lastCloudStateByteEstimate;
   if(sameAsLastSavedSignature && sameAsLastSavedBytes){
@@ -473,7 +474,7 @@ window.saveAppStateToSupabase = async function(stateObj, options={}){
 
       const payload = {
         user_id: session.user.id,
-        state_json: stateObj,
+        state_json: remoteState,
         updated_at: new Date().toISOString()
       };
 
@@ -489,7 +490,7 @@ window.saveAppStateToSupabase = async function(stateObj, options={}){
         return !!localSaved;
       }
       _lastCloudStateUpdatedAt = String(payload.updated_at || "");
-      _saveCloudStateCache(stateObj, payload.updated_at);
+      _saveCloudStateCache(remoteState, payload.updated_at);
       _lastCloudStateByteEstimate = Number.isFinite(stateBytes) ? stateBytes : 0;
       await _markLocalFallbackSynced();
       _setLastWriteMeta("supabase", payload.updated_at);
