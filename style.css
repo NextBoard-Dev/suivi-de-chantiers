@@ -6548,6 +6548,21 @@ textarea.input:focus{
 }
 
 /* =========================
+   V29 - Lisibilite textes longs (reversible)
+   ========================= */
+.table td,
+.gantt-task-name,
+.status-cell,
+.gantt-vendor-cell{
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+
+.gantt-task-name{
+  line-height: 1.28 !important;
+}
+
+/* =========================
    V2 - Typo et lisibilite (reversible)
    ========================= */
 :root{
