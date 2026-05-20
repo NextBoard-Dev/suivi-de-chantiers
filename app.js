@@ -4992,7 +4992,8 @@ function buildDataIoBadgeHtml(){
   const writeClass = isRemoteWriteLabel ? "is-cloud" : (writeLabel.includes("secours") ? "is-fallback" : "is-unknown");
   const storage = _buildStorageHealth(state || {});
   const storageClass = storage.warn === "danger" ? "is-danger" : (storage.warn === "warning" ? "is-warning" : "is-cloud");
-  const storageLabel = `Stockage: ${storage.percent}%`;
+  const storageStatusText = storage.warn === "danger" ? " • limite proche" : (storage.warn === "warning" ? " • approche" : "");
+  const storageLabel = `Stockage: ${storage.percent}%${storageStatusText}`;
   const tip = `Lecture = source chargée au démarrage | Ecriture = derniere cible de synchronisation | Estimation: ${_formatBytes(storage.bytes)} sur ${_formatBytes(SUPABASE_STORAGE_BUDGET_BYTES)}`;
   const syncClass = (isReadBusy || isWriteBusy) ? " is-syncing" : "";
   const lastSyncLabel = _formatLastSyncLabel();
