@@ -6350,3 +6350,51 @@ textarea.input:focus{
   background: #eef2f7 !important;
   border-color: var(--ui-border-strong) !important;
 }
+
+/* =========================
+   V2 - Typo et lisibilite (reversible)
+   ========================= */
+:root{
+  --ui-font-title: 13px;
+  --ui-font-body: 12px;
+  --ui-font-label: 11px;
+  --ui-line-body: 1.35;
+}
+
+.panel-head .title,
+.card-title,
+.topbar .title{
+  font-size: var(--ui-font-title) !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0.1px !important;
+}
+
+.label,
+.modal-sub,
+.subtitle{
+  font-size: var(--ui-font-label) !important;
+  line-height: 1.2 !important;
+  color: var(--muted) !important;
+}
+
+body,
+.panel,
+.card,
+.table,
+.table td,
+.table th{
+  font-size: var(--ui-font-body) !important;
+  line-height: var(--ui-line-body) !important;
+}
+
+.table th{
+  font-weight: 700 !important;
+  letter-spacing: 0.12px !important;
+}
+
+.input,
+select.input,
+textarea.input{
+  font-size: var(--ui-font-body) !important;
+  line-height: 1.25 !important;
+}
