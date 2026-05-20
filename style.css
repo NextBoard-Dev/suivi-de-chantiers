@@ -2205,16 +2205,6 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   background-clip:padding-box;
   position:sticky;
 }
-.gantt-table table td.gantt-col-task::before,
-.gantt-table table td.gantt-col-project::before,
-.gantt-table table td.gantt-col-vendor::before,
-.gantt-table table td.gantt-col-status::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:#eceae5;
-  z-index:-1;
-}
 .gantt-table table th.gantt-col-task,
 .gantt-table table th.gantt-col-project,
 .gantt-table table th.gantt-col-vendor,
