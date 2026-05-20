@@ -9977,10 +9977,52 @@ function isHoursCalendarInputMissing(input){
   return raw === "";
 }
 
+function getMissingHoursModalTaskOrder(orderedInputs){
+  if(!Array.isArray(orderedInputs) || !orderedInputs.length){
+    return [];
+  }
+  if(_missingHoursFlow && Array.isArray(_missingHoursFlow.tasks) && _missingHoursFlow.tasks.length){
+    const flowTaskIds = _missingHoursFlow.tasks
+      .map((step)=>(step?.taskId || "").toString().trim())
+      .filter(Boolean);
+    const orderedFlow = [];
+    const flowSeen = new Set();
+    flowTaskIds.forEach((taskId)=> {
+      if(flowSeen.has(taskId)) return;
+      const exists = orderedInputs.some((input)=> (input.getAttribute("data-task-id") || "").trim() === taskId);
+      if(exists){
+        flowSeen.add(taskId);
+        orderedFlow.push(taskId);
+      }
+    });
+    if(orderedFlow.length){
+      const added = new Set(orderedFlow);
+      orderedInputs.forEach((input)=>{
+        const taskId = (input.getAttribute("data-task-id") || "").trim();
+        if(!taskId || added.has(taskId)) return;
+        added.add(taskId);
+        orderedFlow.push(taskId);
+      });
+      return orderedFlow;
+    }
+  }
+
+  const ordered = [];
+  const seen = new Set();
+  orderedInputs.forEach((input)=>{
+    const taskId = (input.getAttribute("data-task-id") || "").trim();
+    if(!taskId || seen.has(taskId)) return;
+    seen.add(taskId);
+    ordered.push(taskId);
+  });
+  return ordered;
+}
+
 function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missingOnly=true){
   const ordered = getHoursCalendarOrderedInputs(taskId);
   if(!ordered.length) return null;
   const step = direction < 0 ? -1 : 1;
+
   if(!missingOnly){
     const idx = ordered.indexOf(currentInput);
     if(idx < 0){
@@ -9989,33 +10031,74 @@ function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missing
     return ordered[idx + step] || null;
   }
 
-  const missing = ordered.filter(isHoursCalendarInputMissing);
-  if(!missing.length) return null;
-
-  const orderedIdx = ordered.indexOf(currentInput);
-  if(orderedIdx < 0){
-    return step > 0 ? (missing[0] || null) : (missing[missing.length - 1] || null);
+  const missingOrdered = ordered.filter(isHoursCalendarInputMissing);
+  if(!missingOrdered.length){
+    const idx = ordered.indexOf(currentInput);
+    return step > 0 ? (ordered[idx + 1] || null) : (ordered[idx - 1] || null);
   }
 
-  // Priorite: terminer d'abord toutes les saisies manquantes dans la carte jour courante.
-  const currentCard = currentInput?.closest?.(".hm-day[data-active='1']");
-  if(currentCard){
-    const cardInputs = ordered.filter((input)=> input.closest(".hm-day[data-active='1']") === currentCard);
-    const cardIdx = cardInputs.indexOf(currentInput);
-    if(cardIdx >= 0){
-      for(let i = cardIdx + step; i >= 0 && i < cardInputs.length; i += step){
-        if(isHoursCalendarInputMissing(cardInputs[i])) return cardInputs[i];
+  const orderedTaskIds = getMissingHoursModalTaskOrder(ordered);
+  const currentTaskId = (currentInput?.getAttribute("data-task-id") || "").trim();
+  const currentDate = (currentInput?.getAttribute("data-date") || "").trim();
+
+  const grouped = new Map();
+  missingOrdered.forEach((input)=>{
+    const t = (input.getAttribute("data-task-id") || "").trim();
+    if(!t) return;
+    const row = grouped.get(t);
+    if(!row) grouped.set(t, []);
+    grouped.get(t).push(input);
+  });
+
+  const currentTaskIdx = orderedTaskIds.indexOf(currentTaskId);
+  const sameTaskInputs = grouped.get(currentTaskId) || [];
+  const currentTaskPos = sameTaskInputs.indexOf(currentInput);
+
+  if(currentTaskPos >= 0){
+    if(step > 0){
+      for(let i = currentTaskPos + 1; i < sameTaskInputs.length; i++){
+        if(isHoursCalendarInputMissing(sameTaskInputs[i])) return sameTaskInputs[i];
       }
+      if(currentTaskIdx >= 0){
+        for(let t = currentTaskIdx + 1; t < orderedTaskIds.length; t++){
+          const candidate = grouped.get(orderedTaskIds[t])?.[0];
+          if(candidate) return candidate;
+        }
+      }
+      return null;
     }else{
-      for(let i = (step > 0 ? 0 : cardInputs.length - 1); i >= 0 && i < cardInputs.length; i += step){
-        if(isHoursCalendarInputMissing(cardInputs[i])) return cardInputs[i];
+      for(let i = currentTaskPos - 1; i >= 0; i--){
+        if(isHoursCalendarInputMissing(sameTaskInputs[i])) return sameTaskInputs[i];
       }
+      if(currentTaskIdx >= 0){
+        for(let t = currentTaskIdx - 1; t >= 0; t--){
+          const list = grouped.get(orderedTaskIds[t]) || [];
+          if(!list.length) continue;
+          return list[list.length - 1];
+        }
+      }
+      return null;
     }
   }
 
-  for(let i = orderedIdx + step; i >= 0 && i < ordered.length; i += step){
-    if(isHoursCalendarInputMissing(ordered[i])) return ordered[i];
+  if(step > 0){
+    for(let i = 0; i < orderedTaskIds.length; i++){
+      const candidate = (grouped.get(orderedTaskIds[i]) || [])[0];
+      if(candidate) return candidate;
+    }
+    return null;
   }
+
+  for(let i = orderedTaskIds.length - 1; i >= 0; i--){
+    const list = grouped.get(orderedTaskIds[i]) || [];
+    if(!list.length) continue;
+    const dayInputs = list.filter((input)=> ((input.getAttribute("data-date") || "").trim() <= currentDate));
+    if(dayInputs.length){
+      return dayInputs[dayInputs.length - 1];
+    }
+    return list[list.length - 1];
+  }
+
   return null;
 }
 function findFirstHoursInputTarget(taskId="", preferMissing=true){
@@ -12684,8 +12767,8 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     }
     const scopeTaskId = (input?.getAttribute("data-task-id") || "").trim();
     const nextInput = (e.key === "Tab" && e.shiftKey)
-      ? getHoursCalendarNextInput(input, -1, scopeTaskId, false)
-      : getHoursCalendarNextInput(input, 1, scopeTaskId, false);
+      ? getHoursCalendarNextInput(input, -1, scopeTaskId, true)
+      : getHoursCalendarNextInput(input, 1, scopeTaskId, true);
     if(nextInput){
       const nextDay = (nextInput.getAttribute("data-date") || "").trim();
       refreshHoursCalendarSelectedCard(nextDay);
