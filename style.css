@@ -6285,3 +6285,68 @@ h3,
 .sidebar .tab > span{
   min-width:0;
 }
+
+/* =========================
+   V1 - Harmonisation visuelle (reversible)
+   ========================= */
+:root{
+  --ui-surface-1: rgba(248, 247, 243, 0.96);
+  --ui-surface-2: rgba(241, 239, 233, 0.98);
+  --ui-border-soft: rgba(15, 23, 42, 0.14);
+  --ui-border-strong: rgba(15, 23, 42, 0.22);
+  --ui-focus: #3f6170;
+}
+
+.panel,
+.card,
+.tablewrap{
+  background: var(--ui-surface-1) !important;
+  border-color: var(--ui-border-soft) !important;
+}
+
+.panel-head{
+  background: linear-gradient(180deg, var(--ui-surface-2) 0%, var(--ui-surface-1) 100%) !important;
+  border-bottom: 1px solid var(--ui-border-soft) !important;
+}
+
+.input,
+select.input,
+textarea.input{
+  background: #ffffff !important;
+  border: 1px solid var(--ui-border-soft) !important;
+  color: var(--text) !important;
+}
+
+.input:focus,
+select.input:focus,
+textarea.input:focus{
+  border-color: var(--ui-focus) !important;
+  box-shadow: 0 0 0 2px rgba(63, 97, 112, 0.16) !important;
+  outline: none !important;
+}
+
+.btn.btn-primary,
+.btn-primary{
+  background: #3f6170 !important;
+  border-color: #365563 !important;
+  color: #ffffff !important;
+}
+
+.btn.btn-primary:hover,
+.btn-primary:hover{
+  background: #365563 !important;
+  border-color: #2f4b57 !important;
+}
+
+.btn.btn-ghost,
+.btn-ghost{
+  background: #f8fafc !important;
+  border: 1px solid var(--ui-border-soft) !important;
+  color: var(--text) !important;
+}
+
+.btn.btn-ghost:hover,
+.btn-ghost:hover{
+  background: #eef2f7 !important;
+  border-color: var(--ui-border-strong) !important;
+}
