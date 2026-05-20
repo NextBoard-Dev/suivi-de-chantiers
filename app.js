@@ -10513,6 +10513,8 @@ let _hoursSummaryQueuedTask = null;
 let _hoursSummaryDraftEntriesCache = null;
 let _hoursSummaryDraftTaskId = "";
 let _hoursSummaryDraftBaseSignature = "";
+let _hoursTaskSaveLastTs = 0;
+let _hoursTaskSaveLastTaskKey = "";
 let _hoursTaskModalLastOpenAt = 0;
 let _hoursTaskModalLastTaskKey = "";
 function _cacheHoursDraftEntriesForTask(task, entries){
@@ -10830,6 +10832,14 @@ function saveHoursTaskModal(){
     alert("Sélectionne une tâche.");
     return;
   }
+  const taskKey = `${t.projectId}::${t.id}`;
+  const now = Date.now();
+  if(_hoursTaskSaveLastTaskKey === taskKey && (now - _hoursTaskSaveLastTs < 320)){
+    return;
+  }
+  _hoursTaskSaveLastTaskKey = taskKey;
+  _hoursTaskSaveLastTs = now;
+
   const dateInput = el("t_time_date_input");
   const hoursInput = el("t_time_hours");
   if(!dateInput || !hoursInput){
