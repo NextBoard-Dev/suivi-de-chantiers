@@ -6083,14 +6083,18 @@ async function initLoginJournalUI(){
   }
   if(logBox){
     const rows = (events || []).slice();
-    const dir = loginLogSortDir === "asc" ? 1 : -1;
-    rows.sort((a,b)=>{
-      const va = (a[loginLogSortKey] || "").toString().toLowerCase();
-      const vb = (b[loginLogSortKey] || "").toString().toLowerCase();
-      if(va < vb) return -1 * dir;
-      if(va > vb) return 1 * dir;
-      return 0;
-    });
+    if(loginLogSortKey === "ts"){
+      if(loginLogSortDir !== "asc") rows.reverse();
+    }else{
+      const dir = loginLogSortDir === "asc" ? 1 : -1;
+      rows.sort((a,b)=>{
+        const va = (a[loginLogSortKey] || "").toString().toLowerCase();
+        const vb = (b[loginLogSortKey] || "").toString().toLowerCase();
+        if(va < vb) return -1 * dir;
+        if(va > vb) return 1 * dir;
+        return 0;
+      });
+    }
     const html = rows.slice(0, 200).map((ev)=>{
       const d = ev.ts ? new Date(ev.ts) : null;
       const dateStr = d && !isNaN(d) ? d.toLocaleString("fr-FR") : "";
