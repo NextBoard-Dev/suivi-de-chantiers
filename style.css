@@ -6798,3 +6798,22 @@ hr,
   color: var(--muted) !important;
   font-size: 11px !important;
 }
+
+/* =========================
+   V17 - Etats disabled (reversible)
+   ========================= */
+.btn:disabled,
+.btn.is-disabled,
+button:disabled{
+  opacity: 0.62 !important;
+  filter: saturate(0.72) !important;
+  cursor: not-allowed !important;
+}
+
+.input:disabled,
+select:disabled,
+textarea:disabled{
+  background: rgba(226,232,240,0.65) !important;
+  border-color: rgba(15,23,42,0.12) !important;
+  color: rgba(30,41,59,0.72) !important;
+}
