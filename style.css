@@ -2763,6 +2763,41 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   background:transparent !important;
   background-image:none !important;
 }
+.gantt-table tbody tr:hover td.gantt-col-site,
+.gantt-table tbody tr:hover td.gantt-col-task,
+.gantt-table tbody tr:hover td.gantt-task-col-project,
+.gantt-table tbody tr:hover td.gantt-col-project,
+.gantt-table tbody tr:hover td.gantt-col-vendor,
+.gantt-table tbody tr:hover td.gantt-col-status,
+.gantt-table tbody tr.gantt-row:hover td.gantt-col-site,
+.gantt-table tbody tr.gantt-row:hover td.gantt-col-task,
+.gantt-table tbody tr.gantt-row:hover td.gantt-task-col-project,
+.gantt-table tbody tr.gantt-row:hover td.gantt-col-project,
+.gantt-table tbody tr.gantt-row:hover td.gantt-col-vendor,
+.gantt-table tbody tr.gantt-row:hover td.gantt-col-status,
+.gantt-table tbody tr.gantt-row.gantt-row-active td.gantt-col-site,
+.gantt-table tbody tr.gantt-row.gantt-row-active td.gantt-col-task,
+.gantt-table tbody tr.gantt-row.gantt-row-active td.gantt-task-col-project,
+.gantt-table tbody tr.gantt-row.gantt-row-active td.gantt-col-project,
+.gantt-table tbody tr.gantt-row.gantt-row-active td.gantt-col-vendor,
+.gantt-table tbody tr.gantt-row.gantt-row-active td.gantt-col-status,
+.gantt-table tbody tr.today-row td.gantt-col-site,
+.gantt-table tbody tr.today-row td.gantt-col-task,
+.gantt-table tbody tr.today-row td.gantt-task-col-project,
+.gantt-table tbody tr.today-row td.gantt-col-project,
+.gantt-table tbody tr.today-row td.gantt-col-vendor,
+.gantt-table tbody tr.today-row td.gantt-col-status,
+.gantt-table tbody tr.late-row td.gantt-col-site,
+.gantt-table tbody tr.late-row td.gantt-col-task,
+.gantt-table tbody tr.late-row td.gantt-task-col-project,
+.gantt-table tbody tr.late-row td.gantt-col-project,
+.gantt-table tbody tr.late-row td.gantt-col-vendor,
+.gantt-table tbody tr.late-row td.gantt-col-status{
+  background:#eceae5 !important;
+  background-color:#eceae5 !important;
+  background-image:none !important;
+  opacity:1 !important;
+}
 .gantt-table table td.gantt-cell::before{
   content:"";
   position:absolute;
