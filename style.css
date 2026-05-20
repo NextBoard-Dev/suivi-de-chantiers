@@ -4797,6 +4797,14 @@ button:not(.btn-primary):not(.btn-danger):not(.btn-success),
   -webkit-text-fill-color:var(--ui-btn-save-idle-text) !important;
 }
 
+.btn.btn-save-dirty{
+  background:#204862 !important;
+  border-color:#193d55 !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  text-shadow:none !important;
+}
+
 .num-badge,
 .badge.owner,
 .badge.site{

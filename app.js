@@ -5644,6 +5644,7 @@ function updateSaveButton(){
       btn.disabled = true;
       btn.classList.remove("btn-primary");
       btn.classList.add("btn-save-idle");
+      btn.classList.remove("btn-save-dirty");
       if(btn.id === "btnSave"){
         btn.textContent = "Sauvegarde active";
       }
@@ -5651,11 +5652,13 @@ function updateSaveButton(){
       btn.disabled = false;
       btn.classList.add("btn-primary");
       btn.classList.remove("btn-save-idle");
+      btn.classList.toggle("btn-save-dirty", btn.id === "btnSave");
       btn.textContent = defaultLabel;
     }else{
       btn.disabled = true;
       btn.classList.remove("btn-primary");
       btn.classList.add("btn-save-idle");
+      btn.classList.remove("btn-save-dirty");
       if(btn.id === "btnSave"){
         btn.textContent = "Aucune modification";
       }else{
