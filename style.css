@@ -6649,3 +6649,29 @@ button:focus-visible,
   border-top: 1px solid rgba(15,23,42,0.10) !important;
   padding-top: 8px !important;
 }
+
+/* =========================
+   V11 - Lisibilite champs (reversible)
+   ========================= */
+.input::placeholder,
+textarea::placeholder{
+  color: rgba(63,74,95,0.72) !important;
+  opacity: 1 !important;
+}
+
+input[type="date"],
+input[type="time"],
+input[type="number"],
+input[type="text"],
+select{
+  color: var(--text) !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator{
+  opacity: 0.72;
+}
+
+input[type="date"]:focus::-webkit-calendar-picker-indicator{
+  opacity: 1;
+}
