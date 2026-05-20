@@ -13261,9 +13261,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
   const brandTitle = el("brandTitle");
 
   if(brandTitle){
-
-    brandTitle.innerHTML = `Suivi de Chantiers <span class="copyright"> Sébastien DUC</span>`;
-
+    brandTitle.textContent = "Suivi de Chantiers";
   }
 
   // flatpickr sur les dates, week-ends interdits
