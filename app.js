@@ -518,18 +518,22 @@ window.saveAppStateToSupabase = async function(stateObj, options={}){
 // ---- users (simple, sans RLS) ----
 async function saveUsersToSupabase(users){
   if(_rlsUsersWriteBlocked) return false;
+  const usersList = Array.isArray(users) ? users : [];
+  const usersSig = _serializeUsersSignature(usersList);
+  if(!usersSig) return false;
+  if(usersSig === _usersSaveLastSavedSignature) return true;
   const sb = _getSupabaseClient();
   if(!sb) return false;
   const session = await _ensureSession();
   if(!session || !session.user) return false;
   const userId = session.user.id;
-  const usersKey = `${userId}|${JSON.stringify(users || [])}`;
+  const usersKey = `${userId}|${usersSig}`;
   const inFlight = _saveUsersToSupabaseFlightByKey.get(usersKey);
   if(inFlight) return inFlight;
   try{
     const payload = {
       user_id: userId,
-      users_json: users,
+      users_json: usersList,
       updated_at: new Date().toISOString()
     };
     const promise = (async()=>{
@@ -542,6 +546,7 @@ async function saveUsersToSupabase(users){
         console.warn("Supabase users upsert error", error);
         return false;
       }
+      _usersSaveLastSavedSignature = usersSig;
       return true;
     })();
     _saveUsersToSupabaseFlightByKey.set(usersKey, promise);
