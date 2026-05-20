@@ -1443,6 +1443,7 @@ let _lastMasterAnimSignature = "";
 let _lastScalabilityReport = null;
 let _lastScaleAlertSig = "";
 let _lastScaleAlertAt = 0;
+let _dataQualityReportCache = { version: -1, state: null, report: null };
 let showCompletedMaster = false;
 const SCALE_GUARDS = {
   warnTasks: 1000,
@@ -5031,6 +5032,15 @@ function buildDataIoBadgeHtml(){
 }
 
 function collectDataQualityIssues(currentState=state){
+  if(
+    currentState === state &&
+    _dataQualityReportCache.state === state &&
+    _dataQualityReportCache.version === _stateVersion &&
+    _dataQualityReportCache.report
+  ){
+    return _dataQualityReportCache.report;
+  }
+
   const s = currentState || {};
   const tasks = Array.isArray(s.tasks) ? s.tasks : [];
   const logs = Array.isArray(s.timeLogs) ? s.timeLogs : [];
@@ -5081,11 +5091,17 @@ function collectDataQualityIssues(currentState=state){
   if(orphanLogs > 0) issues.push(`${orphanLogs} log(s) orphelins`);
   if(logsOutsideTaskRange > 0) issues.push(`${logsOutsideTaskRange} log(s) hors période de tâche`);
 
-  return {
+  const report = {
     ok: issues.length === 0,
     issues,
     counts: { invalidDates, externalWithoutVendor, internalWithoutTech, invalidOwnerAssignment, legacyStatus, orphanLogs, logsOutsideTaskRange }
   };
+
+  if(currentState === state){
+    _dataQualityReportCache = { version: _stateVersion, state: currentState, report };
+  }
+
+  return report;
 }
 
 function formatQualityIssuesForToast(report){
