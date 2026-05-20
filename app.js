@@ -10528,9 +10528,8 @@ function _setHoursModalSaveButtonFromDraftState(task){
   if(!Array.isArray(currentEntries) || _hoursSummaryDraftTaskId !== String(task.id || "")){
     currentEntries = collectHoursTaskCalendarEntries(task);
   }
-  const currentSignature = _makeHoursDraftSignature(currentEntries || []);
   const hasBase = !!_hoursSummaryDraftBaseSignature;
-  btnSave.disabled = !hasBase || currentSignature === _hoursSummaryDraftBaseSignature;
+  btnSave.disabled = !hasBase || !currentEntries || currentEntries.length === 0;
   applyHoursSaveButtonVisualState(btnSave);
 }
 function _clearHoursDraftEntriesCache(){
@@ -10795,7 +10794,22 @@ function saveHoursTaskModal(){
     alert("Saisis le temps passé (heures).");
     return;
   }
-  if(_makeHoursDraftSignature(draftEntries) === _hoursSummaryDraftBaseSignature){
+  const hasChanges = _makeHoursDraftSignature(draftEntries) !== _hoursSummaryDraftBaseSignature;
+  if(!hasChanges){
+    if(_outsideRangeFlow || _missingHoursFlow){
+      if(_outsideRangeFlow){
+        const remainingOutside = countOutsideRangeLogsForTask(t);
+        if(remainingOutside > 0){
+          showSaveToast("error", "Correction incomplète", `${remainingOutside} log(s) hors période restant(s) pour cette tâche`);
+          setTimeout(()=>{ if(_outsideRangeFlow) openHoursTaskModal(); }, 0);
+          return;
+        }
+        advanceOutsideRangeFlow();
+        return;
+      }
+      advanceMissingHoursFlow();
+      return;
+    }
     const btnSave = el("btnSaveHoursModal");
     if(btnSave){
       btnSave.disabled = true;
@@ -12630,7 +12644,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
       try{ nextInput.select(); }catch(_){}
       return;
     }
-    if(_missingHoursFlow){
+    if(_missingHoursFlow || _outsideRangeFlow){
       saveHoursTaskModal();
       return;
     }
