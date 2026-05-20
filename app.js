@@ -9587,6 +9587,8 @@ function finishMissingHoursFlow(){
   _missingHoursFlow = null;
   selectedProjectId = null;
   selectedTaskId = null;
+  _hoursTaskModalLastTaskKey = "";
+  _hoursTaskModalLastOpenAt = 0;
   const toggleMissingOnly = el("toggleMissingOnly");
   if(toggleMissingOnly) toggleMissingOnly.checked = false;
   renderMaster();
@@ -9680,6 +9682,8 @@ function finishOutsideRangeFlow(){
   _outsideRangeFlow = null;
   selectedProjectId = null;
   selectedTaskId = null;
+  _hoursTaskModalLastTaskKey = "";
+  _hoursTaskModalLastOpenAt = 0;
   renderMaster();
 }
 function openOutsideRangeFlowStep(){
