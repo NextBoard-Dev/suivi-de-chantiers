@@ -5445,7 +5445,11 @@ function animateCardsInView(viewId){
 
 function _serializeStateSignature(stateObj){
   try{
-    return JSON.stringify(stateObj || {});
+    const base = deepClone(stateObj || {});
+    if(base && typeof base === "object"){
+      delete base.lastUpdate;
+    }
+    return JSON.stringify(base || {});
   }catch(e){
     softCatch(e);
     return "";
