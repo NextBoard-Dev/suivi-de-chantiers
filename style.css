@@ -2292,11 +2292,11 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   position:absolute;
   top:0;
   width:1px;
-  background:#dc2626;
-  opacity:0.72;
+  background:#b91c1c;
+  opacity:0.62;
   pointer-events:none;
-  z-index:65;
-  box-shadow:0 0 0 1px rgba(220,38,38,0.08);
+  z-index:52;
+  box-shadow:none;
 }
 #viewMaster .tablewrap.gantt-table,
 #viewProject .tablewrap.gantt-table{
