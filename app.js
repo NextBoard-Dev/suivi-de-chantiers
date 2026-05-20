@@ -410,6 +410,11 @@ window.saveAppStateToSupabase = async function(stateObj, options={}){
     return !!localSaved;
   }
   const stateKey = _serializeStateSignature(stateObj || {});
+  const sameAsLastSavedSignature = !!stateKey && stateKey === _stateSaveLastSavedSignature;
+  const sameAsLastSavedBytes = stateBytes > 0 && stateBytes === _lastCloudStateByteEstimate;
+  if(sameAsLastSavedSignature && sameAsLastSavedBytes){
+    return true;
+  }
   if(_saveAppStateToSupabaseFlight && _saveAppStateToSupabaseFlightKey === stateKey){
     return await _saveAppStateToSupabaseFlight;
   }
