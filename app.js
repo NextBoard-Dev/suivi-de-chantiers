@@ -12787,10 +12787,9 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
       syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
       queueHoursTaskSummaryRefresh(t);
     }
-    const scopeTaskId = (input?.getAttribute("data-task-id") || "").trim();
     const nextInput = (e.key === "Tab" && e.shiftKey)
-      ? getHoursCalendarNextInput(input, -1, scopeTaskId, true)
-      : getHoursCalendarNextInput(input, 1, scopeTaskId, true);
+      ? getHoursCalendarNextInput(input, -1, "", true)
+      : getHoursCalendarNextInput(input, 1, "", true);
     if(nextInput){
       const nextDay = (nextInput.getAttribute("data-date") || "").trim();
       refreshHoursCalendarSelectedCard(nextDay);
