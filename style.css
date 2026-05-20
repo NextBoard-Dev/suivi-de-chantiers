@@ -6407,6 +6407,26 @@ textarea.input:focus{
 }
 
 /* =========================
+   V20 - Separation colonnes fixes Gantt (reversible)
+   ========================= */
+.gantt-table table th.gantt-col-status,
+.gantt-table .table th.gantt-col-status,
+.gantt-table table td.gantt-col-status,
+.gantt-table .table td.gantt-col-status{
+  box-shadow:
+    inset -1px 0 0 rgba(15,23,42,0.14),
+    6px 0 8px -6px rgba(15,23,42,0.24) !important;
+}
+
+.gantt-table table th.gantt-col-vendor,
+.gantt-table .table th.gantt-col-vendor,
+.gantt-table table td.gantt-col-vendor,
+.gantt-table .table td.gantt-col-vendor{
+  box-shadow:
+    inset -1px 0 0 rgba(15,23,42,0.10) !important;
+}
+
+/* =========================
    V2 - Typo et lisibilite (reversible)
    ========================= */
 :root{
