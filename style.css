@@ -7300,3 +7300,28 @@ textarea:disabled{
 .gantt-bar{
   filter: saturate(0.82) brightness(0.94) !important;
 }
+
+/* Verrou global tous Gantt: aucun séparateur vertical de semaines */
+.gantt-table table thead th.week-cell,
+.gantt-table .table thead th.week-cell,
+.gantt-table table td.gantt-cell,
+.gantt-table .table td.gantt-cell{
+  border-left: 0 !important;
+  border-right: 0 !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+.gantt-table table thead th.week-cell::before,
+.gantt-table .table thead th.week-cell::before,
+.gantt-table table thead th.week-cell::after,
+.gantt-table .table thead th.week-cell::after,
+.gantt-table table td.gantt-cell::before,
+.gantt-table .table td.gantt-cell::before,
+.gantt-table table td.gantt-cell::after,
+.gantt-table .table td.gantt-cell::after{
+  border-left: 0 !important;
+  border-right: 0 !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
