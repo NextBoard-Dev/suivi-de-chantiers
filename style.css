@@ -4788,6 +4788,9 @@ html[data-theme] #btnToggleProjectStatus.btn-primary{
   --ui-btn-save-idle-bg:rgba(63,97,112,0.18);
   --ui-btn-save-idle-border:rgba(63,97,112,0.28);
   --ui-btn-save-idle-text:#213b48;
+  --ui-btn-save-dirty-bg:#204862;
+  --ui-btn-save-dirty-border:#193d55;
+  --ui-btn-save-dirty-text:#ffffff;
 }
 
 button,
@@ -4845,10 +4848,10 @@ button:not(.btn-primary):not(.btn-danger):not(.btn-success),
 }
 
 .btn.btn-save-dirty{
-  background:#204862 !important;
-  border-color:#193d55 !important;
-  color:#ffffff !important;
-  -webkit-text-fill-color:#ffffff !important;
+  background:var(--ui-btn-save-dirty-bg) !important;
+  border-color:var(--ui-btn-save-dirty-border) !important;
+  color:var(--ui-btn-save-dirty-text) !important;
+  -webkit-text-fill-color:var(--ui-btn-save-dirty-text) !important;
   text-shadow:none !important;
 }
 
