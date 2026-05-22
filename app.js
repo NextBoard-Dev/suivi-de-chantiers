@@ -1242,17 +1242,32 @@ window.loadAppStateFromSupabase = async function(){
 
     try{
       _supabaseOwnerFallbackCount = 0;
+      let remoteMetaUpdatedAt = "";
+      const { data: remoteMeta, error: metaError } = await sb
+        .from(SUPABASE_TABLE)
+        .select("updated_at")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      if(metaError){
+        console.warn("Supabase metadata select error", metaError);
+      }else{
+        remoteMetaUpdatedAt = String(remoteMeta?.updated_at || "").trim();
+      }
+
+      if(
+        remoteMetaUpdatedAt &&
+        _isSupabaseStateMetadataFresh(remoteMetaUpdatedAt) &&
+        _lastStateLoadSource === "supabase_cloud" &&
+        state && typeof state === "object"
+      ){
+        _refreshDataIoBadge();
+        clearDirty();
+        return true;
+      }
 
       const localCloudCache = _readCloudStateCache();
       if(localCloudCache && localCloudCache.state_json && localCloudCache.updated_at){
-        const { data: remoteMeta, error: metaError } = await sb
-          .from(SUPABASE_TABLE)
-          .select("updated_at")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
-        if(metaError){
-          console.warn("Supabase metadata select error", metaError);
-        }else if(String(remoteMeta?.updated_at || "").trim() === String(localCloudCache.updated_at || "").trim()){
+        if(remoteMetaUpdatedAt && remoteMetaUpdatedAt === String(localCloudCache.updated_at || "").trim()){
           _lastCloudStateUpdatedAt = String(localCloudCache.updated_at || "").trim();
           state = normalizeState(localCloudCache.state_json || {});
           invalidateCanonicalTimeLogsCache();
