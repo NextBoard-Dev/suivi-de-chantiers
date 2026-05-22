@@ -1233,6 +1233,7 @@ window.loadAppStateFromSupabase = async function(){
     const waitMs = (ms)=> new Promise((resolve)=>setTimeout(resolve, Math.max(0, Number(ms || 0))));
     const applyLocalState = (rawState, updatedAt)=>{
       _lastCloudStateUpdatedAt = String(updatedAt || "").trim();
+      _setLastWriteMeta("local_j", _lastCloudStateUpdatedAt || new Date().toISOString());
       state = normalizeState(rawState || {});
       invalidateCanonicalTimeLogsCache();
       _lastStateLoadSource = "local_storage";
@@ -1243,6 +1244,7 @@ window.loadAppStateFromSupabase = async function(){
     };
     const applyRemoteState = async (sb, dataRow)=>{
       _lastCloudStateUpdatedAt = String(dataRow?.updated_at || "").trim();
+      _setLastWriteMeta("supabase", _lastCloudStateUpdatedAt || new Date().toISOString());
       _saveCloudStateCache(dataRow?.state_json || {}, dataRow?.updated_at);
       if(isSingleSourceReadMode()){
         state = normalizeState(dataRow?.state_json || {});
