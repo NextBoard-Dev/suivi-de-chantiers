@@ -7037,3 +7037,56 @@ textarea:disabled{
   border-color: rgba(15,23,42,0.12) !important;
   color: rgba(30,41,59,0.72) !important;
 }
+
+/* =========================
+   Correctif structurel Gantt sticky
+   Evite les chevauchements Site/Nom/Prestataire/Statut
+   ========================= */
+.gantt-table table th.gantt-col-site,
+.gantt-table .table th.gantt-col-site{
+  z-index: 74 !important;
+}
+
+.gantt-table table th.gantt-col-task,
+.gantt-table .table th.gantt-col-task,
+.gantt-table table th.gantt-task-col-project,
+.gantt-table .table th.gantt-task-col-project{
+  z-index: 73 !important;
+}
+
+.gantt-table table th.gantt-col-vendor,
+.gantt-table .table th.gantt-col-vendor{
+  left: calc(var(--gcol0, 70px) + var(--gcol1, 120px) + var(--gcolp, 0px)) !important;
+  z-index: 72 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.gantt-table table th.gantt-col-status,
+.gantt-table .table th.gantt-col-status{
+  left: calc(var(--gcol0, 70px) + var(--gcol1, 120px) + var(--gcolp, 0px) + var(--gcol2, 90px)) !important;
+  z-index: 73 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.gantt-table table td.gantt-col-vendor,
+.gantt-table .table td.gantt-col-vendor{
+  left: calc(var(--gcol0, 70px) + var(--gcol1, 120px) + var(--gcolp, 0px)) !important;
+  z-index: 58 !important;
+}
+
+.gantt-table table td.gantt-col-status,
+.gantt-table .table td.gantt-col-status{
+  left: calc(var(--gcol0, 70px) + var(--gcol1, 120px) + var(--gcolp, 0px) + var(--gcol2, 90px)) !important;
+  z-index: 59 !important;
+}
+
+.gantt-vendor-cell .vendor-stack,
+.gantt-status-cell .gantt-status-stack,
+.gantt-status-cell .status-row{
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
