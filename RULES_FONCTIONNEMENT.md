@@ -117,3 +117,6 @@ Ce document est la référence à suivre pour toute modification du dashboard.
 18) Commit (obligatoire)
 - A chaque commit decide, fournir une phrase de commit claire avant execution.
 - Push uniquement apres verification UI locale validee.
+
+### 19) Journal d'exécution (MAJ MD)
+- 2026-05-22 : ✅ `.gitignore` mis à jour pour ignorer les dossiers de sauvegarde locale puis commit/push réalisé sur la branche main.
