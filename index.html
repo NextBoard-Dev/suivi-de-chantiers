@@ -2442,6 +2442,44 @@
 
   }
 
+  function findUserByEmail(mail){
+    const users = loadUsers();
+    const target = String(mail || "").trim().toLowerCase();
+    return users.find((x)=> String(x.email || "").trim().toLowerCase() === target) || null;
+  }
+
+  async function unlockSessionFromUser(user, mail){
+    const role = ((user?.role || "user").toLowerCase() === "admin") ? "admin" : "user";
+    const displayName = normalizeDisplayName(user?.name || "Invité");
+    sessionStorage.setItem("unlocked","1");
+    sessionStorage.setItem("current_user", displayName);
+    sessionStorage.setItem("current_email", mail);
+    sessionStorage.setItem("current_role", role);
+    localStorage.setItem("last_login_email", mail);
+    lock.classList.add("hidden");
+    if(window.applyRoleAccess) window.applyRoleAccess();
+    if(window.updateRoleUI) window.updateRoleUI();
+
+    if(remember?.checked && window.createSessionToken){
+      const token = genToken();
+      localStorage.setItem(SESSION_TOKEN_KEY, token);
+      let ok = false;
+      try{
+        ok = await window.createSessionToken(token, {email: mail, name: displayName, role}, SESSION_TTL_DAYS);
+      }catch(e){ ok = false; }
+      if(!ok){
+        localStorage.removeItem(SESSION_TOKEN_KEY);
+        const msg = document.querySelector(".lock-msg");
+        if(msg) msg.textContent = "Session non mémorisée (erreur de synchronisation).";
+      }
+    }else{
+      localStorage.removeItem(SESSION_TOKEN_KEY);
+    }
+
+    try{ window.logUserLogin?.({email: mail, name: displayName, role}); }catch(e){}
+    return true;
+  }
+
   async function tryUnlock(){
 
     resetAllUsersOnce();
@@ -2461,23 +2499,27 @@
     const u = await tryUnlockWithHash(h, mail);
 
     if(u){
-
-      if(remember?.checked){
-
-        rememberSave(mail, pass||"");
-
-      }else{
-
-        rememberClear(mail);
-
-      }
-
+      await unlockSessionFromUser(u, mail);
+      if(remember?.checked){ rememberSave(mail, pass||""); }
+      else{ rememberClear(mail); }
       return true;
 
     }else{
-
+      // Secours robuste: si le hash local est obsolète, on valide via Supabase Auth.
+      let supabaseOk = false;
+      try{
+        if(window.supabaseLogin){
+          supabaseOk = await window.supabaseLogin(mail, pass);
+        }
+      }catch(e){ supabaseOk = false; }
+      if(supabaseOk){
+        const matched = findUserByEmail(mail) || { name: mail, role: "user", email: mail };
+        await unlockSessionFromUser(matched, mail);
+        if(remember?.checked){ rememberSave(mail, pass||""); }
+        else{ rememberClear(mail); }
+        return true;
+      }
       alert("Mot de passe incorrect");
-
       return false;
 
     }
