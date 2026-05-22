@@ -7227,3 +7227,30 @@ textarea:disabled{
   margin-left: 4px !important;
   margin-right: 2px !important;
 }
+
+/* Suppression structurelle des traits verticaux bleus (tables + gantt) */
+#masterTable thead th + th,
+#projectTasksTable thead th + th,
+.gantt-table .table thead th + th{
+  box-shadow: none !important;
+}
+
+#masterTable td,
+#projectTasksTable td,
+#masterTable th,
+#projectTasksTable th{
+  border-left: 0 !important;
+  border-right: 0 !important;
+  box-shadow: none !important;
+}
+
+.gantt-table table th.gantt-col-vendor,
+.gantt-table .table th.gantt-col-vendor,
+.gantt-table table td.gantt-col-vendor,
+.gantt-table .table td.gantt-col-vendor,
+.gantt-table table th.gantt-col-status,
+.gantt-table .table th.gantt-col-status,
+.gantt-table table td.gantt-col-status,
+.gantt-table .table td.gantt-col-status{
+  box-shadow: none !important;
+}
