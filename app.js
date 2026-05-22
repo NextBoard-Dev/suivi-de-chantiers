@@ -1334,6 +1334,7 @@ window.loadAppStateFromSupabase = async function(){
             _lastStateLoadSource === "supabase_cloud" &&
             state && typeof state === "object"
           ){
+            _setLastWriteMeta("supabase", remoteMetaUpdatedAt || new Date().toISOString());
             loadState = "ready";
             _refreshDataIoBadge();
             clearDirty();
@@ -1347,12 +1348,14 @@ window.loadAppStateFromSupabase = async function(){
                 _lastStateLoadSource === "supabase_cloud" &&
                 String(_lastCloudStateUpdatedAt || "").trim() === String(localCloudCache.updated_at || "").trim()
               ){
+                _setLastWriteMeta("supabase", String(localCloudCache.updated_at || "").trim() || new Date().toISOString());
                 loadState = "ready";
                 _refreshDataIoBadge();
                 clearDirty();
                 return true;
               }
               _lastCloudStateUpdatedAt = String(localCloudCache.updated_at || "").trim();
+              _setLastWriteMeta("supabase", _lastCloudStateUpdatedAt || new Date().toISOString());
               state = normalizeState(localCloudCache.state_json || {});
               invalidateCanonicalTimeLogsCache();
               _lastStateLoadSource = "supabase_cloud";
