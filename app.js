@@ -5070,6 +5070,9 @@ function stateWriteTargetLabel(){
     if(target === "local_j") return "J (secours)";
     if(target === "cloud_blocked") return "Synchronisation bloquée";
   }catch(e){ softCatch(e); }
+  const src = String(_lastStateLoadSource || "").toLowerCase();
+  if(src === "supabase_cloud") return "Données distantes";
+  if(src === "local_storage") return "J (secours)";
   return "Inconnue";
 }
 
@@ -5077,7 +5080,14 @@ function _formatLastSyncLabel(){
   try{
     const meta = _getLastWriteMeta();
     const iso = String(meta?.updated_at || "").trim();
-    if(!iso) return "Synchro: --";
+    if(!iso){
+      const fallbackIso = String(_lastCloudStateUpdatedAt || "").trim();
+      if(!fallbackIso) return "Synchro: --";
+      const fd = new Date(fallbackIso);
+      if(isNaN(fd.getTime())) return "Synchro: --";
+      const ftxt = fd.toLocaleString("fr-FR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+      return `Synchro: ${ftxt}`;
+    }
     const d = new Date(iso);
     if(isNaN(d.getTime())) return "Synchro: --";
     const now = Date.now();
