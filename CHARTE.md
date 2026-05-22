@@ -9,6 +9,7 @@
 
 ## 2) Sécurité avant modification sensible
 - Toute modification sensible doit proposer un snapshot avant action.
+- Les mécanismes d’authentification (MD), de session et de token ne sont pas modifiés par défaut.
 - Message standard:
   "⚠️ Cette modification peut impacter plusieurs parties du projet. Souhaitez-vous créer un snapshot de sécurité avant intervention ?"
 - Modifications sensibles: persistance, logique Supabase, JSON, état global, multi-fichiers, suppressions/remplacements de fonctions.
@@ -49,7 +50,7 @@
 ## 8) Harmonisation visuelle
 - Référence visuelle prioritaire: dashboard `Suivi des effets`.
 - Procéder par lots courts et réversibles.
-- Après chaque lot: exécuter les tests et fournir la phrase de commit.
+- Après chaque lot: fournir la phrase de commit.
 
 ## 9) Mise à jour 2026-03-27
 - Smartphone: modifications autorisées sur demande explicite.
@@ -59,5 +60,6 @@
 
 ## 10) Commit (obligatoire)
 - Fournir la phrase de commit à chaque commit décidé.
+- Push sans attente obligatoire de 30 secondes.
 
 

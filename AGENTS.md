@@ -44,6 +44,7 @@ Avant toute modification :
 - conserver les appels réseau existants
 - maintenir la compatibilité avec la structure des données
 - ne modifier le backend que si explicitement demandé
+- ne jamais modifier le système d’authentification, la gestion de session/token ou les paramètres utilisateurs (MD), sauf demande explicite.
 
 ---
 
@@ -126,6 +127,12 @@ Ce mode est obligatoire pour toutes les interventions futures :
 4. Vérifier l’impact avant/après chaque patch.
 5. Aucune refactorisation globale sans demande explicite.
 6. Fournir une phrase de commit à chaque intervention.
+
+## Règles de session courante
+
+- Les actions de commit/push sont réalisées par l’assistant dès validation du lot, sans pause obligatoire de 30 secondes.
+- L’authentification (MD) et son flux n’est jamais modifié tant qu’aucune demande explicite n’est donnée.
+- Aucune correction de type “rustine” non structurelle: privilégier une correction réelle et réversible.
 
 ---
 

@@ -14,6 +14,7 @@ Ce document est la référence à suivre pour toute modification du dashboard.
 - Avant toute modification risquée, annoncer le niveau de risque, proposer une sauvegarde et attendre l’accord.
 - Toujours expliciter “risqué / non risqué” avant d’agir.
 - Si la modification est annoncée “non risquée”, confirmer ce statut avant d’agir.
+- Les flux et composants d’authentification (MD), y compris login/session/token, ne sont jamais modifiés sauf demande explicite.
 - Décider soi-même si une sauvegarde est nécessaire, en fonction de la nature de la modification.
 - Si la demande implique trop de modifications, proposer une sauvegarde avant de commencer.
 - Ne jamais faire de changements destructifs sans validation.
@@ -116,10 +117,15 @@ Ce document est la référence à suivre pour toute modification du dashboard.
 
 18) Commit (obligatoire)
 - A chaque commit decide, fournir une phrase de commit claire avant execution.
-- Push uniquement apres verification UI locale validee.
+- Push uniquement apres verification UI locale validee, puis exécution par l’assistant sans pause systématique de 30 secondes.
 
 ### 19) Journal d'exécution (MAJ MD)
 - 2026-05-22 : ✅ `.gitignore` mis à jour pour ignorer les dossiers de sauvegarde locale puis commit/push réalisé sur la branche main.
+
+### 19) Règles de session (MAJ)
+- Règle courante: ne pas modifier l’authentification MD sans validation explicite.
+- Règle courante: pas de suspension de 30 secondes avant commit/push.
+- Les corrections visent une solution réelle, pas une rustine locale.
 
 ## Progress lot récent
 - 2026-05-22 : ✅ Lot topbar terminé — suppression du badge technique (données e/s/storage) en haut, sans calculs ni requête extra. 
