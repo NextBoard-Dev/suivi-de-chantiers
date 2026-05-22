@@ -62,4 +62,8 @@
 - Fournir la phrase de commit à chaque commit décidé.
 - Push sans attente obligatoire de 30 secondes.
 
+## 11) MAJ MD
+- 2026-05-22 : MAJ active — aucune modification auth/MD (login/session/token) sans demande explicite.
+- 2026-05-22 : MAJ active — aucune pause de 30 secondes imposée avant commit/push.
+
 

@@ -127,6 +127,10 @@ Ce document est la référence à suivre pour toute modification du dashboard.
 - Règle courante: pas de suspension de 30 secondes avant commit/push.
 - Les corrections visent une solution réelle, pas une rustine locale.
 
+### 20) MAJ MD (synchronisée tous les docs)
+- 2026-05-22 : MAJ active confirmée — pas de modification auth/MD sans demande explicite.
+- 2026-05-22 : MAJ active confirmée — suppression de la contrainte d’attente de 30 secondes.
+
 ## Progress lot récent
 - 2026-05-22 : ✅ Lot topbar terminé — suppression du badge technique (données e/s/storage) en haut, sans calculs ni requête extra. 
 

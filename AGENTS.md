@@ -133,6 +133,10 @@ Ce mode est obligatoire pour toutes les interventions futures :
 - Les actions de commit/push sont réalisées par l’assistant dès validation du lot, sans pause obligatoire de 30 secondes.
 - L’authentification (MD) et son flux n’est jamais modifié tant qu’aucune demande explicite n’est donnée.
 - Aucune correction de type “rustine” non structurelle: privilégier une correction réelle et réversible.
+- MAJ MD: 2026-05-22
+  - Pas de modification auth/MD sans demande explicite.
+  - Pas d’attente systématique de 30 secondes avant commit/push.
+  - Toute correction doit rester locale, réversible et orientée stabilité.
 
 ---
 
