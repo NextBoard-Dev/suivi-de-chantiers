@@ -7265,6 +7265,31 @@ textarea:disabled{
   box-shadow: none !important;
 }
 
+.gantt-table table th.gantt-col-site,
+.gantt-table .table th.gantt-col-site,
+.gantt-table table td.gantt-col-site,
+.gantt-table .table td.gantt-col-site,
+.gantt-table table th.gantt-col-task,
+.gantt-table .table th.gantt-col-task,
+.gantt-table table td.gantt-col-task,
+.gantt-table .table td.gantt-col-task,
+.gantt-table table th.gantt-task-col-project,
+.gantt-table .table th.gantt-task-col-project,
+.gantt-table table td.gantt-task-col-project,
+.gantt-table .table td.gantt-task-col-project,
+.gantt-table table th.gantt-col-vendor,
+.gantt-table .table th.gantt-col-vendor,
+.gantt-table table td.gantt-col-vendor,
+.gantt-table .table td.gantt-col-vendor,
+.gantt-table table th.gantt-col-status,
+.gantt-table .table th.gantt-col-status,
+.gantt-table table td.gantt-col-status,
+.gantt-table .table td.gantt-col-status{
+  border-left: 0 !important;
+  border-right: 0 !important;
+  box-shadow: none !important;
+}
+
 /* Restaure le focus visuel de la semaine en cours sans traits verticaux */
 .gantt-table table thead th.week-cell.week-today,
 .gantt-table .table thead th.week-cell.week-today{
