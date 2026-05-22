@@ -5055,22 +5055,7 @@ function _formatLastSyncLabel(){
 }
 
 function buildDataIoBadgeHtml(){
-  const isReadBusy = !!_isDataIoReadBusy;
-  const isWriteBusy = !!_isDataIoWriteBusy;
-  const readLabel = stateLoadSourceLabel(_lastStateLoadSource);
-  const writeLabel = stateWriteTargetLabel();
-  const isRemoteReadLabel = (readLabel === "Données distantes") || (readLabel === "Synchronisation bloquée");
-  const isRemoteWriteLabel = (writeLabel === "Données distantes") || (writeLabel === "Synchronisation bloquée");
-  const readClass = isRemoteReadLabel ? "is-cloud" : (readLabel.includes("secours") ? "is-fallback" : "is-unknown");
-  const writeClass = isRemoteWriteLabel ? "is-cloud" : (writeLabel.includes("secours") ? "is-fallback" : "is-unknown");
-  const storage = _buildStorageHealth(state || {});
-  const storageClass = storage.warn === "danger" ? "is-danger" : (storage.warn === "warning" ? "is-warning" : "is-cloud");
-  const storageStatusText = storage.warn === "danger" ? " • limite proche" : (storage.warn === "warning" ? " • approche" : "");
-  const storageLabel = `Stockage: ${storage.percent}%${storageStatusText}`;
-  const tip = `Lecture = source chargée au démarrage | Ecriture = derniere cible de synchronisation | Estimation: ${_formatBytes(storage.bytes)} sur ${_formatBytes(SUPABASE_STORAGE_BUDGET_BYTES)}`;
-  const syncClass = (isReadBusy || isWriteBusy) ? " is-syncing" : "";
-  const lastSyncLabel = _formatLastSyncLabel();
-  return `<span class="data-io-badge${syncClass}" title="${attrEscape(tip)}"><img src="assets/database4.ico" alt="" aria-hidden="true"><span class="data-io-item ${readClass}">Lect.: ${attrEscape(readLabel)}${isReadBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${writeClass}">Ecr.: ${attrEscape(writeLabel)}${isWriteBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${storageClass}">${attrEscape(storageLabel)} (${attrEscape(_formatBytes(storage.bytes))})</span><span class="data-io-sep">|</span><span class="data-io-item is-unknown">${attrEscape(lastSyncLabel)}</span></span>`;
+  return "";
 }
 
 function collectDataQualityIssues(currentState=state){
