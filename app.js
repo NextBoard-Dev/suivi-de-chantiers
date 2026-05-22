@@ -1429,16 +1429,33 @@ let _loadAppStateFromSupabaseFlight = null;
 function _scheduleSupabaseAutoLoad(){
   if(_supabaseAutoloadScheduled) return;
   _supabaseAutoloadScheduled = true;
+  let retryCount = 0;
+  const maxRetries = 3;
+  const retryDelays = [3000, 7000, 15000];
+  const runLoad = async ()=>{
+    try{
+      const ok = await window.loadAppStateFromSupabase();
+      if(ok) return;
+      const detail = _consumeLastRemoteLoadFailure() || "Impossible de charger les données distantes. Vérifie la connexion.";
+      showSaveToast("error", "Chargement distant", detail);
+      if(retryCount < maxRetries){
+        const delay = retryDelays[retryCount] || 12000;
+        retryCount += 1;
+        setTimeout(runLoad, delay);
+      }
+    }catch(e){
+      softCatch(e);
+      if(retryCount < maxRetries){
+        const delay = retryDelays[retryCount] || 12000;
+        retryCount += 1;
+        setTimeout(runLoad, delay);
+      }
+    }
+  };
 
   // pas d'await au chargement initial : on laisse l'UI se rendre d'abord
   setTimeout(async function(){
-    try{
-      const ok = await window.loadAppStateFromSupabase();
-      if(!ok){
-        const detail = _consumeLastRemoteLoadFailure() || "Impossible de charger les données distantes. Vérifie la connexion.";
-        showSaveToast("error", "Chargement distant", detail);
-      }
-    }catch(e){ softCatch(e); }
+    runLoad();
   }, 1200);
 }
 
