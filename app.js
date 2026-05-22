@@ -10055,6 +10055,8 @@ function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missing
   const ordered = getHoursCalendarOrderedInputs(taskId);
   if(!ordered.length) return null;
   const step = direction < 0 ? -1 : 1;
+  const isMissing = isHoursCalendarInputMissing;
+  const currentTaskId = (taskId || "").trim() || (currentInput ? (currentInput.getAttribute("data-task-id") || "").trim() : "");
 
   if(!missingOnly){
     const idx = ordered.indexOf(currentInput);
@@ -10075,11 +10077,57 @@ function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missing
     for(let i = idx + 1; i < ordered.length; i++){
       if(isHoursCalendarInputMissing(ordered[i])) return ordered[i];
     }
+    if(currentTaskId){
+      const allInputs = getHoursCalendarOrderedInputs("");
+      const taskOrder = [];
+      const taskSeen = new Set();
+      allInputs.forEach((input)=>{
+        const id = (input.getAttribute("data-task-id") || "").trim();
+        if(!id || taskSeen.has(id)) return;
+        taskSeen.add(id);
+        taskOrder.push(id);
+      });
+      const currentTaskPos = taskOrder.indexOf(currentTaskId);
+      for(let t = currentTaskPos + 1; t < taskOrder.length; t++){
+        const targetTaskId = taskOrder[t];
+        const candidate = allInputs.find((input)=>
+          (input.getAttribute("data-task-id") || "").trim() === targetTaskId && isHoursCalendarInputMissing(input)
+        );
+        if(candidate){
+          return candidate;
+        }
+      }
+    }
     return null;
   }
 
   for(let i = idx - 1; i >= 0; i--){
     if(isHoursCalendarInputMissing(ordered[i])) return ordered[i];
+  }
+  if(currentTaskId){
+    const allInputs = getHoursCalendarOrderedInputs("");
+    const taskOrder = [];
+    const taskSeen = new Set();
+    allInputs.forEach((input)=>{
+      const id = (input.getAttribute("data-task-id") || "").trim();
+      if(!id || taskSeen.has(id)) return;
+      taskSeen.add(id);
+      taskOrder.push(id);
+    });
+    const currentTaskPos = taskOrder.indexOf(currentTaskId);
+    for(let t = currentTaskPos - 1; t >= 0; t--){
+      const targetTaskId = taskOrder[t];
+      let candidate = null;
+      for(let i = allInputs.length - 1; i >= 0; i--){
+        const input = allInputs[i];
+        if((input.getAttribute("data-task-id") || "").trim() !== targetTaskId) continue;
+        if(isMissing(input)){
+          candidate = input;
+          break;
+        }
+      }
+      if(candidate) return candidate;
+    }
   }
   return null;
 }
@@ -12761,9 +12809,10 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
       syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
       queueHoursTaskSummaryRefresh(t);
     }
+    const activeTaskId = (input.getAttribute("data-task-id") || "").trim();
     const nextInput = (e.key === "Tab" && e.shiftKey)
-      ? getHoursCalendarNextInput(input, -1, "", true)
-      : getHoursCalendarNextInput(input, 1, "", true);
+      ? getHoursCalendarNextInput(input, -1, activeTaskId, true)
+      : getHoursCalendarNextInput(input, 1, activeTaskId, true);
     if(nextInput){
       const nextDay = (nextInput.getAttribute("data-date") || "").trim();
       refreshHoursCalendarSelectedCard(nextDay);
