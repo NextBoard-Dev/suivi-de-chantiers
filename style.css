@@ -2233,6 +2233,11 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 .gantt-table table td.gantt-cell{
   z-index:0;
 }
+.gantt-table table td.gantt-cell,
+.gantt-table .table td.gantt-cell{
+  border-left-color: transparent !important;
+  border-right-color: transparent !important;
+}
 .gantt-table table.hide-vendor th.gantt-col-vendor,
 .gantt-table table.hide-vendor td.gantt-col-vendor{
   display:none;
