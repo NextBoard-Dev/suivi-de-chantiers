@@ -151,7 +151,17 @@ const LOCAL_FALLBACK_AGENT_BASE = "http://127.0.0.1:8765";
 const LOCAL_WRITE_META_KEY = "dashboard_last_write_meta_v1";
 const LOCAL_CLOUD_STATE_CACHE_KEY = "dashboard_cloud_state_cache_v1";
 
+function _canUseLocalFallbackAgent(){
+  try{
+    const host = String(window?.location?.hostname || "").toLowerCase();
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  }catch(e){
+    return false;
+  }
+}
+
 async function _saveAppStateToLocalFallback(stateObj){
+  if(!_canUseLocalFallbackAgent()) return false;
   try{
     const res = await fetch(`${LOCAL_FALLBACK_AGENT_BASE}/state/save`, {
       method: "POST",
@@ -167,6 +177,7 @@ async function _saveAppStateToLocalFallback(stateObj){
 }
 
 async function _loadAppStateFromLocalFallback(){
+  if(!_canUseLocalFallbackAgent()) return null;
   try{
     const res = await fetch(`${LOCAL_FALLBACK_AGENT_BASE}/state/load`, { method: "GET" });
     if(!res.ok) return null;
@@ -231,12 +242,20 @@ function _saveCloudStateCache(stateJson, updatedAt){
 }
 
 function _confirmLocalFallbackLoad(reason){
+  if(!_canUseLocalFallbackAgent()){
+    showSaveToast("error", "Service distant indisponible", "Mode web: sauvegarde locale agent indisponible.");
+    return false;
+  }
   return window.confirm(
     `Service distant indisponible (${reason}).\nCharger la sauvegarde locale depuis J:\\RÉGISSEUR INTENDANT\\DASBOARDS\\SUIVI DE CHANTIERS ?`
   );
 }
 
 function _confirmLocalFallbackSave(reason){
+  if(!_canUseLocalFallbackAgent()){
+    showSaveToast("error", "Service distant indisponible", "Mode web: sauvegarde locale agent indisponible.");
+    return false;
+  }
   return window.confirm(
     `Service distant indisponible (${reason}).\nEnregistrer une sauvegarde locale dans J:\\RÉGISSEUR INTENDANT\\DASBOARDS\\SUIVI DE CHANTIERS ?`
   );
@@ -249,6 +268,7 @@ function _refreshDataIoBadge(){
 }
 
 async function _markLocalFallbackSynced(){
+  if(!_canUseLocalFallbackAgent()) return;
   try{
     await fetch(`${LOCAL_FALLBACK_AGENT_BASE}/state/mark-synced`, { method: "POST" });
   }catch(e){
@@ -257,6 +277,7 @@ async function _markLocalFallbackSynced(){
 }
 
 async function _maybeUseLocalNewerState(cloudUpdatedAt){
+  if(!_canUseLocalFallbackAgent()) return null;
   try{
     const localData = await _loadAppStateFromLocalFallback();
     if(!localData || !localData.state_json) return null;
