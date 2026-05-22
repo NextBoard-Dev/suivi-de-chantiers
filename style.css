@@ -6460,8 +6460,8 @@ textarea.input:focus{
 /* =========================
    V23 - Lisibilite des statuts (reversible)
    ========================= */
-.status-row span,
-.status-cell span{
+.status-row > span:not(.badge.owner),
+.status-cell .status-left{
   display: inline-flex !important;
   align-items: center !important;
   gap: 4px !important;

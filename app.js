@@ -1509,6 +1509,7 @@ let _filteredCache = { key:"", version:-1, tasks:null };
 let _missingLogEntriesTotalCache = { version:-1, todayKey:"", totalTasks:-1, total:0 };
 let _missingDaysMapAllTasksCache = { version:-1, todayKey:"", totalTasks:-1, map:null };
 let _canonicalTimeLogsCache = { version:-1, logs:null };
+let _dataQualityReportCache = { version:-1, state:null, report:null };
 function invalidateCanonicalTimeLogsCache(){
   _canonicalTimeLogsCache = { version:-1, logs:null };
 }
