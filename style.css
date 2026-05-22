@@ -610,8 +610,12 @@ body{
 }
 .section{margin-bottom:3px;padding:3px;border:none;border-radius:0;background:transparent;}
 .sidebar .section:last-child{margin-bottom:0;}
-.sidebar-logo-wrap{width:100%;margin:0 0 10px;display:flex;justify-content:center;overflow:visible;}
 .sidebar-logo-wrap{
+  width:100%;
+  margin:0 0 10px;
+  display:flex;
+  justify-content:center;
+  overflow:visible;
   padding:0 10px;
   box-sizing:border-box;
 }
