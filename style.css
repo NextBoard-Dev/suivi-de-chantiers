@@ -7176,3 +7176,40 @@ textarea:disabled{
   background: #334155 !important;
   border-color: #1f2937 !important;
 }
+
+/* Conformite finale badges colonne Statut (tableau maitre + projet) */
+.table tbody td.status-cell{
+  gap: 8px !important;
+}
+
+.table tbody td.status-cell .status-left{
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 18px !important;
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+}
+
+.table tbody td.status-cell .status-left .icon-dot{
+  width: 9px !important;
+  height: 9px !important;
+  margin-right: 6px !important;
+  flex: 0 0 auto !important;
+}
+
+.table tbody td.status-cell .badge.owner{
+  min-height: 18px !important;
+  height: 18px !important;
+  padding: 0 8px !important;
+  border-radius: 999px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+}
