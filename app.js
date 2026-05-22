@@ -3462,6 +3462,7 @@ const ownerBadge = (o="", labelOverride="")=>{
 
   const k = o.toLowerCase();
   const label = (labelOverride || o || "").toString();
+  const typ = ownerType(o);
 
   // Palette aligne avec le graphique de charge
 
@@ -3475,7 +3476,7 @@ const ownerBadge = (o="", labelOverride="")=>{
 
   else if(k.includes("interne")) color = "#16a34a"; // INTERNE
 
-  return `<span class="badge owner" style="background:${color};border-color:${color};color:#fff;">${label}</span>`;
+  return `<span class="badge owner owner-${typ || "other"}" style="background:${color};border-color:${color};color:#fff;">${label}</span>`;
 
 };
 
@@ -3574,18 +3575,19 @@ const vendorBadge = (v="")=>{
   const k = v.toLowerCase();
 
   if(k.includes("rsg/ri") || k.includes("rsg")){
-    return `<span class="badge owner" style="background:#2563eb;border-color:#2563eb;color:#fff;">${v}</span>`;
+    return `<span class="badge owner owner-rsg" style="background:#2563eb;border-color:#2563eb;color:#fff;">${v}</span>`;
   }
   if(k.includes("ri")){
-    return `<span class="badge owner" style="background:#7c3aed;border-color:#7c3aed;color:#fff;">${v}</span>`;
+    return `<span class="badge owner owner-ri" style="background:#7c3aed;border-color:#7c3aed;color:#fff;">${v}</span>`;
   }
 
   const isInternal = k.includes("interne");
   const isExternal = k.includes("externe") || (!isInternal && v);
 
   const color = isInternal ? "#16a34a" : (isExternal ? "#b45309" : "#4b5563");
+  const roleClass = isInternal ? "owner-interne" : (isExternal ? "owner-externe" : "owner-other");
 
-  return `<span class="badge owner" style="background:${color};border-color:${color};color:#fff;">${v}</span>`;
+  return `<span class="badge owner ${roleClass}" style="background:${color};border-color:${color};color:#fff;">${v}</span>`;
 
 };
 

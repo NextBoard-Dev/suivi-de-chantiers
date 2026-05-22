@@ -7131,10 +7131,48 @@ textarea:disabled{
 
 /* Correctif contraste: badge intervenant lisible dans la colonne Statut */
 .table tbody td.status-cell .badge.owner{
-  background: #334155 !important;
-  border: 1px solid #1f2937 !important;
+  opacity: 1 !important;
+}
+
+/* Normalisation finale badges intervenants */
+.badge.owner{
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 18px !important;
+  padding: 0 8px !important;
+  border-radius: 999px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
   text-shadow: none !important;
-  opacity: 1 !important;
+  box-shadow: none !important;
+}
+
+.badge.owner.owner-interne{
+  background: #166534 !important;
+  border-color: #14532d !important;
+}
+
+.badge.owner.owner-rsg{
+  background: #1d4ed8 !important;
+  border-color: #1e40af !important;
+}
+
+.badge.owner.owner-ri{
+  background: #6d28d9 !important;
+  border-color: #5b21b6 !important;
+}
+
+.badge.owner.owner-externe{
+  background: #92400e !important;
+  border-color: #78350f !important;
+}
+
+.badge.owner.owner-other{
+  background: #334155 !important;
+  border-color: #1f2937 !important;
 }
