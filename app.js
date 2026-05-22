@@ -1602,7 +1602,7 @@ function buildTableData(tasks, logs){
 
       <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskLabel}</td>
 
-      <td class="status-cell" style="background:${statusCellBg};background-color:${statusCellBg};"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${t.owner?ownerBadgeForTask(t):""}</td>
+      <td class="status-cell" style="background:${statusCellBg};background-color:${statusCellBg};"><span class="status-left" ${statusPillStyle(mainStatus)}>${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${t.owner?ownerBadgeForTask(t):""}</td>
 
       <td>${formatDate(t.start)||""}${isToday ? `<span class="today-dot" title="En cours aujourd'hui"></span>` : ""}</td>
 
@@ -5848,9 +5848,13 @@ window.updateRoleUI = updateRoleUI;
 
 
 function statusLabels(values){
-
   return parseStatuses(values).map(v=> (STATUSES.find(s=>s.v===v)?.label || v)).join(", ");
 
+}
+
+function statusPillStyle(statusValue){
+  const c = statusColor(statusValue);
+  return `style="background:${hexToRgba(c,0.14)} !important;border-color:${hexToRgba(c,0.42)} !important;color:#0f172a !important;"`;
 }
 
 const toDateInput = window.toDateInput || ((d)=>{
@@ -7100,7 +7104,7 @@ function renderProjectTasks(projectId){
 
       <td><span class="icon-picto"></span> ${taskTitleProjectView(t)}</td>
 
-      <td class="status-cell"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${ownerBadgeHtml||""}</td>
+      <td class="status-cell"><span class="status-left" ${statusPillStyle(mainStatus)}>${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${ownerBadgeHtml||""}</td>
 
       <td>${formatDate(t.start)||""}${isToday ? `<span class="today-dot" title="En cours aujourd'hui"></span>` : ""}</td>
 
@@ -11566,7 +11570,7 @@ function buildProjectTasksExportHTML(projectId){
     rows += `<tr class="${rowClass}">
       <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></td>
       <td><span class="icon-picto"></span> ${taskTitleProjectView(t)}</td>
-      <td class="status-cell"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${ownerBadgeHtml||""}</td>
+      <td class="status-cell"><span class="status-left" ${statusPillStyle(mainStatus)}>${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${ownerBadgeHtml||""}</td>
       <td>${formatDate(t.start)||""}</td>
       <td>${formatDate(t.end)||""}</td>
       <td>${taskProgress(t)}%</td>
@@ -11622,7 +11626,7 @@ function buildMasterTableExportHTML(){
       ${includeChantierCol ? `<td>${attrEscape(chantierLabel)}</td>` : ""}
       <td>${projLabel}</td>
       <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskLabel}</td>
-      <td class="status-cell"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${t.owner?ownerBadgeForTask(t):""}</td>
+      <td class="status-cell"><span class="status-left" ${statusPillStyle(mainStatus)}>${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${t.owner?ownerBadgeForTask(t):""}</td>
       <td>${formatDate(t.start)||""}${isToday ? `<span class="today-dot" title="En cours aujourd'hui"></span>` : ""}</td>
       <td>${formatDate(t.end)||""}</td>
       <td>${taskProgress(t)}%</td>
@@ -11700,7 +11704,7 @@ function buildGroupedProjectTasksExportHTML(projectIds){
       <td>${attrEscape(p?.name || "Projet")}</td>
       <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></td>
       <td><span class="icon-picto"></span> ${taskTitleProjectView(t)}</td>
-      <td class="status-cell"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${ownerBadgeHtml||""}</td>
+      <td class="status-cell"><span class="status-left" ${statusPillStyle(mainStatus)}>${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${ownerBadgeHtml||""}</td>
       <td>${formatDate(t.start)||""}</td>
       <td>${formatDate(t.end)||""}</td>
       <td>${taskProgress(t)}%</td>
