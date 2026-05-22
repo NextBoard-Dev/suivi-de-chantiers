@@ -2233,13 +2233,16 @@
 
     users.forEach(u=>{
 
-      let email = (u.email||"").trim().toLowerCase();
+      const rawEmail = (u.email||"").trim();
+      let email = rawEmail;
+      let emailKey = rawEmail.toLowerCase();
 
       if(!email){
 
         const base = (u.name||"utilisateur").toLowerCase().replace(/\s+/g,".").replace(/[^a-z0-9._-]/g,"");
 
         email = `${base || "user"}@local`;
+        emailKey = email.toLowerCase();
 
         u.email = email;
 
@@ -2247,14 +2250,14 @@
 
       }
 
-      if(seen.has(email)) return;
+      if(seen.has(emailKey)) return;
 
-      seen.add(email);
+      seen.add(emailKey);
 
       const displayName = normalizeDisplayName(u.name||"");
       const label = `${displayName||""} (${email||"sans email"})`;
 
-      items.push({ email, label });
+      items.push({ email, emailKey, label });
 
     });
 
@@ -2272,9 +2275,10 @@
 
     let next = current || last;
 
-    if(next && items.some(it=>it.email===next)){
+    if(next && items.some(it=>it.emailKey===next)){
 
-      userInput.value = next;
+      const found = items.find(it=>it.emailKey===next);
+      userInput.value = found ? found.email : next;
 
     }else if(items[0]){
 
@@ -2477,6 +2481,11 @@
     }
 
     try{ window.logUserLogin?.({email: mail, name: displayName, role}); }catch(e){}
+    try{
+      if(window.loadAppStateFromSupabase){
+        setTimeout(()=>{ window.loadAppStateFromSupabase().catch(()=>{}); }, 50);
+      }
+    }catch(e){}
     return true;
   }
 
@@ -2492,7 +2501,8 @@
 
     const h = await hash(pass);
 
-    const mail = (userInput?.value||"").trim().toLowerCase();
+    const mailRaw = (userInput?.value||"").trim();
+    const mail = mailRaw.toLowerCase();
 
     if(!mail){ alert("Email requis"); return; }
 
@@ -2534,7 +2544,7 @@
 
       e.preventDefault();
 
-      if(userInput && userInput.value) userInput.value = userInput.value.trim().toLowerCase();
+      if(userInput && userInput.value) userInput.value = userInput.value.trim();
 
       await tryUnlock();
 
@@ -2558,7 +2568,7 @@
 
     userInput.addEventListener("change", ()=>{
 
-      if(userInput.value) userInput.value = userInput.value.trim().toLowerCase();
+      if(userInput.value) userInput.value = userInput.value.trim();
 
       applyRememberedFor(userInput.value);
 
@@ -2566,7 +2576,7 @@
 
     userInput.addEventListener("input", ()=>{
 
-      if(userInput.value) userInput.value = userInput.value.trim().toLowerCase();
+      if(userInput.value) userInput.value = userInput.value.trim();
 
       applyRememberedFor(userInput.value);
 
