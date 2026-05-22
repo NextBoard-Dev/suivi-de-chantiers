@@ -1223,14 +1223,21 @@ window.loadAppStateFromSupabase = async function(){
   if(_loadAppStateFromSupabaseFlight) return _loadAppStateFromSupabaseFlight;
 
   const run = async () => {
+    _setLastRemoteLoadFailure("");
     _isDataIoReadBusy = true;
     _refreshDataIoBadge();
     const sb = _getSupabaseClient();
 
     if(!sb){
-      if(!_confirmLocalFallbackLoad("service distant indisponible")) return false;
+      if(!_confirmLocalFallbackLoad("service distant indisponible")){
+        _setLastRemoteLoadFailure("Service Supabase indisponible (client non initialisé).");
+        return false;
+      }
       const localData = await _loadAppStateFromLocalFallback();
-      if(!localData || !localData.state_json) return false;
+      if(!localData || !localData.state_json){
+        _setLastRemoteLoadFailure("Aucune sauvegarde locale de secours disponible.");
+        return false;
+      }
       _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
       state = normalizeState(localData.state_json || {});
       invalidateCanonicalTimeLogsCache();
@@ -1246,9 +1253,15 @@ window.loadAppStateFromSupabase = async function(){
     const session = await _ensureSession();
 
     if(!session || !session.user){
-      if(!_confirmLocalFallbackLoad("session distante indisponible")) return false;
+      if(!_confirmLocalFallbackLoad("session distante indisponible")){
+        _setLastRemoteLoadFailure("Session Supabase indisponible (authentification échouée).");
+        return false;
+      }
       const localData = await _loadAppStateFromLocalFallback();
-      if(!localData || !localData.state_json) return false;
+      if(!localData || !localData.state_json){
+        _setLastRemoteLoadFailure("Session distante indisponible et aucune sauvegarde locale disponible.");
+        return false;
+      }
       _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
       state = normalizeState(localData.state_json || {});
       invalidateCanonicalTimeLogsCache();
@@ -1317,9 +1330,15 @@ window.loadAppStateFromSupabase = async function(){
 
       if(error){
         console.warn("Supabase select error", error);
-        if(!_confirmLocalFallbackLoad("erreur lecture distante")) return false;
+        if(!_confirmLocalFallbackLoad("erreur lecture distante")){
+          _setLastRemoteLoadFailure("Erreur lecture Supabase (state_json).");
+          return false;
+        }
         const localData = await _loadAppStateFromLocalFallback();
-        if(!localData || !localData.state_json) return false;
+        if(!localData || !localData.state_json){
+          _setLastRemoteLoadFailure("Erreur lecture distante et aucune sauvegarde locale disponible.");
+          return false;
+        }
         _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
         state = normalizeState(localData.state_json || {});
         invalidateCanonicalTimeLogsCache();
@@ -1331,9 +1350,15 @@ window.loadAppStateFromSupabase = async function(){
       }
 
       if(!data || !data.state_json){
-        if(!_confirmLocalFallbackLoad("aucune donnée distante")) return false;
+        if(!_confirmLocalFallbackLoad("aucune donnée distante")){
+          _setLastRemoteLoadFailure("Aucune donnée distante trouvée dans Supabase.");
+          return false;
+        }
         const localData = await _loadAppStateFromLocalFallback();
-        if(!localData || !localData.state_json) return false;
+        if(!localData || !localData.state_json){
+          _setLastRemoteLoadFailure("Aucune donnée distante et aucune sauvegarde locale disponible.");
+          return false;
+        }
         _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
         state = normalizeState(localData.state_json || {});
         invalidateCanonicalTimeLogsCache();
@@ -1400,10 +1425,16 @@ window.loadAppStateFromSupabase = async function(){
     }catch(e){
 
       console.warn("loadAppStateFromSupabase failed", e);
-        if(!_confirmLocalFallbackLoad("exception synchronisation")) return false;
+        if(!_confirmLocalFallbackLoad("exception synchronisation")){
+          _setLastRemoteLoadFailure("Exception de synchronisation distante.");
+          return false;
+        }
 
       const localData = await _loadAppStateFromLocalFallback();
-      if(!localData || !localData.state_json) return false;
+      if(!localData || !localData.state_json){
+        _setLastRemoteLoadFailure("Exception distante et aucune sauvegarde locale disponible.");
+        return false;
+      }
       _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
       state = normalizeState(localData.state_json || {});
       invalidateCanonicalTimeLogsCache();
@@ -1443,7 +1474,8 @@ function _scheduleSupabaseAutoLoad(){
     try{
       const ok = await window.loadAppStateFromSupabase();
       if(!ok){
-        showSaveToast("error", "Chargement distant", "Impossible de charger les données distantes. Vérifie la connexion.");
+        const detail = _consumeLastRemoteLoadFailure() || "Impossible de charger les données distantes. Vérifie la connexion.";
+        showSaveToast("error", "Chargement distant", detail);
       }
     }catch(e){ softCatch(e); }
   }, 1200);
@@ -5023,6 +5055,7 @@ let _lastStateLoadSource = "inconnu";
 let _supabaseOwnerFallbackCount = 0;
 let _lastCloudStateUpdatedAt = "";
 let _lastSupabasePreSaveCheckAt = 0;
+let _lastRemoteLoadFailureDetail = "";
 
 function stateLoadSourceLabel(src){
   const k = String(src || "").toLowerCase();
@@ -5065,7 +5098,38 @@ function _formatLastSyncLabel(){
 }
 
 function buildDataIoBadgeHtml(){
-  return "";
+  try{
+    const storage = _buildStorageHealth(state || {});
+    const storageText = `${storage.percent}% (${_formatBytes(storage.bytes)})`;
+    const storageClass = storage.warn === "warning" ? "is-warning" : (storage.warn ? "is-danger" : "is-cloud");
+    const writeTarget = stateWriteTargetLabel();
+    const writeTargetLower = String(writeTarget || "").toLowerCase();
+    const writeTargetClass = writeTargetLower.includes("bloqu") ? "is-danger"
+      : writeTargetLower.includes("secours") ? "is-fallback"
+      : (writeTarget ? "is-cloud" : "is-unknown");
+    const lastSync = _formatLastSyncLabel();
+    const badgeSyncClass = _isDataIoWriteBusy ? "is-syncing" : "";
+    return ` <span class="data-io-badge ${badgeSyncClass}" id="dataIoBadge" title="État synchronisation: ${attrEscape(writeTarget)} / ${attrEscape(lastSync)}">
+      <span class="data-io-item ${storageClass}">Stockage ${storageText}</span>
+      <span class="data-io-sep">•</span>
+      <span class="data-io-item ${writeTargetClass}">${attrEscape(writeTarget)}</span>
+      <span class="data-io-sep">•</span>
+      <span class="data-io-item is-unknown">${attrEscape(lastSync)}</span>
+    </span>`;
+  }catch(e){
+    softCatch(e);
+    return "";
+  }
+}
+
+function _setLastRemoteLoadFailure(detail){
+  _lastRemoteLoadFailureDetail = String(detail || "").trim();
+}
+
+function _consumeLastRemoteLoadFailure(){
+  const detail = _lastRemoteLoadFailureDetail || "";
+  _lastRemoteLoadFailureDetail = "";
+  return detail;
 }
 
 function collectDataQualityIssues(currentState=state){
