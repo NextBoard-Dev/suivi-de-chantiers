@@ -1268,6 +1268,14 @@ window.loadAppStateFromSupabase = async function(){
       const localCloudCache = _readCloudStateCache();
       if(localCloudCache && localCloudCache.state_json && localCloudCache.updated_at){
         if(remoteMetaUpdatedAt && remoteMetaUpdatedAt === String(localCloudCache.updated_at || "").trim()){
+          if(
+            _lastStateLoadSource === "supabase_cloud" &&
+            String(_lastCloudStateUpdatedAt || "").trim() === String(localCloudCache.updated_at || "").trim()
+          ){
+            _refreshDataIoBadge();
+            clearDirty();
+            return true;
+          }
           _lastCloudStateUpdatedAt = String(localCloudCache.updated_at || "").trim();
           state = normalizeState(localCloudCache.state_json || {});
           invalidateCanonicalTimeLogsCache();
