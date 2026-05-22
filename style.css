@@ -611,16 +611,22 @@ body{
 .section{margin-bottom:3px;padding:3px;border:none;border-radius:0;background:transparent;}
 .sidebar .section:last-child{margin-bottom:0;}
 .sidebar-logo-wrap{width:100%;margin:0 0 10px;display:flex;justify-content:center;overflow:visible;}
+.sidebar-logo-wrap{
+  padding:0 10px;
+  box-sizing:border-box;
+}
 .sidebar-logo-img{
   display:block;
-  width:100%;
-  max-width:100%;
+  width:95%;
+  max-width:190px;
   height:auto;
-  max-height:none;
+  max-height:96px;
   margin:0;
   border-radius:9px;
   box-shadow:0 4px 10px rgba(43,69,82,.08);
+  object-fit:contain;
   filter:saturate(.45) brightness(0.99) contrast(0.96);
+  background:transparent;
 }
 .sidebar{padding-top:14px;}
 .section-title{
