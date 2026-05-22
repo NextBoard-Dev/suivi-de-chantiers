@@ -10058,6 +10058,33 @@ function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missing
   const isMissing = isHoursCalendarInputMissing;
   const currentTaskId = (taskId || "").trim() || (currentInput ? (currentInput.getAttribute("data-task-id") || "").trim() : "");
 
+  const allInputs = getHoursCalendarOrderedInputs("");
+  const taskOrder = getMissingHoursModalTaskOrder(allInputs);
+  const taskInputsMap = (() => {
+    const map = new Map();
+    allInputs.forEach((input)=>{
+      const tId = (input.getAttribute("data-task-id") || "").trim();
+      if(!tId) return;
+      if(!map.has(tId)) map.set(tId, []);
+      map.get(tId).push(input);
+    });
+    return map;
+  })();
+
+  const getTaskInputs = (targetTaskId)=> taskInputsMap.get((targetTaskId || "").trim()) || [];
+  const getMissingInTask = (inputs)=> {
+    if(!missingOnly) return inputs;
+    return inputs.filter((input)=> isMissing(input));
+  };
+  const getFirstMissingInTask = (targetTaskId)=> getMissingInTask(getTaskInputs(targetTaskId))[0] || null;
+  const getTaskPosition = (targetTaskId)=> taskOrder.indexOf((targetTaskId || "").trim());
+  const getNextTaskId = (targetTaskId, forward=true)=>{
+    const pos = getTaskPosition(targetTaskId);
+    if(pos < 0) return "";
+    const t = taskOrder[pos + (forward ? 1 : -1)];
+    return t || "";
+  };
+
   if(!missingOnly){
     const idx = ordered.indexOf(currentInput);
     if(idx < 0){
@@ -10077,26 +10104,17 @@ function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missing
     for(let i = idx + 1; i < ordered.length; i++){
       if(isHoursCalendarInputMissing(ordered[i])) return ordered[i];
     }
-    if(currentTaskId){
-      const allInputs = getHoursCalendarOrderedInputs("");
-      const taskOrder = [];
-      const taskSeen = new Set();
-      allInputs.forEach((input)=>{
-        const id = (input.getAttribute("data-task-id") || "").trim();
-        if(!id || taskSeen.has(id)) return;
-        taskSeen.add(id);
-        taskOrder.push(id);
-      });
-      const currentTaskPos = taskOrder.indexOf(currentTaskId);
-      for(let t = currentTaskPos + 1; t < taskOrder.length; t++){
-        const targetTaskId = taskOrder[t];
-        const candidate = allInputs.find((input)=>
-          (input.getAttribute("data-task-id") || "").trim() === targetTaskId && isHoursCalendarInputMissing(input)
-        );
-        if(candidate){
-          return candidate;
-        }
-      }
+    if(!currentTaskId){
+      return null;
+    }
+    let nextTaskId = currentTaskId;
+    let tries = 0;
+    while(tries < taskOrder.length){
+      nextTaskId = getNextTaskId(nextTaskId, true);
+      if(!nextTaskId) break;
+      const candidate = getFirstMissingInTask(nextTaskId);
+      if(candidate) return candidate;
+      tries++;
     }
     return null;
   }
@@ -10104,30 +10122,17 @@ function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missing
   for(let i = idx - 1; i >= 0; i--){
     if(isHoursCalendarInputMissing(ordered[i])) return ordered[i];
   }
-  if(currentTaskId){
-    const allInputs = getHoursCalendarOrderedInputs("");
-    const taskOrder = [];
-    const taskSeen = new Set();
-    allInputs.forEach((input)=>{
-      const id = (input.getAttribute("data-task-id") || "").trim();
-      if(!id || taskSeen.has(id)) return;
-      taskSeen.add(id);
-      taskOrder.push(id);
-    });
-    const currentTaskPos = taskOrder.indexOf(currentTaskId);
-    for(let t = currentTaskPos - 1; t >= 0; t--){
-      const targetTaskId = taskOrder[t];
-      let candidate = null;
-      for(let i = allInputs.length - 1; i >= 0; i--){
-        const input = allInputs[i];
-        if((input.getAttribute("data-task-id") || "").trim() !== targetTaskId) continue;
-        if(isMissing(input)){
-          candidate = input;
-          break;
-        }
-      }
-      if(candidate) return candidate;
-    }
+  if(!currentTaskId){
+    return null;
+  }
+  let prevTaskId = currentTaskId;
+  let tries = 0;
+  while(tries < taskOrder.length){
+    prevTaskId = getNextTaskId(prevTaskId, false);
+    if(!prevTaskId) break;
+    const candidate = getMissingInTask(getTaskInputs(prevTaskId)).slice().reverse().find(isMissing);
+    if(candidate) return candidate;
+    tries++;
   }
   return null;
 }
