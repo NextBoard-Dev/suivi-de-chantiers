@@ -150,6 +150,7 @@ const SUPABASE_AUTO_PASSWORD = "Mililum@tt45";
 const LOCAL_FALLBACK_AGENT_BASE = "http://127.0.0.1:8765";
 const LOCAL_WRITE_META_KEY = "dashboard_last_write_meta_v1";
 const LOCAL_CLOUD_STATE_CACHE_KEY = "dashboard_cloud_state_cache_v1";
+let _lastWriteMetaMemory = null;
 
 function _canUseLocalFallbackAgent(){
   try{
@@ -198,20 +199,32 @@ function _safeTs(isoLike){
 }
 
 function _getLastWriteMeta(){
+  if(_lastWriteMetaMemory && typeof _lastWriteMetaMemory === "object"){
+    return _lastWriteMetaMemory;
+  }
   try{
     const raw = localStorage.getItem(LOCAL_WRITE_META_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    if(!parsed || typeof parsed !== "object") return null;
+    const target = String(parsed?.target || "").trim();
+    const updatedAt = String(parsed?.updated_at || "").trim();
+    if(!target && !updatedAt) return null;
+    _lastWriteMetaMemory = { target, updated_at: updatedAt };
+    return _lastWriteMetaMemory;
   }catch(e){
     return null;
   }
 }
 
 function _setLastWriteMeta(target, updatedAt){
+  const nextMeta = {
+    target: String(target || "").trim(),
+    updated_at: String(updatedAt || new Date().toISOString()).trim()
+  };
+  _lastWriteMetaMemory = nextMeta;
   try{
-    localStorage.setItem(LOCAL_WRITE_META_KEY, JSON.stringify({
-      target: String(target || "").trim(),
-      updated_at: String(updatedAt || new Date().toISOString()).trim()
-    }));
+    localStorage.setItem(LOCAL_WRITE_META_KEY, JSON.stringify(nextMeta));
   }catch(e){ softCatch(e); }
 }
 
