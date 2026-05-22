@@ -2204,6 +2204,19 @@
 
   }
 
+  function normalizeDisplayName(name){
+    const raw = String(name || "").trim();
+    if(!raw) return "";
+    const lettersOnly = raw.replace(/[^a-zA-Z\u00C0-\u017F]+/g, "");
+    const isAllLower = !!lettersOnly && lettersOnly === lettersOnly.toLowerCase();
+    if(!isAllLower) return raw;
+    return raw
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part)=> part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(" ");
+  }
+
   function populateUsers(){
 
     const users = loadUsers();
@@ -2238,7 +2251,8 @@
 
       seen.add(email);
 
-      const label = `${u.name||""} (${email||"sans email"})`;
+      const displayName = normalizeDisplayName(u.name||"");
+      const label = `${displayName||""} (${email||"sans email"})`;
 
       items.push({ email, label });
 
@@ -2374,7 +2388,7 @@
 
       sessionStorage.setItem("unlocked","1");
 
-      sessionStorage.setItem("current_user", u.name||"");
+      sessionStorage.setItem("current_user", normalizeDisplayName(u.name||""));
 
       sessionStorage.setItem("current_email", mail);
 
@@ -2398,7 +2412,7 @@
 
         try{
 
-          ok = await window.createSessionToken(token, {email: mail, name: u.name||"", role}, SESSION_TTL_DAYS);
+          ok = await window.createSessionToken(token, {email: mail, name: normalizeDisplayName(u.name||""), role}, SESSION_TTL_DAYS);
 
         }catch(e){ ok = false; }
 
@@ -2418,7 +2432,7 @@
 
       }
 
-      try{ window.logUserLogin?.({email: mail, name: u.name||"", role}); }catch(e){}
+      try{ window.logUserLogin?.({email: mail, name: normalizeDisplayName(u.name||""), role}); }catch(e){}
 
       return u;
 
@@ -2704,7 +2718,7 @@
 
       sessionStorage.setItem("unlocked","1");
 
-      sessionStorage.setItem("current_user", data.name || "Invité");
+      sessionStorage.setItem("current_user", normalizeDisplayName(data.name || "Invité"));
 
       sessionStorage.setItem("current_role", role);
 
@@ -2716,7 +2730,7 @@
 
       if(window.updateRoleUI) window.updateRoleUI();
 
-      try{ window.logUserLogin?.({email: data.email || "", name: data.name||"", role}); }catch(e){}
+      try{ window.logUserLogin?.({email: data.email || "", name: normalizeDisplayName(data.name||""), role}); }catch(e){}
 
     }catch(e){}
 
