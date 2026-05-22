@@ -5113,13 +5113,15 @@ function buildDataIoBadgeHtml(){
       : writeTargetLower.includes("secours") ? "is-fallback"
       : (writeTarget ? "is-cloud" : "is-unknown");
     const lastSync = _formatLastSyncLabel();
+    const syncIsHs = String(lastSync || "").includes("--") || writeTargetLower === "inconnue";
+    const syncClass = syncIsHs ? "is-danger" : "is-cloud";
     const badgeSyncClass = _isDataIoWriteBusy ? "is-syncing" : "";
     return ` <span class="data-io-badge ${badgeSyncClass}" id="dataIoBadge" title="État synchronisation: ${attrEscape(writeTarget)} / ${attrEscape(lastSync)}">
       <span class="data-io-item ${storageClass}">Stockage ${storageText}</span>
       <span class="data-io-sep">•</span>
       <span class="data-io-item ${writeTargetClass}">${attrEscape(writeTarget)}</span>
       <span class="data-io-sep">•</span>
-      <span class="data-io-item is-unknown">${attrEscape(lastSync)}</span>
+      <span class="data-io-item ${syncClass}">${attrEscape(lastSync)}</span>
     </span>`;
   }catch(e){
     softCatch(e);
