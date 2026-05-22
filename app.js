@@ -1476,18 +1476,6 @@ let _ganttKey = null;
 let _missingHoursFlow = null;
 let _outsideRangeFlow = null;
 let _lastMasterAnimSignature = "";
-let _lastScalabilityReport = null;
-let _lastScaleAlertSig = "";
-let _lastScaleAlertAt = 0;
-let _dataQualityReportCache = { version: -1, state: null, report: null };
-let showCompletedMaster = false;
-const SCALE_GUARDS = {
-  warnTasks: 1000,
-  warnTimeLogs: 20000,
-  warnStateBytes: 3_500_000,
-  warnRenderMs: 180,
-  warnSaveMs: 220
-};
 const runtimePerf = {
   lastRenderMs: 0,
   lastSaveMs: 0,
@@ -5200,80 +5188,6 @@ const estimateStateBytes = window.estimateStateBytes || ((obj)=>{
   }
 });
 
-function updateDegradedMode(scaleReport){
-  try{
-    const shouldDegrade = !!(scaleReport && !scaleReport.ok);
-    runtimePerf.degradedMode = shouldDegrade;
-    runtimePerf.degradedReason = shouldDegrade
-      ? String((scaleReport.warnings || []).slice(0,2).join(" | "))
-      : "";
-  }catch(e){
-    softCatch(e);
-  }
-}
-
-function collectScalabilityReport(currentState=state){
-  const tasksCount = Array.isArray(currentState?.tasks) ? currentState.tasks.length : 0;
-  const timeLogsCount = Array.isArray(currentState?.timeLogs) ? currentState.timeLogs.length : 0;
-  const stateBytes = runtimePerf.lastStateBytes || estimateStateBytes(currentState || {});
-  const segmentMetrics = null;
-  const warnings = [];
-
-  if(tasksCount >= SCALE_GUARDS.warnTasks){
-    warnings.push(`Volume tâches élevé (${tasksCount} >= ${SCALE_GUARDS.warnTasks})`);
-  }
-  if(timeLogsCount >= SCALE_GUARDS.warnTimeLogs){
-    warnings.push(`Volume saisies heures élevé (${timeLogsCount} >= ${SCALE_GUARDS.warnTimeLogs})`);
-  }
-  if(stateBytes >= SCALE_GUARDS.warnStateBytes){
-    warnings.push(`Taille état importante (${Math.round(stateBytes/1024)} Ko)`);
-  }
-  if((runtimePerf.lastRenderMs || 0) >= SCALE_GUARDS.warnRenderMs){
-    warnings.push(`Rendu UI lent (${runtimePerf.lastRenderMs.toFixed(1)} ms)`);
-  }
-  if((runtimePerf.lastSaveMs || 0) >= SCALE_GUARDS.warnSaveMs){
-    warnings.push(`Sauvegarde lente (${runtimePerf.lastSaveMs.toFixed(1)} ms)`);
-  }
-
-  return {
-    ok: warnings.length === 0,
-    warnings,
-    tasksCount,
-    timeLogsCount,
-    stateBytes,
-    stateKb: Math.round(stateBytes/1024),
-    segmentMetrics: segmentMetrics || null,
-    lastSegmentationAt: "",
-    lastRenderMs: runtimePerf.lastRenderMs || 0,
-    lastRenderMasterMs: runtimePerf.lastRenderMasterMs || 0,
-    lastRenderMasterGanttMs: runtimePerf.lastRenderMasterGanttMs || 0,
-    lastMissingMapCalls: runtimePerf.lastMissingMapCalls || 0,
-    lastSaveMs: runtimePerf.lastSaveMs || 0,
-    lastRenderAt: runtimePerf.lastRenderAt || "",
-    lastSaveAt: runtimePerf.lastSaveAt || ""
-  };
-}
-
-function notifyScalabilityIfNeeded(scaleReport, source="runtime"){
-  if(getCurrentRole() !== "admin") return;
-  try{
-    if(!scaleReport || scaleReport.ok) return;
-    const warnings = Array.isArray(scaleReport.warnings) ? scaleReport.warnings : [];
-    if(!warnings.length) return;
-    const sig = `${source}|${warnings.join("|")}`;
-    const now = Date.now();
-    // anti-spam: meme alerte ignoree pendant 2 minutes
-    if(sig === _lastScaleAlertSig && (now - _lastScaleAlertAt) < 120000) return;
-    _lastScaleAlertSig = sig;
-    _lastScaleAlertAt = now;
-    const summary = warnings.slice(0,2).join(" | ");
-    const extra = warnings.length > 2 ? ` | +${warnings.length - 2} autre(s)` : "";
-    showSaveToast("error", "Alerte charge", `${summary}${extra}`);
-  }catch(e){
-    softCatch(e);
-  }
-}
-
 async function collectCloudAlignmentReport(currentState=state){
   try{
     const sb = _getSupabaseClient();
@@ -5338,7 +5252,6 @@ function applyDataQualityCleanup(){
 
 function exportDataQualityReportPdf(){
   const report = collectDataQualityIssues(state);
-  const scale = collectScalabilityReport(state);
   const today = new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});
 
   setPrintPageFormat("A4 portrait", "6mm");
@@ -5368,10 +5281,7 @@ function exportDataQualityReportPdf(){
       ["État", report.ok ? "OK" : "Incohérences détectées"],
       ["Nombre d'anomalies", String(report.issues.length)],
       ["Tâches", String((state?.tasks || []).length)],
-      ["Logs temps", String((state?.timeLogs || []).length)],
-      ["Charge", scale.ok ? "OK" : `${scale.warnings.length} alerte(s)`],
-      ["Dernier rendu UI", `${scale.lastRenderMs.toFixed(1)} ms`],
-      ["Dernière sauvegarde", `${scale.lastSaveMs.toFixed(1)} ms`]
+      ["Logs temps", String((state?.timeLogs || []).length)]
     ];
     meta.innerHTML = rows.map(([k,v])=>`<div><strong>${k}</strong><br>${attrEscape(v)}</div>`).join("");
   }
