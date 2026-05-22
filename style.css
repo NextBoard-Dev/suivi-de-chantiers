@@ -7325,3 +7325,14 @@ textarea:disabled{
   box-shadow: none !important;
   background-image: none !important;
 }
+
+/* Verrou segments de barres Gantt: supprime les traits verticaux internes */
+.gantt-bar,
+.gantt-bar.multi,
+.gantt-progress,
+.gantt-progress-out{
+  border-left: 0 !important;
+  border-right: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
