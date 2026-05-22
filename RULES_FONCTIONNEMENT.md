@@ -120,3 +120,7 @@ Ce document est la référence à suivre pour toute modification du dashboard.
 
 ### 19) Journal d'exécution (MAJ MD)
 - 2026-05-22 : ✅ `.gitignore` mis à jour pour ignorer les dossiers de sauvegarde locale puis commit/push réalisé sur la branche main.
+
+## Progress lot récent
+- 2026-05-22 : ✅ Lot topbar terminé — suppression du badge technique (données e/s/storage) en haut, sans calculs ni requête extra. 
+
