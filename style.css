@@ -7191,6 +7191,7 @@ textarea:disabled{
   vertical-align: middle !important;
   min-height: 18px !important;
   height: 18px !important;
+  max-width: calc(100% - 54px) !important;
   padding: 0 10px !important;
   border-radius: 999px !important;
   border: 1px solid #cbd5e1 !important;
@@ -7223,4 +7224,6 @@ textarea:disabled{
   line-height: 1 !important;
   margin-top: 0 !important;
   margin-bottom: 0 !important;
+  margin-left: 4px !important;
+  margin-right: 2px !important;
 }
