@@ -4963,6 +4963,7 @@ function _isRlsDenied(error){
 function queueLoginJournalRefresh(){
   const modal = el("configModal");
   if(modal && modal.classList.contains("hidden")) return;
+  if(_isLoginJournalBusy) return;
   const now = Date.now();
   if(now - _lastLoginJournalRefreshAt < LOGIN_JOURNAL_REFRESH_MIN_INTERVAL_MS) return;
   if(_loginJournalRefreshTimer){
