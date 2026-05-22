@@ -2447,6 +2447,11 @@
     const u = await tryUnlockWithHash(h, mail);
 
     if(u){
+      try{
+        if(window.supabaseLogin){
+          await window.supabaseLogin(mail, pass);
+        }
+      }catch(e){}
 
       if(remember?.checked){
 
@@ -2458,6 +2463,14 @@
 
       }
 
+      try{
+        if(window.loadAppStateFromSupabase){
+          const ok = await window.loadAppStateFromSupabase();
+          if(!ok && window.showSaveToast){
+            window.showSaveToast("error", "Synchronisation", "Connexion OK mais chargement des données distantes impossible.");
+          }
+        }
+      }catch(e){}
       return true;
 
     }else{

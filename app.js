@@ -1475,6 +1475,7 @@ let selectedTaskId = null;
 let taskOrderMap = {};
 
 let selectedStatusSet = new Set();
+let showCompletedMaster = false;
 
 let sortMaster = {key:"start", dir:"asc"};
 
