@@ -1226,188 +1226,48 @@ window.loadAppStateFromSupabase = async function(){
     _setLastRemoteLoadFailure("");
     _isDataIoReadBusy = true;
     _refreshDataIoBadge();
-    const sb = _getSupabaseClient();
 
-    if(!sb){
-      if(!_confirmLocalFallbackLoad("service distant indisponible")){
-        _setLastRemoteLoadFailure("Service Supabase indisponible (client non initialisé).");
-        return false;
-      }
-      const localData = await _loadAppStateFromLocalFallback();
-      if(!localData || !localData.state_json){
-        _setLastRemoteLoadFailure("Aucune sauvegarde locale de secours disponible.");
-        return false;
-      }
-      _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
-      state = normalizeState(localData.state_json || {});
+    const RETRY_DELAYS_MS = [0, 2000, 5000];
+    let loadState = "init";
+
+    const waitMs = (ms)=> new Promise((resolve)=>setTimeout(resolve, Math.max(0, Number(ms || 0))));
+    const applyLocalState = (rawState, updatedAt)=>{
+      _lastCloudStateUpdatedAt = String(updatedAt || "").trim();
+      state = normalizeState(rawState || {});
       invalidateCanonicalTimeLogsCache();
       _lastStateLoadSource = "local_storage";
       renderAll();
       _refreshDataIoBadge();
       clearDirty();
       return true;
-    }
-
-
-
-    const session = await _ensureSession();
-
-    if(!session || !session.user){
-      if(!_confirmLocalFallbackLoad("session distante indisponible")){
-        _setLastRemoteLoadFailure("Session Supabase indisponible (authentification échouée).");
-        return false;
-      }
-      const localData = await _loadAppStateFromLocalFallback();
-      if(!localData || !localData.state_json){
-        _setLastRemoteLoadFailure("Session distante indisponible et aucune sauvegarde locale disponible.");
-        return false;
-      }
-      _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
-      state = normalizeState(localData.state_json || {});
-      invalidateCanonicalTimeLogsCache();
-      _lastStateLoadSource = "local_storage";
-      renderAll();
-      _refreshDataIoBadge();
-      clearDirty();
-      return true;
-    }
-
-
-
-    try{
-      _supabaseOwnerFallbackCount = 0;
-      let remoteMetaUpdatedAt = "";
-      const { data: remoteMeta, error: metaError } = await sb
-        .from(SUPABASE_TABLE)
-        .select("updated_at")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-      if(metaError){
-        console.warn("Supabase metadata select error", metaError);
-      }else{
-        remoteMetaUpdatedAt = String(remoteMeta?.updated_at || "").trim();
-      }
-
-      if(
-        remoteMetaUpdatedAt &&
-        _isSupabaseStateMetadataFresh(remoteMetaUpdatedAt) &&
-        _lastStateLoadSource === "supabase_cloud" &&
-        state && typeof state === "object"
-      ){
-        _refreshDataIoBadge();
-        clearDirty();
-        return true;
-      }
-
-      const localCloudCache = _readCloudStateCache();
-      if(localCloudCache && localCloudCache.state_json && localCloudCache.updated_at){
-        if(remoteMetaUpdatedAt && remoteMetaUpdatedAt === String(localCloudCache.updated_at || "").trim()){
-          if(
-            _lastStateLoadSource === "supabase_cloud" &&
-            String(_lastCloudStateUpdatedAt || "").trim() === String(localCloudCache.updated_at || "").trim()
-          ){
-            _refreshDataIoBadge();
-            clearDirty();
-            return true;
-          }
-          _lastCloudStateUpdatedAt = String(localCloudCache.updated_at || "").trim();
-          state = normalizeState(localCloudCache.state_json || {});
-          invalidateCanonicalTimeLogsCache();
-          _lastStateLoadSource = "supabase_cloud";
-          renderAll();
-          _refreshDataIoBadge();
-          clearDirty();
-          return true;
-        }
-      }
-
-      const { data, error } = await sb
-        .from(SUPABASE_TABLE)
-        .select("state_json, updated_at")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-
-
-      if(error){
-        console.warn("Supabase select error", error);
-        if(!_confirmLocalFallbackLoad("erreur lecture distante")){
-          _setLastRemoteLoadFailure("Erreur lecture Supabase (state_json).");
-          return false;
-        }
-        const localData = await _loadAppStateFromLocalFallback();
-        if(!localData || !localData.state_json){
-          _setLastRemoteLoadFailure("Erreur lecture distante et aucune sauvegarde locale disponible.");
-          return false;
-        }
-        _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
-        state = normalizeState(localData.state_json || {});
-        invalidateCanonicalTimeLogsCache();
-        _lastStateLoadSource = "local_storage";
-        renderAll();
-        _refreshDataIoBadge();
-        clearDirty();
-        return true;
-      }
-
-      if(!data || !data.state_json){
-        if(!_confirmLocalFallbackLoad("aucune donnée distante")){
-          _setLastRemoteLoadFailure("Aucune donnée distante trouvée dans Supabase.");
-          return false;
-        }
-        const localData = await _loadAppStateFromLocalFallback();
-        if(!localData || !localData.state_json){
-          _setLastRemoteLoadFailure("Aucune donnée distante et aucune sauvegarde locale disponible.");
-          return false;
-        }
-        _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
-        state = normalizeState(localData.state_json || {});
-        invalidateCanonicalTimeLogsCache();
-        _lastStateLoadSource = "local_storage";
-        renderAll();
-        _refreshDataIoBadge();
-        clearDirty();
-        return true;
-      }
-      const localPreferred = await _maybeUseLocalNewerState(data.updated_at);
-      if(localPreferred && localPreferred.state_json){
-        _lastCloudStateUpdatedAt = String(localPreferred.updated_at || "").trim();
-        state = normalizeState(localPreferred.state_json || {});
-        invalidateCanonicalTimeLogsCache();
-        _lastStateLoadSource = "local_storage";
-        renderAll();
-        _refreshDataIoBadge();
-        clearDirty();
-        return true;
-      }
-      _lastCloudStateUpdatedAt = String(data.updated_at || "").trim();
-      _saveCloudStateCache(data.state_json || {}, data.updated_at);
-
-
-
-      // Mode production stable: lecture unique state_json (sans fusion).
+    };
+    const applyRemoteState = async (sb, dataRow)=>{
+      _lastCloudStateUpdatedAt = String(dataRow?.updated_at || "").trim();
+      _saveCloudStateCache(dataRow?.state_json || {}, dataRow?.updated_at);
       if(isSingleSourceReadMode()){
-        state = normalizeState(data.state_json || {});
+        state = normalizeState(dataRow?.state_json || {});
         invalidateCanonicalTimeLogsCache();
       }else{
         const supabaseTimeLogsRows = await _loadSupabaseTimeLogsRows(sb);
         const stateTaskIds = Array.from(new Set(
-          (Array.isArray(data?.state_json?.tasks) ? data.state_json.tasks : [])
+          (Array.isArray(dataRow?.state_json?.tasks) ? dataRow.state_json.tasks : [])
             .map((t)=>normId(t?.id))
             .filter(Boolean)
         ));
         const supabaseTasksRows = await _loadSupabaseTasksRowsByIds(sb, stateTaskIds);
-        const supabaseTaskIds = Array.from(new Set(supabaseTimeLogsRows.map((r)=>normId(r?.task_id || r?.tache_id || r?.taskId)).filter(Boolean)));
+        const supabaseTaskIds = Array.from(new Set(
+          supabaseTimeLogsRows.map((r)=>normId(r?.task_id || r?.tache_id || r?.taskId)).filter(Boolean)
+        ));
         const supabaseTaskRowsForLogs = await _loadSupabaseTasksRowsByIds(sb, supabaseTaskIds);
         const mergedStateJson = {
-          ...(data.state_json || {}),
-          tasks: _mergeStateTasksFromSupabase(data?.state_json, supabaseTasksRows),
-          timeLogs: _mergeStateTimeLogs(data?.state_json, supabaseTimeLogsRows, supabaseTaskRowsForLogs)
+          ...(dataRow?.state_json || {}),
+          tasks: _mergeStateTasksFromSupabase(dataRow?.state_json, supabaseTasksRows),
+          timeLogs: _mergeStateTimeLogs(dataRow?.state_json, supabaseTimeLogsRows, supabaseTaskRowsForLogs)
         };
         state = normalizeState(mergedStateJson);
         invalidateCanonicalTimeLogsCache();
       }
       _lastStateLoadSource = "supabase_cloud";
-
       renderAll();
       _refreshDataIoBadge();
       if(_supabaseOwnerFallbackCount > 0){
@@ -1417,34 +1277,133 @@ window.loadAppStateFromSupabase = async function(){
           `${_supabaseOwnerFallbackCount} tâche(s) avec owner invalide détectée(s) depuis Supabase.`
         );
       }
-
       clearDirty();
-
       return true;
-
-    }catch(e){
-
-      console.warn("loadAppStateFromSupabase failed", e);
-        if(!_confirmLocalFallbackLoad("exception synchronisation")){
-          _setLastRemoteLoadFailure("Exception de synchronisation distante.");
-          return false;
-        }
-
+    };
+    const loadLocalFallback = async (reasonCode, detail)=>{
+      loadState = "fallback_used";
       const localData = await _loadAppStateFromLocalFallback();
-      if(!localData || !localData.state_json){
-        _setLastRemoteLoadFailure("Exception distante et aucune sauvegarde locale disponible.");
-        return false;
+      if(localData && localData.state_json){
+        _setLastRemoteLoadFailure(detail);
+        return applyLocalState(localData.state_json, localData.updated_at);
       }
-      _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
-      state = normalizeState(localData.state_json || {});
-      invalidateCanonicalTimeLogsCache();
-      _lastStateLoadSource = "local_storage";
-      renderAll();
-      _refreshDataIoBadge();
-      clearDirty();
-      return true;
+      _setLastRemoteLoadFailure(`${detail} (fallback local indisponible).`);
+      loadState = reasonCode;
+      return false;
+    };
 
+    try{
+      _supabaseOwnerFallbackCount = 0;
+      for(let attempt = 0; attempt < RETRY_DELAYS_MS.length; attempt += 1){
+        if(RETRY_DELAYS_MS[attempt] > 0){
+          await waitMs(RETRY_DELAYS_MS[attempt]);
+        }
+        loadState = "init";
+        try{
+          const sb = _getSupabaseClient();
+          if(!sb){
+            if(attempt < RETRY_DELAYS_MS.length - 1) continue;
+            return await loadLocalFallback("network_failed", "Service Supabase indisponible.");
+          }
+
+          loadState = "auth";
+          const session = await _ensureSession();
+          if(!session || !session.user){
+            if(attempt < RETRY_DELAYS_MS.length - 1) continue;
+            return await loadLocalFallback("auth_failed", "Session Supabase indisponible (authentification échouée).");
+          }
+
+          loadState = "fetch_meta";
+          let remoteMetaUpdatedAt = "";
+          const { data: remoteMeta, error: metaError } = await sb
+            .from(SUPABASE_TABLE)
+            .select("updated_at")
+            .eq("user_id", session.user.id)
+            .maybeSingle();
+          if(metaError){
+            console.warn("Supabase metadata select error", metaError);
+          }else{
+            remoteMetaUpdatedAt = String(remoteMeta?.updated_at || "").trim();
+          }
+
+          if(
+            remoteMetaUpdatedAt &&
+            _isSupabaseStateMetadataFresh(remoteMetaUpdatedAt) &&
+            _lastStateLoadSource === "supabase_cloud" &&
+            state && typeof state === "object"
+          ){
+            loadState = "ready";
+            _refreshDataIoBadge();
+            clearDirty();
+            return true;
+          }
+
+          const localCloudCache = _readCloudStateCache();
+          if(localCloudCache && localCloudCache.state_json && localCloudCache.updated_at){
+            if(remoteMetaUpdatedAt && remoteMetaUpdatedAt === String(localCloudCache.updated_at || "").trim()){
+              if(
+                _lastStateLoadSource === "supabase_cloud" &&
+                String(_lastCloudStateUpdatedAt || "").trim() === String(localCloudCache.updated_at || "").trim()
+              ){
+                loadState = "ready";
+                _refreshDataIoBadge();
+                clearDirty();
+                return true;
+              }
+              _lastCloudStateUpdatedAt = String(localCloudCache.updated_at || "").trim();
+              state = normalizeState(localCloudCache.state_json || {});
+              invalidateCanonicalTimeLogsCache();
+              _lastStateLoadSource = "supabase_cloud";
+              renderAll();
+              _refreshDataIoBadge();
+              clearDirty();
+              loadState = "ready";
+              return true;
+            }
+          }
+
+          loadState = "fetch_state";
+          const { data, error } = await sb
+            .from(SUPABASE_TABLE)
+            .select("state_json, updated_at")
+            .eq("user_id", session.user.id)
+            .maybeSingle();
+          if(error){
+            console.warn("Supabase select error", error);
+            if(attempt < RETRY_DELAYS_MS.length - 1) continue;
+            return await loadLocalFallback("network_failed", "Erreur lecture Supabase (state_json).");
+          }
+          if(!data || !data.state_json){
+            if(attempt < RETRY_DELAYS_MS.length - 1) continue;
+            return await loadLocalFallback("remote_empty", "Aucune donnée distante trouvée dans Supabase.");
+          }
+
+          const localPreferred = await _maybeUseLocalNewerState(data.updated_at);
+          if(localPreferred && localPreferred.state_json){
+            loadState = "fallback_used";
+            _setLastRemoteLoadFailure("Version locale plus récente utilisée.");
+            return applyLocalState(localPreferred.state_json, localPreferred.updated_at);
+          }
+
+          const ok = await applyRemoteState(sb, data);
+          if(ok){
+            loadState = "ready";
+            return true;
+          }
+        }catch(e){
+          console.warn("loadAppStateFromSupabase failed", e);
+          if(attempt < RETRY_DELAYS_MS.length - 1) continue;
+          return await loadLocalFallback("network_failed", "Exception de synchronisation distante.");
+        }
+      }
+
+      loadState = "network_failed";
+      _setLastRemoteLoadFailure("Impossible de charger les données distantes après plusieurs tentatives.");
+      return false;
     }finally{
+      if(loadState !== "ready" && !_lastRemoteLoadFailureDetail){
+        _setLastRemoteLoadFailure("Chargement distant inachevé.");
+      }
       _isDataIoReadBusy = false;
       _refreshDataIoBadge();
     }
