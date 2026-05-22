@@ -1993,13 +1993,14 @@ function _positionGanttTodayLine(ganttRoot){
   const stickyLimit = statusCell ? (statusCell.offsetLeft + statusCell.offsetWidth) : weekBandStart;
   const markerLeft = Math.max(weekBandStart, stickyLimit) + (weekdayIndex * dayColumn);
   const markerWidth = 1;
+  const markerPixelLeft = Math.floor(markerLeft) + 0.5;
 
   const header = scroller.querySelector("thead");
   const headerHeight = header ? header.offsetHeight : 0;
   const table = scroller.querySelector("table");
   const bodyHeight = table ? table.offsetHeight : 0;
   marker.style.width = `${Math.max(1, markerWidth)}px`;
-  marker.style.left = `${Math.round(markerLeft)}px`;
+  marker.style.left = `${markerPixelLeft}px`;
   marker.style.top = `${headerHeight}px`;
   marker.style.height = `${Math.max(0, bodyHeight - headerHeight)}px`;
 }
