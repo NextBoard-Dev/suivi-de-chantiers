@@ -7180,12 +7180,17 @@ textarea:disabled{
 /* Conformite finale badges colonne Statut (tableau maitre + projet) */
 .table tbody td.status-cell{
   gap: 8px !important;
+  min-height: 24px !important;
+  line-height: 1 !important;
 }
 
 .table tbody td.status-cell .status-left{
   display: inline-flex !important;
   align-items: center !important;
+  justify-content: flex-start !important;
+  vertical-align: middle !important;
   min-height: 18px !important;
+  height: 18px !important;
   padding: 0 10px !important;
   border-radius: 999px !important;
   border: 1px solid #cbd5e1 !important;
@@ -7207,9 +7212,15 @@ textarea:disabled{
 .table tbody td.status-cell .badge.owner{
   min-height: 18px !important;
   height: 18px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  vertical-align: middle !important;
   padding: 0 8px !important;
   border-radius: 999px !important;
   font-size: 10px !important;
   font-weight: 700 !important;
   line-height: 1 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }
