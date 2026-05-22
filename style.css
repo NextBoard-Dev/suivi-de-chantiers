@@ -7090,3 +7090,41 @@ textarea:disabled{
   max-width: 100% !important;
   overflow: hidden !important;
 }
+
+/* =========================
+   Correctif structurel tableau projet (statut/prestataire)
+   Evite le texte "fantome" entre Statuts et Debut
+   ========================= */
+.table tbody td.status-cell{
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 6px !important;
+  flex-wrap: nowrap !important;
+  overflow: hidden !important;
+}
+
+.table tbody td.status-cell .status-left{
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.table tbody td.status-cell .badge.owner{
+  margin-left: 0 !important;
+  flex: 0 0 auto !important;
+  max-width: 48% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Neutralise le delavage global qui rend certaines colonnes illisibles */
+.table tbody tr,
+.gantt-table tbody tr,
+.num-badge,
+.badge.owner{
+  filter: none !important;
+}
