@@ -2204,19 +2204,6 @@
 
   }
 
-  function normalizeDisplayName(name){
-    const raw = String(name || "").trim();
-    if(!raw) return "";
-    const lettersOnly = raw.replace(/[^a-zA-Z\u00C0-\u017F]+/g, "");
-    const isAllLower = !!lettersOnly && lettersOnly === lettersOnly.toLowerCase();
-    if(!isAllLower) return raw;
-    return raw
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((part)=> part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-      .join(" ");
-  }
-
   function populateUsers(){
 
     const users = loadUsers();
@@ -2233,16 +2220,13 @@
 
     users.forEach(u=>{
 
-      const rawEmail = (u.email||"").trim();
-      let email = rawEmail;
-      let emailKey = rawEmail.toLowerCase();
+      let email = (u.email||"").trim().toLowerCase();
 
       if(!email){
 
         const base = (u.name||"utilisateur").toLowerCase().replace(/\s+/g,".").replace(/[^a-z0-9._-]/g,"");
 
         email = `${base || "user"}@local`;
-        emailKey = email.toLowerCase();
 
         u.email = email;
 
@@ -2250,14 +2234,13 @@
 
       }
 
-      if(seen.has(emailKey)) return;
+      if(seen.has(email)) return;
 
-      seen.add(emailKey);
+      seen.add(email);
 
-      const displayName = normalizeDisplayName(u.name||"");
-      const label = `${displayName||""} (${email||"sans email"})`;
+      const label = `${u.name||""} (${email||"sans email"})`;
 
-      items.push({ email, emailKey, label });
+      items.push({ email, label });
 
     });
 
@@ -2275,10 +2258,9 @@
 
     let next = current || last;
 
-    if(next && items.some(it=>it.emailKey===next)){
+    if(next && items.some(it=>it.email===next)){
 
-      const found = items.find(it=>it.emailKey===next);
-      userInput.value = found ? found.email : next;
+      userInput.value = next;
 
     }else if(items[0]){
 
@@ -2392,7 +2374,7 @@
 
       sessionStorage.setItem("unlocked","1");
 
-      sessionStorage.setItem("current_user", normalizeDisplayName(u.name||""));
+      sessionStorage.setItem("current_user", u.name||"");
 
       sessionStorage.setItem("current_email", mail);
 
@@ -2416,7 +2398,7 @@
 
         try{
 
-          ok = await window.createSessionToken(token, {email: mail, name: normalizeDisplayName(u.name||""), role}, SESSION_TTL_DAYS);
+          ok = await window.createSessionToken(token, {email: mail, name: u.name||"", role}, SESSION_TTL_DAYS);
 
         }catch(e){ ok = false; }
 
@@ -2436,7 +2418,7 @@
 
       }
 
-      try{ window.logUserLogin?.({email: mail, name: normalizeDisplayName(u.name||""), role}); }catch(e){}
+      try{ window.logUserLogin?.({email: mail, name: u.name||"", role}); }catch(e){}
 
       return u;
 
@@ -2444,49 +2426,6 @@
 
     return null;
 
-  }
-
-  function findUserByEmail(mail){
-    const users = loadUsers();
-    const target = String(mail || "").trim().toLowerCase();
-    return users.find((x)=> String(x.email || "").trim().toLowerCase() === target) || null;
-  }
-
-  async function unlockSessionFromUser(user, mail){
-    const role = ((user?.role || "user").toLowerCase() === "admin") ? "admin" : "user";
-    const displayName = normalizeDisplayName(user?.name || "Invité");
-    sessionStorage.setItem("unlocked","1");
-    sessionStorage.setItem("current_user", displayName);
-    sessionStorage.setItem("current_email", mail);
-    sessionStorage.setItem("current_role", role);
-    localStorage.setItem("last_login_email", mail);
-    lock.classList.add("hidden");
-    if(window.applyRoleAccess) window.applyRoleAccess();
-    if(window.updateRoleUI) window.updateRoleUI();
-
-    if(remember?.checked && window.createSessionToken){
-      const token = genToken();
-      localStorage.setItem(SESSION_TOKEN_KEY, token);
-      let ok = false;
-      try{
-        ok = await window.createSessionToken(token, {email: mail, name: displayName, role}, SESSION_TTL_DAYS);
-      }catch(e){ ok = false; }
-      if(!ok){
-        localStorage.removeItem(SESSION_TOKEN_KEY);
-        const msg = document.querySelector(".lock-msg");
-        if(msg) msg.textContent = "Session non mémorisée (erreur de synchronisation).";
-      }
-    }else{
-      localStorage.removeItem(SESSION_TOKEN_KEY);
-    }
-
-    try{ window.logUserLogin?.({email: mail, name: displayName, role}); }catch(e){}
-    try{
-      if(window.loadAppStateFromSupabase){
-        setTimeout(()=>{ window.loadAppStateFromSupabase().catch(()=>{}); }, 50);
-      }
-    }catch(e){}
-    return true;
   }
 
   async function tryUnlock(){
@@ -2501,35 +2440,30 @@
 
     const h = await hash(pass);
 
-    const mailRaw = (userInput?.value||"").trim();
-    const mail = mailRaw.toLowerCase();
+    const mail = (userInput?.value||"").trim().toLowerCase();
 
     if(!mail){ alert("Email requis"); return; }
 
     const u = await tryUnlockWithHash(h, mail);
 
     if(u){
-      await unlockSessionFromUser(u, mail);
-      if(remember?.checked){ rememberSave(mail, pass||""); }
-      else{ rememberClear(mail); }
+
+      if(remember?.checked){
+
+        rememberSave(mail, pass||"");
+
+      }else{
+
+        rememberClear(mail);
+
+      }
+
       return true;
 
     }else{
-      // Secours robuste: si le hash local est obsolète, on valide via Supabase Auth.
-      let supabaseOk = false;
-      try{
-        if(window.supabaseLogin){
-          supabaseOk = await window.supabaseLogin(mail, pass);
-        }
-      }catch(e){ supabaseOk = false; }
-      if(supabaseOk){
-        const matched = findUserByEmail(mail) || { name: mail, role: "user", email: mail };
-        await unlockSessionFromUser(matched, mail);
-        if(remember?.checked){ rememberSave(mail, pass||""); }
-        else{ rememberClear(mail); }
-        return true;
-      }
+
       alert("Mot de passe incorrect");
+
       return false;
 
     }
@@ -2544,7 +2478,7 @@
 
       e.preventDefault();
 
-      if(userInput && userInput.value) userInput.value = userInput.value.trim();
+      if(userInput && userInput.value) userInput.value = userInput.value.trim().toLowerCase();
 
       await tryUnlock();
 
@@ -2568,7 +2502,7 @@
 
     userInput.addEventListener("change", ()=>{
 
-      if(userInput.value) userInput.value = userInput.value.trim();
+      if(userInput.value) userInput.value = userInput.value.trim().toLowerCase();
 
       applyRememberedFor(userInput.value);
 
@@ -2576,7 +2510,7 @@
 
     userInput.addEventListener("input", ()=>{
 
-      if(userInput.value) userInput.value = userInput.value.trim();
+      if(userInput.value) userInput.value = userInput.value.trim().toLowerCase();
 
       applyRememberedFor(userInput.value);
 
@@ -2770,7 +2704,7 @@
 
       sessionStorage.setItem("unlocked","1");
 
-      sessionStorage.setItem("current_user", normalizeDisplayName(data.name || "Invité"));
+      sessionStorage.setItem("current_user", data.name || "Invité");
 
       sessionStorage.setItem("current_role", role);
 
@@ -2782,7 +2716,7 @@
 
       if(window.updateRoleUI) window.updateRoleUI();
 
-      try{ window.logUserLogin?.({email: data.email || "", name: normalizeDisplayName(data.name||""), role}); }catch(e){}
+      try{ window.logUserLogin?.({email: data.email || "", name: data.name||"", role}); }catch(e){}
 
     }catch(e){}
 
