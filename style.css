@@ -7254,3 +7254,13 @@ textarea:disabled{
 .gantt-table .table td.gantt-col-status{
   box-shadow: none !important;
 }
+
+/* Neutralisation définitive des séparateurs verticaux du calendrier Gantt */
+.gantt-table table td.gantt-cell,
+.gantt-table .table td.gantt-cell,
+.gantt-table table th.week-cell,
+.gantt-table .table th.week-cell{
+  border-left: 0 !important;
+  border-right: 0 !important;
+  box-shadow: none !important;
+}
