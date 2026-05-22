@@ -1506,8 +1506,8 @@ let unsavedChanges = false;
 let lastUndoSnapshot = null;
 let _stateVersion = 0;
 let _filteredCache = { key:"", version:-1, tasks:null };
-let _missingLogEntriesTotalCache = { version:-1, todayKey:"", totalTasks:-1, total:0 };
-let _missingDaysMapAllTasksCache = { version:-1, todayKey:"", totalTasks:-1, map:null };
+let _missingLogEntriesTotalCache = { version:-1, todayKey:"", tasksSig:"", total:0 };
+let _missingDaysMapAllTasksCache = { version:-1, todayKey:"", tasksSig:"", map:null };
 let _canonicalTimeLogsCache = { version:-1, logs:null };
 let _dataQualityReportCache = { version:-1, state:null, report:null };
 function invalidateCanonicalTimeLogsCache(){
@@ -8897,15 +8897,10 @@ function renderMaster(){
   const tableT0 = performance.now();
   const sorted = sortTasks(tasks, sortMaster);
   const includeChantierCol = (new Set(sorted.map(t=>String(t.projectId||""))).size > 1);
-  const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
+  const missingMap = getMissingDaysMapAllTasksCached(tasks);
   const todayKey = new Date().toISOString().slice(0,10);
-  const allTasks = Array.isArray(state?.tasks) ? state.tasks : [];
-  const sameUniverseAsAllTasks = sorted.length === allTasks.length;
-  const missingMapAll = sameUniverseAsAllTasks
-    ? missingMap
-    : getMissingDaysMapAllTasksCached(allTasks);
-  const missingHoursCount = allTasks.reduce((acc, t)=> acc + ((missingMapAll.get(t.id) || 0) > 0 ? 1 : 0), 0);
-  const missingLogEntriesCount = getMissingLogEntriesCountAllTasks(allTasks);
+  const missingHoursCount = tasks.reduce((acc, t)=> acc + ((missingMap.get(t.id) || 0) > 0 ? 1 : 0), 0);
+  const missingLogEntriesCount = getMissingLogEntriesCountAllTasks(tasks);
   const timeLogs = Array.isArray(state?.timeLogs) ? state.timeLogs : [];
   const onlyMissingEnabled = !!el("toggleMissingOnly")?.checked;
   const visibleTasks = onlyMissingEnabled
@@ -9562,11 +9557,12 @@ function getMissingLogEntriesCountAllTasks(tasks){
   const today = new Date();
   today.setHours(0,0,0,0);
   const todayKey = toLocalDateKey(today);
+  const tasksSig = allTasks.map((t)=> String(t?.id || "")).sort().join("|");
   const cache = _missingLogEntriesTotalCache || {};
   if(
     cache.version === _stateVersion &&
     cache.todayKey === todayKey &&
-    cache.totalTasks === allTasks.length
+    cache.tasksSig === tasksSig
   ){
     return Number(cache.total || 0);
   }
@@ -9574,7 +9570,7 @@ function getMissingLogEntriesCountAllTasks(tasks){
   _missingLogEntriesTotalCache = {
     version: _stateVersion,
     todayKey,
-    totalTasks: allTasks.length,
+    tasksSig,
     total
   };
   return total;
@@ -9604,11 +9600,12 @@ function getMissingDaysMapAllTasksCached(tasks){
   const today = new Date();
   today.setHours(0,0,0,0);
   const todayKey = toLocalDateKey(today);
+  const tasksSig = allTasks.map((t)=> String(t?.id || "")).sort().join("|");
   const cache = _missingDaysMapAllTasksCache || {};
   if(
     cache.version === _stateVersion &&
     cache.todayKey === todayKey &&
-    cache.totalTasks === allTasks.length &&
+    cache.tasksSig === tasksSig &&
     cache.map instanceof Map
   ){
     return cache.map;
@@ -9617,15 +9614,15 @@ function getMissingDaysMapAllTasksCached(tasks){
   _missingDaysMapAllTasksCache = {
     version: _stateVersion,
     todayKey,
-    totalTasks: allTasks.length,
+    tasksSig,
     map
   };
   return map;
 }
 function getMissingTasksForMasterFlow(){
-  const sorted = sortTasks((state?.tasks || []), sortMaster);
-  const includeChantierCol = (new Set(sorted.map(t=>String(t.projectId||""))).size > 1);
-  const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
+  const tasks = filteredTasks();
+  const sorted = sortTasks(tasks, sortMaster);
+  const missingMap = getMissingDaysMapAllTasksCached(tasks);
   const raw = sorted
     .filter(t=> (missingMap.get(t.id) || 0) > 0)
     .map(t=>({ projectId: t.projectId, taskId: t.id }));
