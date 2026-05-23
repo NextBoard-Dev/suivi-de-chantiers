@@ -610,27 +610,17 @@ body{
 }
 .section{margin-bottom:3px;padding:3px;border:none;border-radius:0;background:transparent;}
 .sidebar .section:last-child{margin-bottom:0;}
-.sidebar-logo-wrap{
-  width:100%;
-  margin:0 0 10px;
-  display:flex;
-  justify-content:center;
-  overflow:visible;
-  padding:0 10px;
-  box-sizing:border-box;
-}
+.sidebar-logo-wrap{width:100%;margin:0 0 10px;display:flex;justify-content:center;overflow:visible;}
 .sidebar-logo-img{
   display:block;
-  width:95%;
-  max-width:190px;
+  width:100%;
+  max-width:100%;
   height:auto;
-  max-height:96px;
+  max-height:none;
   margin:0;
   border-radius:9px;
   box-shadow:0 4px 10px rgba(43,69,82,.08);
-  object-fit:contain;
   filter:saturate(.45) brightness(0.99) contrast(0.96);
-  background:transparent;
 }
 .sidebar{padding-top:14px;}
 .section-title{
@@ -2243,11 +2233,6 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 .gantt-table table td.gantt-cell{
   z-index:0;
 }
-.gantt-table table td.gantt-cell,
-.gantt-table .table td.gantt-cell{
-  border-left-color: transparent !important;
-  border-right-color: transparent !important;
-}
 .gantt-table table.hide-vendor th.gantt-col-vendor,
 .gantt-table table.hide-vendor td.gantt-col-vendor{
   display:none;
@@ -2301,13 +2286,12 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   position:absolute;
   top:0;
   width:1px;
-  background:rgba(185, 28, 28, 0.85);
+  background:rgba(185, 28, 28, 0.9);
   opacity:1;
   pointer-events:none;
   z-index:70;
   transform:none;
   box-shadow:none;
-  transition:transform 120ms ease-out;
 }
 #viewMaster .tablewrap.gantt-table,
 #viewProject .tablewrap.gantt-table{
@@ -4788,9 +4772,6 @@ html[data-theme] #btnToggleProjectStatus.btn-primary{
   --ui-btn-save-idle-bg:rgba(63,97,112,0.18);
   --ui-btn-save-idle-border:rgba(63,97,112,0.28);
   --ui-btn-save-idle-text:#213b48;
-  --ui-btn-save-dirty-bg:#204862;
-  --ui-btn-save-dirty-border:#193d55;
-  --ui-btn-save-dirty-text:#ffffff;
 }
 
 button,
@@ -4848,10 +4829,10 @@ button:not(.btn-primary):not(.btn-danger):not(.btn-success),
 }
 
 .btn.btn-save-dirty{
-  background:var(--ui-btn-save-dirty-bg) !important;
-  border-color:var(--ui-btn-save-dirty-border) !important;
-  color:var(--ui-btn-save-dirty-text) !important;
-  -webkit-text-fill-color:var(--ui-btn-save-dirty-text) !important;
+  background:#204862 !important;
+  border-color:#193d55 !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
   text-shadow:none !important;
 }
 
@@ -5481,6 +5462,16 @@ button.btn:not(.btn-primary):not(.btn-danger):not(.btn-success),
   border:1px solid rgba(63,97,112,0.16) !important;
   color:#2f4350 !important;
   -webkit-text-fill-color:#2f4350 !important;
+}
+
+.btn.btn-save-idle{
+  background:#e5eaee !important;
+  background-image:none !important;
+  border:1px solid rgba(63,97,112,0.10) !important;
+  color:#5f7380 !important;
+  -webkit-text-fill-color:#5f7380 !important;
+  opacity:.78 !important;
+  cursor:not-allowed !important;
 }
 
 /* Lisibilité tableau maître: alternance de lignes plus nette */
@@ -6460,16 +6451,16 @@ textarea.input:focus{
 /* =========================
    V23 - Lisibilite des statuts (reversible)
    ========================= */
-.status-row > span:not(.badge.owner),
-.status-cell .status-left{
+.status-row span,
+.status-cell span{
   display: inline-flex !important;
   align-items: center !important;
   gap: 4px !important;
   padding: 1px 8px !important;
   border-radius: 999px !important;
-  border: 1px solid rgba(15,23,42,0.18) !important;
-  background: transparent !important;
-  font-weight: 500 !important;
+  border: 1px solid rgba(15,23,42,0.14) !important;
+  background: rgba(248,247,243,0.94) !important;
+  font-weight: 700 !important;
   letter-spacing: 0.08px !important;
 }
 
@@ -6552,7 +6543,7 @@ textarea.input:focus{
   white-space: nowrap !important;
 }
 
-.table:not(.gantt-table) thead th + th{
+.table thead th + th{
   box-shadow: inset 1px 0 0 rgba(15,23,42,0.08) !important;
 }
 
@@ -6657,7 +6648,43 @@ button:focus-visible,
   box-shadow: 0 0 0 2px rgba(63, 97, 112, 0.16) !important;
 }
 
-/* V4 Gantt supprimé: règles conflictuelles avec le verrou final global */
+/* =========================
+   V4 - Gantt lisibilite (reversible)
+   ========================= */
+.gantt-table .table thead th,
+.gantt-table table thead th{
+  border-bottom: 1px solid rgba(15, 23, 42, 0.18) !important;
+}
+
+.gantt-table .table td.gantt-cell,
+.gantt-table table td.gantt-cell{
+  border-right: 1px solid rgba(15, 23, 42, 0.06) !important;
+}
+
+.gantt-table .table tr.gantt-row td.gantt-cell,
+.gantt-table table tr.gantt-row td.gantt-cell{
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 100%) !important;
+}
+
+.gantt-table .table tr.gantt-row:hover td.gantt-cell,
+.gantt-table table tr.gantt-row:hover td.gantt-cell{
+  background-color: rgba(59, 130, 246, 0.07) !important;
+}
+
+.gantt-table .table tr.gantt-row.gantt-row-active td.gantt-cell,
+.gantt-table table tr.gantt-row.gantt-row-active td.gantt-cell{
+  background-color: rgba(37, 99, 235, 0.10) !important;
+}
+
+.gantt-bar{
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.28), 0 1px 2px rgba(15,23,42,0.22) !important;
+}
+
+.gantt-progress,
+.gantt-progress-out{
+  font-weight: 700 !important;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.22) !important;
+}
 
 /* =========================
    V5 - Cohérence desktop/mobile (reversible)
@@ -7000,410 +7027,4 @@ textarea:disabled{
   background: rgba(226,232,240,0.65) !important;
   border-color: rgba(15,23,42,0.12) !important;
   color: rgba(30,41,59,0.72) !important;
-}
-
-/* =========================
-   Correctif structurel Gantt sticky
-   Evite les chevauchements Site/Nom/Prestataire/Statut
-   ========================= */
-.gantt-table table th.gantt-col-site,
-.gantt-table .table th.gantt-col-site{
-  z-index: 74 !important;
-}
-
-.gantt-table table th.gantt-col-task,
-.gantt-table .table th.gantt-col-task,
-.gantt-table table th.gantt-task-col-project,
-.gantt-table .table th.gantt-task-col-project{
-  z-index: 73 !important;
-}
-
-.gantt-table table th.gantt-col-vendor,
-.gantt-table .table th.gantt-col-vendor{
-  left: calc(var(--gcol0, 70px) + var(--gcol1, 120px) + var(--gcolp, 0px)) !important;
-  z-index: 72 !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-}
-
-.gantt-table table th.gantt-col-status,
-.gantt-table .table th.gantt-col-status{
-  left: calc(var(--gcol0, 70px) + var(--gcol1, 120px) + var(--gcolp, 0px) + var(--gcol2, 90px)) !important;
-  z-index: 73 !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-}
-
-.gantt-table table td.gantt-col-vendor,
-.gantt-table .table td.gantt-col-vendor{
-  left: calc(var(--gcol0, 70px) + var(--gcol1, 120px) + var(--gcolp, 0px)) !important;
-  z-index: 58 !important;
-}
-
-.gantt-table table td.gantt-col-status,
-.gantt-table .table td.gantt-col-status{
-  left: calc(var(--gcol0, 70px) + var(--gcol1, 120px) + var(--gcolp, 0px) + var(--gcol2, 90px)) !important;
-  z-index: 59 !important;
-}
-
-.gantt-vendor-cell .vendor-stack,
-.gantt-status-cell .gantt-status-stack,
-.gantt-status-cell .status-row{
-  max-width: 100% !important;
-  overflow: hidden !important;
-}
-
-/* =========================
-   Correctif structurel tableau projet (statut/prestataire)
-   Evite le texte "fantome" entre Statuts et Debut
-   ========================= */
-.table tbody td.status-cell{
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  gap: 6px !important;
-  flex-wrap: nowrap !important;
-  overflow: hidden !important;
-}
-
-.table tbody td.status-cell .status-left{
-  flex: 1 1 auto !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-}
-
-.table tbody td.status-cell .badge.owner{
-  margin-left: 0 !important;
-  flex: 0 0 auto !important;
-  max-width: 48% !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-}
-
-/* Neutralise le delavage global qui rend certaines colonnes illisibles */
-.table tbody tr,
-.gantt-table tbody tr,
-.num-badge,
-.badge.owner{
-  filter: none !important;
-}
-
-/* Correctif contraste: badge intervenant lisible dans la colonne Statut */
-.table tbody td.status-cell .badge.owner{
-  opacity: 1 !important;
-}
-
-/* Normalisation finale badges intervenants */
-.badge.owner{
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-height: 18px !important;
-  padding: 0 8px !important;
-  border-radius: 999px !important;
-  font-size: 10px !important;
-  font-weight: 500 !important;
-  line-height: 1 !important;
-  letter-spacing: 0 !important;
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
-  text-shadow: none !important;
-  box-shadow: none !important;
-}
-
-.badge.owner.owner-interne{
-  background: #2f6b4f !important;
-  border-color: #285a43 !important;
-}
-
-.badge.owner.owner-rsg{
-  background: #355fa8 !important;
-  border-color: #2d528f !important;
-}
-
-.badge.owner.owner-ri{
-  background: #6454a8 !important;
-  border-color: #55478f !important;
-}
-
-.badge.owner.owner-externe{
-  background: #8b5f3d !important;
-  border-color: #754f33 !important;
-}
-
-.badge.owner.owner-other{
-  background: #556272 !important;
-  border-color: #485563 !important;
-}
-
-/* Conformite finale badges colonne Statut (tableau maitre + projet) */
-.table tbody td.status-cell{
-  gap: 8px !important;
-  min-height: 24px !important;
-  line-height: 1 !important;
-}
-
-.table tbody td.status-cell .status-left{
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  vertical-align: middle !important;
-  min-height: 18px !important;
-  height: 18px !important;
-  max-width: calc(100% - 54px) !important;
-  padding: 0 10px !important;
-  border-radius: 999px !important;
-  border: 1px solid rgba(15,23,42,0.18) !important;
-  background: transparent !important;
-  color: #0f172a !important;
-  -webkit-text-fill-color: #0f172a !important;
-  font-size: 12px !important;
-  font-weight: 500 !important;
-  line-height: 1 !important;
-}
-
-.table tbody td.status-cell .status-left .icon-dot{
-  width: 9px !important;
-  height: 9px !important;
-  margin-right: 6px !important;
-  flex: 0 0 auto !important;
-}
-
-.table tbody td.status-cell .badge.owner{
-  min-height: 18px !important;
-  height: 18px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  vertical-align: middle !important;
-  padding: 0 8px !important;
-  border-radius: 999px !important;
-  font-size: 10px !important;
-  font-weight: 500 !important;
-  line-height: 1 !important;
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-  margin-left: 4px !important;
-  margin-right: 2px !important;
-}
-
-/* Suppression structurelle des traits verticaux bleus (tables + gantt) */
-#masterTable thead th + th,
-#projectTasksTable thead th + th,
-.gantt-table .table thead th + th{
-  box-shadow: none !important;
-}
-
-#masterTable td,
-#projectTasksTable td,
-#masterTable th,
-#projectTasksTable th{
-  border-left: 0 !important;
-  border-right: 0 !important;
-  box-shadow: none !important;
-}
-
-.gantt-table table th.gantt-col-vendor,
-.gantt-table .table th.gantt-col-vendor,
-.gantt-table table td.gantt-col-vendor,
-.gantt-table .table td.gantt-col-vendor,
-.gantt-table table th.gantt-col-status,
-.gantt-table .table th.gantt-col-status,
-.gantt-table table td.gantt-col-status,
-.gantt-table .table td.gantt-col-status{
-  box-shadow: none !important;
-}
-
-/* Neutralisation définitive des séparateurs verticaux du calendrier Gantt */
-.gantt-table table td.gantt-cell,
-.gantt-table .table td.gantt-cell,
-.gantt-table table th.week-cell,
-.gantt-table .table th.week-cell{
-  border-left: 0 !important;
-  border-right: 0 !important;
-  box-shadow: none !important;
-}
-
-.gantt-table table th.gantt-col-site,
-.gantt-table .table th.gantt-col-site,
-.gantt-table table td.gantt-col-site,
-.gantt-table .table td.gantt-col-site,
-.gantt-table table th.gantt-col-task,
-.gantt-table .table th.gantt-col-task,
-.gantt-table table td.gantt-col-task,
-.gantt-table .table td.gantt-col-task,
-.gantt-table table th.gantt-task-col-project,
-.gantt-table .table th.gantt-task-col-project,
-.gantt-table table td.gantt-task-col-project,
-.gantt-table .table td.gantt-task-col-project,
-.gantt-table table th.gantt-col-vendor,
-.gantt-table .table th.gantt-col-vendor,
-.gantt-table table td.gantt-col-vendor,
-.gantt-table .table td.gantt-col-vendor,
-.gantt-table table th.gantt-col-status,
-.gantt-table .table th.gantt-col-status,
-.gantt-table table td.gantt-col-status,
-.gantt-table .table td.gantt-col-status{
-  border-left: 0 !important;
-  border-right: 0 !important;
-  box-shadow: none !important;
-}
-
-/* Restaure le focus visuel de la semaine en cours sans traits verticaux */
-.gantt-table table thead th.week-cell.week-today,
-.gantt-table .table thead th.week-cell.week-today{
-  box-shadow: inset 0 0 0 2px rgba(22,163,74,0.55), inset 0 -2px 0 rgba(22,163,74,0.75) !important;
-}
-
-/* Palette plus douce: barres Gantt moins criardes */
-.gantt-bar{
-  filter: saturate(0.82) brightness(0.94) !important;
-}
-
-/* Verrou global tous Gantt: aucun séparateur vertical de semaines */
-.gantt-table table thead th.week-cell,
-.gantt-table .table thead th.week-cell,
-.gantt-table table td.gantt-cell,
-.gantt-table .table td.gantt-cell{
-  border-left: 0 !important;
-  border-right: 0 !important;
-  box-shadow: none !important;
-  background-image: none !important;
-}
-
-.gantt-table table thead th.week-cell::before,
-.gantt-table .table thead th.week-cell::before,
-.gantt-table table thead th.week-cell::after,
-.gantt-table .table thead th.week-cell::after,
-.gantt-table table td.gantt-cell::before,
-.gantt-table .table td.gantt-cell::before,
-.gantt-table table td.gantt-cell::after,
-.gantt-table .table td.gantt-cell::after{
-  border-left: 0 !important;
-  border-right: 0 !important;
-  box-shadow: none !important;
-  background-image: none !important;
-}
-
-/* Verrou segments de barres Gantt: supprime les traits verticaux internes */
-.gantt-bar,
-.gantt-bar.multi,
-.gantt-progress,
-.gantt-progress-out{
-  border-left: 0 !important;
-  border-right: 0 !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-
-/* Source unique Gantt: largeurs fixes + zéro traits verticaux parasites */
-.gantt-table{
-  --gcol0: 64px;
-  --gcol1: 280px;
-  --gcolp: 0px;
-  --gcol2: 140px;
-  --gcol3: 140px;
-}
-
-.gantt-table table th.gantt-col-site,
-.gantt-table .table th.gantt-col-site,
-.gantt-table table td.gantt-col-site,
-.gantt-table .table td.gantt-col-site{
-  width: var(--gcol0) !important;
-  min-width: var(--gcol0) !important;
-  max-width: var(--gcol0) !important;
-}
-
-.gantt-table table th.gantt-col-task,
-.gantt-table .table th.gantt-col-task,
-.gantt-table table td.gantt-col-task,
-.gantt-table .table td.gantt-col-task{
-  width: var(--gcol1) !important;
-  min-width: var(--gcol1) !important;
-  max-width: var(--gcol1) !important;
-}
-
-.gantt-table table th.gantt-col-vendor,
-.gantt-table .table th.gantt-col-vendor,
-.gantt-table table td.gantt-col-vendor,
-.gantt-table .table td.gantt-col-vendor{
-  width: var(--gcol2) !important;
-  min-width: var(--gcol2) !important;
-  max-width: var(--gcol2) !important;
-}
-
-.gantt-table table th.gantt-col-status,
-.gantt-table .table th.gantt-col-status,
-.gantt-table table td.gantt-col-status,
-.gantt-table .table td.gantt-col-status{
-  width: var(--gcol3) !important;
-  min-width: var(--gcol3) !important;
-  max-width: var(--gcol3) !important;
-}
-
-.gantt-table table th.week-cell,
-.gantt-table .table th.week-cell,
-.gantt-table table td.gantt-cell,
-.gantt-table .table td.gantt-cell,
-.gantt-table table th.week-cell::before,
-.gantt-table .table th.week-cell::before,
-.gantt-table table th.week-cell::after,
-.gantt-table .table th.week-cell::after,
-.gantt-table table td.gantt-cell::before,
-.gantt-table .table td.gantt-cell::before,
-.gantt-table table td.gantt-cell::after,
-.gantt-table .table td.gantt-cell::after{
-  border-left: 0 !important;
-  border-right: 0 !important;
-  box-shadow: none !important;
-  background-image: none !important;
-}
-
-.gantt-status-cell .status-row .status-left{
-  min-height: 18px !important;
-  padding: 0 8px !important;
-  border-radius: 999px !important;
-  font-size: 11px !important;
-  font-weight: 500 !important;
-  line-height: 1 !important;
-}
-
-/* Verrou final Gantt: texte mono-ligne, pas de gras, pas de traits bleus */
-.gantt-table table th,
-.gantt-table .table th,
-.gantt-table table td,
-.gantt-table .table td{
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  font-weight: 400 !important;
-}
-
-.gantt-table table td.gantt-cell,
-.gantt-table .table td.gantt-cell,
-.gantt-table table th.week-cell,
-.gantt-table .table th.week-cell,
-.gantt-table table td.gantt-cell::before,
-.gantt-table .table td.gantt-cell::before,
-.gantt-table table td.gantt-cell::after,
-.gantt-table .table td.gantt-cell::after{
-  border: 0 !important;
-  box-shadow: none !important;
-  outline: none !important;
-  background-image: none !important;
-  background-color: transparent !important;
-}
-
-.gantt-table .gantt-bar,
-.gantt-table .gantt-bar.multi,
-.gantt-table .gantt-progress,
-.gantt-table .gantt-progress-out{
-  border: 0 !important;
-  box-shadow: none !important;
-  outline: none !important;
 }

@@ -150,19 +150,8 @@ const SUPABASE_AUTO_PASSWORD = "Mililum@tt45";
 const LOCAL_FALLBACK_AGENT_BASE = "http://127.0.0.1:8765";
 const LOCAL_WRITE_META_KEY = "dashboard_last_write_meta_v1";
 const LOCAL_CLOUD_STATE_CACHE_KEY = "dashboard_cloud_state_cache_v1";
-let _lastWriteMetaMemory = null;
-
-function _canUseLocalFallbackAgent(){
-  try{
-    const host = String(window?.location?.hostname || "").toLowerCase();
-    return host === "localhost" || host === "127.0.0.1" || host === "::1";
-  }catch(e){
-    return false;
-  }
-}
 
 async function _saveAppStateToLocalFallback(stateObj){
-  if(!_canUseLocalFallbackAgent()) return false;
   try{
     const res = await fetch(`${LOCAL_FALLBACK_AGENT_BASE}/state/save`, {
       method: "POST",
@@ -178,7 +167,6 @@ async function _saveAppStateToLocalFallback(stateObj){
 }
 
 async function _loadAppStateFromLocalFallback(){
-  if(!_canUseLocalFallbackAgent()) return null;
   try{
     const res = await fetch(`${LOCAL_FALLBACK_AGENT_BASE}/state/load`, { method: "GET" });
     if(!res.ok) return null;
@@ -199,32 +187,20 @@ function _safeTs(isoLike){
 }
 
 function _getLastWriteMeta(){
-  if(_lastWriteMetaMemory && typeof _lastWriteMetaMemory === "object"){
-    return _lastWriteMetaMemory;
-  }
   try{
     const raw = localStorage.getItem(LOCAL_WRITE_META_KEY);
-    if(!raw) return null;
-    const parsed = JSON.parse(raw);
-    if(!parsed || typeof parsed !== "object") return null;
-    const target = String(parsed?.target || "").trim();
-    const updatedAt = String(parsed?.updated_at || "").trim();
-    if(!target && !updatedAt) return null;
-    _lastWriteMetaMemory = { target, updated_at: updatedAt };
-    return _lastWriteMetaMemory;
+    return raw ? JSON.parse(raw) : null;
   }catch(e){
     return null;
   }
 }
 
 function _setLastWriteMeta(target, updatedAt){
-  const nextMeta = {
-    target: String(target || "").trim(),
-    updated_at: String(updatedAt || new Date().toISOString()).trim()
-  };
-  _lastWriteMetaMemory = nextMeta;
   try{
-    localStorage.setItem(LOCAL_WRITE_META_KEY, JSON.stringify(nextMeta));
+    localStorage.setItem(LOCAL_WRITE_META_KEY, JSON.stringify({
+      target: String(target || "").trim(),
+      updated_at: String(updatedAt || new Date().toISOString()).trim()
+    }));
   }catch(e){ softCatch(e); }
 }
 
@@ -255,20 +231,12 @@ function _saveCloudStateCache(stateJson, updatedAt){
 }
 
 function _confirmLocalFallbackLoad(reason){
-  if(!_canUseLocalFallbackAgent()){
-    showSaveToast("error", "Service distant indisponible", "Mode web: sauvegarde locale agent indisponible.");
-    return false;
-  }
   return window.confirm(
     `Service distant indisponible (${reason}).\nCharger la sauvegarde locale depuis J:\\RÉGISSEUR INTENDANT\\DASBOARDS\\SUIVI DE CHANTIERS ?`
   );
 }
 
 function _confirmLocalFallbackSave(reason){
-  if(!_canUseLocalFallbackAgent()){
-    showSaveToast("error", "Service distant indisponible", "Mode web: sauvegarde locale agent indisponible.");
-    return false;
-  }
   return window.confirm(
     `Service distant indisponible (${reason}).\nEnregistrer une sauvegarde locale dans J:\\RÉGISSEUR INTENDANT\\DASBOARDS\\SUIVI DE CHANTIERS ?`
   );
@@ -281,7 +249,6 @@ function _refreshDataIoBadge(){
 }
 
 async function _markLocalFallbackSynced(){
-  if(!_canUseLocalFallbackAgent()) return;
   try{
     await fetch(`${LOCAL_FALLBACK_AGENT_BASE}/state/mark-synced`, { method: "POST" });
   }catch(e){
@@ -290,7 +257,6 @@ async function _markLocalFallbackSynced(){
 }
 
 async function _maybeUseLocalNewerState(cloudUpdatedAt){
-  if(!_canUseLocalFallbackAgent()) return null;
   try{
     const localData = await _loadAppStateFromLocalFallback();
     if(!localData || !localData.state_json) return null;
@@ -1236,53 +1202,143 @@ window.loadAppStateFromSupabase = async function(){
   if(_loadAppStateFromSupabaseFlight) return _loadAppStateFromSupabaseFlight;
 
   const run = async () => {
-    _setLastRemoteLoadFailure("");
     _isDataIoReadBusy = true;
     _refreshDataIoBadge();
+    const sb = _getSupabaseClient();
 
-    const RETRY_DELAYS_MS = [0, 2000, 5000];
-    let loadState = "init";
-
-    const waitMs = (ms)=> new Promise((resolve)=>setTimeout(resolve, Math.max(0, Number(ms || 0))));
-    const applyLocalState = (rawState, updatedAt)=>{
-      _lastCloudStateUpdatedAt = String(updatedAt || "").trim();
-      _setLastWriteMeta("local_j", _lastCloudStateUpdatedAt || new Date().toISOString());
-      state = normalizeState(rawState || {});
+    if(!sb){
+      if(!_confirmLocalFallbackLoad("service distant indisponible")) return false;
+      const localData = await _loadAppStateFromLocalFallback();
+      if(!localData || !localData.state_json) return false;
+      _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
+      state = normalizeState(localData.state_json || {});
       invalidateCanonicalTimeLogsCache();
       _lastStateLoadSource = "local_storage";
       renderAll();
       _refreshDataIoBadge();
       clearDirty();
       return true;
-    };
-    const applyRemoteState = async (sb, dataRow)=>{
-      _lastCloudStateUpdatedAt = String(dataRow?.updated_at || "").trim();
-      _setLastWriteMeta("supabase", _lastCloudStateUpdatedAt || new Date().toISOString());
-      _saveCloudStateCache(dataRow?.state_json || {}, dataRow?.updated_at);
+    }
+
+
+
+    const session = await _ensureSession();
+
+    if(!session || !session.user){
+      if(!_confirmLocalFallbackLoad("session distante indisponible")) return false;
+      const localData = await _loadAppStateFromLocalFallback();
+      if(!localData || !localData.state_json) return false;
+      _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
+      state = normalizeState(localData.state_json || {});
+      invalidateCanonicalTimeLogsCache();
+      _lastStateLoadSource = "local_storage";
+      renderAll();
+      _refreshDataIoBadge();
+      clearDirty();
+      return true;
+    }
+
+
+
+    try{
+      _supabaseOwnerFallbackCount = 0;
+
+      const localCloudCache = _readCloudStateCache();
+      if(localCloudCache && localCloudCache.state_json && localCloudCache.updated_at){
+        const { data: remoteMeta, error: metaError } = await sb
+          .from(SUPABASE_TABLE)
+          .select("updated_at")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        if(metaError){
+          console.warn("Supabase metadata select error", metaError);
+        }else if(String(remoteMeta?.updated_at || "").trim() === String(localCloudCache.updated_at || "").trim()){
+          _lastCloudStateUpdatedAt = String(localCloudCache.updated_at || "").trim();
+          state = normalizeState(localCloudCache.state_json || {});
+          invalidateCanonicalTimeLogsCache();
+          _lastStateLoadSource = "supabase_cloud";
+          renderAll();
+          _refreshDataIoBadge();
+          clearDirty();
+          return true;
+        }
+      }
+
+      const { data, error } = await sb
+        .from(SUPABASE_TABLE)
+        .select("state_json, updated_at")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+
+      if(error){
+        console.warn("Supabase select error", error);
+        if(!_confirmLocalFallbackLoad("erreur lecture distante")) return false;
+        const localData = await _loadAppStateFromLocalFallback();
+        if(!localData || !localData.state_json) return false;
+        _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
+        state = normalizeState(localData.state_json || {});
+        invalidateCanonicalTimeLogsCache();
+        _lastStateLoadSource = "local_storage";
+        renderAll();
+        _refreshDataIoBadge();
+        clearDirty();
+        return true;
+      }
+
+      if(!data || !data.state_json){
+        if(!_confirmLocalFallbackLoad("aucune donnée distante")) return false;
+        const localData = await _loadAppStateFromLocalFallback();
+        if(!localData || !localData.state_json) return false;
+        _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
+        state = normalizeState(localData.state_json || {});
+        invalidateCanonicalTimeLogsCache();
+        _lastStateLoadSource = "local_storage";
+        renderAll();
+        _refreshDataIoBadge();
+        clearDirty();
+        return true;
+      }
+      const localPreferred = await _maybeUseLocalNewerState(data.updated_at);
+      if(localPreferred && localPreferred.state_json){
+        _lastCloudStateUpdatedAt = String(localPreferred.updated_at || "").trim();
+        state = normalizeState(localPreferred.state_json || {});
+        invalidateCanonicalTimeLogsCache();
+        _lastStateLoadSource = "local_storage";
+        renderAll();
+        _refreshDataIoBadge();
+        clearDirty();
+        return true;
+      }
+      _lastCloudStateUpdatedAt = String(data.updated_at || "").trim();
+      _saveCloudStateCache(data.state_json || {}, data.updated_at);
+
+
+
+      // Mode production stable: lecture unique state_json (sans fusion).
       if(isSingleSourceReadMode()){
-        state = normalizeState(dataRow?.state_json || {});
+        state = normalizeState(data.state_json || {});
         invalidateCanonicalTimeLogsCache();
       }else{
         const supabaseTimeLogsRows = await _loadSupabaseTimeLogsRows(sb);
         const stateTaskIds = Array.from(new Set(
-          (Array.isArray(dataRow?.state_json?.tasks) ? dataRow.state_json.tasks : [])
+          (Array.isArray(data?.state_json?.tasks) ? data.state_json.tasks : [])
             .map((t)=>normId(t?.id))
             .filter(Boolean)
         ));
         const supabaseTasksRows = await _loadSupabaseTasksRowsByIds(sb, stateTaskIds);
-        const supabaseTaskIds = Array.from(new Set(
-          supabaseTimeLogsRows.map((r)=>normId(r?.task_id || r?.tache_id || r?.taskId)).filter(Boolean)
-        ));
+        const supabaseTaskIds = Array.from(new Set(supabaseTimeLogsRows.map((r)=>normId(r?.task_id || r?.tache_id || r?.taskId)).filter(Boolean)));
         const supabaseTaskRowsForLogs = await _loadSupabaseTasksRowsByIds(sb, supabaseTaskIds);
         const mergedStateJson = {
-          ...(dataRow?.state_json || {}),
-          tasks: _mergeStateTasksFromSupabase(dataRow?.state_json, supabaseTasksRows),
-          timeLogs: _mergeStateTimeLogs(dataRow?.state_json, supabaseTimeLogsRows, supabaseTaskRowsForLogs)
+          ...(data.state_json || {}),
+          tasks: _mergeStateTasksFromSupabase(data?.state_json, supabaseTasksRows),
+          timeLogs: _mergeStateTimeLogs(data?.state_json, supabaseTimeLogsRows, supabaseTaskRowsForLogs)
         };
         state = normalizeState(mergedStateJson);
         invalidateCanonicalTimeLogsCache();
       }
       _lastStateLoadSource = "supabase_cloud";
+
       renderAll();
       _refreshDataIoBadge();
       if(_supabaseOwnerFallbackCount > 0){
@@ -1292,136 +1348,28 @@ window.loadAppStateFromSupabase = async function(){
           `${_supabaseOwnerFallbackCount} tâche(s) avec owner invalide détectée(s) depuis Supabase.`
         );
       }
+
+      clearDirty();
+
+      return true;
+
+    }catch(e){
+
+      console.warn("loadAppStateFromSupabase failed", e);
+        if(!_confirmLocalFallbackLoad("exception synchronisation")) return false;
+
+      const localData = await _loadAppStateFromLocalFallback();
+      if(!localData || !localData.state_json) return false;
+      _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
+      state = normalizeState(localData.state_json || {});
+      invalidateCanonicalTimeLogsCache();
+      _lastStateLoadSource = "local_storage";
+      renderAll();
+      _refreshDataIoBadge();
       clearDirty();
       return true;
-    };
-    const loadLocalFallback = async (reasonCode, detail)=>{
-      loadState = "fallback_used";
-      const localData = await _loadAppStateFromLocalFallback();
-      if(localData && localData.state_json){
-        _setLastRemoteLoadFailure(detail);
-        return applyLocalState(localData.state_json, localData.updated_at);
-      }
-      _setLastRemoteLoadFailure(`${detail} (fallback local indisponible).`);
-      loadState = reasonCode;
-      return false;
-    };
 
-    try{
-      _supabaseOwnerFallbackCount = 0;
-      for(let attempt = 0; attempt < RETRY_DELAYS_MS.length; attempt += 1){
-        if(RETRY_DELAYS_MS[attempt] > 0){
-          await waitMs(RETRY_DELAYS_MS[attempt]);
-        }
-        loadState = "init";
-        try{
-          const sb = _getSupabaseClient();
-          if(!sb){
-            if(attempt < RETRY_DELAYS_MS.length - 1) continue;
-            return await loadLocalFallback("network_failed", "Service Supabase indisponible.");
-          }
-
-          loadState = "auth";
-          const session = await _ensureSession();
-          if(!session || !session.user){
-            if(attempt < RETRY_DELAYS_MS.length - 1) continue;
-            return await loadLocalFallback("auth_failed", "Session Supabase indisponible (authentification échouée).");
-          }
-
-          loadState = "fetch_meta";
-          let remoteMetaUpdatedAt = "";
-          const { data: remoteMeta, error: metaError } = await sb
-            .from(SUPABASE_TABLE)
-            .select("updated_at")
-            .eq("user_id", session.user.id)
-            .maybeSingle();
-          if(metaError){
-            console.warn("Supabase metadata select error", metaError);
-          }else{
-            remoteMetaUpdatedAt = String(remoteMeta?.updated_at || "").trim();
-          }
-
-          if(
-            remoteMetaUpdatedAt &&
-            _isSupabaseStateMetadataFresh(remoteMetaUpdatedAt) &&
-            _lastStateLoadSource === "supabase_cloud" &&
-            state && typeof state === "object"
-          ){
-            _setLastWriteMeta("supabase", remoteMetaUpdatedAt || new Date().toISOString());
-            loadState = "ready";
-            _refreshDataIoBadge();
-            clearDirty();
-            return true;
-          }
-
-          const localCloudCache = _readCloudStateCache();
-          if(localCloudCache && localCloudCache.state_json && localCloudCache.updated_at){
-            if(remoteMetaUpdatedAt && remoteMetaUpdatedAt === String(localCloudCache.updated_at || "").trim()){
-              if(
-                _lastStateLoadSource === "supabase_cloud" &&
-                String(_lastCloudStateUpdatedAt || "").trim() === String(localCloudCache.updated_at || "").trim()
-              ){
-                _setLastWriteMeta("supabase", String(localCloudCache.updated_at || "").trim() || new Date().toISOString());
-                loadState = "ready";
-                _refreshDataIoBadge();
-                clearDirty();
-                return true;
-              }
-              _lastCloudStateUpdatedAt = String(localCloudCache.updated_at || "").trim();
-              _setLastWriteMeta("supabase", _lastCloudStateUpdatedAt || new Date().toISOString());
-              state = normalizeState(localCloudCache.state_json || {});
-              invalidateCanonicalTimeLogsCache();
-              _lastStateLoadSource = "supabase_cloud";
-              renderAll();
-              _refreshDataIoBadge();
-              clearDirty();
-              loadState = "ready";
-              return true;
-            }
-          }
-
-          loadState = "fetch_state";
-          const { data, error } = await sb
-            .from(SUPABASE_TABLE)
-            .select("state_json, updated_at")
-            .eq("user_id", session.user.id)
-            .maybeSingle();
-          if(error){
-            console.warn("Supabase select error", error);
-            if(attempt < RETRY_DELAYS_MS.length - 1) continue;
-            return await loadLocalFallback("network_failed", "Erreur lecture Supabase (state_json).");
-          }
-          if(!data || !data.state_json){
-            if(attempt < RETRY_DELAYS_MS.length - 1) continue;
-            return await loadLocalFallback("remote_empty", "Aucune donnée distante trouvée dans Supabase.");
-          }
-
-          const localPreferred = await _maybeUseLocalNewerState(data.updated_at);
-          if(localPreferred && localPreferred.state_json){
-            loadState = "fallback_used";
-            _setLastRemoteLoadFailure("Version locale plus récente utilisée.");
-            return applyLocalState(localPreferred.state_json, localPreferred.updated_at);
-          }
-
-          const ok = await applyRemoteState(sb, data);
-          if(ok){
-            loadState = "ready";
-            return true;
-          }
-        }catch(e){
-          console.warn("loadAppStateFromSupabase failed", e);
-          if(attempt < RETRY_DELAYS_MS.length - 1) continue;
-          return await loadLocalFallback("network_failed", "Exception de synchronisation distante.");
-        }
-      }
-
-      loadState = "network_failed";
-      _setLastRemoteLoadFailure("Impossible de charger les données distantes après plusieurs tentatives.");
-      return false;
     }finally{
-      if(loadState !== "ready" && !_lastRemoteLoadFailureDetail){
-        _setLastRemoteLoadFailure("Chargement distant inachevé.");
-      }
       _isDataIoReadBusy = false;
       _refreshDataIoBadge();
     }
@@ -1445,33 +1393,15 @@ let _loadAppStateFromSupabaseFlight = null;
 function _scheduleSupabaseAutoLoad(){
   if(_supabaseAutoloadScheduled) return;
   _supabaseAutoloadScheduled = true;
-  let retryCount = 0;
-  const maxRetries = 3;
-  const retryDelays = [3000, 7000, 15000];
-  const runLoad = async ()=>{
-    try{
-      const ok = await window.loadAppStateFromSupabase();
-      if(ok) return;
-      const detail = _consumeLastRemoteLoadFailure() || "Impossible de charger les données distantes. Vérifie la connexion.";
-      showSaveToast("error", "Chargement distant", detail);
-      if(retryCount < maxRetries){
-        const delay = retryDelays[retryCount] || 12000;
-        retryCount += 1;
-        setTimeout(runLoad, delay);
-      }
-    }catch(e){
-      softCatch(e);
-      if(retryCount < maxRetries){
-        const delay = retryDelays[retryCount] || 12000;
-        retryCount += 1;
-        setTimeout(runLoad, delay);
-      }
-    }
-  };
 
   // pas d'await au chargement initial : on laisse l'UI se rendre d'abord
   setTimeout(async function(){
-    runLoad();
+    try{
+      const ok = await window.loadAppStateFromSupabase();
+      if(!ok){
+        showSaveToast("error", "Chargement distant", "Impossible de charger les données distantes. Vérifie la connexion.");
+      }
+    }catch(e){ softCatch(e); }
   }, 1200);
 }
 
@@ -1491,7 +1421,6 @@ let selectedTaskId = null;
 let taskOrderMap = {};
 
 let selectedStatusSet = new Set();
-let showCompletedMaster = false;
 
 let sortMaster = {key:"start", dir:"asc"};
 
@@ -1506,10 +1435,9 @@ let unsavedChanges = false;
 let lastUndoSnapshot = null;
 let _stateVersion = 0;
 let _filteredCache = { key:"", version:-1, tasks:null };
-let _missingLogEntriesTotalCache = { version:-1, todayKey:"", tasksSig:"", total:0 };
-let _missingDaysMapAllTasksCache = { version:-1, todayKey:"", tasksSig:"", map:null };
+let _missingLogEntriesTotalCache = { version:-1, todayKey:"", totalTasks:-1, total:0 };
+let _missingDaysMapAllTasksCache = { version:-1, todayKey:"", totalTasks:-1, map:null };
 let _canonicalTimeLogsCache = { version:-1, logs:null };
-let _dataQualityReportCache = { version:-1, state:null, report:null };
 function invalidateCanonicalTimeLogsCache(){
   _canonicalTimeLogsCache = { version:-1, logs:null };
 }
@@ -1525,6 +1453,18 @@ let _ganttKey = null;
 let _missingHoursFlow = null;
 let _outsideRangeFlow = null;
 let _lastMasterAnimSignature = "";
+let _lastScalabilityReport = null;
+let _lastScaleAlertSig = "";
+let _lastScaleAlertAt = 0;
+let _dataQualityReportCache = { version: -1, state: null, report: null };
+let showCompletedMaster = false;
+const SCALE_GUARDS = {
+  warnTasks: 1000,
+  warnTimeLogs: 20000,
+  warnStateBytes: 3_500_000,
+  warnRenderMs: 180,
+  warnSaveMs: 220
+};
 const runtimePerf = {
   lastRenderMs: 0,
   lastSaveMs: 0,
@@ -1602,7 +1542,7 @@ function buildTableData(tasks, logs){
 
       <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskLabel}</td>
 
-      <td class="status-cell" style="background:${statusCellBg};background-color:${statusCellBg};"><span class="status-left" ${statusPillStyle(mainStatus)}>${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${t.owner?ownerBadgeForTask(t):""}</td>
+      <td class="status-cell" style="background:${statusCellBg};background-color:${statusCellBg};"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${t.owner?ownerBadgeForTask(t):""}</td>
 
       <td>${formatDate(t.start)||""}${isToday ? `<span class="today-dot" title="En cours aujourd'hui"></span>` : ""}</td>
 
@@ -2030,14 +1970,13 @@ function _positionGanttTodayLine(ganttRoot){
   const stickyLimit = statusCell ? (statusCell.offsetLeft + statusCell.offsetWidth) : weekBandStart;
   const markerLeft = Math.max(weekBandStart, stickyLimit) + (weekdayIndex * dayColumn);
   const markerWidth = 1;
-  const markerPixelLeft = Math.floor(markerLeft) + 0.5;
 
   const header = scroller.querySelector("thead");
   const headerHeight = header ? header.offsetHeight : 0;
   const table = scroller.querySelector("table");
   const bodyHeight = table ? table.offsetHeight : 0;
   marker.style.width = `${Math.max(1, markerWidth)}px`;
-  marker.style.left = `${markerPixelLeft}px`;
+  marker.style.left = `${Math.round(markerLeft)}px`;
   marker.style.top = `${headerHeight}px`;
   marker.style.height = `${Math.max(0, bodyHeight - headerHeight)}px`;
 }
@@ -3463,7 +3402,6 @@ const ownerBadge = (o="", labelOverride="")=>{
 
   const k = o.toLowerCase();
   const label = (labelOverride || o || "").toString();
-  const typ = ownerType(o);
 
   // Palette aligne avec le graphique de charge
 
@@ -3477,7 +3415,7 @@ const ownerBadge = (o="", labelOverride="")=>{
 
   else if(k.includes("interne")) color = "#16a34a"; // INTERNE
 
-  return `<span class="badge owner owner-${typ || "other"}" style="background:${color};border-color:${color};color:#fff;">${label}</span>`;
+  return `<span class="badge owner" style="background:${color};border-color:${color};color:#fff;">${label}</span>`;
 
 };
 
@@ -3576,19 +3514,18 @@ const vendorBadge = (v="")=>{
   const k = v.toLowerCase();
 
   if(k.includes("rsg/ri") || k.includes("rsg")){
-    return `<span class="badge owner owner-rsg" style="background:#2563eb;border-color:#2563eb;color:#fff;">${v}</span>`;
+    return `<span class="badge owner" style="background:#2563eb;border-color:#2563eb;color:#fff;">${v}</span>`;
   }
   if(k.includes("ri")){
-    return `<span class="badge owner owner-ri" style="background:#7c3aed;border-color:#7c3aed;color:#fff;">${v}</span>`;
+    return `<span class="badge owner" style="background:#7c3aed;border-color:#7c3aed;color:#fff;">${v}</span>`;
   }
 
   const isInternal = k.includes("interne");
   const isExternal = k.includes("externe") || (!isInternal && v);
 
   const color = isInternal ? "#16a34a" : (isExternal ? "#b45309" : "#4b5563");
-  const roleClass = isInternal ? "owner-interne" : (isExternal ? "owner-externe" : "owner-other");
 
-  return `<span class="badge owner ${roleClass}" style="background:${color};border-color:${color};color:#fff;">${v}</span>`;
+  return `<span class="badge owner" style="background:${color};border-color:${color};color:#fff;">${v}</span>`;
 
 };
 
@@ -5011,7 +4948,6 @@ function _isRlsDenied(error){
 function queueLoginJournalRefresh(){
   const modal = el("configModal");
   if(modal && modal.classList.contains("hidden")) return;
-  if(_isLoginJournalBusy) return;
   const now = Date.now();
   if(now - _lastLoginJournalRefreshAt < LOGIN_JOURNAL_REFRESH_MIN_INTERVAL_MS) return;
   if(_loginJournalRefreshTimer){
@@ -5053,7 +4989,6 @@ let _lastStateLoadSource = "inconnu";
 let _supabaseOwnerFallbackCount = 0;
 let _lastCloudStateUpdatedAt = "";
 let _lastSupabasePreSaveCheckAt = 0;
-let _lastRemoteLoadFailureDetail = "";
 
 function stateLoadSourceLabel(src){
   const k = String(src || "").toLowerCase();
@@ -5073,9 +5008,6 @@ function stateWriteTargetLabel(){
     if(target === "local_j") return "J (secours)";
     if(target === "cloud_blocked") return "Synchronisation bloquée";
   }catch(e){ softCatch(e); }
-  const src = String(_lastStateLoadSource || "").toLowerCase();
-  if(src === "supabase_cloud") return "Données distantes";
-  if(src === "local_storage") return "J (secours)";
   return "Inconnue";
 }
 
@@ -5083,14 +5015,7 @@ function _formatLastSyncLabel(){
   try{
     const meta = _getLastWriteMeta();
     const iso = String(meta?.updated_at || "").trim();
-    if(!iso){
-      const fallbackIso = String(_lastCloudStateUpdatedAt || "").trim();
-      if(!fallbackIso) return "Synchro: --";
-      const fd = new Date(fallbackIso);
-      if(isNaN(fd.getTime())) return "Synchro: --";
-      const ftxt = fd.toLocaleString("fr-FR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
-      return `Synchro: ${ftxt}`;
-    }
+    if(!iso) return "Synchro: --";
     const d = new Date(iso);
     if(isNaN(d.getTime())) return "Synchro: --";
     const now = Date.now();
@@ -5106,40 +5031,22 @@ function _formatLastSyncLabel(){
 }
 
 function buildDataIoBadgeHtml(){
-  try{
-    const storage = _buildStorageHealth(state || {});
-    const storageText = `${storage.percent}% (${_formatBytes(storage.bytes)})`;
-    const storageClass = storage.warn === "warning" ? "is-warning" : (storage.warn ? "is-danger" : "is-cloud");
-    const writeTarget = stateWriteTargetLabel();
-    const writeTargetLower = String(writeTarget || "").toLowerCase();
-    const writeTargetClass = writeTargetLower.includes("bloqu") ? "is-danger"
-      : writeTargetLower.includes("secours") ? "is-fallback"
-      : (writeTarget ? "is-cloud" : "is-unknown");
-    const lastSync = _formatLastSyncLabel();
-    const syncIsHs = String(lastSync || "").includes("--") || writeTargetLower === "inconnue";
-    const syncClass = syncIsHs ? "is-danger" : "is-cloud";
-    const badgeSyncClass = _isDataIoWriteBusy ? "is-syncing" : "";
-    return ` <span class="data-io-badge ${badgeSyncClass}" id="dataIoBadge" title="État synchronisation: ${attrEscape(writeTarget)} / ${attrEscape(lastSync)}">
-      <span class="data-io-item ${storageClass}">Stockage ${storageText}</span>
-      <span class="data-io-sep">•</span>
-      <span class="data-io-item ${writeTargetClass}">${attrEscape(writeTarget)}</span>
-      <span class="data-io-sep">•</span>
-      <span class="data-io-item ${syncClass}">${attrEscape(lastSync)}</span>
-    </span>`;
-  }catch(e){
-    softCatch(e);
-    return "";
-  }
-}
-
-function _setLastRemoteLoadFailure(detail){
-  _lastRemoteLoadFailureDetail = String(detail || "").trim();
-}
-
-function _consumeLastRemoteLoadFailure(){
-  const detail = _lastRemoteLoadFailureDetail || "";
-  _lastRemoteLoadFailureDetail = "";
-  return detail;
+  const isReadBusy = !!_isDataIoReadBusy;
+  const isWriteBusy = !!_isDataIoWriteBusy;
+  const readLabel = stateLoadSourceLabel(_lastStateLoadSource);
+  const writeLabel = stateWriteTargetLabel();
+  const isRemoteReadLabel = (readLabel === "Données distantes") || (readLabel === "Synchronisation bloquée");
+  const isRemoteWriteLabel = (writeLabel === "Données distantes") || (writeLabel === "Synchronisation bloquée");
+  const readClass = isRemoteReadLabel ? "is-cloud" : (readLabel.includes("secours") ? "is-fallback" : "is-unknown");
+  const writeClass = isRemoteWriteLabel ? "is-cloud" : (writeLabel.includes("secours") ? "is-fallback" : "is-unknown");
+  const storage = _buildStorageHealth(state || {});
+  const storageClass = storage.warn === "danger" ? "is-danger" : (storage.warn === "warning" ? "is-warning" : "is-cloud");
+  const storageStatusText = storage.warn === "danger" ? " • limite proche" : (storage.warn === "warning" ? " • approche" : "");
+  const storageLabel = `Stockage: ${storage.percent}%${storageStatusText}`;
+  const tip = `Lecture = source chargée au démarrage | Ecriture = derniere cible de synchronisation | Estimation: ${_formatBytes(storage.bytes)} sur ${_formatBytes(SUPABASE_STORAGE_BUDGET_BYTES)}`;
+  const syncClass = (isReadBusy || isWriteBusy) ? " is-syncing" : "";
+  const lastSyncLabel = _formatLastSyncLabel();
+  return `<span class="data-io-badge${syncClass}" title="${attrEscape(tip)}"><img src="assets/database4.ico" alt="" aria-hidden="true"><span class="data-io-item ${readClass}">Lect.: ${attrEscape(readLabel)}${isReadBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${writeClass}">Ecr.: ${attrEscape(writeLabel)}${isWriteBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${storageClass}">${attrEscape(storageLabel)} (${attrEscape(_formatBytes(storage.bytes))})</span><span class="data-io-sep">|</span><span class="data-io-item is-unknown">${attrEscape(lastSyncLabel)}</span></span>`;
 }
 
 function collectDataQualityIssues(currentState=state){
@@ -5283,6 +5190,80 @@ const estimateStateBytes = window.estimateStateBytes || ((obj)=>{
   }
 });
 
+function updateDegradedMode(scaleReport){
+  try{
+    const shouldDegrade = !!(scaleReport && !scaleReport.ok);
+    runtimePerf.degradedMode = shouldDegrade;
+    runtimePerf.degradedReason = shouldDegrade
+      ? String((scaleReport.warnings || []).slice(0,2).join(" | "))
+      : "";
+  }catch(e){
+    softCatch(e);
+  }
+}
+
+function collectScalabilityReport(currentState=state){
+  const tasksCount = Array.isArray(currentState?.tasks) ? currentState.tasks.length : 0;
+  const timeLogsCount = Array.isArray(currentState?.timeLogs) ? currentState.timeLogs.length : 0;
+  const stateBytes = runtimePerf.lastStateBytes || estimateStateBytes(currentState || {});
+  const segmentMetrics = null;
+  const warnings = [];
+
+  if(tasksCount >= SCALE_GUARDS.warnTasks){
+    warnings.push(`Volume tâches élevé (${tasksCount} >= ${SCALE_GUARDS.warnTasks})`);
+  }
+  if(timeLogsCount >= SCALE_GUARDS.warnTimeLogs){
+    warnings.push(`Volume saisies heures élevé (${timeLogsCount} >= ${SCALE_GUARDS.warnTimeLogs})`);
+  }
+  if(stateBytes >= SCALE_GUARDS.warnStateBytes){
+    warnings.push(`Taille état importante (${Math.round(stateBytes/1024)} Ko)`);
+  }
+  if((runtimePerf.lastRenderMs || 0) >= SCALE_GUARDS.warnRenderMs){
+    warnings.push(`Rendu UI lent (${runtimePerf.lastRenderMs.toFixed(1)} ms)`);
+  }
+  if((runtimePerf.lastSaveMs || 0) >= SCALE_GUARDS.warnSaveMs){
+    warnings.push(`Sauvegarde lente (${runtimePerf.lastSaveMs.toFixed(1)} ms)`);
+  }
+
+  return {
+    ok: warnings.length === 0,
+    warnings,
+    tasksCount,
+    timeLogsCount,
+    stateBytes,
+    stateKb: Math.round(stateBytes/1024),
+    segmentMetrics: segmentMetrics || null,
+    lastSegmentationAt: "",
+    lastRenderMs: runtimePerf.lastRenderMs || 0,
+    lastRenderMasterMs: runtimePerf.lastRenderMasterMs || 0,
+    lastRenderMasterGanttMs: runtimePerf.lastRenderMasterGanttMs || 0,
+    lastMissingMapCalls: runtimePerf.lastMissingMapCalls || 0,
+    lastSaveMs: runtimePerf.lastSaveMs || 0,
+    lastRenderAt: runtimePerf.lastRenderAt || "",
+    lastSaveAt: runtimePerf.lastSaveAt || ""
+  };
+}
+
+function notifyScalabilityIfNeeded(scaleReport, source="runtime"){
+  if(getCurrentRole() !== "admin") return;
+  try{
+    if(!scaleReport || scaleReport.ok) return;
+    const warnings = Array.isArray(scaleReport.warnings) ? scaleReport.warnings : [];
+    if(!warnings.length) return;
+    const sig = `${source}|${warnings.join("|")}`;
+    const now = Date.now();
+    // anti-spam: meme alerte ignoree pendant 2 minutes
+    if(sig === _lastScaleAlertSig && (now - _lastScaleAlertAt) < 120000) return;
+    _lastScaleAlertSig = sig;
+    _lastScaleAlertAt = now;
+    const summary = warnings.slice(0,2).join(" | ");
+    const extra = warnings.length > 2 ? ` | +${warnings.length - 2} autre(s)` : "";
+    showSaveToast("error", "Alerte charge", `${summary}${extra}`);
+  }catch(e){
+    softCatch(e);
+  }
+}
+
 async function collectCloudAlignmentReport(currentState=state){
   try{
     const sb = _getSupabaseClient();
@@ -5347,6 +5328,7 @@ function applyDataQualityCleanup(){
 
 function exportDataQualityReportPdf(){
   const report = collectDataQualityIssues(state);
+  const scale = collectScalabilityReport(state);
   const today = new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});
 
   setPrintPageFormat("A4 portrait", "6mm");
@@ -5376,7 +5358,10 @@ function exportDataQualityReportPdf(){
       ["État", report.ok ? "OK" : "Incohérences détectées"],
       ["Nombre d'anomalies", String(report.issues.length)],
       ["Tâches", String((state?.tasks || []).length)],
-      ["Logs temps", String((state?.timeLogs || []).length)]
+      ["Logs temps", String((state?.timeLogs || []).length)],
+      ["Charge", scale.ok ? "OK" : `${scale.warnings.length} alerte(s)`],
+      ["Dernier rendu UI", `${scale.lastRenderMs.toFixed(1)} ms`],
+      ["Dernière sauvegarde", `${scale.lastSaveMs.toFixed(1)} ms`]
     ];
     meta.innerHTML = rows.map(([k,v])=>`<div><strong>${k}</strong><br>${attrEscape(v)}</div>`).join("");
   }
@@ -5848,12 +5833,9 @@ window.updateRoleUI = updateRoleUI;
 
 
 function statusLabels(values){
+
   return parseStatuses(values).map(v=> (STATUSES.find(s=>s.v===v)?.label || v)).join(", ");
 
-}
-
-function statusPillStyle(statusValue){
-  return `style="background:#f8fafc !important;border-color:#cbd5e1 !important;color:#0f172a !important;"`;
 }
 
 const toDateInput = window.toDateInput || ((d)=>{
@@ -6909,7 +6891,7 @@ function buildGanttHtml(tasks){
     html+=`<td class="gantt-task-col-project gantt-col-task">${missDot}<b><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></b> <span class="gantt-task-name">${attrEscape(label)}</span></td>`;
       html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
 
-    html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span class="status-left" ${statusPillStyle(mainStatus)}>${statusDot(mainStatus)}${statusLabels(mainStatus)}</span></div></div></td>`;
+    html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
 
 
 
@@ -7103,7 +7085,7 @@ function renderProjectTasks(projectId){
 
       <td><span class="icon-picto"></span> ${taskTitleProjectView(t)}</td>
 
-      <td class="status-cell"><span class="status-left" ${statusPillStyle(mainStatus)}>${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${ownerBadgeHtml||""}</td>
+      <td class="status-cell"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${ownerBadgeHtml||""}</td>
 
       <td>${formatDate(t.start)||""}${isToday ? `<span class="today-dot" title="En cours aujourd'hui"></span>` : ""}</td>
 
@@ -7215,7 +7197,7 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
     const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
     html+=`<td class="gantt-col-task">${missDot}<span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="gantt-task-name">${attrEscape(projectName)}</span></td>`;
     html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
-    html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span class="status-left" ${statusPillStyle(mainStatus)}>${statusDot(mainStatus)}${statusLabels(mainStatus)}</span></div></div></td>`;
+    html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
 
     weeks.forEach((w,i)=>{
       const sDate=new Date(t.start+"T00:00:00");
@@ -7391,7 +7373,7 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
       html+=`<td class="gantt-task-col-project gantt-col-task">${missDot}<b><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></b> <span class="gantt-task-name">${attrEscape(label)}</span></td>`;
       if(includeChantierCol) html+=`<td class="gantt-col-project" style="width:120px">${attrEscape(chantierLabel)}</td>`;
       html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
-      html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span class="status-left" ${statusPillStyle(mainStatus)}>${statusDot(mainStatus)}${statusLabels(mainStatus)}</span></div></div></td>`;
+      html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
 
       weeks.forEach((w,i)=>{
         const sDate=new Date(t.start+"T00:00:00");
@@ -7579,7 +7561,7 @@ function renderMasterGantt(){
 
     html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
 
-    html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span class="status-left" ${statusPillStyle(mainStatus)}>${statusDot(mainStatus)}${statusLabels(mainStatus)}</span></div></div></td>`;
+    html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
 
 
 
@@ -8896,10 +8878,15 @@ function renderMaster(){
   const tableT0 = performance.now();
   const sorted = sortTasks(tasks, sortMaster);
   const includeChantierCol = (new Set(sorted.map(t=>String(t.projectId||""))).size > 1);
-  const missingMap = getMissingDaysMapAllTasksCached(tasks);
+  const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
   const todayKey = new Date().toISOString().slice(0,10);
-  const missingHoursCount = tasks.reduce((acc, t)=> acc + ((missingMap.get(t.id) || 0) > 0 ? 1 : 0), 0);
-  const missingLogEntriesCount = getMissingLogEntriesCountAllTasks(tasks);
+  const allTasks = Array.isArray(state?.tasks) ? state.tasks : [];
+  const sameUniverseAsAllTasks = sorted.length === allTasks.length;
+  const missingMapAll = sameUniverseAsAllTasks
+    ? missingMap
+    : getMissingDaysMapAllTasksCached(allTasks);
+  const missingHoursCount = allTasks.reduce((acc, t)=> acc + ((missingMapAll.get(t.id) || 0) > 0 ? 1 : 0), 0);
+  const missingLogEntriesCount = getMissingLogEntriesCountAllTasks(allTasks);
   const timeLogs = Array.isArray(state?.timeLogs) ? state.timeLogs : [];
   const onlyMissingEnabled = !!el("toggleMissingOnly")?.checked;
   const visibleTasks = onlyMissingEnabled
@@ -9491,7 +9478,18 @@ function getRealMinutesForTasks(tasks){
 }
 function countMissingDaysForUser(t, userKey){
   if(!t || !t.start || !t.end || !userKey) return 0;
-  return getMissingDaysList(t).length;
+  const start = new Date(t.start+"T00:00:00");
+  const end = new Date(t.end+"T00:00:00");
+  if(isNaN(start) || isNaN(end) || end < start) return 0;
+  const yKey = getYesterdayKey();
+  const limit = new Date(yKey+"T00:00:00");
+  let missing = 0;
+  for(let d=new Date(start); d<=end && d<=limit; d.setDate(d.getDate()+1)){
+    if(!isWeekday(d)) continue;
+    const key = toLocalDateKey(d);
+    if(!hasAllExpectedLogsForTaskDate(t, key)) missing++;
+  }
+  return missing;
 }
 function countMissingDaysForTask(t){
   return getMissingDaysList(t).length;
@@ -9529,20 +9527,27 @@ function countMissingLogEntriesForTaskDate(t, dateKey){
   }, 0);
 }
 function countMissingLogEntriesForTask(t){
-  return getTaskExpectedWorkingDateKeysUntilToday(t)
-    .reduce((acc, dateKey)=> acc + countMissingLogEntriesForTaskDate(t, dateKey), 0);
+  if(!t || !t.start || !t.end) return 0;
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const start = new Date(t.start+"T00:00:00");
+  const end = new Date(t.end+"T00:00:00");
+  if(isNaN(start) || isNaN(end) || end < start) return 0;
+  if(today < start || today > end) return 0;
+  if(!isWeekday(today)) return 0;
+  const todayKey = toLocalDateKey(today);
+  return countMissingLogEntriesForTaskDate(t, todayKey);
 }
 function getMissingLogEntriesCountAllTasks(tasks){
   const allTasks = Array.isArray(tasks) ? tasks : [];
   const today = new Date();
   today.setHours(0,0,0,0);
   const todayKey = toLocalDateKey(today);
-  const tasksSig = allTasks.map((t)=> String(t?.id || "")).sort().join("|");
   const cache = _missingLogEntriesTotalCache || {};
   if(
     cache.version === _stateVersion &&
     cache.todayKey === todayKey &&
-    cache.tasksSig === tasksSig
+    cache.totalTasks === allTasks.length
   ){
     return Number(cache.total || 0);
   }
@@ -9550,30 +9555,22 @@ function getMissingLogEntriesCountAllTasks(tasks){
   _missingLogEntriesTotalCache = {
     version: _stateVersion,
     todayKey,
-    tasksSig,
+    totalTasks: allTasks.length,
     total
   };
   return total;
 }
 function getMissingDaysList(t){
-  return getTaskExpectedWorkingDateKeysUntilToday(t)
-    .filter((dateKey)=> countMissingLogEntriesForTaskDate(t, dateKey) > 0);
-}
-function getTaskExpectedWorkingDateKeysUntilToday(t){
   if(!t || !t.start || !t.end) return [];
+  const today = new Date();
+  today.setHours(0,0,0,0);
   const start = new Date(t.start+"T00:00:00");
   const end = new Date(t.end+"T00:00:00");
   if(isNaN(start) || isNaN(end) || end < start) return [];
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const cap = (end < today) ? end : today;
-  if(cap < start) return [];
-  const keys = [];
-  for(let d=new Date(start); d<=cap; d.setDate(d.getDate()+1)){
-    if(!isWeekday(d)) continue;
-    keys.push(toLocalDateKey(d));
-  }
-  return keys;
+  if(today < start || today > end) return [];
+  if(!isWeekday(today)) return [];
+  const todayKey = toLocalDateKey(today);
+  return hasAllExpectedLogsForTaskDate(t, todayKey) ? [] : [todayKey];
 }
 function buildMissingDaysMap(tasks){
   runtimePerf.totalMissingMapCalls = Number(runtimePerf.totalMissingMapCalls || 0) + 1;
@@ -9588,12 +9585,11 @@ function getMissingDaysMapAllTasksCached(tasks){
   const today = new Date();
   today.setHours(0,0,0,0);
   const todayKey = toLocalDateKey(today);
-  const tasksSig = allTasks.map((t)=> String(t?.id || "")).sort().join("|");
   const cache = _missingDaysMapAllTasksCache || {};
   if(
     cache.version === _stateVersion &&
     cache.todayKey === todayKey &&
-    cache.tasksSig === tasksSig &&
+    cache.totalTasks === allTasks.length &&
     cache.map instanceof Map
   ){
     return cache.map;
@@ -9602,15 +9598,15 @@ function getMissingDaysMapAllTasksCached(tasks){
   _missingDaysMapAllTasksCache = {
     version: _stateVersion,
     todayKey,
-    tasksSig,
+    totalTasks: allTasks.length,
     map
   };
   return map;
 }
 function getMissingTasksForMasterFlow(){
-  const tasks = filteredTasks();
-  const sorted = sortTasks(tasks, sortMaster);
-  const missingMap = getMissingDaysMapAllTasksCached(tasks);
+  const sorted = sortTasks((state?.tasks || []), sortMaster);
+  const includeChantierCol = (new Set(sorted.map(t=>String(t.projectId||""))).size > 1);
+  const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
   const raw = sorted
     .filter(t=> (missingMap.get(t.id) || 0) > 0)
     .map(t=>({ projectId: t.projectId, taskId: t.id }));
@@ -10050,35 +10046,6 @@ function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missing
   const ordered = getHoursCalendarOrderedInputs(taskId);
   if(!ordered.length) return null;
   const step = direction < 0 ? -1 : 1;
-  const isMissing = isHoursCalendarInputMissing;
-  const currentTaskId = (taskId || "").trim() || (currentInput ? (currentInput.getAttribute("data-task-id") || "").trim() : "");
-
-  const allInputs = getHoursCalendarOrderedInputs("");
-  const taskOrder = getMissingHoursModalTaskOrder(allInputs);
-  const taskInputsMap = (() => {
-    const map = new Map();
-    allInputs.forEach((input)=>{
-      const tId = (input.getAttribute("data-task-id") || "").trim();
-      if(!tId) return;
-      if(!map.has(tId)) map.set(tId, []);
-      map.get(tId).push(input);
-    });
-    return map;
-  })();
-
-  const getTaskInputs = (targetTaskId)=> taskInputsMap.get((targetTaskId || "").trim()) || [];
-  const getMissingInTask = (inputs)=> {
-    if(!missingOnly) return inputs;
-    return inputs.filter((input)=> isMissing(input));
-  };
-  const getFirstMissingInTask = (targetTaskId)=> getMissingInTask(getTaskInputs(targetTaskId))[0] || null;
-  const getTaskPosition = (targetTaskId)=> taskOrder.indexOf((targetTaskId || "").trim());
-  const getNextTaskId = (targetTaskId, forward=true)=>{
-    const pos = getTaskPosition(targetTaskId);
-    if(pos < 0) return "";
-    const t = taskOrder[pos + (forward ? 1 : -1)];
-    return t || "";
-  };
 
   if(!missingOnly){
     const idx = ordered.indexOf(currentInput);
@@ -10099,35 +10066,11 @@ function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missing
     for(let i = idx + 1; i < ordered.length; i++){
       if(isHoursCalendarInputMissing(ordered[i])) return ordered[i];
     }
-    if(!currentTaskId){
-      return null;
-    }
-    let nextTaskId = currentTaskId;
-    let tries = 0;
-    while(tries < taskOrder.length){
-      nextTaskId = getNextTaskId(nextTaskId, true);
-      if(!nextTaskId) break;
-      const candidate = getFirstMissingInTask(nextTaskId);
-      if(candidate) return candidate;
-      tries++;
-    }
     return null;
   }
 
   for(let i = idx - 1; i >= 0; i--){
     if(isHoursCalendarInputMissing(ordered[i])) return ordered[i];
-  }
-  if(!currentTaskId){
-    return null;
-  }
-  let prevTaskId = currentTaskId;
-  let tries = 0;
-  while(tries < taskOrder.length){
-    prevTaskId = getNextTaskId(prevTaskId, false);
-    if(!prevTaskId) break;
-    const candidate = getMissingInTask(getTaskInputs(prevTaskId)).slice().reverse().find(isMissing);
-    if(candidate) return candidate;
-    tries++;
   }
   return null;
 }
@@ -11555,7 +11498,7 @@ function buildProjectTasksExportHTML(projectId){
     rows += `<tr class="${rowClass}">
       <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></td>
       <td><span class="icon-picto"></span> ${taskTitleProjectView(t)}</td>
-      <td class="status-cell"><span class="status-left" ${statusPillStyle(mainStatus)}>${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${ownerBadgeHtml||""}</td>
+      <td class="status-cell"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${ownerBadgeHtml||""}</td>
       <td>${formatDate(t.start)||""}</td>
       <td>${formatDate(t.end)||""}</td>
       <td>${taskProgress(t)}%</td>
@@ -11611,7 +11554,7 @@ function buildMasterTableExportHTML(){
       ${includeChantierCol ? `<td>${attrEscape(chantierLabel)}</td>` : ""}
       <td>${projLabel}</td>
       <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="icon-picto"></span> ${taskLabel}</td>
-      <td class="status-cell"><span class="status-left" ${statusPillStyle(mainStatus)}>${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${t.owner?ownerBadgeForTask(t):""}</td>
+      <td class="status-cell"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${t.owner?ownerBadgeForTask(t):""}</td>
       <td>${formatDate(t.start)||""}${isToday ? `<span class="today-dot" title="En cours aujourd'hui"></span>` : ""}</td>
       <td>${formatDate(t.end)||""}</td>
       <td>${taskProgress(t)}%</td>
@@ -11689,7 +11632,7 @@ function buildGroupedProjectTasksExportHTML(projectIds){
       <td>${attrEscape(p?.name || "Projet")}</td>
       <td>${missDot}<span class="num-badge" style="--badge-color:${c};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></td>
       <td><span class="icon-picto"></span> ${taskTitleProjectView(t)}</td>
-      <td class="status-cell"><span class="status-left" ${statusPillStyle(mainStatus)}>${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${ownerBadgeHtml||""}</td>
+      <td class="status-cell"><span class="status-left">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span>${ownerBadgeHtml||""}</td>
       <td>${formatDate(t.start)||""}</td>
       <td>${formatDate(t.end)||""}</td>
       <td>${taskProgress(t)}%</td>
@@ -12809,10 +12752,9 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
       syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
       queueHoursTaskSummaryRefresh(t);
     }
-    const activeTaskId = (input.getAttribute("data-task-id") || "").trim();
     const nextInput = (e.key === "Tab" && e.shiftKey)
-      ? getHoursCalendarNextInput(input, -1, activeTaskId, true)
-      : getHoursCalendarNextInput(input, 1, activeTaskId, true);
+      ? getHoursCalendarNextInput(input, -1, "", true)
+      : getHoursCalendarNextInput(input, 1, "", true);
     if(nextInput){
       const nextDay = (nextInput.getAttribute("data-date") || "").trim();
       refreshHoursCalendarSelectedCard(nextDay);
