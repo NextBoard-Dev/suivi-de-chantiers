@@ -1138,8 +1138,7 @@ body{
   transition:background-color .22s ease, box-shadow .22s ease;
 }
 .table tbody tr.row-selected td{
-  box-shadow:none;
-  background:rgba(236,238,241,0.92);
+  box-shadow:inset 0 0 0 9999px rgba(59,130,246,0.12);
 }
 .table tbody tr.today-row td{
   background:rgba(254,243,199,0.7);
@@ -2384,23 +2383,6 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   flex-wrap:nowrap;
   white-space:nowrap;
 }
-.gantt-table .bar-wrapper{
-  width:100%;
-  margin:0;
-  overflow:hidden;
-}
-.gantt-table td.gantt-cell{
-  overflow:hidden;
-}
-.gantt-table td.gantt-cell-empty .bar-wrapper,
-.gantt-table td.gantt-cell-empty .gantt-bar,
-.gantt-table td.gantt-cell-empty .gantt-print-bar{
-  display:none;
-}
-.gantt-table td.gantt-cell-has-bar .gantt-bar,
-.gantt-table td.gantt-cell-has-bar .gantt-print-bar{
-  border-radius:0;
-}
 
 /* Charge de travail */
 #workloadChart{min-height:200px;}
@@ -2757,7 +2739,7 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   background:rgba(247,248,250,0.72) !important;
 }
 .gantt-table tbody tr.gantt-row.gantt-row-active td{
-  background:rgba(236,238,241,0.9) !important;
+  background:rgba(241,245,249,0.85) !important;
 }
 .gantt-table tbody tr.today-row td{
   background:rgba(254,243,199,0.26) !important;
@@ -6017,4 +5999,3 @@ h3,
 .sidebar .tab > span{
   min-width:0;
 }
-

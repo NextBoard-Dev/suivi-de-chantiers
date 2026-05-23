@@ -70,76 +70,36 @@ const SUPABASE_TASKS_TABLE = "chantier_tasks";
 const SUPABASE_USERS_TABLE = "dashboard_users";
 const SUPABASE_LOGINS_TABLE = "dashboard_logins";
 const SUPABASE_SESSIONS_TABLE = "dashboard_sessions";
-const SUPABASE_TASKS_SELECT_COLUMNS = [
-  "id",
-  "project_id",
-  "chantier_id",
-  "description",
-  "name",
-  "owner_type",
-  "owner",
-  "internal_tech",
-  "internalTech",
-  "internalTechs",
-  "technician",
-  "tech",
-  "intervenants",
-  "vendor",
-  "start_date",
-  "start",
-  "end_date",
-  "end",
-  "statuses",
-  "status",
-].join(",");
-const SUPABASE_TIME_LOGS_SELECT_COLUMNS = [
-  "id",
-  "task_id",
-  "tache_id",
-  "taskId",
-  "project_id",
-  "chantier_id",
-  "date_key",
-  "date",
-  "log_date",
-  "day",
-  "role_key",
-  "role",
-  "owner_type",
-  "owner",
-  "intervenant_label",
-  "technician",
-  "tech",
-  "internal_tech",
-  "vendor",
-  "minutes",
-  "hours",
-  "note",
-  "comment",
-  "created_date",
-  "created_at",
-  "updated_date",
-  "updated_at",
-].join(",");
-const SUPABASE_USERS_SELECT_COLUMNS = "users_json, updated_at";
-const SUPABASE_SESSIONS_SELECT_COLUMNS = "email,name,role,expires_at";
-const SUPABASE_LOGINS_SELECT_COLUMNS = "email,name,role,ts";
-const EGRESS_SHORT_CACHE_MS = 1_800_000;
-const EGRESS_LOGINS_CACHE_MS = 2_400_000;
-const APP_STATE_SAVE_DEBOUNCE_MS = 3000;
-const USERS_SAVE_DEBOUNCE_MS = 3000;
-const LOGIN_LOG_THROTTLE_MS = 300_000;
-const LOGIN_LOG_SIGNATURE_TTL_MS = 60 * 60_000;
-const SESSION_RENEW_LEEWAY_MS = 12 * 60 * 60_000;
-const SUPABASE_STORAGE_BUDGET_BYTES = 500 * 1024 * 1024;
-const SUPABASE_STORAGE_WARN_BYTES = Math.floor(SUPABASE_STORAGE_BUDGET_BYTES * 0.80);
-const SUPABASE_STORAGE_CRIT_BYTES = Math.floor(SUPABASE_STORAGE_BUDGET_BYTES * 0.90);
-const SUPABASE_STORAGE_BLOCK_BYTES = SUPABASE_STORAGE_BUDGET_BYTES;
-const SUPABASE_STATE_MAX_UPLOAD_BYTES = 16 * 1024 * 1024;
-const SUPABASE_SYNC_NOTE_MAX_CHARS = 280;
-const SUPABASE_SYNC_USER_EMAIL_MAX_CHARS = 120;
-const SUPABASE_SYNC_USER_NAME_MAX_CHARS = 80;
-function isSingleSourceReadMode(){ return true; }
+const FEATURE_SINGLE_SOURCE_STATEJSON_KEY = "feature_single_source_statejson_v1";
+function isSingleSourceReadMode(){
+  try{
+    // Mode force pour stabiliser la prod PC : toujours lecture unique state_json.
+    localStorage.setItem(FEATURE_SINGLE_SOURCE_STATEJSON_KEY, "1");
+    return true;
+  }catch(e){
+    return true;
+  }
+}
+window.setSingleSourceReadMode = function(enabled){
+  try{
+    // OFF desactive en prod PC pour eviter toute re-fusion legacy.
+    localStorage.setItem(FEATURE_SINGLE_SOURCE_STATEJSON_KEY, "1");
+    return true;
+  }catch(e){
+    return false;
+  }
+};
+function refreshSingleSourceToggleButton(){
+  const btn = el("btnToggleSingleSource");
+  if(!btn) return;
+  const enabled = isSingleSourceReadMode();
+  btn.textContent = `Lecture unique: ${enabled ? "ON" : "OFF"}`;
+  btn.title = enabled
+    ? "Mode stable (state_json seul)"
+    : "Mode legacy (fusion state_json + tables)";
+  btn.classList.toggle("btn-primary", enabled);
+  btn.classList.toggle("btn-ghost", !enabled);
+}
 
 
 // Auto-login (pour ne PAS utiliser la console)
@@ -147,135 +107,6 @@ function isSingleSourceReadMode(){ return true; }
 const SUPABASE_AUTO_EMAIL = "sebastien_duc@outlook.fr";
 
 const SUPABASE_AUTO_PASSWORD = "Mililum@tt45";
-const LOCAL_FALLBACK_AGENT_BASE = "http://127.0.0.1:8765";
-const LOCAL_WRITE_META_KEY = "dashboard_last_write_meta_v1";
-const LOCAL_CLOUD_STATE_CACHE_KEY = "dashboard_cloud_state_cache_v1";
-
-async function _saveAppStateToLocalFallback(stateObj){
-  try{
-    const res = await fetch(`${LOCAL_FALLBACK_AGENT_BASE}/state/save`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state_json: stateObj, updated_at: new Date().toISOString() })
-    });
-    if(!res.ok) return false;
-    return true;
-  }catch(e){
-    console.warn("local fallback save failed", e);
-    return false;
-  }
-}
-
-async function _loadAppStateFromLocalFallback(){
-  try{
-    const res = await fetch(`${LOCAL_FALLBACK_AGENT_BASE}/state/load`, { method: "GET" });
-    if(!res.ok) return null;
-    const data = await res.json();
-    if(!data || !data.state_json) return null;
-    return data;
-  }catch(e){
-    console.warn("local fallback load failed", e);
-    return null;
-  }
-}
-
-function _safeTs(isoLike){
-  const raw = String(isoLike || "").trim();
-  if(!raw) return 0;
-  const ts = new Date(raw).getTime();
-  return Number.isFinite(ts) ? ts : 0;
-}
-
-function _getLastWriteMeta(){
-  try{
-    const raw = localStorage.getItem(LOCAL_WRITE_META_KEY);
-    return raw ? JSON.parse(raw) : null;
-  }catch(e){
-    return null;
-  }
-}
-
-function _setLastWriteMeta(target, updatedAt){
-  try{
-    localStorage.setItem(LOCAL_WRITE_META_KEY, JSON.stringify({
-      target: String(target || "").trim(),
-      updated_at: String(updatedAt || new Date().toISOString()).trim()
-    }));
-  }catch(e){ softCatch(e); }
-}
-
-function _readCloudStateCache(){
-  try{
-    const raw = localStorage.getItem(LOCAL_CLOUD_STATE_CACHE_KEY);
-    if(!raw) return null;
-    const parsed = JSON.parse(raw);
-    if(!parsed || typeof parsed !== "object") return null;
-    if(!parsed.updated_at || !parsed.state_json) return null;
-    return parsed;
-  }catch(e){
-    return null;
-  }
-}
-
-function _saveCloudStateCache(stateJson, updatedAt){
-  try{
-    if(!updatedAt || !stateJson) return;
-    localStorage.setItem(LOCAL_CLOUD_STATE_CACHE_KEY, JSON.stringify({
-      updated_at: String(updatedAt || "").trim(),
-      state_json: stateJson
-    }));
-  }catch(e){
-    // Si le cache local est plein, on ignore sans bloquer l'UI.
-    softCatch(e);
-  }
-}
-
-function _confirmLocalFallbackLoad(reason){
-  return window.confirm(
-    `Service distant indisponible (${reason}).\nCharger la sauvegarde locale depuis J:\\RÉGISSEUR INTENDANT\\DASBOARDS\\SUIVI DE CHANTIERS ?`
-  );
-}
-
-function _confirmLocalFallbackSave(reason){
-  return window.confirm(
-    `Service distant indisponible (${reason}).\nEnregistrer une sauvegarde locale dans J:\\RÉGISSEUR INTENDANT\\DASBOARDS\\SUIVI DE CHANTIERS ?`
-  );
-}
-
-function _refreshDataIoBadge(){
-  try{
-    if(typeof updateRoleUI === "function") updateRoleUI();
-  }catch(e){ softCatch(e); }
-}
-
-async function _markLocalFallbackSynced(){
-  try{
-    await fetch(`${LOCAL_FALLBACK_AGENT_BASE}/state/mark-synced`, { method: "POST" });
-  }catch(e){
-    console.warn("local fallback mark synced failed", e);
-  }
-}
-
-async function _maybeUseLocalNewerState(cloudUpdatedAt){
-  try{
-    const localData = await _loadAppStateFromLocalFallback();
-    if(!localData || !localData.state_json) return null;
-    const localTs = _safeTs(localData.updated_at);
-    const cloudTs = _safeTs(cloudUpdatedAt);
-    const meta = _getLastWriteMeta();
-    const localWasLastTarget = String(meta?.target || "") === "local_j";
-    const isLocalNewer = localTs > cloudTs;
-    if(!isLocalNewer && !localWasLastTarget) return null;
-    if(!window.confirm("Une sauvegarde locale plus récente a été détectée dans J:. Voulez-vous la charger maintenant puis la synchroniser pour aligner les données ?")){
-      return null;
-    }
-    showSaveToast("error", "Synchronisation requise", "Données locales chargées. Cliquez Sauvegarder pour synchroniser.");
-    return localData;
-  }catch(e){
-    console.warn("local newer state check failed", e);
-    return null;
-  }
-}
 
 
 
@@ -389,185 +220,89 @@ window.supabaseLogin = async function(email, password){
 
 
 
-window.saveAppStateToSupabase = async function(stateObj, options={}){
-  const remoteState = normalizeState(deepClone(stateObj || {}));
-  const localFallbackState = normalizeState(options?.fallbackPayload || remoteState || {});
-  const stateBytes = _getStateByteEstimate(localFallbackState);
-  const storage = _buildStorageHealth(remoteState || {});
-  if(storage.block){
-    const localSaved = await _saveAppStateToLocalFallback(localFallbackState);
-    _setLastWriteMeta("cloud_blocked", new Date().toISOString());
-    if(localSaved){
-      _setLastWriteMeta("local_j", new Date().toISOString());
+window.saveAppStateToSupabase = async function(stateObj){
+  const sb = _getSupabaseClient();
+  if(!sb) return false;
+
+
+  const session = await _ensureSession();
+
+  if(!session || !session.user) return false;
+
+
+
+  try{
+    const { data: remoteRow, error: remoteError } = await sb
+      .from(SUPABASE_TABLE)
+      .select("updated_at")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    if(remoteError){
+      console.warn("Supabase pre-save check error", remoteError);
     }
-    _refreshDataIoBadge();
-    showSaveToast(
-      "error",
-      localSaved ? "Sauvegarde locale secours" : "Sauvegarde distante bloquée",
-      localSaved
-        ? `Capacité distante atteinte (${_formatBytes(storage.bytes)}). Sauvegarde locale faite.`
-        : `Capacité distante atteinte (${_formatBytes(storage.bytes)}). Sauvegarde locale impossible.`
-    );
-    return !!localSaved;
-  }
-  const stateKey = _serializeStateSignature(remoteState || {});
-  const sameAsLastSavedSignature = !!stateKey && stateKey === _stateSaveLastSavedSignature;
-  const sameAsLastSavedBytes = stateBytes > 0 && stateBytes === _lastCloudStateByteEstimate;
-  if(sameAsLastSavedSignature && sameAsLastSavedBytes){
-    return true;
-  }
-  if(_saveAppStateToSupabaseFlight && _saveAppStateToSupabaseFlightKey === stateKey){
-    return await _saveAppStateToSupabaseFlight;
-  }
-
-  const run = async () => {
-    _isDataIoWriteBusy = true;
-    updateSaveButton();
-    _refreshDataIoBadge();
-    const sb = _getSupabaseClient();
-    if(!sb){
-      if(!_confirmLocalFallbackSave("service distant indisponible")) return false;
-      const localSaved = await _saveAppStateToLocalFallback(localFallbackState);
-      if(localSaved){
-        _setLastWriteMeta("local_j", new Date().toISOString());
-        _refreshDataIoBadge();
-      }
-      return !!localSaved;
-    }
-
-    const session = await _ensureSession();
-
-    if(!session || !session.user){
-      if(!_confirmLocalFallbackSave("session distante indisponible")) return false;
-      const localSaved = await _saveAppStateToLocalFallback(localFallbackState);
-      if(localSaved){
-        _setLastWriteMeta("local_j", new Date().toISOString());
-        _refreshDataIoBadge();
-      }
-      return !!localSaved;
-    }
-
-
-
-    try{
-      const now = Date.now();
-      const localKnownUpdatedAt = String(_lastCloudStateUpdatedAt || "").trim();
-      const shouldRunPreSaveCheck = !localKnownUpdatedAt || (now - _lastSupabasePreSaveCheckAt >= SUPABASE_PRE_SAVE_CHECK_INTERVAL_MS);
-      if(shouldRunPreSaveCheck){
-        const { data: remoteRow, error: remoteError } = await sb
-          .from(SUPABASE_TABLE)
-          .select("updated_at")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
-        _lastSupabasePreSaveCheckAt = now;
-        if(remoteError){
-          console.warn("Supabase pre-save check error", remoteError);
-        }
-        const remoteUpdatedAt = String(remoteRow?.updated_at || "").trim();
-        const remoteTs = remoteUpdatedAt ? new Date(remoteUpdatedAt).getTime() : 0;
-        const localTs = localKnownUpdatedAt ? new Date(localKnownUpdatedAt).getTime() : 0;
-        if(remoteTs && localTs && remoteTs > (localTs + 1000)){
-          showSaveToast("error", "Sauvegarde distante bloquée", "Version distante plus récente détectée. Recharge la page.");
-          return false;
-        }
-      }
-
-      const payload = {
-        user_id: session.user.id,
-        state_json: remoteState,
-        updated_at: new Date().toISOString()
-      };
-
-      const { error } = await sb.from(SUPABASE_TABLE).upsert(payload, { onConflict: "user_id" });
-      if(error){
-        console.warn("Supabase upsert error", error);
-        if(!_confirmLocalFallbackSave("erreur synchronisation")) return false;
-        const localSaved = await _saveAppStateToLocalFallback(localFallbackState);
-        if(localSaved){
-          _setLastWriteMeta("local_j", new Date().toISOString());
-          _refreshDataIoBadge();
-        }
-        return !!localSaved;
-      }
-      _lastCloudStateUpdatedAt = String(payload.updated_at || "");
-      _saveCloudStateCache(remoteState, payload.updated_at);
-      _lastCloudStateByteEstimate = Number.isFinite(stateBytes) ? stateBytes : 0;
-      await _markLocalFallbackSynced();
-      _setLastWriteMeta("supabase", payload.updated_at);
-      _refreshDataIoBadge();
-      return true;
-    }catch(e){
-      console.warn("saveAppStateToSupabase failed", e);
-      console.error("[SUPABASE ERROR]", e);
-
-      const statusEl = document.getElementById("saveStatusMessage") || document.getElementById("saveToastDetail");
-      if (statusEl) {
-        statusEl.textContent = "Erreur de sauvegarde distante.";
-        statusEl.style.color = "red";
-      }
-
-      setTimeout(() => {
-        const toast = document.getElementById("saveToast");
-        if(toast) toast.classList.remove("show");
-      }, 4000);
+    const remoteUpdatedAt = String(remoteRow?.updated_at || "").trim();
+    const localKnownUpdatedAt = String(_lastCloudStateUpdatedAt || "").trim();
+    const remoteTs = remoteUpdatedAt ? new Date(remoteUpdatedAt).getTime() : 0;
+    const localTs = localKnownUpdatedAt ? new Date(localKnownUpdatedAt).getTime() : 0;
+    if(remoteTs && localTs && remoteTs > (localTs + 1000)){
+      showSaveToast("error", "Sauvegarde cloud bloquée", "Version cloud plus récente détectée. Recharge la page.");
       return false;
     }
-  };
-  const promise = run().finally(() => {
-    if(_saveAppStateToSupabaseFlight === promise){
-      _saveAppStateToSupabaseFlight = null;
-      _saveAppStateToSupabaseFlightKey = null;
+
+    const payload = {
+
+      user_id: session.user.id,
+
+      state_json: stateObj,
+
+      updated_at: new Date().toISOString()
+
+    };
+
+    const { error } = await sb.from(SUPABASE_TABLE).upsert(payload, { onConflict: "user_id" });
+
+    if(error){ console.warn("Supabase upsert error", error); return false; }
+    _lastCloudStateUpdatedAt = String(payload.updated_at || "");
+
+    return true;
+
+  }catch(e){
+
+    console.warn("saveAppStateToSupabase failed", e);
+    console.error("[SUPABASE ERROR]", e);
+
+    const statusEl = document.getElementById("saveStatusMessage") || document.getElementById("saveToastDetail");
+    if (statusEl) {
+      statusEl.textContent = "Erreur de sauvegarde cloud.";
+      statusEl.style.color = "red";
     }
-    _isDataIoWriteBusy = false;
-    updateSaveButton();
-    _refreshDataIoBadge();
-  });
-  _saveAppStateToSupabaseFlight = promise;
-  _saveAppStateToSupabaseFlightKey = stateKey;
-  return await promise;
+
+    setTimeout(() => {
+      const toast = document.getElementById("saveToast");
+      if(toast) toast.classList.remove("show");
+    }, 4000);
+
+    return false;
+
+  }
 
 };
 
 // ---- users (simple, sans RLS) ----
 async function saveUsersToSupabase(users){
-  if(_rlsUsersWriteBlocked) return false;
-  const usersList = Array.isArray(users) ? users : [];
-  const usersSig = _serializeUsersSignature(usersList);
-  if(!usersSig) return false;
-  if(usersSig === _usersSaveLastSavedSignature) return true;
   const sb = _getSupabaseClient();
   if(!sb) return false;
   const session = await _ensureSession();
   if(!session || !session.user) return false;
-  const userId = session.user.id;
-  const usersKey = `${userId}|${usersSig}`;
-  const inFlight = _saveUsersToSupabaseFlightByKey.get(usersKey);
-  if(inFlight) return inFlight;
   try{
     const payload = {
-      user_id: userId,
-      users_json: usersList,
+      user_id: session.user.id,
+      users_json: users,
       updated_at: new Date().toISOString()
     };
-    const promise = (async()=>{
-      const { error } = await sb.from(SUPABASE_USERS_TABLE).upsert(payload, { onConflict: "user_id" });
-      if(error){
-        if(_isRlsDenied(error)){
-          _rlsUsersWriteBlocked = true;
-          return false;
-        }
-        console.warn("Supabase users upsert error", error);
-        return false;
-      }
-      _usersSaveLastSavedSignature = usersSig;
-      return true;
-    })();
-    _saveUsersToSupabaseFlightByKey.set(usersKey, promise);
-    return await promise.finally(() => {
-      if(_saveUsersToSupabaseFlightByKey.get(usersKey) === promise){
-        _saveUsersToSupabaseFlightByKey.delete(usersKey);
-      }
-    });
+    const { error } = await sb.from(SUPABASE_USERS_TABLE).upsert(payload, { onConflict: "user_id" });
+    if(error){ console.warn("Supabase users upsert error", error); return false; }
+    return true;
   }catch(e){
     console.warn("saveUsersToSupabase failed", e);
     return false;
@@ -578,102 +313,31 @@ async function saveUsersToSupabase(users){
 window.saveUsersToSupabase = saveUsersToSupabase;
 
 async function logLoginToSupabase(payload){
-  if(_rlsLoginsWriteBlocked){
-    try{ localStorage.setItem("login_log_last_error", "sync_unavailable"); }catch(e){ softCatch(e); }
-    return false;
-  }
   const sb = _getSupabaseClient();
   if(!sb) return false;
   const session = await _ensureSession();
-  const userId = session?.user?.id || "";
-  if(!userId){
-    try{ localStorage.setItem("login_log_last_error", "sync_unavailable"); }catch(e){ softCatch(e); }
-    return false;
-  }
-  const nowMs = Date.now();
-  const signature = `${userId}|${payload?.email || ""}|${payload?.name || ""}|${payload?.role || "user"}`;
-  const dedupeKey = signature;
-  const lastSig = _loginLogLastSignatureByKey.get(signature);
-
-  if(lastSig && nowMs - lastSig.createdAt < LOGIN_LOG_SIGNATURE_TTL_MS && lastSig.value === signature){
-    return true;
-  }
-
-  const lastSentAt = _loginLogLastSentAtByKey.get(dedupeKey) || 0;
-  if((nowMs - lastSentAt) < LOGIN_LOG_THROTTLE_MS){
-    return true;
-  }
-  const rowTs = payload?.ts || new Date().toISOString();
-  const key = `${userId}|${payload?.email || ""}|${payload?.name || ""}|${payload?.role || "user"}|${rowTs}`;
-  const inFlight = _logLoginToSupabaseFlightByKey.get(key);
-  if(inFlight) return inFlight;
+  const userId = session?.user?.id || "anon";
   try{
     const row = {
       user_id: userId,
       email: payload?.email || "",
       name: payload?.name || "",
       role: payload?.role || "user",
-      ts: rowTs
+      ts: payload?.ts || new Date().toISOString()
     };
-    const promise = (async()=>{
-      const { error } = await sb.from(SUPABASE_LOGINS_TABLE).insert(row);
-      if(error){
-        if(_isRlsDenied(error)){
-          _rlsLoginsWriteBlocked = true;
-        }else{
-          console.warn("Supabase logins insert error", error);
-        }
-        try{ localStorage.setItem("login_log_last_error", "sync_unavailable"); }catch(e){ softCatch(e); }
-        return false;
-      }
-      try{ localStorage.removeItem("login_log_last_error"); }catch(e){ softCatch(e); }
-      _loginLogLastSignatureByKey.set(signature, { value: signature, createdAt: Date.now() });
-      _loginLogLastSentAtByKey.set(dedupeKey, Date.now());
-      return true;
-    })();
-    _logLoginToSupabaseFlightByKey.set(key, promise);
-    return await promise.finally(() => {
-      if(_logLoginToSupabaseFlightByKey.get(key) === promise){
-        _logLoginToSupabaseFlightByKey.delete(key);
-      }
-    });
+    const { error } = await sb.from(SUPABASE_LOGINS_TABLE).insert(row);
+    if(error){
+      console.warn("Supabase logins insert error", error);
+      try{ localStorage.setItem("login_log_last_error", error.message || "insert_failed"); }catch(e){ softCatch(e); }
+      return false;
+    }
+    try{ localStorage.removeItem("login_log_last_error"); }catch(e){ softCatch(e); }
+    return true;
   }catch(e){
     console.warn("logLoginToSupabase failed", e);
-    try{ localStorage.setItem("login_log_last_error", "sync_unavailable"); }catch(err){}
+    try{ localStorage.setItem("login_log_last_error", e?.message || "insert_failed"); }catch(err){}
     return false;
   }
-}
-
-function _serializeUsersSignature(list){
-  try{
-    return JSON.stringify(Array.isArray(list) ? list : []);
-  }catch(e){
-    return "";
-  }
-}
-
-function _queueUsersSupabaseSave(users){
-  const nextUsers = Array.isArray(users) ? users : [];
-  const nextSig = _serializeUsersSignature(nextUsers);
-  if(!nextSig || nextSig === _usersSaveLastSavedSignature) return;
-  _usersSavePendingUsers = nextUsers;
-  _usersSavePendingSignature = nextSig;
-  if(_usersSaveDebounceTimer){
-    clearTimeout(_usersSaveDebounceTimer);
-  }
-  _usersSaveDebounceTimer = setTimeout(()=>{
-    const payload = _usersSavePendingUsers;
-    const signature = _usersSavePendingSignature;
-    _usersSaveDebounceTimer = null;
-    _usersSavePendingUsers = null;
-    _usersSavePendingSignature = "";
-    if(!signature || signature === _usersSaveLastSavedSignature) return;
-    saveUsersToSupabase(payload).then((ok)=>{
-      if(ok){
-        _usersSaveLastSavedSignature = signature;
-      }
-    }).catch(softCatch);
-  }, USERS_SAVE_DEBOUNCE_MS);
 }
 window.logUserLogin = async function(payload){
   try{
@@ -690,22 +354,9 @@ async function sha256Hex(str){
 }
 
 async function createSessionToken(token, payload, ttlDays=30){
-  if(_rlsSessionsWriteBlocked) return false;
   const sb = _getSupabaseClient();
   if(!sb) return false;
   const tokenHash = await sha256Hex(token);
-  const now = Date.now();
-  const signature = `${payload?.email || ""}|${payload?.name || ""}|${payload?.role || "user"}`;
-  const lastSignature = _createSessionLastSignatureByHash.get(tokenHash);
-
-  if(lastSignature && now - lastSignature.createdAt < SESSION_CREATE_SIGNATURE_TTL_MS && lastSignature.value === signature){
-    return true;
-  }
-
-  const lastSentAt = _createSessionLastSentAtByHash.get(tokenHash) || 0;
-  if(now - lastSentAt < SESSION_CREATE_THROTTLE_MS){
-    return true;
-  }
   const expires = new Date();
   expires.setDate(expires.getDate() + (ttlDays || 30));
   try{
@@ -718,17 +369,7 @@ async function createSessionToken(token, payload, ttlDays=30){
       created_at: new Date().toISOString()
     };
     const { error } = await sb.from(SUPABASE_SESSIONS_TABLE).insert(row);
-    if(error){
-      if(_isRlsDenied(error)){
-        _rlsSessionsWriteBlocked = true;
-        return false;
-      }
-      console.warn("Supabase sessions insert error", error);
-      return false;
-    }
-    const nowAfterSave = Date.now();
-    _createSessionLastSentAtByHash.set(tokenHash, nowAfterSave);
-    _createSessionLastSignatureByHash.set(tokenHash, { value: signature, createdAt: nowAfterSave });
+    if(error){ console.warn("Supabase sessions insert error", error); return false; }
     return true;
   }catch(e){
     console.warn("createSessionToken failed", e);
@@ -739,59 +380,35 @@ async function createSessionToken(token, payload, ttlDays=30){
 async function validateSessionToken(token, renewDays=30){
   const sb = _getSupabaseClient();
   if(!sb) return null;
-  const tokenHash = await sha256Hex(token);
-  const now = Date.now();
-  const cached = _validateSessionTokenCacheByHash.get(tokenHash);
-  if(cached && cached.expiresAt > now){
-    return cached.value;
+  try{
+    const tokenHash = await sha256Hex(token);
+    const { data, error } = await sb
+      .from(SUPABASE_SESSIONS_TABLE)
+      .select("email,name,role,expires_at")
+      .eq("token_hash", tokenHash)
+      .maybeSingle();
+    if(error){ console.warn("Supabase sessions select error", error); return null; }
+    if(!data) return null;
+    const exp = data.expires_at ? new Date(data.expires_at) : null;
+    if(!exp || isNaN(exp) || exp < new Date()) return null;
+    if(renewDays){
+      const next = new Date();
+      next.setDate(next.getDate() + renewDays);
+      await sb.from(SUPABASE_SESSIONS_TABLE)
+        .update({ expires_at: next.toISOString() })
+        .eq("token_hash", tokenHash);
+    }
+    return { email: data.email || "", name: data.name || "", role: data.role || "user" };
+  }catch(e){
+    console.warn("validateSessionToken failed", e);
+    return null;
   }
-  const inFlight = _validateSessionTokenFlightByHash.get(tokenHash);
-  if(inFlight) return inFlight;
-  const promise = (async() => {
-    try{
-      const { data, error } = await sb
-        .from(SUPABASE_SESSIONS_TABLE)
-        .select(SUPABASE_SESSIONS_SELECT_COLUMNS)
-          .eq("token_hash", tokenHash)
-          .maybeSingle();
-      if(error){ console.warn("Supabase sessions select error", error); return null; }
-      if(!data) return null;
-      const exp = data.expires_at ? new Date(data.expires_at) : null;
-      const nowDate = new Date();
-      if(!exp || isNaN(exp) || exp < nowDate) return null;
-      if(renewDays){
-        const ttlMs = exp.getTime() - nowDate.getTime();
-        if(ttlMs < SESSION_RENEW_LEEWAY_MS){
-          const next = new Date();
-          next.setDate(next.getDate() + renewDays);
-          await sb.from(SUPABASE_SESSIONS_TABLE)
-            .update({ expires_at: next.toISOString() })
-            .eq("token_hash", tokenHash);
-        }
-      }
-      return { email: data.email || "", name: data.name || "", role: data.role || "user" };
-    }catch(e){
-      console.warn("validateSessionToken failed", e);
-      return null;
-    }
-  })();
-  _validateSessionTokenFlightByHash.set(tokenHash, promise);
-  const result = await promise.finally(() => {
-    if(_validateSessionTokenFlightByHash.get(tokenHash) === promise){
-      _validateSessionTokenFlightByHash.delete(tokenHash);
-    }
-  });
-  _validateSessionTokenCacheByHash.set(tokenHash, { value: result, expiresAt: now + SESSION_TOKEN_VALIDATE_CACHE_MS });
-  return result;
 }
 
 window.createSessionToken = createSessionToken;
 window.validateSessionToken = validateSessionToken;
 
 async function cleanupExpiredSessions(){
-  if(_rlsSessionsWriteBlocked) return false;
-  const now = Date.now();
-  if(now - _lastSessionCleanupAt < SESSION_CLEANUP_MIN_INTERVAL_MS) return true;
   const sb = _getSupabaseClient();
   if(!sb) return false;
   try{
@@ -800,15 +417,7 @@ async function cleanupExpiredSessions(){
       .from(SUPABASE_SESSIONS_TABLE)
       .delete()
       .lt("expires_at", nowIso);
-    if(error){
-      if(_isRlsDenied(error)){
-        _rlsSessionsWriteBlocked = true;
-        return false;
-      }
-      console.warn("Supabase sessions cleanup error", error);
-      return false;
-    }
-    _lastSessionCleanupAt = now;
+    if(error){ console.warn("Supabase sessions cleanup error", error); return false; }
     return true;
   }catch(e){
     console.warn("cleanupExpiredSessions failed", e);
@@ -823,35 +432,15 @@ async function loadLoginsFromSupabase(startISO, endISO){
   const session = await _ensureSession();
   const userId = session?.user?.id || null;
   try{
-    const key = `${startISO || ""}|${endISO || ""}|${userId || "anon"}`;
-    const now = Date.now();
-    const cache = _loadLoginsFromSupabaseCacheByKey.get(key);
-    if(cache && cache.expiresAt > now){
-      return cache.value;
-    }
-    const inflight = _loadLoginsFromSupabaseFlightByKey.get(key);
-    if(inflight) return inflight;
-
     let q = sb.from(SUPABASE_LOGINS_TABLE)
-      .select(SUPABASE_LOGINS_SELECT_COLUMNS)
+      .select("email,name,role,ts")
       .order("ts", { ascending: true });
     if(userId) q = q.in("user_id", [userId, "anon"]);
     if(startISO) q = q.gte("ts", startISO);
     if(endISO) q = q.lte("ts", endISO);
-
-    const promise = (async () => {
-      const { data, error } = await q;
-      if(error){ console.warn("Supabase logins select error", error); return []; }
-      const result = data || [];
-      _loadLoginsFromSupabaseCacheByKey.set(key, { value: result, expiresAt: now + EGRESS_LOGINS_CACHE_MS });
-      return result;
-    })();
-    _loadLoginsFromSupabaseFlightByKey.set(key, promise);
-    return await promise.finally(() => {
-      if(_loadLoginsFromSupabaseFlightByKey.get(key) === promise){
-        _loadLoginsFromSupabaseFlightByKey.delete(key);
-      }
-    });
+    const { data, error } = await q;
+    if(error){ console.warn("Supabase logins select error", error); return []; }
+    return data || [];
   }catch(e){
     console.warn("loadLoginsFromSupabase failed", e);
     return [];
@@ -864,47 +453,26 @@ async function loadUsersFromSupabase(force=false){
   const session = await _ensureSession();
   if(!session || !session.user) return false;
   try{
-    const userId = session.user.id;
-    const now = Date.now();
-    if(!force && _loadUsersFromSupabaseCache && _loadUsersFromSupabaseCache.userId === userId && _loadUsersFromSupabaseCacheExpiresAt > now){
-      return _loadUsersFromSupabaseCache.value;
-    }
-    if(_loadUsersFromSupabaseFlight) return _loadUsersFromSupabaseFlight;
-
     if(!force){
       const localUsers = loadUsers();
       if(localUsers && localUsers.length > 0 && !isHostedGithubPages()){
         return false;
       }
     }
-    const promise = (async () => {
-      const { data, error } = await sb
-        .from(SUPABASE_USERS_TABLE)
-        .select(SUPABASE_USERS_SELECT_COLUMNS)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if(error){ console.warn("Supabase users select error", error); return false; }
-      if(!data || !data.users_json) return false;
-      const normalized = (data.users_json || []).map(u=>{
-        if(!u || typeof u !== "object") return u;        if(!u.id) u.id = uid();
-        return u;
-      });
-      const usersSig = _serializeUsersSignature(normalized);
-      if(usersSig){
-        _usersSaveLastSavedSignature = usersSig;
-      }
-      saveUsers(normalized);
-      if(typeof window.populateLoginUsers === "function") window.populateLoginUsers();
-      _loadUsersFromSupabaseCache = { userId, value: true };
-      _loadUsersFromSupabaseCacheExpiresAt = now + EGRESS_SHORT_CACHE_MS;
-      return true;
-    })();
-    _loadUsersFromSupabaseFlight = promise;
-    return await promise.finally(() => {
-      if(_loadUsersFromSupabaseFlight === promise){
-        _loadUsersFromSupabaseFlight = null;
-      }
+    const { data, error } = await sb
+      .from(SUPABASE_USERS_TABLE)
+      .select("users_json, updated_at")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    if(error){ console.warn("Supabase users select error", error); return false; }
+    if(!data || !data.users_json) return false;
+    const normalized = (data.users_json || []).map(u=>{
+      if(!u || typeof u !== "object") return u;      if(!u.id) u.id = uid();
+      return u;
     });
+    saveUsers(normalized);
+    if(typeof window.populateLoginUsers === "function") window.populateLoginUsers();
+    return true;
   }catch(e){
     console.warn("loadUsersFromSupabase failed", e);
     return false;
@@ -1051,7 +619,7 @@ async function _loadSupabaseTimeLogsRows(sb){
   try{
     const { data, error } = await sb
       .from(SUPABASE_TIME_LOGS_TABLE)
-      .select(SUPABASE_TIME_LOGS_SELECT_COLUMNS);
+      .select("*");
     if(error){
       console.warn("Supabase time logs select error", error);
       return [];
@@ -1073,7 +641,7 @@ async function _loadSupabaseTasksRowsByIds(sb, ids){
     try{
       const { data, error } = await sb
         .from(SUPABASE_TASKS_TABLE)
-        .select(SUPABASE_TASKS_SELECT_COLUMNS)
+        .select("*")
         .in("id", chunk);
       if(error){
         console.warn("Supabase tasks select error", error);
@@ -1191,197 +759,86 @@ function _mergeStateTimeLogs(stateJson, supabaseRows, supabaseTaskRows){
   return Array.from(map.values());
 }
 
-function _isSupabaseStateMetadataFresh(remoteUpdatedAt){
-  const remoteTs = _safeTs(remoteUpdatedAt);
-  const localTs = _safeTs(_lastCloudStateUpdatedAt);
-  return remoteTs > 0 && localTs > 0 && remoteTs <= localTs;
-}
-
 
 window.loadAppStateFromSupabase = async function(){
-  if(_loadAppStateFromSupabaseFlight) return _loadAppStateFromSupabaseFlight;
 
-  const run = async () => {
-    _isDataIoReadBusy = true;
-    _refreshDataIoBadge();
-    const sb = _getSupabaseClient();
+  const sb = _getSupabaseClient();
 
-    if(!sb){
-      if(!_confirmLocalFallbackLoad("service distant indisponible")) return false;
-      const localData = await _loadAppStateFromLocalFallback();
-      if(!localData || !localData.state_json) return false;
-      _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
-      state = normalizeState(localData.state_json || {});
-      invalidateCanonicalTimeLogsCache();
-      _lastStateLoadSource = "local_storage";
-      renderAll();
-      _refreshDataIoBadge();
-      clearDirty();
-      return true;
+  if(!sb) return false;
+
+
+
+  const session = await _ensureSession();
+
+  if(!session || !session.user) return false;
+
+
+
+  try{
+    _supabaseOwnerFallbackCount = 0;
+
+    const { data, error } = await sb
+
+      .from(SUPABASE_TABLE)
+
+      .select("state_json, updated_at")
+
+      .eq("user_id", session.user.id)
+
+      .maybeSingle();
+
+
+
+    if(error){ console.warn("Supabase select error", error); return false; }
+
+    if(!data || !data.state_json) return false;
+    _lastCloudStateUpdatedAt = String(data.updated_at || "").trim();
+
+
+
+    // Mode production stable: lecture unique state_json (sans fusion).
+    if(isSingleSourceReadMode()){
+      state = normalizeState(data.state_json || {});
+    }else{
+      const supabaseTimeLogsRows = await _loadSupabaseTimeLogsRows(sb);
+      const stateTaskIds = Array.from(new Set(
+        (Array.isArray(data?.state_json?.tasks) ? data.state_json.tasks : [])
+          .map((t)=>normId(t?.id))
+          .filter(Boolean)
+      ));
+      const supabaseTasksRows = await _loadSupabaseTasksRowsByIds(sb, stateTaskIds);
+      const supabaseTaskIds = Array.from(new Set(supabaseTimeLogsRows.map((r)=>normId(r?.task_id || r?.tache_id || r?.taskId)).filter(Boolean)));
+      const supabaseTaskRowsForLogs = await _loadSupabaseTasksRowsByIds(sb, supabaseTaskIds);
+      const mergedStateJson = {
+        ...(data.state_json || {}),
+        tasks: _mergeStateTasksFromSupabase(data?.state_json, supabaseTasksRows),
+        timeLogs: _mergeStateTimeLogs(data?.state_json, supabaseTimeLogsRows, supabaseTaskRowsForLogs)
+      };
+      state = normalizeState(mergedStateJson);
+    }
+    _lastStateLoadSource = "supabase_cloud";
+
+    renderAll();
+    if(_supabaseOwnerFallbackCount > 0){
+      showSaveToast(
+        "error",
+        "Données invalides (owner)",
+        `${_supabaseOwnerFallbackCount} tâche(s) avec owner invalide détectée(s) depuis Supabase.`
+      );
     }
 
+    clearDirty();
 
+    return true;
 
-    const session = await _ensureSession();
+  }catch(e){
 
-    if(!session || !session.user){
-      if(!_confirmLocalFallbackLoad("session distante indisponible")) return false;
-      const localData = await _loadAppStateFromLocalFallback();
-      if(!localData || !localData.state_json) return false;
-      _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
-      state = normalizeState(localData.state_json || {});
-      invalidateCanonicalTimeLogsCache();
-      _lastStateLoadSource = "local_storage";
-      renderAll();
-      _refreshDataIoBadge();
-      clearDirty();
-      return true;
-    }
+    console.warn("loadAppStateFromSupabase failed", e);
 
+    return false;
 
+  }
 
-    try{
-      _supabaseOwnerFallbackCount = 0;
-
-      const localCloudCache = _readCloudStateCache();
-      if(localCloudCache && localCloudCache.state_json && localCloudCache.updated_at){
-        const { data: remoteMeta, error: metaError } = await sb
-          .from(SUPABASE_TABLE)
-          .select("updated_at")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
-        if(metaError){
-          console.warn("Supabase metadata select error", metaError);
-        }else if(String(remoteMeta?.updated_at || "").trim() === String(localCloudCache.updated_at || "").trim()){
-          _lastCloudStateUpdatedAt = String(localCloudCache.updated_at || "").trim();
-          state = normalizeState(localCloudCache.state_json || {});
-          invalidateCanonicalTimeLogsCache();
-          _lastStateLoadSource = "supabase_cloud";
-          renderAll();
-          _refreshDataIoBadge();
-          clearDirty();
-          return true;
-        }
-      }
-
-      const { data, error } = await sb
-        .from(SUPABASE_TABLE)
-        .select("state_json, updated_at")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-
-
-      if(error){
-        console.warn("Supabase select error", error);
-        if(!_confirmLocalFallbackLoad("erreur lecture distante")) return false;
-        const localData = await _loadAppStateFromLocalFallback();
-        if(!localData || !localData.state_json) return false;
-        _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
-        state = normalizeState(localData.state_json || {});
-        invalidateCanonicalTimeLogsCache();
-        _lastStateLoadSource = "local_storage";
-        renderAll();
-        _refreshDataIoBadge();
-        clearDirty();
-        return true;
-      }
-
-      if(!data || !data.state_json){
-        if(!_confirmLocalFallbackLoad("aucune donnée distante")) return false;
-        const localData = await _loadAppStateFromLocalFallback();
-        if(!localData || !localData.state_json) return false;
-        _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
-        state = normalizeState(localData.state_json || {});
-        invalidateCanonicalTimeLogsCache();
-        _lastStateLoadSource = "local_storage";
-        renderAll();
-        _refreshDataIoBadge();
-        clearDirty();
-        return true;
-      }
-      const localPreferred = await _maybeUseLocalNewerState(data.updated_at);
-      if(localPreferred && localPreferred.state_json){
-        _lastCloudStateUpdatedAt = String(localPreferred.updated_at || "").trim();
-        state = normalizeState(localPreferred.state_json || {});
-        invalidateCanonicalTimeLogsCache();
-        _lastStateLoadSource = "local_storage";
-        renderAll();
-        _refreshDataIoBadge();
-        clearDirty();
-        return true;
-      }
-      _lastCloudStateUpdatedAt = String(data.updated_at || "").trim();
-      _saveCloudStateCache(data.state_json || {}, data.updated_at);
-
-
-
-      // Mode production stable: lecture unique state_json (sans fusion).
-      if(isSingleSourceReadMode()){
-        state = normalizeState(data.state_json || {});
-        invalidateCanonicalTimeLogsCache();
-      }else{
-        const supabaseTimeLogsRows = await _loadSupabaseTimeLogsRows(sb);
-        const stateTaskIds = Array.from(new Set(
-          (Array.isArray(data?.state_json?.tasks) ? data.state_json.tasks : [])
-            .map((t)=>normId(t?.id))
-            .filter(Boolean)
-        ));
-        const supabaseTasksRows = await _loadSupabaseTasksRowsByIds(sb, stateTaskIds);
-        const supabaseTaskIds = Array.from(new Set(supabaseTimeLogsRows.map((r)=>normId(r?.task_id || r?.tache_id || r?.taskId)).filter(Boolean)));
-        const supabaseTaskRowsForLogs = await _loadSupabaseTasksRowsByIds(sb, supabaseTaskIds);
-        const mergedStateJson = {
-          ...(data.state_json || {}),
-          tasks: _mergeStateTasksFromSupabase(data?.state_json, supabaseTasksRows),
-          timeLogs: _mergeStateTimeLogs(data?.state_json, supabaseTimeLogsRows, supabaseTaskRowsForLogs)
-        };
-        state = normalizeState(mergedStateJson);
-        invalidateCanonicalTimeLogsCache();
-      }
-      _lastStateLoadSource = "supabase_cloud";
-
-      renderAll();
-      _refreshDataIoBadge();
-      if(_supabaseOwnerFallbackCount > 0){
-        showSaveToast(
-          "error",
-          "Données invalides (owner)",
-          `${_supabaseOwnerFallbackCount} tâche(s) avec owner invalide détectée(s) depuis Supabase.`
-        );
-      }
-
-      clearDirty();
-
-      return true;
-
-    }catch(e){
-
-      console.warn("loadAppStateFromSupabase failed", e);
-        if(!_confirmLocalFallbackLoad("exception synchronisation")) return false;
-
-      const localData = await _loadAppStateFromLocalFallback();
-      if(!localData || !localData.state_json) return false;
-      _lastCloudStateUpdatedAt = String(localData.updated_at || "").trim();
-      state = normalizeState(localData.state_json || {});
-      invalidateCanonicalTimeLogsCache();
-      _lastStateLoadSource = "local_storage";
-      renderAll();
-      _refreshDataIoBadge();
-      clearDirty();
-      return true;
-
-    }finally{
-      _isDataIoReadBusy = false;
-      _refreshDataIoBadge();
-    }
-  };
-
-  const promise = run();
-  _loadAppStateFromSupabaseFlight = promise.finally(() => {
-    if(_loadAppStateFromSupabaseFlight === promise){
-      _loadAppStateFromSupabaseFlight = null;
-    }
-  });
-  return promise;
 };
 
 
@@ -1389,7 +846,6 @@ window.loadAppStateFromSupabase = async function(){
 // ---- auto-load apres 1er rendu UI ----
 
 let _supabaseAutoloadScheduled = false;
-let _loadAppStateFromSupabaseFlight = null;
 function _scheduleSupabaseAutoLoad(){
   if(_supabaseAutoloadScheduled) return;
   _supabaseAutoloadScheduled = true;
@@ -1399,10 +855,11 @@ function _scheduleSupabaseAutoLoad(){
     try{
       const ok = await window.loadAppStateFromSupabase();
       if(!ok){
-        showSaveToast("error", "Chargement distant", "Impossible de charger les données distantes. Vérifie la connexion.");
+        showSaveToast("error", "Chargement Supabase", "Impossible de charger les données cloud. Vérifie la connexion.");
       }
+      loadUsersFromSupabase();
     }catch(e){ softCatch(e); }
-  }, 1200);
+  }, 120);
 }
 
 
@@ -1437,15 +894,9 @@ let _stateVersion = 0;
 let _filteredCache = { key:"", version:-1, tasks:null };
 let _missingLogEntriesTotalCache = { version:-1, todayKey:"", totalTasks:-1, total:0 };
 let _missingDaysMapAllTasksCache = { version:-1, todayKey:"", totalTasks:-1, map:null };
-let _canonicalTimeLogsCache = { version:-1, logs:null };
-function invalidateCanonicalTimeLogsCache(){
-  _canonicalTimeLogsCache = { version:-1, logs:null };
-}
 let _masterTableRowsHtmlCache = { key:"", html:"" };
 let _masterMetricsHtmlCache = { key:"", html:"" };
 let _masterWorkloadRenderKey = "";
-let _masterTabsRenderKey = "";
-let _masterMetricsWorkloadRenderKey = "";
 let _cache = null;
 let _cacheKey = null;
 let _ganttCache = null;
@@ -1456,7 +907,6 @@ let _lastMasterAnimSignature = "";
 let _lastScalabilityReport = null;
 let _lastScaleAlertSig = "";
 let _lastScaleAlertAt = 0;
-let _dataQualityReportCache = { version: -1, state: null, report: null };
 let showCompletedMaster = false;
 const SCALE_GUARDS = {
   warnTasks: 1000,
@@ -1930,57 +1380,6 @@ function scrollViewToTop(){
   });
 }
 
-function _removeGanttTodayLine(ganttRoot){
-  const existing = ganttRoot?.querySelector(".gantt-today-line");
-  if(existing) existing.remove();
-}
-
-function _getWeekdayIndexForToday(date){
-  const d = date || new Date();
-  const wd = d.getDay(); // 0 = dim, 1 = lun...
-  return wd === 0 ? 6 : wd - 1;
-}
-
-function _positionGanttTodayLine(ganttRoot){
-  if(!ganttRoot) return;
-  const scroller = ganttRoot.querySelector(".tablewrap.gantt-table");
-  if(!scroller) return;
-  const currentWeekCell = scroller.querySelector("th.week-cell.week-today");
-  if(!currentWeekCell){
-    _removeGanttTodayLine(ganttRoot);
-    return;
-  }
-
-  let marker = scroller.querySelector(".gantt-today-line");
-  if(!marker){
-    marker = document.createElement("div");
-    marker.className = "gantt-today-line";
-    marker.setAttribute("aria-hidden", "true");
-    scroller.appendChild(marker);
-  }
-
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const monday = new Date(today.getTime());
-  monday.setDate(today.getDate()-((today.getDay()+6)%7));
-  const weekdayIndex = _getWeekdayIndexForToday(today);
-  const dayColumn = currentWeekCell.offsetWidth / 7;
-  const statusCell = scroller.querySelector("th.gantt-col-status");
-  const weekBandStart = currentWeekCell.offsetLeft;
-  const stickyLimit = statusCell ? (statusCell.offsetLeft + statusCell.offsetWidth) : weekBandStart;
-  const markerLeft = Math.max(weekBandStart, stickyLimit) + (weekdayIndex * dayColumn);
-  const markerWidth = 1;
-
-  const header = scroller.querySelector("thead");
-  const headerHeight = header ? header.offsetHeight : 0;
-  const table = scroller.querySelector("table");
-  const bodyHeight = table ? table.offsetHeight : 0;
-  marker.style.width = `${Math.max(1, markerWidth)}px`;
-  marker.style.left = `${Math.round(markerLeft)}px`;
-  marker.style.top = `${headerHeight}px`;
-  marker.style.height = `${Math.max(0, bodyHeight - headerHeight)}px`;
-}
-
 // verrouille la position de la sidebar une fois la mise en page stabilisée
 
 function scrollGanttToCurrentWeek(ganttRoot){
@@ -1989,20 +1388,9 @@ function scrollGanttToCurrentWeek(ganttRoot){
     const scroller = ganttRoot.querySelector(".tablewrap.gantt-table");
     if(!scroller) return;
     const currentWeekCell = scroller.querySelector("th.week-cell.week-today");
-    if(!currentWeekCell){
-      _removeGanttTodayLine(ganttRoot);
-      return;
-    }
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const monday = new Date(today.getTime());
-    monday.setDate(today.getDate()-((today.getDay()+6)%7));
-    const weekdayIndex = _getWeekdayIndexForToday(today);
-    const dayColumn = currentWeekCell.offsetWidth / 7;
-    const markerXInWeek = currentWeekCell.offsetLeft + (weekdayIndex * dayColumn);
-    const target = Math.max(0, Math.round(markerXInWeek - (scroller.clientWidth * 0.42)));
+    if(!currentWeekCell) return;
+    const target = Math.max(0, currentWeekCell.offsetLeft - Math.round(scroller.clientWidth * 0.35));
     scroller.scrollLeft = target;
-    _positionGanttTodayLine(ganttRoot);
   }catch(e){ softCatch(e); }
 }
 
@@ -2010,11 +1398,6 @@ function scheduleGanttScrollToCurrentWeek(ganttRoot){
   requestAnimationFrame(()=>{
     requestAnimationFrame(()=>{
       scrollGanttToCurrentWeek(ganttRoot);
-      _positionGanttTodayLine(ganttRoot);
-      setTimeout(()=>{
-        scrollGanttToCurrentWeek(ganttRoot);
-        _positionGanttTodayLine(ganttRoot);
-      }, 120);
     });
   });
 }
@@ -2230,7 +1613,7 @@ function saveUsers(list){
     try{
       if(typeof window.populateLoginUsers === "function") window.populateLoginUsers();
     }catch(e){ softCatch(e); }
-    try{ _queueUsersSupabaseSave(list||[]); }catch(e){ softCatch(e); }
+    try{ saveUsersToSupabase(list||[]); }catch(e){ softCatch(e); }
   }catch(e){ softCatch(e); }
 }
 
@@ -2273,20 +1656,38 @@ function getCurrentRole(){
   return sessionStorage.getItem("current_role") || "user";
 }
 function buildAdminMiniDiagText(){
-  return "";
+  try{
+    const m = runtimePerf?.lastSegmentSizes;
+    if(!m) return "";
+    const seg = m.segmentsBytes || {};
+    const kb = (v)=>`${Math.round((Number(v||0))/1024)} Ko`;
+    const rm = Number(runtimePerf?.lastRenderMasterMs || 0).toFixed(0);
+    const rg = Number(runtimePerf?.lastRenderMasterGanttMs || 0).toFixed(0);
+    const rmm = Number(runtimePerf?.lastRenderMasterMetricsMs || 0).toFixed(0);
+    const rwl = Number(runtimePerf?.lastRenderMasterWorkloadMs || 0).toFixed(0);
+    const rtb = Number(runtimePerf?.lastRenderMasterTableMs || 0).toFixed(0);
+    const mm = Number(runtimePerf?.lastMissingMapCalls || 0);
+    return ` | Diag: etat ${kb(m.totalBytes)} | projets ${kb(seg.projects)} | taches ${kb(seg.tasks)} | logs ${kb(seg.timeLogs)} | rm ${rm} ms | rg ${rg} ms | rmm ${rmm} | rwl ${rwl} | rtb ${rtb} | mm ${mm}`;
+  }catch(e){
+    softCatch(e);
+    return "";
+  }
 }
 function updateRoleUI(){
   const role = getCurrentRole();
   const cfgBtn = el("btnConfig");
   if(cfgBtn) cfgBtn.style.display = (role==="admin") ? "inline-flex" : "none";
+  const sourceBtn = el("btnToggleSingleSource");
+  if(sourceBtn) sourceBtn.style.display = (role==="admin") ? "inline-flex" : "none";
+  refreshSingleSourceToggleButton();
   const topUser = el("topbarUser");
   if(topUser){
     const name = sessionStorage.getItem("current_user") || "Invité";
     const email = sessionStorage.getItem("current_email") || "";
     const roleLabel = role==="admin" ? "Admin" : "Utilisateur";
     const emailPart = email ? ` - ${email}` : "";
-    const main = `Utilisateur connecté: ${name}${emailPart} - ${roleLabel}`;
-    topUser.innerHTML = `${attrEscape(main)} ${buildDataIoBadgeHtml()}`;
+    const diagPart = role==="admin" ? buildAdminMiniDiagText() : "";
+    topUser.textContent = `Utilisateur connecté: ${name}${emailPart} - ${roleLabel}${diagPart}`;
   }
   applyThemeForCurrentUser();
 }
@@ -2310,6 +1711,11 @@ function applyRoleAccess(){
   if(cfgBtn){
     cfgBtn.style.display = role==="admin" ? "inline-flex" : "none";
   }
+  const sourceBtn = el("btnToggleSingleSource");
+  if(sourceBtn){
+    sourceBtn.style.display = role==="admin" ? "inline-flex" : "none";
+  }
+  refreshSingleSourceToggleButton();
   const switchBtn = el("btnSwitchUser");
   if(switchBtn){
     switchBtn.style.display = "inline-flex";
@@ -2975,10 +2381,7 @@ function openConfigModal(){
     if(wrap) wrap.style.display = role==="admin" ? "block" : "none";
     loginSection.style.display = "";
   }
-  if(role==="admin"){
-    _lastLoginJournalRangeKey = "";
-    setTimeout(()=>{ queueLoginJournalRefresh(); }, 220);
-  }
+  if(role==="admin") initLoginJournalUI();
   initVacationConfigUI();
   modal.classList.remove("hidden");
   modal.style.display = "flex";
@@ -4881,8 +4284,8 @@ function load(){
   // Mode Supabase-only (PC):
   // JSON hébergé et localStorage ne sont plus des sources actives.
   state = normalizeState(defaultState());
-  invalidateCanonicalTimeLogsCache();
   _lastStateLoadSource = "default_state";
+  renderAll();
   clearDirty();
   _scheduleSupabaseAutoLoad();
 
@@ -4892,72 +4295,6 @@ function load(){
 
 let _suppressSupabaseSave = false;
 let _saveToastTimer = null;
-let _loadUsersFromSupabaseFlight = null;
-let _loadUsersFromSupabaseCache = null;
-let _loadUsersFromSupabaseCacheExpiresAt = 0;
-let _loadLoginsFromSupabaseFlightByKey = new Map();
-let _loadLoginsFromSupabaseCacheByKey = new Map();
-let _stateSaveDebounceTimer = null;
-let _stateSavePendingSignature = "";
-let _stateSavePendingBytes = 0;
-let _stateSavePendingPayload = null;
-let _stateSavePendingFallbackPayload = null;
-let _stateSaveLastSavedSignature = "";
-let _lastStorageWarnToastAt = 0;
-let _lastStateByteEstimate = 0;
-let _lastCloudStateByteEstimate = 0;
-let _saveAppStateToSupabaseFlight = null;
-let _saveAppStateToSupabaseFlightKey = null;
-let _isDataIoReadBusy = false;
-let _isDataIoWriteBusy = false;
-let _saveUsersToSupabaseFlightByKey = new Map();
-let _logLoginToSupabaseFlightByKey = new Map();
-let _loginLogLastSentAtByKey = new Map();
-let _loginLogLastSignatureByKey = new Map();
-let _validateSessionTokenFlightByHash = new Map();
-let _validateSessionTokenCacheByHash = new Map();
-let _createSessionLastSignatureByHash = new Map();
-let _createSessionLastSentAtByHash = new Map();
-const SESSION_TOKEN_VALIDATE_CACHE_MS = 120_000;
-const SESSION_CREATE_THROTTLE_MS = 60_000;
-const SESSION_CREATE_SIGNATURE_TTL_MS = 60 * 60_000;
-const SESSION_CLEANUP_MIN_INTERVAL_MS = 10 * 60_000;
-const SUPABASE_PRE_SAVE_CHECK_INTERVAL_MS = 120_000;
-const UI_ANIMATION_MAX_NODES = 60;
-const LOGIN_JOURNAL_REFRESH_DEBOUNCE_MS = 800;
-const LOGIN_JOURNAL_REFRESH_MIN_INTERVAL_MS = 120_000;
-let _usersSaveDebounceTimer = null;
-let _usersSavePendingUsers = null;
-let _usersSavePendingSignature = "";
-let _usersSaveLastSavedSignature = "";
-let _rlsUsersWriteBlocked = false;
-let _rlsSessionsWriteBlocked = false;
-let _rlsLoginsWriteBlocked = false;
-let _loginJournalRefreshTimer = null;
-let _isLoginJournalBusy = false;
-let _lastLoginJournalRangeKey = "";
-let _lastLoginJournalRefreshAt = 0;
-let _lastSessionCleanupAt = 0;
-
-function _isRlsDenied(error){
-  const code = String(error?.code || "").trim();
-  const message = String(error?.message || "").toLowerCase();
-  return code === "42501" || message.includes("row-level security") || message.includes("permission denied");
-}
-
-function queueLoginJournalRefresh(){
-  const modal = el("configModal");
-  if(modal && modal.classList.contains("hidden")) return;
-  const now = Date.now();
-  if(now - _lastLoginJournalRefreshAt < LOGIN_JOURNAL_REFRESH_MIN_INTERVAL_MS) return;
-  if(_loginJournalRefreshTimer){
-    clearTimeout(_loginJournalRefreshTimer);
-  }
-  _loginJournalRefreshTimer = setTimeout(()=>{
-    _loginJournalRefreshTimer = null;
-    initLoginJournalUI();
-  }, LOGIN_JOURNAL_REFRESH_DEBOUNCE_MS);
-}
 
 function showSaveToast(type, title, detail){
   const toast = el("saveToast");
@@ -4988,77 +4325,17 @@ let _lastCloudAlignmentReport = null;
 let _lastStateLoadSource = "inconnu";
 let _supabaseOwnerFallbackCount = 0;
 let _lastCloudStateUpdatedAt = "";
-let _lastSupabasePreSaveCheckAt = 0;
 
 function stateLoadSourceLabel(src){
   const k = String(src || "").toLowerCase();
-  if(k === "supabase_cloud") return "Données distantes";
+  if(k === "supabase_cloud") return "Cloud";
   if(k === "backup_json") return "JSON disque";
-  if(k === "local_storage") return "J (secours)";
+  if(k === "local_storage") return "LocalStorage";
   if(k === "default_state") return "Etat par défaut";
   return "Inconnue";
 }
 
-function stateWriteTargetLabel(){
-  try{
-    const meta = _getLastWriteMeta();
-    const target = String(meta?.target || "").toLowerCase();
-    if(target === "supabase") return "Données distantes";
-    if(target === "cloud_compact") return "Données distantes";
-    if(target === "local_j") return "J (secours)";
-    if(target === "cloud_blocked") return "Synchronisation bloquée";
-  }catch(e){ softCatch(e); }
-  return "Inconnue";
-}
-
-function _formatLastSyncLabel(){
-  try{
-    const meta = _getLastWriteMeta();
-    const iso = String(meta?.updated_at || "").trim();
-    if(!iso) return "Synchro: --";
-    const d = new Date(iso);
-    if(isNaN(d.getTime())) return "Synchro: --";
-    const now = Date.now();
-    const deltaMs = Math.max(0, now - d.getTime());
-    const deltaMin = Math.floor(deltaMs / 60000);
-    if(deltaMin <= 0) return "Synchro: à l'instant";
-    if(deltaMin < 60) return `Synchro: il y a ${deltaMin} min`;
-    const txt = d.toLocaleString("fr-FR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
-    return `Synchro: ${txt}`;
-  }catch(e){
-    return "Synchro: --";
-  }
-}
-
-function buildDataIoBadgeHtml(){
-  const isReadBusy = !!_isDataIoReadBusy;
-  const isWriteBusy = !!_isDataIoWriteBusy;
-  const readLabel = stateLoadSourceLabel(_lastStateLoadSource);
-  const writeLabel = stateWriteTargetLabel();
-  const isRemoteReadLabel = (readLabel === "Données distantes") || (readLabel === "Synchronisation bloquée");
-  const isRemoteWriteLabel = (writeLabel === "Données distantes") || (writeLabel === "Synchronisation bloquée");
-  const readClass = isRemoteReadLabel ? "is-cloud" : (readLabel.includes("secours") ? "is-fallback" : "is-unknown");
-  const writeClass = isRemoteWriteLabel ? "is-cloud" : (writeLabel.includes("secours") ? "is-fallback" : "is-unknown");
-  const storage = _buildStorageHealth(state || {});
-  const storageClass = storage.warn === "danger" ? "is-danger" : (storage.warn === "warning" ? "is-warning" : "is-cloud");
-  const storageStatusText = storage.warn === "danger" ? " • limite proche" : (storage.warn === "warning" ? " • approche" : "");
-  const storageLabel = `Stockage: ${storage.percent}%${storageStatusText}`;
-  const tip = `Lecture = source chargée au démarrage | Ecriture = derniere cible de synchronisation | Estimation: ${_formatBytes(storage.bytes)} sur ${_formatBytes(SUPABASE_STORAGE_BUDGET_BYTES)}`;
-  const syncClass = (isReadBusy || isWriteBusy) ? " is-syncing" : "";
-  const lastSyncLabel = _formatLastSyncLabel();
-  return `<span class="data-io-badge${syncClass}" title="${attrEscape(tip)}"><img src="assets/database4.ico" alt="" aria-hidden="true"><span class="data-io-item ${readClass}">Lect.: ${attrEscape(readLabel)}${isReadBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${writeClass}">Ecr.: ${attrEscape(writeLabel)}${isWriteBusy ? " (sync)" : ""}</span><span class="data-io-sep">|</span><span class="data-io-item ${storageClass}">${attrEscape(storageLabel)} (${attrEscape(_formatBytes(storage.bytes))})</span><span class="data-io-sep">|</span><span class="data-io-item is-unknown">${attrEscape(lastSyncLabel)}</span></span>`;
-}
-
 function collectDataQualityIssues(currentState=state){
-  if(
-    currentState === state &&
-    _dataQualityReportCache.state === state &&
-    _dataQualityReportCache.version === _stateVersion &&
-    _dataQualityReportCache.report
-  ){
-    return _dataQualityReportCache.report;
-  }
-
   const s = currentState || {};
   const tasks = Array.isArray(s.tasks) ? s.tasks : [];
   const logs = Array.isArray(s.timeLogs) ? s.timeLogs : [];
@@ -5109,17 +4386,11 @@ function collectDataQualityIssues(currentState=state){
   if(orphanLogs > 0) issues.push(`${orphanLogs} log(s) orphelins`);
   if(logsOutsideTaskRange > 0) issues.push(`${logsOutsideTaskRange} log(s) hors période de tâche`);
 
-  const report = {
+  return {
     ok: issues.length === 0,
     issues,
     counts: { invalidDates, externalWithoutVendor, internalWithoutTech, invalidOwnerAssignment, legacyStatus, orphanLogs, logsOutsideTaskRange }
   };
-
-  if(currentState === state){
-    _dataQualityReportCache = { version: _stateVersion, state: currentState, report };
-  }
-
-  return report;
 }
 
 function formatQualityIssuesForToast(report){
@@ -5202,11 +4473,25 @@ function updateDegradedMode(scaleReport){
   }
 }
 
+function refreshStateSegmentationDiagnostics(currentState=state){
+  try{
+    if(typeof window.estimateSegmentSizes !== "function") return null;
+    const metrics = window.estimateSegmentSizes(currentState || {});
+    runtimePerf.lastSegmentSizes = metrics;
+    runtimePerf.lastSegmentationAt = new Date().toISOString();
+    window.__stateSegmentationDiag = metrics;
+    return metrics;
+  }catch(e){
+    softCatch(e);
+    return null;
+  }
+}
+
 function collectScalabilityReport(currentState=state){
   const tasksCount = Array.isArray(currentState?.tasks) ? currentState.tasks.length : 0;
   const timeLogsCount = Array.isArray(currentState?.timeLogs) ? currentState.timeLogs.length : 0;
   const stateBytes = runtimePerf.lastStateBytes || estimateStateBytes(currentState || {});
-  const segmentMetrics = null;
+  const segmentMetrics = runtimePerf.lastSegmentSizes || refreshStateSegmentationDiagnostics(currentState);
   const warnings = [];
 
   if(tasksCount >= SCALE_GUARDS.warnTasks){
@@ -5233,7 +4518,7 @@ function collectScalabilityReport(currentState=state){
     stateBytes,
     stateKb: Math.round(stateBytes/1024),
     segmentMetrics: segmentMetrics || null,
-    lastSegmentationAt: "",
+    lastSegmentationAt: runtimePerf.lastSegmentationAt || "",
     lastRenderMs: runtimePerf.lastRenderMs || 0,
     lastRenderMasterMs: runtimePerf.lastRenderMasterMs || 0,
     lastRenderMasterGanttMs: runtimePerf.lastRenderMasterGanttMs || 0,
@@ -5300,12 +4585,63 @@ async function collectCloudAlignmentReport(currentState=state){
 }
 
 function updateDataQualityBanner(notify=false){
+  const isAdmin = getCurrentRole() === "admin";
   const brandSub = el("brandSub");
   if(!brandSub) return;
 
   const today = new Date();
   const fmt = today.toLocaleDateString("fr-FR",{weekday:"long", day:"2-digit", month:"long", year:"numeric"});
-  brandSub.innerHTML = `<span class="brand-date">${fmt}</span>`;
+  if(!isAdmin){
+    brandSub.innerHTML = `Tableau maître  Projets  Gantt  <span class="brand-date">${fmt}</span>`;
+    return;
+  }
+  const report = collectDataQualityIssues(state);
+  const scale = collectScalabilityReport(state);
+  updateDegradedMode(scale);
+  _lastDataQualityReport = report;
+  _lastScalabilityReport = scale;
+
+  const cloudSuffix = _lastCloudAlignmentReport?.available
+    ? (_lastCloudAlignmentReport.okBusiness ? " · Cloud OK" : ` · Cloud ${_lastCloudAlignmentReport.business.total} écart(s)`)
+    : "";
+  const scaleSuffix = scale.ok ? " · Charge OK" : ` · Charge ${scale.warnings.length} alerte(s)`;
+  const degradedSuffix = runtimePerf.degradedMode ? " · Mode allégé" : "";
+  const badgeLabel = report.ok
+    ? `Qualité données: OK${cloudSuffix}${scaleSuffix}${degradedSuffix}`
+    : `Qualité données: ${report.issues.length} incohérence(s)${cloudSuffix}${scaleSuffix}${degradedSuffix}`;
+  const badgeStyle = (!report.ok)
+    ? "color:#b91c1c;border:1px solid #b91c1c33;background:#b91c1c14;padding:2px 8px;border-radius:10px;cursor:pointer;"
+    : (!scale.ok
+        ? "color:#c2410c;border:1px solid #c2410c33;background:#c2410c14;padding:2px 8px;border-radius:10px;cursor:pointer;"
+        : "color:#16a34a;border:1px solid #16a34a33;background:#16a34a14;padding:2px 8px;border-radius:10px;cursor:pointer;");
+
+  brandSub.innerHTML = `Tableau maître  Projets  Gantt  <span class="brand-date">${fmt}</span>  <span id="dataQualityBadge" style="${badgeStyle}">${badgeLabel}</span>`;
+  const badge = el("dataQualityBadge");
+  if(badge){
+    badge.onclick = async ()=>{
+      const r = _lastDataQualityReport || collectDataQualityIssues(state);
+      const cloud = await collectCloudAlignmentReport(state);
+      _lastCloudAlignmentReport = cloud;
+      const cloudMsg = !cloud.available
+        ? "Cloud: contrôle indisponible"
+        : (cloud.okBusiness
+            ? `Cloud: OK (seul updatedAt peut différer, ${cloud.strict.total} écart(s) technique(s))`
+            : `Cloud: ${cloud.business.total} écart(s) métier`);
+      const scaleNow = collectScalabilityReport(state);
+      _lastScalabilityReport = scaleNow;
+      const scaleMsg = scaleNow.ok
+        ? `Charge: OK (${scaleNow.tasksCount} tâches, ${scaleNow.timeLogsCount} logs, ${scaleNow.stateKb} Ko)`
+        : `Charge: ${scaleNow.warnings.join(" ; ")}`;
+      const detail = `${formatQualityIssuesForToast(r)} | ${cloudMsg} | ${scaleMsg}`;
+      const isOk = r.ok && (!cloud.available || cloud.okBusiness) && scaleNow.ok;
+      showSaveToast(isOk ? "ok" : "error", "Contrôle qualité", detail);
+      updateDataQualityBanner(false);
+    };
+  }
+
+  if(notify && !report.ok){
+    showSaveToast("error", "Contrôle qualité", formatQualityIssuesForToast(report));
+  }
 }
 function applyDataQualityCleanup(){
   const before = collectDataQualityIssues(state);
@@ -5376,6 +4712,11 @@ function exportDataQualityReportPdf(){
   const lines = report.ok
     ? ["Aucune incohérence métier détectée."]
     : report.issues.slice();
+  if(scale.ok){
+    lines.push(`Charge données: OK (${scale.tasksCount} tâches, ${scale.timeLogsCount} logs, ${scale.stateKb} Ko).`);
+  }else{
+    lines.push(`Charge données: ${scale.warnings.join(" ; ")}`);
+  }
 
   const listHtml = lines.map((x,i)=>`<li>${attrEscape(String(i+1))}. ${attrEscape(x)}</li>`).join("");
   card.innerHTML = `
@@ -5419,7 +4760,6 @@ const _badgeChangeSignatures = new Map();
 function animateBadgeChanges(root){
   if(!root) return;
   const nodes = root.querySelectorAll(".num-badge, .badge.owner, .panel-chip .metric-val");
-  if(nodes.length > UI_ANIMATION_MAX_NODES) return;
   nodes.forEach((node, idx)=>{
     const key = `${root.id || "root"}:${idx}:${node.className}`;
     const sig = `${(node.textContent || "").trim()}|${node.getAttribute("style") || ""}`;
@@ -5437,182 +4777,12 @@ function animateCardsInView(viewId){
   const view = el(viewId);
   if(!view) return;
   const cards = view.querySelectorAll(".card, .tablewrap");
-  if(cards.length > UI_ANIMATION_MAX_NODES) return;
   cards.forEach((node, idx)=>{
     node.style.setProperty("--card-fade-delay", `${Math.min(idx * 0.025, 0.18)}s`);
     node.classList.remove("card-fade-in");
     void node.offsetWidth;
     node.classList.add("card-fade-in");
   });
-}
-
-function _serializeStateSignature(stateObj){
-  try{
-    const base = deepClone(stateObj || {});
-    if(base && typeof base === "object"){
-      delete base.lastUpdate;
-    }
-    return JSON.stringify(base || {});
-  }catch(e){
-    softCatch(e);
-    return "";
-  }
-}
-
-function _formatBytes(bytes){
-  const n = Number(bytes || 0);
-  if(!n || !Number.isFinite(n) || n <= 0) return "0 Ko";
-  const units = ["Ko","Mo","Go"];
-  let value = n / 1024;
-  let unit = 0;
-  while(value >= 1024 && unit < units.length - 1){
-    value /= 1024;
-    unit += 1;
-  }
-  return `${Math.round(value * 10) / 10} ${units[unit]}`;
-}
-
-function _getStateByteEstimate(stateObj){
-  const bytes = estimateStateBytes(stateObj || {});
-  _lastStateByteEstimate = bytes;
-  return bytes;
-}
-
-function _compactText(value, maxLen){
-  const text = String(value || "");
-  const limit = Number.isFinite(maxLen) ? Math.max(0, Math.floor(maxLen)) : 0;
-  if(limit <= 0 || text.length <= limit){
-    return text;
-  }
-  return text.slice(0, limit);
-}
-
-function _buildCompactStateForRemoteSync(stateObj){
-  const normalized = normalizeState(stateObj || {});
-  const compact = {
-    projects: Array.isArray(normalized.projects) ? normalized.projects : [],
-    tasks: Array.isArray(normalized.tasks) ? normalized.tasks : [],
-    ui: normalized.ui && typeof normalized.ui === "object" ? normalized.ui : {},
-    timeLogs: [],
-  };
-  const compactTimeLogs = Array.isArray(normalized.timeLogs) ? normalized.timeLogs : [];
-  compact.timeLogs = compactTimeLogs.map((log)=>{
-    return {
-      ...log,
-      userName: _compactText(log?.userName, SUPABASE_SYNC_USER_NAME_MAX_CHARS),
-      userEmail: _compactText(log?.userEmail, SUPABASE_SYNC_USER_EMAIL_MAX_CHARS),
-      note: _compactText(log?.note, SUPABASE_SYNC_NOTE_MAX_CHARS)
-    };
-  });
-  if(Array.isArray(normalized.orphanTimeLogs) && normalized.orphanTimeLogs.length > 0){
-    compact.orphanTimeLogs = [];
-  }
-  return compact;
-}
-
-function _buildStorageHealth(stateObj){
-  const bytes = _getStateByteEstimate(stateObj);
-  const percent = Math.min(100, Math.round((bytes / SUPABASE_STORAGE_BUDGET_BYTES) * 1000) / 10);
-  const warn = bytes >= SUPABASE_STORAGE_CRIT_BYTES ? "danger" : (bytes >= SUPABASE_STORAGE_WARN_BYTES ? "warning" : "");
-  const block = bytes > SUPABASE_STORAGE_BLOCK_BYTES;
-  return { bytes, percent, warn, block };
-}
-
-function _queueAppStateSupabaseSave(stateObj){
-  const normalized = normalizeState(stateObj || {});
-  const compactState = _buildCompactStateForRemoteSync(normalized);
-  const fullBytes = _getStateByteEstimate(normalized);
-  const compactBytes = _getStateByteEstimate(compactState);
-  const sig = _serializeStateSignature(normalized);
-  if(!sig) return;
-  const sameAsCloud = _lastCloudStateByteEstimate > 0 && fullBytes === _lastCloudStateByteEstimate;
-  if(sig === _stateSaveLastSavedSignature && sameAsCloud) return;
-  const canUploadFull = fullBytes <= SUPABASE_STATE_MAX_UPLOAD_BYTES;
-  const canUploadCompact = compactBytes <= SUPABASE_STATE_MAX_UPLOAD_BYTES;
-  const storage = _buildStorageHealth(normalized);
-  if(storage.warn === "warning" && Date.now() - _lastStorageWarnToastAt >= 180000){
-    _lastStorageWarnToastAt = Date.now();
-    showSaveToast(
-      "ok",
-      "Stockage Supabase élevé",
-      `Stockage utilisé: ${storage.percent}%. Sauvegarde compacte activée si nécessaire.`
-    );
-  }
-
-  if(storage.block && !canUploadCompact){
-    _setLastWriteMeta("cloud_blocked", new Date().toISOString());
-    (async ()=>{
-      const localSaved = await _saveAppStateToLocalFallback(normalized);
-      if(localSaved){
-        _setLastWriteMeta("local_j", new Date().toISOString());
-      }
-      _refreshDataIoBadge();
-      showSaveToast(
-        localSaved ? "ok" : "error",
-        localSaved ? "Sauvegarde locale secours" : "Sauvegarde distante bloquée",
-        localSaved
-          ? `Capacité distante atteinte (${_formatBytes(storage.bytes)}). Sauvegarde locale faite.`
-          : `Capacité distante atteinte (${_formatBytes(storage.bytes)}). Sauvegarde locale impossible.`
-      );
-    })().catch(softCatch);
-    _refreshDataIoBadge();
-    return;
-  }
-
-  if(storage.block){
-    _setLastWriteMeta("cloud_compact", new Date().toISOString());
-  }
-
-  if(!canUploadFull && !canUploadCompact){
-    showSaveToast(
-      "error",
-      "Sauvegarde distante bloquée",
-      `Payload trop gros (${_formatBytes(fullBytes)}). Sauvegarde locale uniquement.`
-    );
-    (async ()=>{ const localSaved = await _saveAppStateToLocalFallback(normalized); if(localSaved){ _setLastWriteMeta("local_j", new Date().toISOString()); _refreshDataIoBadge(); } })().catch(softCatch);
-    return;
-  }
-  const stateForRemote = canUploadFull ? normalized : compactState;
-  if(!canUploadFull){
-    _refreshDataIoBadge();
-    showSaveToast(
-      "ok",
-      "Sauvegarde distante allégée",
-      `Mode compact activé (${_formatBytes(compactBytes)}) pour réduire la conso réseau.`
-    );
-  }
-
-  if(sig === _stateSavePendingSignature) return;
-  if(_stateSaveDebounceTimer && sig === _stateSavePendingSignature) return;
-  _stateSavePendingSignature = sig;
-  _stateSavePendingBytes = fullBytes;
-  _stateSavePendingPayload = stateForRemote;
-  _stateSavePendingFallbackPayload = normalized;
-  if(_stateSaveDebounceTimer){
-    clearTimeout(_stateSaveDebounceTimer);
-  }
-  _stateSaveDebounceTimer = setTimeout(()=>{
-    const nextSig = _stateSavePendingSignature;
-    const nextBytes = _stateSavePendingBytes;
-    const payload = _stateSavePendingPayload;
-    const fallbackPayload = _stateSavePendingFallbackPayload;
-    _stateSaveDebounceTimer = null;
-    _stateSavePendingSignature = "";
-    _stateSavePendingBytes = 0;
-    _stateSavePendingPayload = null;
-    _stateSavePendingFallbackPayload = null;
-    if(!nextSig) return;
-    const cloudBytesMatch = nextBytes > 0 && nextBytes === _lastCloudStateByteEstimate;
-    if(nextSig === _stateSaveLastSavedSignature && cloudBytesMatch) return;
-    if(!window.saveAppStateToSupabase) return;
-    const promise = window.saveAppStateToSupabase(payload, { fallbackPayload });
-    promise.then((ok)=>{
-      if(ok){
-        _stateSaveLastSavedSignature = nextSig;
-        _lastCloudStateByteEstimate = nextBytes > 0 ? nextBytes : _lastCloudStateByteEstimate;
-      }
-    }).catch(softCatch);
-  }, APP_STATE_SAVE_DEBOUNCE_MS);
 }
 
 function saveState(opts={}){
@@ -5622,9 +4792,14 @@ function saveState(opts={}){
     const normalized = normalizeState(state || {});
     state = normalized;
     state.lastUpdate = Date.now();
-    runtimePerf.lastStateBytes = _getStateByteEstimate(normalized);
+    const serialized = JSON.stringify(normalized);
+    runtimePerf.lastStateBytes = new Blob([serialized]).size;
     runtimePerf.lastSaveMs = Math.max(0, performance.now() - t0);
     runtimePerf.lastSaveAt = new Date().toISOString();
+    refreshStateSegmentationDiagnostics(normalized);
+    const scaleOnSave = collectScalabilityReport(normalized);
+    updateDegradedMode(scaleOnSave);
+    notifyScalabilityIfNeeded(scaleOnSave, "save");
     if(getCurrentRole() === "admin"){
       updateRoleUI();
     }
@@ -5636,10 +4811,12 @@ function saveState(opts={}){
     const skipSupabase = !!opts.skipSupabase || _suppressSupabaseSave;
     if(!skipSupabase){
       try{
-        _queueAppStateSupabaseSave(normalized);
+        if(window.saveAppStateToSupabase){
+          // Sauvegarde cloud en format natif PC pour eviter toute perte de champs.
+          window.saveAppStateToSupabase(normalized);
+        }
       }catch(e){ softCatch(e); }
     }
-    _refreshDataIoBadge();
 
   }catch(e){
 
@@ -5660,37 +4837,16 @@ function updateSaveButton(){
     "btnConfigSave",
     "btnVacSave"
   ];
-    const buttons = saveButtonIds.map((id)=>el(id)).filter(Boolean);
-    if(!buttons.length) return;
-    const isSaving = !!_isDataIoWriteBusy;
-    buttons.forEach((btn)=>{
-      const defaultLabel = btn.dataset.defaultLabel || btn.textContent || "";
-      if(!btn.dataset.defaultLabel) btn.dataset.defaultLabel = defaultLabel;
-      btn.classList.remove("btn-danger","btn-success");
-    if(isSaving){
-      btn.disabled = true;
-      btn.classList.remove("btn-primary");
-      btn.classList.add("btn-save-idle");
-      btn.classList.remove("btn-save-dirty");
-      if(btn.id === "btnSave"){
-        btn.textContent = "Sauvegarde active";
-      }
-    }else if(unsavedChanges){
-      btn.disabled = false;
+  const buttons = saveButtonIds.map((id)=>el(id)).filter(Boolean);
+  if(!buttons.length) return;
+  buttons.forEach((btn)=>{
+    btn.classList.remove("btn-danger","btn-success");
+    if(unsavedChanges){
       btn.classList.add("btn-primary");
       btn.classList.remove("btn-save-idle");
-      btn.classList.toggle("btn-save-dirty", btn.id === "btnSave");
-      btn.textContent = defaultLabel;
     }else{
-      btn.disabled = true;
       btn.classList.remove("btn-primary");
       btn.classList.add("btn-save-idle");
-      btn.classList.remove("btn-save-dirty");
-      if(btn.id === "btnSave"){
-        btn.textContent = "Aucune modification";
-      }else{
-        btn.textContent = defaultLabel;
-      }
     }
   });
 
@@ -6066,8 +5222,6 @@ function buildLoginHeatmap(container, events, rangeStart, rangeEnd){
 }
 
 async function initLoginJournalUI(){
-  const modal = el("configModal");
-  if(modal && modal.classList.contains("hidden")) return;
   const wrap = el("cfg_login_heatmap");
   const startInput = el("cfg_login_start");
   const endInput = el("cfg_login_end");
@@ -6075,10 +5229,6 @@ async function initLoginJournalUI(){
   const logBox = el("cfg_login_log");
   const logHead = document.querySelector(".login-log-head");
   if(!wrap || !startInput || !endInput) return;
-  if(_isLoginJournalBusy) return;
-  _isLoginJournalBusy = true;
-  _lastLoginJournalRefreshAt = Date.now();
-  try{
   if(!loginRangeEnd){
     const end = new Date();
     loginRangeEnd = end.toISOString().slice(0,10);
@@ -6090,11 +5240,6 @@ async function initLoginJournalUI(){
   }
   if(!startInput.value) startInput.value = loginRangeStart;
   if(!endInput.value) endInput.value = loginRangeEnd;
-  const currentRangeKey = `${startInput.value || ""}|${endInput.value || ""}|${loginLogSortKey}|${loginLogSortDir}`;
-  if(_lastLoginJournalRangeKey === currentRangeKey){
-    return;
-  }
-  _lastLoginJournalRangeKey = currentRangeKey;
   const events = await loadLoginsFromSupabase(
     toISODateStart(parseInputDate(startInput.value)),
     toISODateEnd(parseInputDate(endInput.value))
@@ -6104,7 +5249,7 @@ async function initLoginJournalUI(){
     const err = localStorage.getItem("login_log_last_error");
     const count = (events || []).length;
     if(err){
-      status.textContent = "Synchronisation du journal indisponible.";
+      status.textContent = `Erreur Supabase: ${err}`;
     }else{
       const extra = info?.clamped ? " (affichage limité à 30 jours)" : "";
       status.textContent = `Connexions: ${count}${extra}`;
@@ -6113,25 +5258,22 @@ async function initLoginJournalUI(){
   }
   if(logBox){
     const rows = (events || []).slice();
-    if(loginLogSortKey === "ts"){
-      if(loginLogSortDir !== "asc") rows.reverse();
-    }else{
-      const dir = loginLogSortDir === "asc" ? 1 : -1;
-      rows.sort((a,b)=>{
-        const va = (a[loginLogSortKey] || "").toString().toLowerCase();
-        const vb = (b[loginLogSortKey] || "").toString().toLowerCase();
-        if(va < vb) return -1 * dir;
-        if(va > vb) return 1 * dir;
-        return 0;
-      });
-    }
-    const html = rows.slice(0, 200).map((ev)=>{
+    const dir = loginLogSortDir === "asc" ? 1 : -1;
+    rows.sort((a,b)=>{
+      const va = (a[loginLogSortKey] || "").toString().toLowerCase();
+      const vb = (b[loginLogSortKey] || "").toString().toLowerCase();
+      if(va < vb) return -1 * dir;
+      if(va > vb) return 1 * dir;
+      return 0;
+    });
+    const html = rows.slice(0, 200).map((ev, idx)=>{
       const d = ev.ts ? new Date(ev.ts) : null;
       const dateStr = d && !isNaN(d) ? d.toLocaleString("fr-FR") : "";
       const name = ev.name || "";
       const email = ev.email || "";
       const role = (ev.role||"") === "admin" ? "Admin" : "Utilisateur";
-      return `<div class="login-log-row"><span>${dateStr}</span><span>${name}</span><span>${email}</span><span>${role}</span><span>1</span></div>`;
+      const delay = Math.min(idx * 24, 300);
+      return `<div class="login-log-row" style="animation-delay:${delay}ms"><span>${dateStr}</span><span>${name}</span><span>${email}</span><span>${role}</span><span>1</span></div>`;
     }).join("");
     logBox.innerHTML = html || `<div class="login-empty">Aucune connexion dans la période.</div>`;
   }
@@ -6141,9 +5283,6 @@ async function initLoginJournalUI(){
       btn.classList.toggle("asc", btn.dataset.sort === loginLogSortKey && loginLogSortDir === "asc");
       btn.classList.toggle("desc", btn.dataset.sort === loginLogSortKey && loginLogSortDir === "desc");
     });
-  }
-  }finally{
-    _isLoginJournalBusy = false;
   }
 }
 
@@ -6916,13 +6055,13 @@ function buildGanttHtml(tasks){
         const useOutsideLabel = geo.width < 42;
         const progressInside = (isLabelWeek && !useOutsideLabel) ? `<span class="gantt-progress">${progressValue}%</span>` : "";
         const progressOutside = (isLabelWeek && useOutsideLabel) ? `<span class="gantt-progress-out">${progressValue}%</span>` : "";
-        html+=`<td class="gantt-cell gantt-cell-has-bar${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s">${progressInside}</div>${progressOutside}</div></div></td>`;
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s">${progressInside}</div>${progressOutside}</div></div></td>`;
 
       }else{
 
         const vacClass = vacWeeks[i] ? " vac-week" : "";
         const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
-        html+=`<td class="gantt-cell gantt-cell-empty${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
 
       }
 
@@ -7208,11 +6347,11 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
         const vacClass = vacWeeks[i] ? " vac-week" : "";
         const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
         const barDelay = (rowIdx * 0.03 + i * 0.015).toFixed(3);
-        html+=`<td class="gantt-cell gantt-cell-has-bar${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
       }else{
         const vacClass = vacWeeks[i] ? " vac-week" : "";
         const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
-        html+=`<td class="gantt-cell gantt-cell-empty${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
       }
     });
     html+="</tr>";
@@ -7383,14 +6522,14 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
         const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
         if(geo.days>0){
           if(plainMode){
-            html+=`<td class="gantt-cell gantt-cell-has-bar${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-print-bar" style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};"></div></div></div></td>`;
+            html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-print-bar" style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};"></div></div></div></td>`;
           }else{
             const title = t.vendor ? ` title="Prestataire : ${attrEscape(t.vendor)}"` : "";
             const barDelay = ((rowOffset + rowIdx) * 0.03 + i * 0.015).toFixed(3);
-            html+=`<td class="gantt-cell gantt-cell-has-bar${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
+            html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
           }
         }else{
-          html+=`<td class="gantt-cell gantt-cell-empty${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+          html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
         }
       });
       html+="</tr>";
@@ -7586,13 +6725,13 @@ function renderMasterGantt(){
         const useOutsideLabel = geo.width < 42;
         const progressInside = (isLabelWeek && !useOutsideLabel) ? `<span class="gantt-progress">${progressValue}%</span>` : "";
         const progressOutside = (isLabelWeek && useOutsideLabel) ? `<span class="gantt-progress-out">${progressValue}%</span>` : "";
-        html+=`<td class="gantt-cell gantt-cell-has-bar${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s">${progressInside}</div>${progressOutside}</div></div></td>`;
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s">${progressInside}</div>${progressOutside}</div></div></td>`;
 
       }else{
 
         const vacClass = vacWeeks[i] ? " vac-week" : "";
         const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
-        html+=`<td class="gantt-cell gantt-cell-empty${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
 
       }
 
@@ -8811,16 +7950,7 @@ function renderMaster(){
   runtimePerf.lastRenderMasterWorkloadMs = 0;
   runtimePerf.lastRenderMasterTableMs = 0;
   computeTaskOrderMap();
-  const tabsRenderKey = [
-    _stateVersion,
-    selectedProjectId || "",
-    showCompletedMaster ? "1" : "0",
-    tabsSortMode || ""
-  ].join("|");
-  if(_masterTabsRenderKey !== tabsRenderKey){
-    renderTabs();
-    _masterTabsRenderKey = tabsRenderKey;
-  }
+  renderTabs();
   if(hasAnyOpenOverlay()) closeAllOverlays();
   el("viewMaster")?.classList.remove("hidden");
   el("viewProject")?.classList.add("hidden");
@@ -8850,6 +7980,17 @@ function renderMaster(){
         : `Afficher terminés (${hiddenCompletedCount})`
     );
   }
+  const metricsT0 = performance.now();
+  renderKPIs(tasks);
+  renderMasterMetrics(tasks);
+  renderMasterQuickKpis(tasks);
+  runtimePerf.lastRenderMasterMetricsMs = Math.max(0, performance.now() - metricsT0);
+
+  // Charge de travail
+  const workloadT0 = performance.now();
+  renderWorkloadChart(tasks);
+  runtimePerf.lastRenderMasterWorkloadMs = Math.max(0, performance.now() - workloadT0);
+
   // Bandeau live global (toutes tâches en cours aujourd'hui)
 
   const masterLive = el("masterLive");
@@ -8893,26 +8034,6 @@ function renderMaster(){
     ? sorted.filter(t=> (missingMap.get(t.id) || 0) > 0)
     : sorted;
   const visibleTaskIdsSig = visibleTasks.map((t)=>String(t.id || "")).join(",");
-  const metricsWorkloadKey = [
-    _stateVersion,
-    visibleTaskIdsSig,
-    workloadRangeType || "",
-    workloadRangeYear || "",
-    workloadRangeStart || "",
-    workloadRangeEnd || ""
-  ].join("|");
-  if(_masterMetricsWorkloadRenderKey !== metricsWorkloadKey){
-    const metricsT0 = performance.now();
-    renderKPIs(tasks);
-    renderMasterMetrics(tasks);
-    renderMasterQuickKpis(tasks);
-    runtimePerf.lastRenderMasterMetricsMs = Math.max(0, performance.now() - metricsT0);
-
-    const workloadT0 = performance.now();
-    renderWorkloadChart(tasks);
-    runtimePerf.lastRenderMasterWorkloadMs = Math.max(0, performance.now() - workloadT0);
-    _masterMetricsWorkloadRenderKey = metricsWorkloadKey;
-  }
   const masterRowsCacheKey = [
     _stateVersion,
     todayKey,
@@ -9213,10 +8334,6 @@ function buildSmartphoneCompatState(sourceState){
   };
 }
 function getCanonicalTimeLogs(){
-  if(_canonicalTimeLogsCache.version === _stateVersion && Array.isArray(_canonicalTimeLogsCache.logs)){
-    return _canonicalTimeLogsCache.logs;
-  }
-
   const logs = getTimeLogs();
   const tasksById = new Map((state?.tasks || []).map((t)=>[String(t?.id || ""), t]));
   const map = new Map(); // taskId|date|roleKey|internalTech -> merged log
@@ -9284,9 +8401,7 @@ function getCanonicalTimeLogs(){
       map.set(key, existing);
     });
   });
-  const canonical = Array.from(map.values());
-  _canonicalTimeLogsCache = { version:_stateVersion, logs: canonical };
-  return canonical;
+  return Array.from(map.values());
 }
 function findTimeLog(taskId, dateKey, userKey, userEmail="", userName=""){
   return getTimeLogs().find(l=>
@@ -9607,17 +8722,14 @@ function getMissingTasksForMasterFlow(){
   const sorted = sortTasks((state?.tasks || []), sortMaster);
   const includeChantierCol = (new Set(sorted.map(t=>String(t.projectId||""))).size > 1);
   const missingMap = getMissingDaysMapAllTasksCached(state.tasks);
-  const raw = sorted
+  return sorted
     .filter(t=> (missingMap.get(t.id) || 0) > 0)
     .map(t=>({ projectId: t.projectId, taskId: t.id }));
-  return dedupeTaskFlowSteps(raw);
 }
 function finishMissingHoursFlow(){
   _missingHoursFlow = null;
   selectedProjectId = null;
   selectedTaskId = null;
-  _hoursTaskModalLastTaskKey = "";
-  _hoursTaskModalLastOpenAt = 0;
   const toggleMissingOnly = el("toggleMissingOnly");
   if(toggleMissingOnly) toggleMissingOnly.checked = false;
   renderMaster();
@@ -9627,7 +8739,7 @@ function openMissingHoursFlowStep(){
   while(_missingHoursFlow.index < _missingHoursFlow.tasks.length){
     const step = _missingHoursFlow.tasks[_missingHoursFlow.index];
     const t = state?.tasks?.find(x=>x.id===step.taskId && x.projectId===step.projectId);
-    if(!t || !countMissingDaysForTask(t)){
+    if(!t){
       _missingHoursFlow.index += 1;
       continue;
     }
@@ -9650,7 +8762,6 @@ function openMissingHoursFlowStep(){
   finishMissingHoursFlow();
 }
 function startMissingHoursFlow(){
-  if(_missingHoursFlow || _outsideRangeFlow) return;
   const tasks = getMissingTasksForMasterFlow();
   if(!tasks.length){
     showSaveToast("ok", "A compléter", "Aucune tâche à compléter.");
@@ -9688,31 +8799,14 @@ function buildOutsideRangeLogsMap(tasks){
 function getOutsideRangeTasksForMasterFlow(){
   const sorted = sortTasks((state?.tasks || []), sortMaster);
   const outsideMap = buildOutsideRangeLogsMap(sorted);
-  const raw = sorted
+  return sorted
     .filter(t=> (outsideMap.get(t.id) || 0) > 0)
     .map(t=>({ projectId: t.projectId, taskId: t.id }));
-  return dedupeTaskFlowSteps(raw);
-}
-function dedupeTaskFlowSteps(steps){
-  const seen = new Set();
-  const out = [];
-  (steps || []).forEach((step)=>{
-    const projectId = (step?.projectId || "").toString();
-    const taskId = (step?.taskId || "").toString();
-    if(!projectId || !taskId) return;
-    const key = `${projectId}::${taskId}`;
-    if(seen.has(key)) return;
-    seen.add(key);
-    out.push(step);
-  });
-  return out;
 }
 function finishOutsideRangeFlow(){
   _outsideRangeFlow = null;
   selectedProjectId = null;
   selectedTaskId = null;
-  _hoursTaskModalLastTaskKey = "";
-  _hoursTaskModalLastOpenAt = 0;
   renderMaster();
 }
 function openOutsideRangeFlowStep(){
@@ -9720,7 +8814,7 @@ function openOutsideRangeFlowStep(){
   while(_outsideRangeFlow.index < _outsideRangeFlow.tasks.length){
     const step = _outsideRangeFlow.tasks[_outsideRangeFlow.index];
     const t = state?.tasks?.find(x=>x.id===step.taskId && x.projectId===step.projectId);
-    if(!t || countOutsideRangeLogsForTask(t) <= 0){
+    if(!t){
       _outsideRangeFlow.index += 1;
       continue;
     }
@@ -9747,7 +8841,6 @@ function openOutsideRangeFlowStep(){
   finishOutsideRangeFlow();
 }
 function startOutsideRangeFlow(){
-  if(_outsideRangeFlow || _missingHoursFlow) return;
   const tasks = getOutsideRangeTasksForMasterFlow();
   if(!tasks.length){
     showSaveToast("ok", "Erreurs de saisie", "Aucune tâche en défaut hors période.");
@@ -9854,21 +8947,6 @@ function updateTimeLogUI(t, forceAlert=false){
 function getSelectedTaskForHoursModal(){
   if(!selectedProjectId || !selectedTaskId) return null;
   return state?.tasks?.find(x=>x.id===selectedTaskId && x.projectId===selectedProjectId) || null;
-}
-function resolveHoursTaskForModal(){
-  const direct = getSelectedTaskForHoursModal();
-  if(direct) return direct;
-
-  const firstInput = document.querySelector("#hm_calendar .hm-day-input[data-task-id][data-project-id]");
-  if(!firstInput) return null;
-  const taskId = (firstInput.getAttribute("data-task-id") || "").trim();
-  const projectId = (firstInput.getAttribute("data-project-id") || "").trim();
-  if(!taskId || !projectId) return null;
-  const task = (state?.tasks || []).find((x)=>x.id===taskId && x.projectId===projectId) || null;
-  if(!task) return null;
-  selectedTaskId = taskId;
-  selectedProjectId = projectId;
-  return task;
 }
 function isHoursTaskModalOpen(){
   const modal = el("hoursTaskModal");
@@ -9998,55 +9076,13 @@ function getHoursCalendarOrderedInputs(taskId=""){
 
 function isHoursCalendarInputMissing(input){
   const raw = (input?.value || "").toString().trim();
-  return raw === "" || /^h$/i.test(raw);
-}
-
-function getMissingHoursModalTaskOrder(orderedInputs){
-  if(!Array.isArray(orderedInputs) || !orderedInputs.length){
-    return [];
-  }
-  if(_missingHoursFlow && Array.isArray(_missingHoursFlow.tasks) && _missingHoursFlow.tasks.length){
-    const flowTaskIds = _missingHoursFlow.tasks
-      .map((step)=>(step?.taskId || "").toString().trim())
-      .filter(Boolean);
-    const orderedFlow = [];
-    const flowSeen = new Set();
-    flowTaskIds.forEach((taskId)=> {
-      if(flowSeen.has(taskId)) return;
-      const exists = orderedInputs.some((input)=> (input.getAttribute("data-task-id") || "").trim() === taskId);
-      if(exists){
-        flowSeen.add(taskId);
-        orderedFlow.push(taskId);
-      }
-    });
-    if(orderedFlow.length){
-      const added = new Set(orderedFlow);
-      orderedInputs.forEach((input)=>{
-        const taskId = (input.getAttribute("data-task-id") || "").trim();
-        if(!taskId || added.has(taskId)) return;
-        added.add(taskId);
-        orderedFlow.push(taskId);
-      });
-      return orderedFlow;
-    }
-  }
-
-  const ordered = [];
-  const seen = new Set();
-  orderedInputs.forEach((input)=>{
-    const taskId = (input.getAttribute("data-task-id") || "").trim();
-    if(!taskId || seen.has(taskId)) return;
-    seen.add(taskId);
-    ordered.push(taskId);
-  });
-  return ordered;
+  return raw === "";
 }
 
 function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missingOnly=true){
   const ordered = getHoursCalendarOrderedInputs(taskId);
   if(!ordered.length) return null;
   const step = direction < 0 ? -1 : 1;
-
   if(!missingOnly){
     const idx = ordered.indexOf(currentInput);
     if(idx < 0){
@@ -10055,21 +9091,31 @@ function getHoursCalendarNextInput(currentInput, direction=1, taskId="", missing
     return ordered[idx + step] || null;
   }
 
-  const idx = ordered.indexOf(currentInput);
-  if(idx < 0){
-    const firstMissing = ordered.find(isHoursCalendarInputMissing);
-    if(firstMissing) return firstMissing;
-    return step > 0 ? (ordered[0] || null) : (ordered[ordered.length - 1] || null);
+  const missing = ordered.filter(isHoursCalendarInputMissing);
+  if(!missing.length) return null;
+
+  const orderedIdx = ordered.indexOf(currentInput);
+  if(orderedIdx < 0){
+    return step > 0 ? (missing[0] || null) : (missing[missing.length - 1] || null);
   }
 
-  if(step > 0){
-    for(let i = idx + 1; i < ordered.length; i++){
-      if(isHoursCalendarInputMissing(ordered[i])) return ordered[i];
+  // Priorite: terminer d'abord toutes les saisies manquantes dans la carte jour courante.
+  const currentCard = currentInput?.closest?.(".hm-day[data-active='1']");
+  if(currentCard){
+    const cardInputs = ordered.filter((input)=> input.closest(".hm-day[data-active='1']") === currentCard);
+    const cardIdx = cardInputs.indexOf(currentInput);
+    if(cardIdx >= 0){
+      for(let i = cardIdx + step; i >= 0 && i < cardInputs.length; i += step){
+        if(isHoursCalendarInputMissing(cardInputs[i])) return cardInputs[i];
+      }
+    }else{
+      for(let i = (step > 0 ? 0 : cardInputs.length - 1); i >= 0 && i < cardInputs.length; i += step){
+        if(isHoursCalendarInputMissing(cardInputs[i])) return cardInputs[i];
+      }
     }
-    return null;
   }
 
-  for(let i = idx - 1; i >= 0; i--){
+  for(let i = orderedIdx + step; i >= 0 && i < ordered.length; i += step){
     if(isHoursCalendarInputMissing(ordered[i])) return ordered[i];
   }
   return null;
@@ -10569,128 +9615,6 @@ function syncHoursTaskStatusFromCalendarDraft(t, dayKey, rawValue){
   }
 }
 
-let _hoursSummaryRefreshHandle = 0;
-let _hoursSummaryQueuedTask = null;
-let _hoursSummaryDraftEntriesCache = null;
-let _hoursSummaryDraftTaskId = "";
-let _hoursSummaryDraftBaseSignature = "";
-let _hoursTaskSaveLastTs = 0;
-let _hoursTaskSaveLastTaskKey = "";
-let _hoursTaskModalLastOpenAt = 0;
-let _hoursTaskModalLastTaskKey = "";
-function _cacheHoursDraftEntriesForTask(task, entries){
-  const taskId = String(task?.id || "");
-  if(!taskId || !Array.isArray(entries)){
-    _hoursSummaryDraftEntriesCache = null;
-    _hoursSummaryDraftTaskId = "";
-    _hoursSummaryDraftBaseSignature = "";
-    return;
-  }
-  _hoursSummaryDraftTaskId = taskId;
-  _hoursSummaryDraftEntriesCache = entries;
-}
-function _makeHoursDraftSignature(entries){
-  if(!Array.isArray(entries)) return "";
-  const normalized = entries.map((e)=>({
-    taskId: String(e?.taskId || ""),
-    projectId: String(e?.projectId || ""),
-    roleKey: normalizeTimeLogRole(e?.roleKey || ""),
-    internalTech: normalizeInternalTech(e?.internalTech || ""),
-    date: String(e?.date || ""),
-    empty: !!e?.empty,
-    minutes: Math.max(0, Number(e?.minutes || 0)),
-    hours: Math.max(0, Number(e?.hours || 0))
-  })).sort((a,b)=>{
-    if(a.taskId !== b.taskId) return a.taskId.localeCompare(b.taskId);
-    if(a.date !== b.date) return a.date.localeCompare(b.date);
-    if(a.roleKey !== b.roleKey) return a.roleKey.localeCompare(b.roleKey);
-    return a.internalTech.localeCompare(b.internalTech);
-  });
-  return JSON.stringify(normalized);
-}
-function _cacheHoursDraftBaseForTask(task, entries){
-  const taskId = String(task?.id || "");
-  if(!taskId){
-    _hoursSummaryDraftBaseSignature = "";
-    return;
-  }
-  _hoursSummaryDraftBaseSignature = _makeHoursDraftSignature(Array.isArray(entries) ? entries : []);
-}
-function _setHoursModalSaveButtonFromDraftState(task){
-  const btnSave = el("btnSaveHoursModal");
-  if(!btnSave){
-    return;
-  }
-  // Bouton Valider toujours disponible quand la modale est ouverte.
-  // Les contrôles métier restent dans la logique de sauvegarde.
-  if(!task){
-    btnSave.disabled = false;
-    applyHoursSaveButtonVisualState(btnSave);
-    return;
-  }
-  let currentEntries = _hoursSummaryDraftEntriesCache;
-  if(!Array.isArray(currentEntries) || _hoursSummaryDraftTaskId !== String(task.id || "")){
-    currentEntries = collectHoursTaskCalendarEntries(task);
-  }
-  btnSave.disabled = false;
-  applyHoursSaveButtonVisualState(btnSave);
-}
-function _clearHoursDraftEntriesCache(){
-  _hoursSummaryDraftEntriesCache = null;
-  _hoursSummaryDraftTaskId = "";
-  _hoursSummaryDraftBaseSignature = "";
-}
-function _upsertHoursDraftEntryFromInput(task, input){
-  if(!task || !input) return;
-  if(!Array.isArray(_hoursSummaryDraftEntriesCache) || _hoursSummaryDraftTaskId !== String(task.id || "")){
-    _cacheHoursDraftEntriesForTask(task, collectHoursTaskCalendarEntries(task));
-  }
-  const date = (input.getAttribute("data-date") || "").trim();
-  const taskId = (input.getAttribute("data-task-id") || "").trim();
-  const projectId = (input.getAttribute("data-project-id") || "").trim();
-  const roleKey = normalizeTimeLogRole(input.getAttribute("data-role-key") || "");
-  const internalTech = normalizeInternalTech(input.getAttribute("data-internal-tech") || "");
-  const isActive = (input.getAttribute("data-active") || "0") === "1";
-  const isClearable = (input.getAttribute("data-clearable") || "0") === "1";
-  const todayKey = toLocalDateKey(new Date());
-  const key = buildTimeLogKey(taskId, date, roleKey, internalTech);
-  const next = [];
-  (_hoursSummaryDraftEntriesCache || []).forEach((e)=>{
-    if(buildTimeLogKey(e?.taskId, e?.date, e?.roleKey, e?.internalTech) !== key) next.push(e);
-  });
-  if(date && taskId && projectId && roleKey && (isActive || isClearable) && !(date > todayKey && !isClearable)){
-    const raw = (input.value || "").toString().replace(",", ".").trim();
-    if(raw === ""){
-      next.push({ taskId, projectId, roleKey, internalTech, date, empty:true, minutes:0, hours:0 });
-    }else{
-      const hours = parseFloat(raw);
-      if(isFinite(hours) && hours >= 0){
-        next.push({ taskId, projectId, roleKey, internalTech, date, empty:false, hours, minutes:Math.round(hours * 60) });
-      }
-    }
-  }
-  _cacheHoursDraftEntriesForTask(task, next);
-  _setHoursModalSaveButtonFromDraftState(task);
-}
-function queueHoursTaskSummaryRefresh(task, draftEntriesOverride=null){
-  if(task){
-    _hoursSummaryQueuedTask = task;
-  }
-  const taskToRefresh = _hoursSummaryQueuedTask || getSelectedTaskForHoursModal();
-  if(!taskToRefresh) return;
-  if(Array.isArray(draftEntriesOverride)){
-    _cacheHoursDraftEntriesForTask(taskToRefresh, draftEntriesOverride);
-  }
-  if(_hoursSummaryRefreshHandle) return;
-  _hoursSummaryRefreshHandle = requestAnimationFrame(()=>{
-    _hoursSummaryRefreshHandle = 0;
-    const t = taskToRefresh;
-    const useCache = _hoursSummaryDraftTaskId === String(t?.id || "") && Array.isArray(_hoursSummaryDraftEntriesCache);
-    const draftEntries = useCache ? _hoursSummaryDraftEntriesCache : collectHoursTaskCalendarEntries(t);
-    renderHoursTaskWeeklySummary(t, draftEntries);
-  });
-}
-
 function applyHoursSaveButtonVisualState(btn){
   if(!btn) return;
   // Palette harmonisée UI: bouton Valider bleu-gris (plus de vert forcé).
@@ -10717,7 +9641,7 @@ function applyHoursSaveButtonVisualState(btn){
 function syncHoursTaskModal(taskOverride=null){
   const modal = el("hoursTaskModal");
   if(!modal) return;
-  const t = taskOverride || resolveHoursTaskForModal();
+  const t = taskOverride || getSelectedTaskForHoursModal();
   const p = t ? (state?.projects || []).find(x=>x.id===t.projectId) : null;
 
   const hmProject = el("hm_project");
@@ -10740,7 +9664,7 @@ function syncHoursTaskModal(taskOverride=null){
     if(hmStatus) hmStatus.textContent = "";
     if(hmSummary) hmSummary.textContent = "";
     if(btnSave){
-      btnSave.disabled = false;
+      btnSave.disabled = true;
       applyHoursSaveButtonVisualState(btnSave);
     }
     return;
@@ -10805,21 +9729,26 @@ function syncHoursTaskModal(taskOverride=null){
   if(hmHours) hmHours.value = (hoursInput?.value || "").toString();
   syncHoursTaskStatusFromMain();
   renderHoursTaskWeeklySummary(t);
-  if(btnSave) _setHoursModalSaveButtonFromDraftState(t);
+  if(btnSave){
+    btnSave.disabled = false;
+    applyHoursSaveButtonVisualState(btnSave);
+  }
   renderHoursTaskCalendar(t);
 }
 function scrollHoursTaskModalToFirstMissing(){
   let grid = el("hm_calendar");
   if(!grid) return;
   const selectedTaskId = (getSelectedTaskForHoursModal()?.id || "").trim();
+  const todayKey = toLocalDateKey(new Date());
   const initialTargetInput =
     findFirstHoursInputTarget(selectedTaskId, true) ||
-    findFirstHoursInputTarget("", true);
+    Array.from(grid.querySelectorAll(`.hm-day[data-active='1'][data-date='${todayKey}'] .hm-day-input[data-active='1']`))
+      .find((input)=> !selectedTaskId || ((input.getAttribute("data-task-id") || "").trim() === selectedTaskId)) ||
+    findFirstHoursInputTarget(selectedTaskId, false) ||
+    findFirstHoursInputTarget("", true) ||
+    findFirstHoursInputTarget("", false);
   if(!initialTargetInput) return;
   const targetDate = (initialTargetInput.getAttribute("data-date") || "").trim();
-  const targetTaskId = (initialTargetInput.getAttribute("data-task-id") || "").trim();
-  const targetRoleKey = normalizeTimeLogRole(initialTargetInput.getAttribute("data-role-key") || "");
-  const targetInternalTech = normalizeInternalTech(initialTargetInput.getAttribute("data-internal-tech") || "");
   const hmDate = el("hm_date");
   const dateInput = el("t_time_date_input");
   let selectedDate = targetDate;
@@ -10834,46 +9763,26 @@ function scrollHoursTaskModalToFirstMissing(){
   }else{
     selectedDate = (hmDate?.value || "").trim();
   }
-  const targetInput = selectedDate ? (
-    Array.from(grid.querySelectorAll(`.hm-day-input[data-date="${selectedDate}"][data-active='1']`)).find((input)=>{
-      const taskId = (input.getAttribute("data-task-id") || "").trim();
-      const roleKey = normalizeTimeLogRole(input.getAttribute("data-role-key") || "");
-      const internalTech = normalizeInternalTech(input.getAttribute("data-internal-tech") || "");
-      return taskId === targetTaskId && roleKey === targetRoleKey && internalTech === targetInternalTech && isHoursCalendarInputMissing(input);
-    }) ||
-    Array.from(grid.querySelectorAll(`.hm-day-input[data-date="${selectedDate}"][data-active='1']`)).find(isHoursCalendarInputMissing)
-  ) : null;
-  const finalTarget = targetInput || initialTargetInput;
-  if(!finalTarget) return;
-  const targetCard = finalTarget.closest(".hm-day");
+  const targetInput = selectedDate
+    ? grid.querySelector(`.hm-day-input[data-date="${selectedDate}"][data-active='1']`)
+    : initialTargetInput;
+  if(!targetInput) return;
+  const targetCard = targetInput.closest(".hm-day");
   if(!targetCard) return;
   refreshHoursCalendarSelectedCard(selectedDate);
   targetCard.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
-  try{ finalTarget.focus({ preventScroll: true }); }
-  catch(_){ finalTarget.focus(); }
+  try{ targetInput.focus({ preventScroll: true }); }
+  catch(_){ targetInput.focus(); }
 }
 function openHoursTaskModal(){
   const modal = el("hoursTaskModal");
   if(!modal) return;
-  const t = resolveHoursTaskForModal();
+  const t = getSelectedTaskForHoursModal();
   if(!t){
-    closeHoursTaskModal(false);
+    alert("Sélectionne une tâche.");
     return;
   }
-  const taskKey = `${t.projectId}::${t.id}`;
-  const now = Date.now();
-  if(_hoursTaskModalLastTaskKey === taskKey && (now - _hoursTaskModalLastOpenAt < 250)){
-    return;
-  }
-  if(_hoursTaskModalLastTaskKey === taskKey && !modal.classList.contains("hidden")){
-    return;
-  }
-  _hoursTaskModalLastTaskKey = taskKey;
-  _hoursTaskModalLastOpenAt = now;
   updateTimeLogUI(t, true);
-  const initialDraftEntries = collectHoursTaskCalendarEntries(t);
-  _cacheHoursDraftEntriesForTask(t, initialDraftEntries);
-  _cacheHoursDraftBaseForTask(t, initialDraftEntries);
   syncHoursTaskModal(t);
   showModalSafely(modal);
   requestAnimationFrame(()=>{
@@ -10885,9 +9794,6 @@ function openHoursTaskModal(){
 function closeHoursTaskModal(stopFlow=true){
   const modal = el("hoursTaskModal");
   hideModalSafely(modal, "#btnOpenHoursModal");
-  _clearHoursDraftEntriesCache();
-  _hoursTaskModalLastTaskKey = "";
-  _hoursTaskModalLastOpenAt = 0;
   if(stopFlow && (_missingHoursFlow || _outsideRangeFlow)){
     _missingHoursFlow = null;
     _outsideRangeFlow = null;
@@ -10895,19 +9801,11 @@ function closeHoursTaskModal(stopFlow=true){
   }
 }
 function saveHoursTaskModal(){
-  const t = resolveHoursTaskForModal();
+  const t = getSelectedTaskForHoursModal();
   if(!t){
-    closeHoursTaskModal(false);
+    alert("Sélectionne une tâche.");
     return;
   }
-  const taskKey = `${t.projectId}::${t.id}`;
-  const now = Date.now();
-  if(_hoursTaskSaveLastTaskKey === taskKey && (now - _hoursTaskSaveLastTs < 320)){
-    return;
-  }
-  _hoursTaskSaveLastTaskKey = taskKey;
-  _hoursTaskSaveLastTs = now;
-
   const dateInput = el("t_time_date_input");
   const hoursInput = el("t_time_hours");
   if(!dateInput || !hoursInput){
@@ -10918,23 +9816,8 @@ function saveHoursTaskModal(){
   const draftEntries = collectHoursTaskCalendarEntries(t);
   const filledEntries = draftEntries.filter(e=>!e.empty);
   const emptyEntries = draftEntries.filter(e=>!!e.empty);
-  const hasChanges = _makeHoursDraftSignature(draftEntries) !== _hoursSummaryDraftBaseSignature;
-  if(!hasChanges){
-    if(_outsideRangeFlow){
-      const remainingOutside = countOutsideRangeLogsForTask(t);
-      advanceOutsideRangeFlow();
-      closeHoursTaskModal(false);
-      return;
-    }
-    if(_missingHoursFlow){
-      advanceMissingHoursFlow();
-      closeHoursTaskModal(false);
-      return;
-    }
-    if(!filledEntries.length && !emptyEntries.length){
-      closeHoursTaskModal(false);
-      return;
-    }
+  if(!filledEntries.length && !emptyEntries.length){
+    alert("Saisis le temps passé (heures).");
     return;
   }
 
@@ -10969,10 +9852,15 @@ function saveHoursTaskModal(){
   renderMaster();
   renderProject();
   saveState();
-  const qualityAfterSave = collectDataQualityIssues(state);
-  const pendingOutside = Number(qualityAfterSave?.counts?.logsOutsideTaskRange || 0);
-  if(pendingOutside > 0){
-    showSaveToast("warning", "Validation terminée", `${pendingOutside} log(s) hors période restant(s)`);
+  if(!_outsideRangeFlow && !_missingHoursFlow){
+    const qualityAfterSave = collectDataQualityIssues(state);
+    if((qualityAfterSave?.counts?.logsOutsideTaskRange || 0) > 0){
+      const launchFlow = window.confirm("Des erreurs de saisie hors période restent présentes.\nVoulez-vous démarrer le parcours de correction maintenant ?");
+      if(launchFlow){
+        startOutsideRangeFlow();
+        return;
+      }
+    }
   }
   if(_outsideRangeFlow){
     const remainingOutside = countOutsideRangeLogsForTask(t);
@@ -11326,7 +10214,6 @@ function renderAll(){
   // filet de sécurité : si localStorage est vide (ex : fichier ouvert en navigation privée), on recharge l'état par défaut
   if(!state || !Array.isArray(state.projects) || state.projects.length===0){
     state = defaultState();
-    invalidateCanonicalTimeLogsCache();
   }
   closeAllOverlays();
   refreshVendorsList();
@@ -11364,6 +10251,7 @@ function renderAll(){
     Number(runtimePerf.totalMissingMapCalls || 0) - Number(runtimePerf._missingMapCallsAtRenderStart || 0)
   );
   runtimePerf.lastRenderAt = new Date().toISOString();
+  updateDataQualityBanner(false);
   if(!uiUpperInitialPassDone){
     applyUiUpperNoAccent();
     uiUpperInitialPassDone = true;
@@ -12293,6 +11181,17 @@ function bind(){
     if(getCurrentRole()!=="admin") return;
     openConfigModal();
   });
+  el("btnToggleSingleSource")?.addEventListener("click", ()=>{
+    if(getCurrentRole()!=="admin") return;
+    const ok = window.setSingleSourceReadMode(true);
+    if(!ok){
+      showSaveToast("error", "Mode lecture", "Impossible de changer le mode.");
+      return;
+    }
+    refreshSingleSourceToggleButton();
+    showSaveToast("ok", "Mode lecture", "Lecture unique ON (mode legacy OFF desactive) · rechargement...");
+    setTimeout(()=>{ window.location.reload(); }, 250);
+  });
   el("btnHelp")?.addEventListener("click", ()=>{
     const modal = el("helpModal");
     if(!modal) return;
@@ -12507,11 +11406,11 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
   });
   el("cfg_login_start")?.addEventListener("change", ()=>{
     loginRangeStart = el("cfg_login_start")?.value || "";
-    queueLoginJournalRefresh();
+    initLoginJournalUI();
   });
   el("cfg_login_end")?.addEventListener("change", ()=>{
     loginRangeEnd = el("cfg_login_end")?.value || "";
-    queueLoginJournalRefresh();
+    initLoginJournalUI();
   });
   document.querySelectorAll(".login-log-sort").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -12522,7 +11421,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
         loginLogSortKey = key;
         loginLogSortDir = "asc";
       }
-      queueLoginJournalRefresh();
+      initLoginJournalUI();
     });
   });
   el("cfg_login_reset")?.addEventListener("click", (e)=>{
@@ -12536,13 +11435,9 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     const endInput = el("cfg_login_end");
     if(startInput) startInput.value = loginRangeStart;
     if(endInput) endInput.value = loginRangeEnd;
-    queueLoginJournalRefresh();
+    initLoginJournalUI();
   });
   el("btnSave")?.addEventListener("click", async ()=>{
-    if(!unsavedChanges){
-      showSaveToast("error", "Sauvegarde bloquée", "Aucune modification détectée.");
-      return;
-    }
     const currentTask = selectedProjectId && selectedTaskId
       ? (state.tasks || []).find((x)=>x.id===selectedTaskId && x.projectId===selectedProjectId)
       : null;
@@ -12557,11 +11452,12 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     const quality = collectDataQualityIssues(state);
     if(!quality.ok){
-      showSaveToast("error", "Alerte qualité", `${formatQualityIssuesForToast(quality)} | Sauvegarde distante maintenue.`);
+      showSaveToast("error", "Alerte qualité", `${formatQualityIssuesForToast(quality)} | Sauvegarde cloud maintenue.`);
       if((quality?.counts?.logsOutsideTaskRange || 0) > 0){
         const launchFlow = window.confirm("Des erreurs de saisie hors période sont détectées.\nVoulez-vous démarrer le parcours de correction maintenant ?");
         if(launchFlow) startOutsideRangeFlow();
       }
+      updateDataQualityBanner(false);
       markDirty();
     }
 
@@ -12570,24 +11466,15 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     _suppressSupabaseSave = false;
 
     let supabaseOk = false;
-    let usersOk = true;
+    let usersOk = false;
     try{ if(window.saveAppStateToSupabase) supabaseOk = await window.saveAppStateToSupabase(state); }catch(e){ softCatch(e); }
-    try{
-      const usersNow = loadUsers();
-      const usersSigNow = _serializeUsersSignature(usersNow);
-      if(usersSigNow && usersSigNow !== _usersSaveLastSavedSignature){
-        usersOk = await saveUsersToSupabase(usersNow);
-      }
-    }catch(e){
-      usersOk = false;
-      softCatch(e);
-    }
+    try{ usersOk = await saveUsersToSupabase(loadUsers()); }catch(e){ softCatch(e); }
 
     // Backup local JSON volontairement désactivé: sauvegarde via Supabase uniquement.
     const backupEnabled = false;
 
     const detailParts = [];
-    detailParts.push(`Service: ${supabaseOk ? "OK" : "ERREUR"}`);
+    detailParts.push(`Supabase: ${supabaseOk ? "OK" : "ERREUR"}`);
     if(usersOk === false) detailParts.push(`Users: ERREUR`);
     if(getCurrentRole() === "admin"){
       detailParts.push("Backup local: désactivé");
@@ -12641,7 +11528,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     if(hmHours) hmHours.value = getHoursDraftForDate(hmDate.value || "");
     updateTimeLogUI(t, true);
     syncHoursTaskStatusFromCalendarDraft(t, hmDate.value || "", hmHours?.value || "");
-    queueHoursTaskSummaryRefresh(t);
+    renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
     refreshHoursCalendarSelectedCard(hmDate.value || "");
     });
     el("hm_date")?.addEventListener("input", ()=>{
@@ -12654,7 +11541,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     if(hmHours) hmHours.value = getHoursDraftForDate(hmDate.value || "");
     updateTimeLogUI(t, true);
     syncHoursTaskStatusFromCalendarDraft(t, hmDate.value || "", hmHours?.value || "");
-    queueHoursTaskSummaryRefresh(t);
+    renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
     refreshHoursCalendarSelectedCard(hmDate.value || "");
     });
 
@@ -12678,7 +11565,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     if(grid && clickTaskId) grid.dataset.currentTaskId = clickTaskId;
     if(hmHours) hmHours.value = dayInput ? (dayInput.value || "") : "";
     syncHoursTaskStatusFromCalendarDraft(t, day, dayInput ? dayInput.value : "");
-    queueHoursTaskSummaryRefresh(t);
+    renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
     refreshHoursCalendarSelectedCard(day);
     });
     el("hoursTaskModal")?.addEventListener("input", (e)=>{
@@ -12706,8 +11593,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     const t = getSelectedTaskForHoursModal();
     if(t){
       syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
-      _upsertHoursDraftEntryFromInput(t, input);
-      queueHoursTaskSummaryRefresh(t);
+      renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
     }
     });
     el("hoursTaskModal")?.addEventListener("focusin", (e)=>{
@@ -12728,7 +11614,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     if(hmHours) hmHours.value = input.value || "";
     updateTimeLogUI(t, true);
     syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
-    queueHoursTaskSummaryRefresh(t);
+    renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
     refreshHoursCalendarSelectedCard(day);
     });
     el("hoursTaskModal")?.addEventListener("keydown", (e)=>{
@@ -12750,11 +11636,12 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     const t = getSelectedTaskForHoursModal();
     if(t){
       syncHoursTaskStatusFromCalendarDraft(t, day, input.value || "");
-      queueHoursTaskSummaryRefresh(t);
+      renderHoursTaskWeeklySummary(t, collectHoursTaskCalendarEntries(t));
     }
+    const scopeTaskId = "";
     const nextInput = (e.key === "Tab" && e.shiftKey)
-      ? getHoursCalendarNextInput(input, -1, "", true)
-      : getHoursCalendarNextInput(input, 1, "", true);
+      ? getHoursCalendarNextInput(input, -1, scopeTaskId, true)
+      : getHoursCalendarNextInput(input, 1, scopeTaskId, true);
     if(nextInput){
       const nextDay = (nextInput.getAttribute("data-date") || "").trim();
       refreshHoursCalendarSelectedCard(nextDay);
@@ -12765,7 +11652,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
       try{ nextInput.select(); }catch(_){}
       return;
     }
-    if(_missingHoursFlow || _outsideRangeFlow){
+    if(_missingHoursFlow){
       saveHoursTaskModal();
       return;
     }
@@ -13321,14 +12208,16 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     const fmt = today.toLocaleDateString("fr-FR",{weekday:"long", day:"2-digit", month:"long", year:"numeric"});
 
-    brandSub.innerHTML = `<span class="brand-date">${fmt}</span>`;
+    brandSub.innerHTML = `Tableau maître  Projets  Gantt  <span class="brand-date">${fmt}</span>`;
 
   }
 
   const brandTitle = el("brandTitle");
 
   if(brandTitle){
-    brandTitle.textContent = "Suivi de Chantiers";
+
+    brandTitle.innerHTML = `Suivi de Chantiers <span class="copyright"> Sébastien DUC</span>`;
+
   }
 
   // flatpickr sur les dates, week-ends interdits
@@ -13662,13 +12551,11 @@ load();
 
 bind();
 
-// Auto‑sauvegarde toutes les 10 minutes
+// Auto‑sauvegarde toutes les 5 minutes
 setInterval(()=>{
-  if(typeof document !== "undefined" && document.hidden) return;
-  if(_isDataIoWriteBusy) return;
   if(!unsavedChanges) return;
   try{ saveState(); }catch(e){ softCatch(e); }
-}, 10 * 60 * 1000);
+}, 5 * 60 * 1000);
 
 try{
   history.replaceState({projectId:selectedProjectId, taskId:selectedTaskId}, "");
@@ -13688,6 +12575,9 @@ window.addEventListener("popstate",(e)=>{
   renderAll();
   setTimeout(()=> scrollViewToTop(), 0);
 });
+renderAll();
+
+
 // Préparation impression : cartouche + lgende
 
 function setPrintPageFormat(size, margin="6mm"){
