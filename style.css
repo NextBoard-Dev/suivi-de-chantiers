@@ -2100,10 +2100,10 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   opacity:1;
 }
 .week-cell.week-today{
-  background:transparent !important;
-  background-color:transparent !important;
+  background:#b9f0cd !important;
+  background-color:#b9f0cd !important;
   background-image:none !important;
-  box-shadow:none !important;
+  box-shadow:inset 0 0 0 1px rgba(34,197,94,0.30) !important;
 }
 .week-cell.week-today .gantt-week-date{
   color:#14532d;
@@ -2205,6 +2205,16 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   background-clip:padding-box;
   position:sticky;
 }
+.gantt-table table td.gantt-col-task::before,
+.gantt-table table td.gantt-col-project::before,
+.gantt-table table td.gantt-col-vendor::before,
+.gantt-table table td.gantt-col-status::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:#eceae5;
+  z-index:-1;
+}
 .gantt-table table th.gantt-col-task,
 .gantt-table table th.gantt-col-project,
 .gantt-table table th.gantt-col-vendor,
@@ -2222,12 +2232,6 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   z-index:45;
   background:#e8e7e4 !important;
   background-color:#e8e7e4 !important;
-  background-image:none !important;
-}
-.gantt-table table td.gantt-cell:not(.vac-week):not(.vac-week-internal),
-.gantt-table .table td.gantt-cell:not(.vac-week):not(.vac-week-internal){
-  background:transparent !important;
-  background-color:transparent !important;
   background-image:none !important;
 }
 .gantt-table table td.gantt-cell{
@@ -2280,18 +2284,6 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   overflow-x:auto !important;
   overflow-y:auto !important;
   scrollbar-width:auto !important;
-  position:relative;
-}
-.gantt-today-line{
-  position:absolute;
-  top:0;
-  width:1px;
-  background:rgba(185, 28, 28, 0.9);
-  opacity:1;
-  pointer-events:none;
-  z-index:70;
-  transform:none;
-  box-shadow:none;
 }
 #viewMaster .tablewrap.gantt-table,
 #viewProject .tablewrap.gantt-table{
@@ -2363,8 +2355,6 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   justify-content:center;
   gap:0;
   width:100%;
-  overflow:hidden;
-  background:transparent !important;
 }
 .gantt-row{
   display:table-row;
@@ -2388,12 +2378,10 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
   flex-direction:row;
   align-items:center;
   gap:0;
-  width:100%;
-  margin:0;
+  width:calc(100% + 2px);
+  margin:0 -1px;
   flex-wrap:nowrap;
   white-space:nowrap;
-  overflow:hidden;
-  background:transparent !important;
 }
 
 /* Charge de travail */
@@ -2739,11 +2727,6 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 .gantt-table tbody tr td{
   background:transparent !important;
 }
-.gantt-table tbody tr td.gantt-cell,
-.gantt-table tbody tr td.gantt-cell:hover{
-  background:transparent !important;
-  background-image:none !important;
-}
 .gantt-table tbody tr td.gantt-col-task,
 .gantt-table tbody tr td.gantt-col-vendor,
 .gantt-table tbody tr td.gantt-col-status{
@@ -2757,54 +2740,6 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 }
 .gantt-table tbody tr.gantt-row.gantt-row-active td{
   background:rgba(241,245,249,0.85) !important;
-}
-.gantt-table tbody tr.gantt-row:hover td.gantt-cell,
-.gantt-table tbody tr.gantt-row.gantt-row-active td.gantt-cell{
-  background:transparent !important;
-  background-image:none !important;
-}
-.gantt-table tbody tr:hover td.gantt-col-site,
-.gantt-table tbody tr:hover td.gantt-col-task,
-.gantt-table tbody tr:hover td.gantt-task-col-project,
-.gantt-table tbody tr:hover td.gantt-col-project,
-.gantt-table tbody tr:hover td.gantt-col-vendor,
-.gantt-table tbody tr:hover td.gantt-col-status,
-.gantt-table tbody tr.gantt-row:hover td.gantt-col-site,
-.gantt-table tbody tr.gantt-row:hover td.gantt-col-task,
-.gantt-table tbody tr.gantt-row:hover td.gantt-task-col-project,
-.gantt-table tbody tr.gantt-row:hover td.gantt-col-project,
-.gantt-table tbody tr.gantt-row:hover td.gantt-col-vendor,
-.gantt-table tbody tr.gantt-row:hover td.gantt-col-status,
-.gantt-table tbody tr.gantt-row.gantt-row-active td.gantt-col-site,
-.gantt-table tbody tr.gantt-row.gantt-row-active td.gantt-col-task,
-.gantt-table tbody tr.gantt-row.gantt-row-active td.gantt-task-col-project,
-.gantt-table tbody tr.gantt-row.gantt-row-active td.gantt-col-project,
-.gantt-table tbody tr.gantt-row.gantt-row-active td.gantt-col-vendor,
-.gantt-table tbody tr.gantt-row.gantt-row-active td.gantt-col-status,
-.gantt-table tbody tr.today-row td.gantt-col-site,
-.gantt-table tbody tr.today-row td.gantt-col-task,
-.gantt-table tbody tr.today-row td.gantt-task-col-project,
-.gantt-table tbody tr.today-row td.gantt-col-project,
-.gantt-table tbody tr.today-row td.gantt-col-vendor,
-.gantt-table tbody tr.today-row td.gantt-col-status,
-.gantt-table tbody tr.late-row td.gantt-col-site,
-.gantt-table tbody tr.late-row td.gantt-col-task,
-.gantt-table tbody tr.late-row td.gantt-task-col-project,
-.gantt-table tbody tr.late-row td.gantt-col-project,
-.gantt-table tbody tr.late-row td.gantt-col-vendor,
-.gantt-table tbody tr.late-row td.gantt-col-status{
-  background:#eceae5 !important;
-  background-color:#eceae5 !important;
-  background-image:none !important;
-  opacity:1 !important;
-}
-.gantt-table table td.gantt-cell::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:transparent !important;
-  background-image:none !important;
-  pointer-events:none;
 }
 .gantt-table tbody tr.today-row td{
   background:rgba(254,243,199,0.26) !important;
@@ -4100,97 +4035,6 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
   text-overflow:clip !important;
 }
 
-.data-io-badge{
-  display:inline-flex;
-  align-items:center;
-  gap:5px;
-  margin-left:8px;
-  padding:2px 7px;
-  border:1px solid rgba(26,43,53,.25);
-  border-radius:999px;
-  background:rgba(255,255,255,.9);
-  color:#13232c;
-  font-size:11px;
-  font-weight:700;
-  line-height:1;
-  vertical-align:middle;
-}
-
-.data-io-badge.is-syncing{
-  border-color: rgba(37,99,235,.55);
-  box-shadow: 0 0 0 1px rgba(37,99,235,.22);
-  animation: dataIoSyncPulse 1.2s ease-in-out infinite;
-}
-
-.data-io-badge img{
-  width:14px;
-  height:14px;
-  object-fit:contain;
-  animation: dataIoDatabaseSpin 1.6s linear infinite;
-  animation-play-state: paused;
-}
-
-.data-io-sep{
-  opacity:.55;
-}
-
-.data-io-item{
-  display:inline-block;
-  padding:2px 6px;
-  border-radius:999px;
-  border:1px solid transparent;
-  font-weight:700;
-}
-
-.data-io-item.is-cloud{
-  background:rgba(22,163,74,.15);
-  border-color:rgba(22,163,74,.45);
-  color:#166534;
-}
-
-.data-io-item.is-fallback{
-  background:rgba(234,88,12,.14);
-  border-color:rgba(234,88,12,.45);
-  color:#9a3412;
-}
-
-.data-io-item.is-unknown{
-  background:rgba(51,65,85,.18);
-  border-color:rgba(51,65,85,.52);
-  color:#1e293b;
-}
-
-.data-io-item.is-warning{
-  background:rgba(234,179,8,.16);
-  border-color:rgba(202,138,4,.45);
-  color:#854d0e;
-}
-
-.data-io-item.is-danger{
-  background:rgba(239,68,68,.15);
-  border-color:rgba(220,38,38,.45);
-  color:#991b1b;
-}
-
-.data-io-badge.is-syncing .data-io-item{
-  border-color: rgba(37,99,235,.45);
-}
-
-.data-io-badge.is-syncing img{
-  animation-play-state: running;
-}
-
-@keyframes dataIoSyncPulse{
-  0% { box-shadow: 0 0 0 0 rgba(37,99,235,.25); }
-  70% { box-shadow: 0 0 0 6px rgba(37,99,235,0); }
-  100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
-}
-
-@keyframes dataIoDatabaseSpin{
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
 .topbar-controls{
   grid-area:topbar-controls !important;
   display:flex !important;
@@ -4828,14 +4672,6 @@ button:not(.btn-primary):not(.btn-danger):not(.btn-success),
   -webkit-text-fill-color:var(--ui-btn-save-idle-text) !important;
 }
 
-.btn.btn-save-dirty{
-  background:#204862 !important;
-  border-color:#193d55 !important;
-  color:#ffffff !important;
-  -webkit-text-fill-color:#ffffff !important;
-  text-shadow:none !important;
-}
-
 .num-badge,
 .badge.owner,
 .badge.site{
@@ -4978,11 +4814,6 @@ body,
   border-radius:0 !important;
   box-shadow:none !important;
   overflow:visible !important;
-  padding:0 8px !important;
-  background:var(--sidebar-bg-solid) !important;
-  background-image:none !important;
-  justify-content:center !important;
-  align-items:center !important;
 }
 .sidebar-logo-wrap::after{
   content:none !important;
@@ -4992,17 +4823,6 @@ body,
   border:none !important;
   border-radius:0 !important;
   box-shadow:none !important;
-  width:100% !important;
-  max-width:none !important;
-  height:auto !important;
-  object-fit:contain !important;
-  display:block !important;
-  margin:0 auto !important;
-  padding:0 !important;
-  background:var(--sidebar-bg-solid) !important;
-  background-image:none !important;
-  filter:none !important;
-  max-height:none !important;
 }
 
 /* Consolidation sidebar: anciens verrous redondants supprimes */
@@ -5016,7 +4836,7 @@ body,
 
 .sidebar-logo-wrap,
 .sidebar-logo-img{
-  background:transparent !important;
+  background:var(--sidebar-bg-solid) !important;
   background-image:none !important;
 }
 
@@ -5031,21 +4851,7 @@ body,
 .sidebar .section-filters .input{
   background:var(--sidebar-bg-solid) !important;
   background-image:none !important;
-  border:1px solid rgba(47,67,80,0.32) !important;
-  color:#1f3440 !important;
-  -webkit-text-fill-color:#1f3440 !important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.42) !important;
-}
-.sidebar #filterSite::placeholder,
-.sidebar #filterProject::placeholder,
-.sidebar #filterStatus::placeholder,
-.sidebar #filterSearch::placeholder,
-.sidebar #filterStartAfter::placeholder,
-.sidebar #filterEndBefore::placeholder,
-.sidebar .section-filters input::placeholder,
-.sidebar .section-filters .input::placeholder{
-  color:rgba(31,52,64,0.68) !important;
-  -webkit-text-fill-color:rgba(31,52,64,0.68) !important;
+  border:1px solid rgba(63,97,112,0.22) !important;
 }
 
 /* Harmonisation visuelle modale heures (UI uniquement) */
@@ -5456,38 +5262,13 @@ button,
 .topbar .btn:not(.btn-primary):not(.btn-danger):not(.btn-success),
 .btn:not(.btn-primary):not(.btn-danger):not(.btn-success),
 button.btn:not(.btn-primary):not(.btn-danger):not(.btn-success),
-.btn.btn-ghost{
+.btn.btn-ghost,
+.btn.btn-save-idle{
   background:#edf1f3 !important;
   background-image:none !important;
   border:1px solid rgba(63,97,112,0.16) !important;
   color:#2f4350 !important;
   -webkit-text-fill-color:#2f4350 !important;
-}
-
-.btn.btn-save-idle{
-  background:#e5eaee !important;
-  background-image:none !important;
-  border:1px solid rgba(63,97,112,0.10) !important;
-  color:#5f7380 !important;
-  -webkit-text-fill-color:#5f7380 !important;
-  opacity:.78 !important;
-  cursor:not-allowed !important;
-}
-
-/* Lisibilité tableau maître: alternance de lignes plus nette */
-#viewMaster .table tbody tr:nth-child(2n) td{
-  background:rgba(236, 238, 241, 0.96) !important;
-}
-#viewMaster .table tbody tr:nth-child(2n+1) td{
-  background:rgba(246, 247, 249, 0.96) !important;
-}
-#viewMaster .table tbody tr:hover td{
-  background:rgba(224, 235, 245, 0.98) !important;
-}
-#viewMaster .table thead th{
-  color:#0a1322 !important;
-  border-bottom:1px solid rgba(16,24,40,0.18) !important;
-  text-shadow:0 1px 0 rgba(255,255,255,0.45) !important;
 }
 
 .topbar .btn.btn-primary,
@@ -5504,7 +5285,6 @@ button.btn.btn-primary,
   border:1px solid #365563 !important;
   color:#ffffff !important;
   -webkit-text-fill-color:#ffffff !important;
-  box-shadow:0 0 0 2px rgba(63,97,112,0.16) !important;
 }
 
 /* Feedback clic global: micro animation de confirmation */
@@ -5843,33 +5623,6 @@ h3,
   background-image:none !important;
 }
 
-.gantt-table table th.gantt-col-site,
-.gantt-table .table th.gantt-col-site,
-.gantt-table table td.gantt-col-site,
-.gantt-table .table td.gantt-col-site,
-.gantt-table table th.gantt-col-task,
-.gantt-table .table th.gantt-col-task,
-.gantt-table table th.gantt-task-col-project,
-.gantt-table .table th.gantt-task-col-project,
-.gantt-table table td.gantt-col-task,
-.gantt-table .table td.gantt-col-task,
-.gantt-table table td.gantt-task-col-project,
-.gantt-table .table td.gantt-task-col-project,
-.gantt-table table th.gantt-col-project,
-.gantt-table .table th.gantt-col-project,
-.gantt-table table td.gantt-col-project,
-.gantt-table .table td.gantt-col-project,
-.gantt-table table th.gantt-col-vendor,
-.gantt-table .table th.gantt-col-vendor,
-.gantt-table table td.gantt-col-vendor,
-.gantt-table .table td.gantt-col-vendor,
-.gantt-table table th.gantt-col-status,
-.gantt-table .table th.gantt-col-status,
-.gantt-table table td.gantt-col-status,
-.gantt-table .table td.gantt-col-status{
-  box-shadow: inset -1px 0 0 rgba(15,23,42,0.10) !important;
-}
-
 .gantt-table table th.gantt-col-vendor,
 .gantt-table .table th.gantt-col-vendor{
   z-index:64 !important;
@@ -6055,45 +5808,6 @@ h3,
   text-transform:uppercase;
   letter-spacing:.3px;
   color:#1e293b !important;
-}
-
-@media (max-width: 760px){
-  #hoursTaskModal .modal-card.hours-modal-compact{
-    width:calc(100vw - 8px) !important;
-    max-width:calc(100vw - 8px) !important;
-    max-height:98vh !important;
-    padding:8px 8px 8px !important;
-  }
-  #hoursTaskModal .grid2{
-    grid-template-columns:1fr !important;
-    gap:6px !important;
-  }
-  #hoursTaskModal .label{
-    font-size:11px !important;
-  }
-  #hoursTaskModal .input,
-  #hoursTaskModal select,
-  #hoursTaskModal textarea{
-    height:34px !important;
-    min-height:34px !important;
-    font-size:13px !important;
-    padding:5px 9px !important;
-  }
-  #hoursTaskModal #hm_calendarWrap{
-    max-height:66vh !important;
-  }
-  #hoursTaskModal #hm_calendar .hm-day-input{
-    height:22px !important;
-    font-size:12px !important;
-    padding:2px 6px !important;
-  }
-  #hoursTaskModal .btn,
-  #hoursTaskModal #btnSaveHoursModal,
-  #hoursTaskModal #btnCloseHoursModal{
-    min-height:36px !important;
-    height:36px !important;
-    font-size:12px !important;
-  }
 }
 
 
@@ -6286,745 +6000,3 @@ h3,
   min-width:0;
 }
 
-/* =========================
-   V1 - Harmonisation visuelle (reversible)
-   ========================= */
-:root{
-  --ui-surface-1: rgba(248, 247, 243, 0.96);
-  --ui-surface-2: rgba(241, 239, 233, 0.98);
-  --ui-border-soft: rgba(15, 23, 42, 0.14);
-  --ui-border-strong: rgba(15, 23, 42, 0.22);
-  --ui-focus: #3f6170;
-  --ui-btn-primary: #3f6170;
-  --ui-btn-primary-hover: #365563;
-  --ui-btn-primary-border-hover: #2f4b57;
-  --ui-btn-danger: #b42318;
-  --ui-btn-danger-hover: #9f1f16;
-  --ui-btn-success: #2f855a;
-  --ui-btn-success-hover: #276f4b;
-}
-
-.panel,
-.card,
-.tablewrap{
-  background: var(--ui-surface-1) !important;
-  border-color: var(--ui-border-soft) !important;
-}
-
-.panel-head{
-  background: linear-gradient(180deg, var(--ui-surface-2) 0%, var(--ui-surface-1) 100%) !important;
-  border-bottom: 1px solid var(--ui-border-soft) !important;
-}
-
-.input,
-select.input,
-textarea.input{
-  background: #ffffff !important;
-  border: 1px solid var(--ui-border-soft) !important;
-  color: var(--text) !important;
-}
-
-.input:focus,
-select.input:focus,
-textarea.input:focus{
-  border-color: var(--ui-focus) !important;
-  box-shadow: 0 0 0 2px rgba(63, 97, 112, 0.16) !important;
-  outline: none !important;
-}
-
-.btn.btn-primary,
-.btn-primary{
-  background: var(--ui-btn-primary) !important;
-  border-color: var(--ui-btn-primary-hover) !important;
-  color: #ffffff !important;
-}
-
-.btn.btn-primary:hover,
-.btn-primary:hover{
-  background: var(--ui-btn-primary-hover) !important;
-  border-color: var(--ui-btn-primary-border-hover) !important;
-}
-
-.btn.btn-ghost,
-.btn-ghost{
-  background: #f8fafc !important;
-  border: 1px solid var(--ui-border-soft) !important;
-  color: var(--text) !important;
-}
-
-.btn.btn-ghost:hover,
-.btn-ghost:hover{
-  background: #eef2f7 !important;
-  border-color: var(--ui-border-strong) !important;
-}
-
-.btn.btn-danger,
-.btn-danger{
-  background: var(--ui-btn-danger) !important;
-  border-color: var(--ui-btn-danger) !important;
-  color: #ffffff !important;
-}
-
-.btn.btn-danger:hover,
-.btn-danger:hover{
-  background: var(--ui-btn-danger-hover) !important;
-  border-color: var(--ui-btn-danger-hover) !important;
-}
-
-.btn.btn-success,
-.btn-success{
-  background: var(--ui-btn-success) !important;
-  border-color: var(--ui-btn-success) !important;
-  color: #ffffff !important;
-}
-
-.btn.btn-success:hover,
-.btn-success:hover{
-  background: var(--ui-btn-success-hover) !important;
-  border-color: var(--ui-btn-success-hover) !important;
-}
-
-/* =========================
-   V19 - Lisibilite des onglets (reversible)
-   ========================= */
-.tabs .tab,
-.tabs-master .tab{
-  border: 1px solid rgba(15,23,42,0.12) !important;
-  background: rgba(248,247,243,0.84) !important;
-}
-
-.tabs .tab:hover,
-.tabs-master .tab:hover{
-  background: rgba(238,242,247,0.96) !important;
-  border-color: rgba(15,23,42,0.20) !important;
-}
-
-.tabs .tab.active,
-.tabs-master .tab.active{
-  background: linear-gradient(180deg, #e7f0f5 0%, #d1e2ec 100%) !important;
-  border-color: #2f4b58 !important;
-  box-shadow: inset 3px 0 0 #2f4b58, 0 0 0 1px rgba(47,75,88,0.16) !important;
-}
-
-/* =========================
-   V20 - Separation colonnes fixes Gantt (reversible)
-   ========================= */
-.gantt-table table th.gantt-col-status,
-.gantt-table .table th.gantt-col-status,
-.gantt-table table td.gantt-col-status,
-.gantt-table .table td.gantt-col-status{
-  box-shadow:
-    inset -1px 0 0 rgba(15,23,42,0.14),
-    6px 0 8px -6px rgba(15,23,42,0.24) !important;
-}
-
-.gantt-table table th.gantt-col-vendor,
-.gantt-table .table th.gantt-col-vendor,
-.gantt-table table td.gantt-col-vendor,
-.gantt-table .table td.gantt-col-vendor{
-  box-shadow:
-    inset -1px 0 0 rgba(15,23,42,0.10) !important;
-}
-
-/* =========================
-   V21 - Lisibilite entetes sticky (reversible)
-   ========================= */
-.table thead th,
-.gantt-table table thead th,
-.gantt-table .table thead th{
-  position: sticky;
-  top: 0;
-  z-index: 45;
-  backdrop-filter: saturate(110%) blur(1px);
-  border-bottom: 1px solid rgba(15,23,42,0.18) !important;
-}
-
-/* =========================
-   V22 - Lisibilite ligne selectionnee (reversible)
-   ========================= */
-.table tbody tr.row-selected td,
-.gantt-table tbody tr.gantt-row.gantt-row-active td{
-  background: rgba(37,99,235,0.10) !important;
-  box-shadow: inset 3px 0 0 rgba(37,99,235,0.55) !important;
-}
-
-/* =========================
-   V23 - Lisibilite des statuts (reversible)
-   ========================= */
-.status-row span,
-.status-cell span{
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  padding: 1px 8px !important;
-  border-radius: 999px !important;
-  border: 1px solid rgba(15,23,42,0.14) !important;
-  background: rgba(248,247,243,0.94) !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.08px !important;
-}
-
-/* =========================
-   V24 - Lisibilite filtres actifs (reversible)
-   ========================= */
-.section-filters .input:not(:placeholder-shown),
-.panel-controls .input:not(:placeholder-shown),
-.section-filters select:not([value=""]),
-.panel-controls select:not([value=""]){
-  border-color: rgba(37,99,235,0.45) !important;
-  box-shadow: 0 0 0 1px rgba(37,99,235,0.14) inset !important;
-  background: rgba(239,246,255,0.72) !important;
-}
-
-/* =========================
-   V25 - Zones actions (reversible)
-   ========================= */
-.panel-controls,
-.modal-actions,
-.gantt-toggle-row{
-  gap: 8px !important;
-}
-
-.gantt-toggle-row{
-  padding: 6px !important;
-  border: 1px solid rgba(15,23,42,0.10) !important;
-  border-radius: 10px !important;
-  background: rgba(248,247,243,0.84) !important;
-}
-
-/* =========================
-   V26 - Hierarchie titres (reversible)
-   ========================= */
-.card-title,
-.panel-head .title{
-  font-weight: 800 !important;
-  letter-spacing: 0.12px !important;
-}
-
-.panel-head .title::after,
-.card-title::after{
-  content: "";
-  display: inline-block;
-  width: 18px;
-  height: 2px;
-  margin-left: 7px;
-  vertical-align: middle;
-  background: rgba(63,97,112,0.45);
-  border-radius: 999px;
-}
-
-/* =========================
-   V27 - Lisibilite numeriques (reversible)
-   ========================= */
-.table td.num,
-.table th.num,
-.metric-val,
-.gantt-progress,
-.gantt-progress-out,
-#hm_summary,
-#masterHoursReportCard,
-#projectHoursReportCard{
-  font-variant-numeric: tabular-nums !important;
-}
-
-.table td.num,
-.table th.num{
-  text-align: right !important;
-}
-
-/* =========================
-   V28 - En-tetes tableaux (reversible)
-   ========================= */
-.table thead th{
-  padding-top: 7px !important;
-  padding-bottom: 7px !important;
-  padding-left: 8px !important;
-  padding-right: 8px !important;
-  white-space: nowrap !important;
-}
-
-.table thead th + th{
-  box-shadow: inset 1px 0 0 rgba(15,23,42,0.08) !important;
-}
-
-/* =========================
-   V29 - Lisibilite textes longs (reversible)
-   ========================= */
-.table td,
-.gantt-task-name,
-.status-cell,
-.gantt-vendor-cell{
-  word-break: break-word !important;
-  overflow-wrap: anywhere !important;
-}
-
-.gantt-task-name{
-  line-height: 1.28 !important;
-}
-
-/* =========================
-   V2 - Typo et lisibilite (reversible)
-   ========================= */
-:root{
-  --ui-font-title: 13px;
-  --ui-font-body: 12px;
-  --ui-font-label: 11px;
-  --ui-line-body: 1.35;
-}
-
-.panel-head .title,
-.card-title,
-.topbar .title{
-  font-size: var(--ui-font-title) !important;
-  line-height: 1.25 !important;
-  letter-spacing: 0.1px !important;
-}
-
-.label,
-.modal-sub,
-.subtitle{
-  font-size: var(--ui-font-label) !important;
-  line-height: 1.2 !important;
-  color: var(--muted) !important;
-}
-
-body,
-.panel,
-.card,
-.table,
-.table td,
-.table th{
-  font-size: var(--ui-font-body) !important;
-  line-height: var(--ui-line-body) !important;
-}
-
-.table th{
-  font-weight: 700 !important;
-  letter-spacing: 0.12px !important;
-}
-
-.input,
-select.input,
-textarea.input{
-  font-size: var(--ui-font-body) !important;
-  line-height: 1.25 !important;
-}
-
-/* =========================
-   V3 - Confort de saisie (reversible)
-   ========================= */
-.modal-card{
-  border-radius: 12px !important;
-}
-
-.modal .grid2{
-  gap: 8px !important;
-}
-
-.modal .modal-actions{
-  gap: 8px !important;
-}
-
-.input:focus-visible,
-select.input:focus-visible,
-textarea.input:focus-visible,
-button:focus-visible,
-.btn:focus-visible{
-  outline: none !important;
-  box-shadow: 0 0 0 2px rgba(63, 97, 112, 0.2), 0 0 0 4px rgba(63, 97, 112, 0.12) !important;
-}
-
-.btn{
-  min-height: 32px !important;
-  border-radius: 9px !important;
-}
-
-.btn.btn-primary{
-  font-weight: 700 !important;
-}
-
-#hoursTaskModal .hm-day-input:focus{
-  border-color: #3f6170 !important;
-  box-shadow: 0 0 0 2px rgba(63, 97, 112, 0.16) !important;
-}
-
-/* =========================
-   V4 - Gantt lisibilite (reversible)
-   ========================= */
-.gantt-table .table thead th,
-.gantt-table table thead th{
-  border-bottom: 1px solid rgba(15, 23, 42, 0.18) !important;
-}
-
-.gantt-table .table td.gantt-cell,
-.gantt-table table td.gantt-cell{
-  border-right: 1px solid rgba(15, 23, 42, 0.06) !important;
-}
-
-.gantt-table .table tr.gantt-row td.gantt-cell,
-.gantt-table table tr.gantt-row td.gantt-cell{
-  background-image: linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 100%) !important;
-}
-
-.gantt-table .table tr.gantt-row:hover td.gantt-cell,
-.gantt-table table tr.gantt-row:hover td.gantt-cell{
-  background-color: rgba(59, 130, 246, 0.07) !important;
-}
-
-.gantt-table .table tr.gantt-row.gantt-row-active td.gantt-cell,
-.gantt-table table tr.gantt-row.gantt-row-active td.gantt-cell{
-  background-color: rgba(37, 99, 235, 0.10) !important;
-}
-
-.gantt-bar{
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.28), 0 1px 2px rgba(15,23,42,0.22) !important;
-}
-
-.gantt-progress,
-.gantt-progress-out{
-  font-weight: 700 !important;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.22) !important;
-}
-
-/* =========================
-   V5 - Cohérence desktop/mobile (reversible)
-   ========================= */
-@media (max-width: 1080px){
-  .panel,
-  .card,
-  .tablewrap{
-    border-radius: 10px !important;
-  }
-
-  .panel-head,
-  .card-title{
-    font-size: 12px !important;
-  }
-
-  .table th,
-  .table td{
-    padding-top: 5px !important;
-    padding-bottom: 5px !important;
-  }
-}
-
-@media (max-width: 760px){
-  .main{
-    padding: 6px !important;
-  }
-
-  .panel{
-    padding: 6px !important;
-  }
-
-  .modal-card{
-    width: calc(100vw - 10px) !important;
-    max-width: calc(100vw - 10px) !important;
-  }
-
-  .modal .grid2{
-    grid-template-columns: 1fr !important;
-  }
-
-  .btn{
-    min-height: 36px !important;
-  }
-}
-
-/* =========================
-   V6 - Harmonisation badges (reversible)
-   ========================= */
-.badge,
-.badge.owner,
-.num-badge{
-  border-radius: 999px !important;
-  letter-spacing: 0.08px !important;
-}
-
-.badge.owner{
-  border: 1px solid rgba(255,255,255,0.24) !important;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10) !important;
-}
-
-.num-badge{
-  min-width: 18px !important;
-  height: 18px !important;
-  line-height: 18px !important;
-  font-weight: 700 !important;
-  box-shadow: 0 1px 2px rgba(15,23,42,0.20) !important;
-}
-
-/* =========================
-   V7 - Harmonisation tableaux (reversible)
-   ========================= */
-.table thead th{
-  border-bottom: 1px solid rgba(15,23,42,0.16) !important;
-  background: rgba(241,239,233,0.92) !important;
-}
-
-.table tbody td{
-  border-bottom: 1px solid rgba(15,23,42,0.08) !important;
-  vertical-align: middle !important;
-}
-
-.table tbody tr:hover td{
-  background: rgba(59,130,246,0.05) !important;
-}
-
-.table tbody tr:last-child td{
-  border-bottom: none !important;
-}
-
-/* =========================
-   V8 - Harmonisation panneaux resume (reversible)
-   ========================= */
-.panel-chip,
-.metric,
-.metric-card,
-.time-log-summary > div{
-  border: 1px solid rgba(15,23,42,0.12) !important;
-  background: rgba(248,247,243,0.92) !important;
-  border-radius: 10px !important;
-}
-
-.panel-chip .metric-label,
-.metric .metric-label,
-.metric-card .metric-label{
-  color: var(--muted) !important;
-  font-size: 11px !important;
-  letter-spacing: 0.1px !important;
-}
-
-.panel-chip .metric-val,
-.metric .metric-val,
-.metric-card .metric-val{
-  color: var(--text) !important;
-  font-weight: 700 !important;
-}
-
-/* =========================
-   V9 - Harmonisation topbar/sidebar (reversible)
-   ========================= */
-.topbar{
-  border-bottom: 1px solid rgba(15,23,42,0.12) !important;
-  background: rgba(248,247,243,0.94) !important;
-}
-
-.topbar .title,
-.topbar .subtitle{
-  color: var(--text) !important;
-}
-
-.sidebar{
-  border-right: 1px solid rgba(15,23,42,0.14) !important;
-}
-
-.sidebar .section-title{
-  color: var(--muted) !important;
-  letter-spacing: 0.15px !important;
-}
-
-.sidebar .tab{
-  border: 1px solid rgba(15,23,42,0.10) !important;
-  background: rgba(248,247,243,0.88) !important;
-}
-
-.sidebar .tab:hover{
-  background: rgba(238,242,247,0.95) !important;
-  border-color: rgba(15,23,42,0.18) !important;
-}
-
-/* =========================
-   V10 - Harmonisation modales (reversible)
-   ========================= */
-.modal{
-  background: rgba(15,23,42,0.42) !important;
-  backdrop-filter: blur(2px) !important;
-}
-
-.modal-card{
-  border: 1px solid rgba(15,23,42,0.18) !important;
-  box-shadow: 0 14px 32px rgba(15,23,42,0.28) !important;
-}
-
-.modal-card .modal-title{
-  color: var(--text) !important;
-  letter-spacing: 0.12px !important;
-}
-
-.modal-card .modal-sub{
-  color: var(--muted) !important;
-}
-
-.modal-card .modal-actions{
-  border-top: 1px solid rgba(15,23,42,0.10) !important;
-  padding-top: 8px !important;
-}
-
-/* =========================
-   V11 - Lisibilite champs (reversible)
-   ========================= */
-.input::placeholder,
-textarea::placeholder{
-  color: rgba(63,74,95,0.72) !important;
-  opacity: 1 !important;
-}
-
-input[type="date"],
-input[type="time"],
-input[type="number"],
-input[type="text"],
-select{
-  color: var(--text) !important;
-  font-variant-numeric: tabular-nums !important;
-}
-
-input[type="date"]::-webkit-calendar-picker-indicator{
-  opacity: 0.72;
-}
-
-input[type="date"]:focus::-webkit-calendar-picker-indicator{
-  opacity: 1;
-}
-
-/* =========================
-   V12 - Rythme visuel des blocs (reversible)
-   ========================= */
-.panel{
-  margin-bottom: 8px !important;
-}
-
-.card{
-  margin-bottom: 8px !important;
-}
-
-.panel-head{
-  padding-bottom: 6px !important;
-  margin-bottom: 6px !important;
-}
-
-.tablewrap{
-  padding-top: 4px !important;
-  padding-bottom: 4px !important;
-}
-
-/* =========================
-   V13 - Harmonisation scrollbars (reversible)
-   ========================= */
-.tablewrap,
-.modal-card,
-#hm_calendarWrap{
-  scrollbar-width: thin;
-  scrollbar-color: rgba(63,97,112,0.55) rgba(15,23,42,0.10);
-}
-
-.tablewrap::-webkit-scrollbar,
-.modal-card::-webkit-scrollbar,
-#hm_calendarWrap::-webkit-scrollbar{
-  width: 10px;
-  height: 10px;
-}
-
-.tablewrap::-webkit-scrollbar-track,
-.modal-card::-webkit-scrollbar-track,
-#hm_calendarWrap::-webkit-scrollbar-track{
-  background: rgba(15,23,42,0.08);
-  border-radius: 999px;
-}
-
-.tablewrap::-webkit-scrollbar-thumb,
-.modal-card::-webkit-scrollbar-thumb,
-#hm_calendarWrap::-webkit-scrollbar-thumb{
-  background: rgba(63,97,112,0.62);
-  border-radius: 999px;
-  border: 2px solid rgba(248,247,243,0.9);
-}
-
-/* =========================
-   V14 - Etats visuels feedback (reversible)
-   ========================= */
-#saveToast{
-  border: 1px solid rgba(15,23,42,0.16) !important;
-  box-shadow: 0 10px 24px rgba(15,23,42,0.24) !important;
-}
-
-#saveToast:not(.is-error){
-  background: rgba(236, 253, 243, 0.98) !important;
-}
-
-#saveToast.is-error{
-  background: rgba(254, 242, 242, 0.98) !important;
-  border-color: rgba(220,38,38,0.34) !important;
-}
-
-#saveToastTitle{
-  font-weight: 700 !important;
-}
-
-#saveToastDetail{
-  color: #1f2937 !important;
-}
-
-/* =========================
-   V15 - Harmonisation separateurs (reversible)
-   ========================= */
-hr,
-.separator,
-.divider{
-  border: none !important;
-  border-top: 1px solid rgba(15,23,42,0.12) !important;
-}
-
-.panel + .panel,
-.card + .card{
-  margin-top: 2px !important;
-}
-
-.panel-head,
-.modal-card .modal-actions,
-.table thead th{
-  border-color: rgba(15,23,42,0.12) !important;
-}
-
-/* =========================
-   V16 - Confort visuel filtres (reversible)
-   ========================= */
-.section-filters,
-.panel-controls{
-  background: rgba(241,239,233,0.72) !important;
-  border: 1px solid rgba(15,23,42,0.10) !important;
-  border-radius: 10px !important;
-  padding: 6px !important;
-}
-
-.section-filters .input,
-.panel-controls .input,
-.section-filters select,
-.panel-controls select{
-  min-height: 30px !important;
-}
-
-.section-filters label,
-.panel-controls label{
-  color: var(--muted) !important;
-  font-size: 11px !important;
-}
-
-/* =========================
-   V17 - Etats disabled (reversible)
-   ========================= */
-.btn:disabled,
-.btn.is-disabled,
-button:disabled{
-  opacity: 0.62 !important;
-  filter: saturate(0.72) !important;
-  cursor: not-allowed !important;
-}
-
-.input:disabled,
-select:disabled,
-textarea:disabled{
-  background: rgba(226,232,240,0.65) !important;
-  border-color: rgba(15,23,42,0.12) !important;
-  color: rgba(30,41,59,0.72) !important;
-}
