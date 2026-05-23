@@ -96,6 +96,13 @@ Inclure :
 
 Snapshots validés → dossier `snapshots_ok/`
 
+Snapshot majeur (obligatoire sur demande explicite) :
+
+- emplacement : `C:\Users\sebastien.duc\CLOUD\02_ARCHIVAGE PERSONNEL\DASHBOARDS\SUIVI DE CHANTIERS SNAPSHOTS`
+- contenu : tous les fichiers du dossier projet
+- exclusions : `.git` et `.gitignore`
+- convention : `YYYYMMDD_HHMMSS_SNAPSHOT_MAJEUR`
+
 ---
 
 # Format des réponses
@@ -137,6 +144,8 @@ Ce mode est obligatoire pour toutes les interventions futures :
   - Pas de modification auth/MD sans demande explicite.
   - Pas d’attente systématique de 30 secondes avant commit/push.
   - Toute correction doit rester locale, réversible et orientée stabilité.
+- MAJ MD: 2026-05-23
+  - Politique snapshot majeur intégrée : copie complète du projet hors repo, en excluant `.git` et `.gitignore`, dans `SUIVI DE CHANTIERS SNAPSHOTS`.
 
 ---
 
