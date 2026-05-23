@@ -2397,6 +2397,10 @@ textarea{resize:vertical;color:#0b1424;background:rgba(245,244,240,0.94);}
 .gantt-table td.gantt-cell-empty .gantt-print-bar{
   display:none;
 }
+.gantt-table td.gantt-cell-has-bar .gantt-bar,
+.gantt-table td.gantt-cell-has-bar .gantt-print-bar{
+  border-radius:0;
+}
 
 /* Charge de travail */
 #workloadChart{min-height:200px;}
