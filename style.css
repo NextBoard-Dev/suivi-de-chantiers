@@ -5867,7 +5867,7 @@ h3,
 .gantt-table .table th.gantt-col-status,
 .gantt-table table td.gantt-col-status,
 .gantt-table .table td.gantt-col-status{
-  box-shadow: none !important;
+  box-shadow: inset -1px 0 0 rgba(15,23,42,0.10) !important;
 }
 
 .gantt-table table th.gantt-col-vendor,
@@ -6413,14 +6413,17 @@ textarea.input:focus{
 .gantt-table .table th.gantt-col-status,
 .gantt-table table td.gantt-col-status,
 .gantt-table .table td.gantt-col-status{
-  box-shadow: none !important;
+  box-shadow:
+    inset -1px 0 0 rgba(15,23,42,0.14),
+    6px 0 8px -6px rgba(15,23,42,0.24) !important;
 }
 
 .gantt-table table th.gantt-col-vendor,
 .gantt-table .table th.gantt-col-vendor,
 .gantt-table table td.gantt-col-vendor,
 .gantt-table .table td.gantt-col-vendor{
-  box-shadow: none !important;
+  box-shadow:
+    inset -1px 0 0 rgba(15,23,42,0.10) !important;
 }
 
 /* =========================
@@ -6540,7 +6543,7 @@ textarea.input:focus{
   white-space: nowrap !important;
 }
 
-.table:not(.gantt-table) thead th + th{
+.table thead th + th{
   box-shadow: inset 1px 0 0 rgba(15,23,42,0.08) !important;
 }
 
@@ -6655,7 +6658,7 @@ button:focus-visible,
 
 .gantt-table .table td.gantt-cell,
 .gantt-table table td.gantt-cell{
-  border-right: 0 !important;
+  border-right: 1px solid rgba(15, 23, 42, 0.06) !important;
 }
 
 .gantt-table .table tr.gantt-row td.gantt-cell,
