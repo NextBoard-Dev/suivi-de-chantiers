@@ -6916,13 +6916,13 @@ function buildGanttHtml(tasks){
         const useOutsideLabel = geo.width < 42;
         const progressInside = (isLabelWeek && !useOutsideLabel) ? `<span class="gantt-progress">${progressValue}%</span>` : "";
         const progressOutside = (isLabelWeek && useOutsideLabel) ? `<span class="gantt-progress-out">${progressValue}%</span>` : "";
-        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s">${progressInside}</div>${progressOutside}</div></div></td>`;
+        html+=`<td class="gantt-cell gantt-cell-has-bar${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s">${progressInside}</div>${progressOutside}</div></div></td>`;
 
       }else{
 
         const vacClass = vacWeeks[i] ? " vac-week" : "";
         const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
-        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+        html+=`<td class="gantt-cell gantt-cell-empty${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
 
       }
 
@@ -7208,11 +7208,11 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
         const vacClass = vacWeeks[i] ? " vac-week" : "";
         const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
         const barDelay = (rowIdx * 0.03 + i * 0.015).toFixed(3);
-        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
+        html+=`<td class="gantt-cell gantt-cell-has-bar${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
       }else{
         const vacClass = vacWeeks[i] ? " vac-week" : "";
         const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
-        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+        html+=`<td class="gantt-cell gantt-cell-empty${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
       }
     });
     html+="</tr>";
@@ -7383,14 +7383,14 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
         const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
         if(geo.days>0){
           if(plainMode){
-            html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-print-bar" style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};"></div></div></div></td>`;
+            html+=`<td class="gantt-cell gantt-cell-has-bar${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-print-bar" style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};"></div></div></div></td>`;
           }else{
             const title = t.vendor ? ` title="Prestataire : ${attrEscape(t.vendor)}"` : "";
             const barDelay = ((rowOffset + rowIdx) * 0.03 + i * 0.015).toFixed(3);
-            html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
+            html+=`<td class="gantt-cell gantt-cell-has-bar${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s"><span class="gantt-days">${geo.days} j</span></div></div></div></td>`;
           }
         }else{
-          html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+          html+=`<td class="gantt-cell gantt-cell-empty${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
         }
       });
       html+="</tr>";
@@ -7586,13 +7586,13 @@ function renderMasterGantt(){
         const useOutsideLabel = geo.width < 42;
         const progressInside = (isLabelWeek && !useOutsideLabel) ? `<span class="gantt-progress">${progressValue}%</span>` : "";
         const progressOutside = (isLabelWeek && useOutsideLabel) ? `<span class="gantt-progress-out">${progressValue}%</span>` : "";
-        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s">${progressInside}</div>${progressOutside}</div></div></td>`;
+        html+=`<td class="gantt-cell gantt-cell-has-bar${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="bar-wrapper"><div class="gantt-bar bar-click" data-task="${t.id}" data-status="${mainStatus}"${title} style="width:${geo.width}%;margin-left:${geo.offset}%;background:${color};border-color:${color};--bar-delay:${barDelay}s">${progressInside}</div>${progressOutside}</div></div></td>`;
 
       }else{
 
         const vacClass = vacWeeks[i] ? " vac-week" : "";
         const internalVacClass = internalVacWeeks[i] ? " vac-week-internal" : "";
-        html+=`<td class="gantt-cell${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
+        html+=`<td class="gantt-cell gantt-cell-empty${vacClass}${internalVacClass}"><div class="gantt-cell-inner"><div class="gantt-spacer"></div></div></td>`;
 
       }
 
