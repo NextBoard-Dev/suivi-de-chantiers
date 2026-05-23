@@ -5853,8 +5853,7 @@ function statusLabels(values){
 }
 
 function statusPillStyle(statusValue){
-  const c = statusColor(statusValue);
-  return `style="background:${hexToRgba(c,0.14)} !important;border-color:${hexToRgba(c,0.42)} !important;color:#0f172a !important;"`;
+  return `style="background:#f8fafc !important;border-color:#cbd5e1 !important;color:#0f172a !important;"`;
 }
 
 const toDateInput = window.toDateInput || ((d)=>{
