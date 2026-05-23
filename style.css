@@ -7372,3 +7372,87 @@ textarea:disabled{
   font-weight: 500 !important;
   line-height: 1 !important;
 }
+
+/* =========================================================
+   SOURCE UNIQUE GANTT (global) : pas de barres bleues,
+   pas de retour ligne, pas de gras
+   ========================================================= */
+.gantt-table table,
+.gantt-table .table{
+  border-collapse: collapse !important;
+}
+
+.gantt-table table th,
+.gantt-table .table th,
+.gantt-table table td,
+.gantt-table .table td{
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  font-weight: 400 !important;
+}
+
+.gantt-table .gantt-task-name,
+.gantt-table .gantt-vendor-cell,
+.gantt-table .gantt-status-cell,
+.gantt-table .status-row,
+.gantt-table .status-left,
+.gantt-table .badge.owner,
+.gantt-table .num-badge,
+.gantt-table .gantt-progress,
+.gantt-table .gantt-progress-out{
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  font-weight: 400 !important;
+}
+
+.gantt-table table thead th.week-cell,
+.gantt-table .table thead th.week-cell,
+.gantt-table table td.gantt-cell,
+.gantt-table .table td.gantt-cell,
+.gantt-table table th.gantt-col-site,
+.gantt-table .table th.gantt-col-site,
+.gantt-table table td.gantt-col-site,
+.gantt-table .table td.gantt-col-site,
+.gantt-table table th.gantt-col-task,
+.gantt-table .table th.gantt-col-task,
+.gantt-table table td.gantt-col-task,
+.gantt-table .table td.gantt-col-task,
+.gantt-table table th.gantt-task-col-project,
+.gantt-table .table th.gantt-task-col-project,
+.gantt-table table td.gantt-task-col-project,
+.gantt-table .table td.gantt-task-col-project,
+.gantt-table table th.gantt-col-vendor,
+.gantt-table .table th.gantt-col-vendor,
+.gantt-table table td.gantt-col-vendor,
+.gantt-table .table td.gantt-col-vendor,
+.gantt-table table th.gantt-col-status,
+.gantt-table .table th.gantt-col-status,
+.gantt-table table td.gantt-col-status,
+.gantt-table .table td.gantt-col-status,
+.gantt-table table thead th.week-cell::before,
+.gantt-table .table thead th.week-cell::before,
+.gantt-table table thead th.week-cell::after,
+.gantt-table .table thead th.week-cell::after,
+.gantt-table table td.gantt-cell::before,
+.gantt-table .table td.gantt-cell::before,
+.gantt-table table td.gantt-cell::after,
+.gantt-table .table td.gantt-cell::after{
+  border-left: 0 !important;
+  border-right: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background-image: none !important;
+}
+
+.gantt-table .gantt-bar,
+.gantt-table .gantt-bar.multi,
+.gantt-table .bar-wrapper,
+.gantt-table .gantt-progress,
+.gantt-table .gantt-progress-out{
+  border-left: 0 !important;
+  border-right: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
