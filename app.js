@@ -6829,9 +6829,9 @@ function buildGanttHtml(tasks){
 
 
 
-  let html="<div class='tablewrap gantt-table'><table class='table' style='--gcol0:70px;--gcol1:200px;--gcol2:120px;--gcol3:120px'>";
+  let html="<div class='tablewrap gantt-table'><table class='table' style='--gcol0:70px;--gcol1:150px;--gcol2:140px;--gcol3:120px'>";
 
-  html+="<thead><tr><th class='gantt-col-site' style='width:70px'>Site</th><th class='gantt-task-col-project gantt-col-task'>Nom</th><th class='gantt-col-vendor' style='width:120px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
+  html+="<thead><tr><th class='gantt-col-site' style='width:70px'>Site</th><th class='gantt-task-col-project gantt-col-task' style='width:150px'>Nom</th><th class='gantt-col-vendor' style='width:140px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
 
   weeks.forEach((w,i)=>{
 
@@ -6891,7 +6891,7 @@ function buildGanttHtml(tasks){
     html+=`<td class="gantt-task-col-project gantt-col-task">${missDot}<b><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></b> <span class="gantt-task-name">${attrEscape(label)}</span></td>`;
       html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
 
-    html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
+    html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span class="status-left" style="background:#f8fafc;border-color:#cbd5e1;color:#0f172a;">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span></div></div></td>`;
 
 
 
@@ -7163,8 +7163,8 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
   const hideStatus = false;
   const tableClass = `table${hideVendor ? " hide-vendor" : ""}${hideStatus ? " hide-status" : ""}`;
 
-  let html=`<div class='tablewrap gantt-table'><table class='${tableClass}' style='--gcol0:70px;--gcol1:120px;--gcol2:90px;--gcol3:90px'>`;
-  html+="<thead><tr><th class='gantt-col-site' style='width:70px'>Site</th><th class='gantt-col-task' style='width:120px'>Tâche</th><th class='gantt-col-vendor' style='width:90px'>Prestataire</th><th class='gantt-col-status' style='width:90px'>Statut</th>";
+  let html=`<div class='tablewrap gantt-table'><table class='${tableClass}' style='--gcol0:70px;--gcol1:150px;--gcol2:140px;--gcol3:120px'>`;
+  html+="<thead><tr><th class='gantt-col-site' style='width:70px'>Site</th><th class='gantt-col-task' style='width:150px'>Tâche</th><th class='gantt-col-vendor' style='width:140px'>Prestataire</th><th class='gantt-col-status' style='width:120px'>Statut</th>";
 
   weeks.forEach((w,i)=>{
     const info=isoWeekInfo(w);
@@ -7197,7 +7197,7 @@ function buildMasterGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOverr
     const missDot = miss>0 ? `<span class="missing-dot" title="Heures réelles manquantes (${miss} j)"></span>` : "";
     html+=`<td class="gantt-col-task">${missDot}<span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span> <span class="gantt-task-name">${attrEscape(projectName)}</span></td>`;
     html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
-    html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
+    html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span class="status-left" style="background:#f8fafc;border-color:#cbd5e1;color:#0f172a;">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span></div></div></td>`;
 
     weeks.forEach((w,i)=>{
       const sDate=new Date(t.start+"T00:00:00");
@@ -7373,7 +7373,7 @@ function buildProjectGanttHTMLForRange(rangeStart=null, rangeEnd=null, tasksOver
       html+=`<td class="gantt-task-col-project gantt-col-task">${missDot}<b><span class="num-badge" style="--badge-color:${color};--badge-text:#fff;">${taskOrderMap[t.id]||""}</span></b> <span class="gantt-task-name">${attrEscape(label)}</span></td>`;
       if(includeChantierCol) html+=`<td class="gantt-col-project" style="width:120px">${attrEscape(chantierLabel)}</td>`;
       html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
-      html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
+      html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span class="status-left" style="background:#f8fafc;border-color:#cbd5e1;color:#0f172a;">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span></div></div></td>`;
 
       weeks.forEach((w,i)=>{
         const sDate=new Date(t.start+"T00:00:00");
@@ -7561,7 +7561,7 @@ function renderMasterGantt(){
 
     html+=`<td class="gantt-vendor-cell gantt-col-vendor"><div class="vendor-stack">${vendorBadges}</div></td>`;
 
-    html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span>${statusLabels(mainStatus)}</span></div></div></td>`;
+    html+=`<td class="gantt-status-cell gantt-col-status"><div class="gantt-status-stack"><div class="status-row"><span class="status-left" style="background:#f8fafc;border-color:#cbd5e1;color:#0f172a;">${statusDot(mainStatus)}${statusLabels(mainStatus)}</span></div></div></td>`;
 
 
 
