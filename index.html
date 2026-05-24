@@ -2217,6 +2217,21 @@
 
   const btn  = document.getElementById("lock-submit");
 
+  if (userInput && pwd) {
+    const emailFontStyle = window.getComputedStyle(userInput);
+    const fontSync = {
+      "font-family": emailFontStyle.fontFamily,
+      "font-size": emailFontStyle.fontSize,
+      "font-weight": emailFontStyle.fontWeight,
+      "line-height": emailFontStyle.lineHeight,
+      "letter-spacing": emailFontStyle.letterSpacing,
+    };
+
+    Object.entries(fontSync).forEach(([prop, value]) => {
+      if (value) pwd.style.setProperty(prop, value);
+    });
+  }
+
 
 
   function hash(str){
