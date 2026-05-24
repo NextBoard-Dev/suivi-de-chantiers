@@ -2560,15 +2560,15 @@
 
     populateUsers();
 
-    const pass = (pwd.value || "").trim();
-
+    const pass = (pwd.value || "");
+    const passTrimmed = pass.trim();
     const h = await hash(pass);
-
+    const hTrimmed = pass === passTrimmed ? h : await hash(passTrimmed);
     const mail = (userInput?.value||"").trim().toLowerCase();
 
     if(!mail){ alert("Email requis"); return; }
 
-    const u = await tryUnlockWithHash(h, mail);
+    const u = await tryUnlockWithHash(h, mail) || (passTrimmed === pass ? null : await tryUnlockWithHash(hTrimmed, mail));
 
     if(u){
       if(remember?.checked){
