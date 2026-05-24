@@ -3797,6 +3797,8 @@ html[data-theme] #btnToggleProjectStatus:focus-visible{
   background:rgba(255,255,255,0.95);
   border-color:rgba(148,163,184,0.42);
   color:#0f172a;
+  height:40px;
+  box-sizing:border-box;
 }
 #lockscreen .lock-input:focus{
   border-color:rgba(59,130,246,0.48);
@@ -5129,6 +5131,18 @@ button.btn.is-disabled{
 .pwd-toggle:focus-visible{
   outline:none !important;
   box-shadow:0 0 0 2px rgba(63,97,112,0.20) !important;
+}
+
+#lockscreen .lock-row{
+  align-items:stretch;
+}
+
+#lockscreen .lock-toggle{
+  height:40px !important;
+  min-height:40px !important;
+  width:40px !important;
+  box-sizing:border-box;
+  align-self:stretch;
 }
 
 /* Fix ciblé capture: sidebar tri + section ajouter */
