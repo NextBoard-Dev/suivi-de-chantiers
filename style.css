@@ -4838,7 +4838,7 @@ body,
 
 .sidebar-logo-wrap,
 .sidebar-logo-img{
-  background:var(--sidebar-bg-solid) !important;
+  background:transparent !important;
   background-image:none !important;
 }
 
