@@ -190,15 +190,69 @@
       font-family:var(--sans);
     }
 
-    .lock-title{font-weight:700;font-size:16px;margin-bottom:10px;color:#132833;}
+    .lock-title{
+      font-weight:700;
+      font-size:32px;
+      line-height:1.2;
+      margin-bottom:10px;
+      color:#132833;
+      text-transform:none;
+      letter-spacing:0;
+    }
 
-    .lock-label{display:block;font-size:12px;color:#334c58;margin-bottom:6px;}
+    .lock-label{
+      display:block;
+      font-size:12px;
+      color:#334c58;
+      margin-bottom:6px;
+      text-transform:none;
+      letter-spacing:0;
+      font-weight:500;
+    }
 
-    .lock-input{width:100%;padding:10px;border:1px solid #9bb2be;border-radius:8px;font-size:13px;margin-bottom:10px;background:#fff;}
+    .lock-input{
+      width:100%;
+      padding:10px;
+      border:1px solid #9bb2be;
+      border-radius:8px;
+      font-size:24px;
+      margin-bottom:10px;
+      background:#fff;
+      text-transform:none;
+      letter-spacing:0;
+      font-weight:500;
+    }
 
-    .lock-btn{padding:8px 14px;border:0;background:#2f5f76;color:#fff;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;}
+    .lock-btn{
+      padding:8px 14px;
+      border:0;
+      background:#2f5f76;
+      color:#fff;
+      border-radius:8px;
+      font-weight:600;
+      cursor:pointer;
+      white-space:nowrap;
+    }
 
-    .lock-msg{font-size:12px;color:#4a6170;margin-top:10px;}
+    .lock-btn-secondary{
+      padding:8px 12px;
+      border:1px solid #9bb2be;
+      background:#fff;
+      color:#132833;
+      border-radius:8px;
+      cursor:pointer;
+      white-space:nowrap;
+      font-weight:500;
+    }
+
+    .lock-msg{
+      font-size:12px;
+      color:#4a6170;
+      margin-top:10px;
+      text-transform:none;
+      letter-spacing:0;
+      font-weight:500;
+    }
 
     .lock-row{display:flex;align-items:center;gap:6px;margin-bottom:12px;}
 
@@ -258,11 +312,30 @@
 
     }
 
-    .lock-remember{display:flex;align-items:center;gap:8px;justify-content:flex-start;font-size:12px;color:#475569;margin:0 0 8px;}
+    .lock-remember{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      justify-content:flex-start;
+      font-size:12px;
+      color:#475569;
+      margin:0 0 8px;
+      text-transform:none;
+      letter-spacing:0;
+      font-weight:500;
+    }
 
     .lock-checkbox{width:auto;margin:0;}
 
-    .lock-hint{font-size:12px;color:#4a6170;margin:-6px 0 10px;}
+    .lock-hint{
+      font-size:12px;
+      color:#4a6170;
+      margin:-6px 0 10px;
+      text-transform:none;
+      letter-spacing:0;
+      font-weight:500;
+      min-height:18px;
+    }
 
     .lock-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:nowrap;}
 
@@ -380,9 +453,12 @@
 
         </label>
 
-        <div class="lock-hint">Connexion sécurisée requise.</div>
+        <div id="lock-status" class="lock-hint"></div>
 
         <div class="lock-actions">
+          <button id="lock-forgot-id" class="lock-btn-secondary" type="button">Identifiant oublié</button>
+          <button id="lock-forgot-pwd" class="lock-btn-secondary" type="button">Mot de passe oublié</button>
+          <button id="lock-cancel" class="lock-btn-secondary" type="button">Annuler</button>
           <button id="lock-submit" class="lock-btn" type="submit">Se connecter</button>
         </div>
 
@@ -2105,6 +2181,14 @@
 
   const remember = document.getElementById("lock-remember");
 
+  const lockStatus = document.getElementById("lock-status");
+
+  const forgotIdBtn = document.getElementById("lock-forgot-id");
+
+  const forgotPwdBtn = document.getElementById("lock-forgot-pwd");
+
+  const cancelBtn = document.getElementById("lock-cancel");
+
   const btn  = document.getElementById("lock-submit");
 
 
@@ -2567,6 +2651,26 @@
 
     });
 
+  }
+
+  if(forgotIdBtn){
+    forgotIdBtn.addEventListener("click", ()=>{
+      if(lockStatus) lockStatus.textContent = "Contacte l'administrateur pour récupérer ton identifiant.";
+    });
+  }
+
+  if(forgotPwdBtn){
+    forgotPwdBtn.addEventListener("click", ()=>{
+      if(lockStatus) lockStatus.textContent = "Contacte l'administrateur pour réinitialiser le mot de passe.";
+    });
+  }
+
+  if(cancelBtn){
+    cancelBtn.addEventListener("click", ()=>{
+      if(pwd) pwd.value = "";
+      if(lockStatus) lockStatus.textContent = "";
+      if(pwd) pwd.focus();
+    });
   }
 
   const cfgPass = document.getElementById("cfg_user_pass");
