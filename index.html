@@ -221,6 +221,8 @@
       text-transform:none;
       letter-spacing:0;
       font-weight:400;
+      height:40px;
+      box-sizing:border-box;
     }
 
     #lockscreen #lock-email{
@@ -264,7 +266,14 @@
       font-weight:400;
     }
 
-    .lock-row{display:flex;align-items:center;gap:6px;margin-bottom:12px;}
+    .lock-row{display:flex;align-items:stretch;gap:6px;margin-bottom:12px;}
+    #lockscreen .lock-toggle{
+      height:40px !important;
+      min-height:40px !important;
+      width:40px !important;
+      align-self:stretch;
+      box-sizing:border-box;
+    }
 
     .lock-toggle{
 
