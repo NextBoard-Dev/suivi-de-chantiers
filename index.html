@@ -2207,30 +2207,7 @@
 
   const remember = document.getElementById("lock-remember");
 
-  const lockStatus = document.getElementById("lock-status");
-
-  const forgotIdBtn = document.getElementById("lock-forgot-id");
-
-  const forgotPwdBtn = document.getElementById("lock-forgot-pwd");
-
-  const cancelBtn = document.getElementById("lock-cancel");
-
   const btn  = document.getElementById("lock-submit");
-
-  if (userInput && pwd) {
-    const emailFontStyle = window.getComputedStyle(userInput);
-    const fontSync = {
-      "font-family": emailFontStyle.fontFamily,
-      "font-size": emailFontStyle.fontSize,
-      "font-weight": emailFontStyle.fontWeight,
-      "line-height": emailFontStyle.lineHeight,
-      "letter-spacing": emailFontStyle.letterSpacing,
-    };
-
-    Object.entries(fontSync).forEach(([prop, value]) => {
-      if (value) pwd.style.setProperty(prop, value);
-    });
-  }
 
 
 
@@ -2560,15 +2537,15 @@
 
     populateUsers();
 
-    const pass = (pwd.value || "");
-    const passTrimmed = pass.trim();
+    const pass = (pwd.value || "").trim();
+
     const h = await hash(pass);
-    const hTrimmed = pass === passTrimmed ? h : await hash(passTrimmed);
+
     const mail = (userInput?.value||"").trim().toLowerCase();
 
     if(!mail){ alert("Email requis"); return; }
 
-    const u = await tryUnlockWithHash(h, mail) || (passTrimmed === pass ? null : await tryUnlockWithHash(hTrimmed, mail));
+    const u = await tryUnlockWithHash(h, mail);
 
     if(u){
       if(remember?.checked){
@@ -2692,26 +2669,6 @@
 
     });
 
-  }
-
-  if(forgotIdBtn){
-    forgotIdBtn.addEventListener("click", ()=>{
-      if(lockStatus) lockStatus.textContent = "Contacte l'administrateur pour récupérer ton identifiant.";
-    });
-  }
-
-  if(forgotPwdBtn){
-    forgotPwdBtn.addEventListener("click", ()=>{
-      if(lockStatus) lockStatus.textContent = "Contacte l'administrateur pour réinitialiser le mot de passe.";
-    });
-  }
-
-  if(cancelBtn){
-    cancelBtn.addEventListener("click", ()=>{
-      if(pwd) pwd.value = "";
-      if(lockStatus) lockStatus.textContent = "";
-      if(pwd) pwd.focus();
-    });
   }
 
   const cfgPass = document.getElementById("cfg_user_pass");
@@ -2901,6 +2858,7 @@
 </body>
 
 </html>
+
 
 
 
