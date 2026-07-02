@@ -2494,15 +2494,13 @@ function navigateTo(projectId=null, taskId=null, push=true){
 }
 function selectTaskInProject(taskId){
   selectedTaskId = taskId || null;
-  renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
-  scheduleDeferredProjectHeavyRefresh();
+  renderProjectLiteThenHeavy();
 }
 function renderCurrentViewAfterConfigChange(){
   if(selectedProjectId){
-    renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
-    scheduleDeferredProjectHeavyRefresh();
+    renderProjectLiteThenHeavy();
   }else{
-    renderMaster();
+    renderMaster({ skipTabsRender:true });
   }
   updateSidebarTop();
   updateSidebarScrollState();
@@ -7975,13 +7973,14 @@ function updateSidebarFilterIndicator(){
 
 
 
-function renderMaster(){
+function renderMaster(opts={}){
+  const skipTabsRender = !!opts.skipTabsRender;
   const masterRenderT0 = performance.now();
   runtimePerf.lastRenderMasterMetricsMs = 0;
   runtimePerf.lastRenderMasterWorkloadMs = 0;
   runtimePerf.lastRenderMasterTableMs = 0;
   computeTaskOrderMap();
-  renderTabs();
+  if(!skipTabsRender) renderTabs();
   if(hasAnyOpenOverlay()) closeAllOverlays();
   el("viewMaster")?.classList.remove("hidden");
   el("viewProject")?.classList.add("hidden");
@@ -9880,8 +9879,7 @@ function saveHoursTaskModal(){
   closeHoursTaskModal(false);
   markDirty();
   updateTimeLogUI(t, true);
-  renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
-  scheduleDeferredProjectHeavyRefresh();
+  renderProjectLiteThenHeavy();
   saveState();
   if(!_outsideRangeFlow && !_missingHoursFlow){
     const qualityAfterSave = collectDataQualityIssues(state);
@@ -10254,6 +10252,10 @@ function scheduleDeferredProjectHeavyRefresh(delayMs=180){
     renderProject({ skipTabsRender:true });
   }, Math.max(0, Number(delayMs) || 0));
 }
+function renderProjectLiteThenHeavy(delayMs=180){
+  renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
+  scheduleDeferredProjectHeavyRefresh(delayMs);
+}
 
 function renderAll(){
   const renderT0 = performance.now();
@@ -10285,7 +10287,7 @@ function renderAll(){
     renderProject({ skipTabsRender:true });
   }else{
     renderTabs();
-    renderMaster();
+    renderMaster({ skipTabsRender:true });
   }
 
   updateSidebarTop();
@@ -11861,9 +11863,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     markDirty();
 
-    renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
-
-    scheduleDeferredProjectHeavyRefresh();
+    renderProjectLiteThenHeavy();
 
     saveState();
 
@@ -11909,9 +11909,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     markDirty();
 
-    renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
-
-    scheduleDeferredProjectHeavyRefresh();
+    renderProjectLiteThenHeavy();
 
   });
 
@@ -11966,9 +11964,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     markDirty();
 
-    renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
-
-    scheduleDeferredProjectHeavyRefresh();
+    renderProjectLiteThenHeavy();
 
     el("btnNewTask")?.classList.remove("btn-armed");
 
@@ -11992,9 +11988,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     markDirty();
 
-    renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
-
-    scheduleDeferredProjectHeavyRefresh();
+    renderProjectLiteThenHeavy();
 
     el("btnNewTask")?.classList.remove("btn-armed");
 
@@ -12256,7 +12250,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
   el("btnToggleCompleted")?.addEventListener("click", ()=>{
     showCompletedMaster = !showCompletedMaster;
     renderTabs();
-    renderMaster();
+    renderMaster({ skipTabsRender:true });
     saveUIState();
   });
   el("btnProcessMissingHours")?.addEventListener("click", ()=>{
@@ -13856,6 +13850,8 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
+
 
 
 
