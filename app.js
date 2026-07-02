@@ -9797,8 +9797,7 @@ function saveHoursTaskModal(){
   closeHoursTaskModal(false);
   markDirty();
   updateTimeLogUI(t, true);
-  renderProjectLiteThenHeavy();
-  saveState();
+  saveStateAndRenderProjectLite(220);
   if(!_outsideRangeFlow && !_missingHoursFlow){
     const qualityAfterSave = collectDataQualityIssues(state);
     if((qualityAfterSave?.counts?.logsOutsideTaskRange || 0) > 0){
@@ -10173,6 +10172,10 @@ function scheduleDeferredProjectHeavyRefresh(delayMs=180){
 function renderProjectLiteThenHeavy(delayMs=180){
   renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
   scheduleDeferredProjectHeavyRefresh(delayMs);
+}
+function saveStateAndRenderProjectLite(delayMs=180, saveOpts={}){
+  saveState(saveOpts);
+  renderProjectLiteThenHeavy(delayMs);
 }
 
 function renderAll(){
@@ -11781,9 +11784,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     markDirty();
 
-    renderProjectLiteThenHeavy();
-
-    saveState();
+    saveStateAndRenderProjectLite();
 
   });
 
@@ -12069,9 +12070,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     markDirty();
 
-    saveState();
-
-    renderProject();
+    saveStateAndRenderProjectLite();
 
     refreshVendorsList();
 
@@ -12143,8 +12142,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     upsertTimeLog(t.id, t.projectId, minutes, "", selectedDate, roleKey);
     markDirty();
     updateTimeLogUI(t, true);
-    renderProject();
-    saveState();
+    saveStateAndRenderProjectLite();
   });
   const search = el("filterSearch");
   if(search){
@@ -13768,6 +13766,10 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
+
+
+
 
 
 
