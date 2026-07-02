@@ -3857,51 +3857,12 @@ function detectOrphanTimeLogs(state) {
   return orphans;
 }
 
-const formatDate = (s)=>{
+const formatDate = window.formatDate;
+const unformatDate = window.unformatDate;
 
-  if(!s) return "";
+const toInputDate = window.toInputDate;
 
-  const parts = s.split("-");
-
-  if(parts.length!==3) return s;
-
-  return `${parts[2]}/${parts[1]}/${parts[0]}`;
-
-};
-
-const unformatDate = (fr)=>{
-
-  if(!fr) return "";
-
-  const parts = fr.split("/");
-
-  if(parts.length!==3) return fr;
-
-  const [jj,mm,aa] = parts;
-
-  return `${aa}-${mm}-${jj}`;
-
-};
-
-const toInputDate = window.toInputDate || ((val)=>{
-  if(!val) return "";
-  if(val instanceof Date){
-    return val.toISOString().slice(0,10);
-  }
-  const s = String(val).trim();
-  if(!s) return "";
-  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if(m) return `${m[3]}-${m[2]}-${m[1]}`;
-  return s;
-});
-
-const toLocalDateKey = window.toLocalDateKey || ((d)=>{
-  const y = d.getFullYear();
-  const m = String(d.getMonth()+1).padStart(2,"0");
-  const day = String(d.getDate()).padStart(2,"0");
-  return `${y}-${m}-${day}`;
-});
+const toLocalDateKey = window.toLocalDateKey;
 function getYesterdayKey(){
   if(typeof window.getYesterdayKey === "function" && window.getYesterdayKey !== getYesterdayKey){
     return window.getYesterdayKey();
@@ -5471,37 +5432,9 @@ function syncWorkloadFilterUI(tasks, boundsTasks=tasks, uiIds=null, stateRef=nul
 
 }
 
-function isWeekday(d){
-  const day = d.getDay();
-  return day >= 1 && day <= 5; // lundi-vendredi
-}
-
-function countWeekdays(start, end){
-  if(typeof window.countWeekdays === "function" && window.countWeekdays !== countWeekdays){
-    return window.countWeekdays(start, end);
-  }
-  if(!start || !end || end < start) return 0;
-  let count = 0;
-  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
-    if(isWeekday(d)) count += 1;
-  }
-  return count;
-
-}
-
-function durationDays(start,end){
-  if(typeof window.durationDays === "function" && window.durationDays !== durationDays){
-    return window.durationDays(start, end);
-  }
-  if(!start || !end) return "";
-  const s=new Date(start+"T00:00:00");
-  const e=new Date(end+"T00:00:00");
-  if(isNaN(s) || isNaN(e) || e<s) return "";
-  const days = countWeekdays(s, e);
-  return days>0 ? days : "";
-
-}
-
+const isWeekday = window.isWeekday;
+const countWeekdays = window.countWeekdays;
+const durationDays = window.durationDays;
 function hoursPerDayForOwner(owner){
   const typ = ownerType(owner);
   const h = getHoursConfig();
@@ -8511,24 +8444,9 @@ function purgeTaskLogsByAssignedRole(task){
   // même en cas de changement de rôle/propriétaire de tâche.
   return 0;
 }
-const formatHoursMinutes = window.formatHoursMinutes || ((totalMinutes)=>{
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
-  if(m === 0) return `${h} h`;
-  return `${h} h ${m} min`;
-});
+const formatHoursMinutes = window.formatHoursMinutes;
 const roleHoursMultiplier = window.roleHoursMultiplier || (()=>1);
-function splitMinutesAcross(totalMinutes, count){
-  const total = Math.max(0, Math.round(Number(totalMinutes || 0)));
-  const n = Math.max(1, Math.round(Number(count || 1)));
-  const base = Math.floor(total / n);
-  let rem = total - (base * n);
-  const out = Array.from({ length:n }, ()=>base);
-  for(let i=0; i<out.length && rem>0; i+=1, rem-=1){
-    out[i] += 1;
-  }
-  return out;
-}
+const splitMinutesAcross = window.splitMinutesAcross;
 function resolveInternalLogAllocations(log, task, weightedMinutes){
   const explicitRaw = String(log?.internalTech || "");
   const explicitList = dedupInternalTechs(normalizeInternalTechList(explicitRaw));
@@ -13850,6 +13768,8 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
+
 
 
 

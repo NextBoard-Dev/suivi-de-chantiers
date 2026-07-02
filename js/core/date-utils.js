@@ -3,6 +3,44 @@
   if(windowRef.__dateUtilsInstalled) return;
   windowRef.__dateUtilsInstalled = true;
 
+  function formatDate(s){
+    if(!s) return "";
+    const parts = String(s).split("-");
+    if(parts.length !== 3) return s;
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+
+  function unformatDate(fr){
+    if(!fr) return "";
+    const parts = String(fr).split("/");
+    if(parts.length !== 3) return fr;
+    const [jj, mm, aa] = parts;
+    return `${aa}-${mm}-${jj}`;
+  }
+
+  function isWeekday(d){
+    const day = d.getDay();
+    return day >= 1 && day <= 5;
+  }
+
+  function countWeekdays(start, end){
+    if(!start || !end || end < start) return 0;
+    let count = 0;
+    for(let d = new Date(start); d <= end; d.setDate(d.getDate()+1)){
+      if(isWeekday(d)) count += 1;
+    }
+    return count;
+  }
+
+  function durationDays(start, end){
+    if(!start || !end) return "";
+    const s = new Date(start + "T00:00:00");
+    const e = new Date(end + "T00:00:00");
+    if(isNaN(s) || isNaN(e) || e < s) return "";
+    const days = countWeekdays(s, e);
+    return days > 0 ? days : "";
+  }
+
   function toDateInput(d){
     if(!d) return "";
     const x = new Date(d.getTime());
@@ -94,6 +132,11 @@
     return `<span class="wk-date-top">${dd}-${mm}</span><span class="wk-date-bottom">${yy}</span>`;
   }
 
+  windowRef.formatDate = windowRef.formatDate || formatDate;
+  windowRef.unformatDate = windowRef.unformatDate || unformatDate;
+  windowRef.isWeekday = windowRef.isWeekday || isWeekday;
+  windowRef.countWeekdays = windowRef.countWeekdays || countWeekdays;
+  windowRef.durationDays = windowRef.durationDays || durationDays;
   windowRef.toDateInput = windowRef.toDateInput || toDateInput;
   windowRef.toInputDate = windowRef.toInputDate || toInputDate;
   windowRef.parseInputDate = windowRef.parseInputDate || parseInputDate;
@@ -107,3 +150,4 @@
   windowRef.formatShortDate = windowRef.formatShortDate || formatShortDate;
   windowRef.formatShortDateTwoLinesHTML = windowRef.formatShortDateTwoLinesHTML || formatShortDateTwoLinesHTML;
 })(window);
+
