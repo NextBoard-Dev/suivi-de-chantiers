@@ -6003,3 +6003,40 @@ h3,
 .sidebar .tab > span{
   min-width:0;
 }
+
+/* Modale export PDF: recherche chantiers et exclusion 100% */
+#exportPdfModal .export-projects-tools{
+  display:grid !important;
+  grid-template-columns:minmax(0, 1fr) auto !important;
+  gap:8px !important;
+  align-items:center !important;
+  margin:6px 0 8px !important;
+}
+#exportPdfModal .export-projects-search{
+  width:100% !important;
+  height:28px !important;
+  min-height:28px !important;
+  padding:0 9px !important;
+  border-radius:7px !important;
+  border:1px solid rgba(63,97,112,0.28) !important;
+  background:#ffffff !important;
+  color:#142534 !important;
+  font-size:11px !important;
+  font-weight:400 !important;
+  outline:none !important;
+  box-shadow:none !important;
+  appearance:none !important;
+}
+#exportPdfModal .export-projects-search:focus{
+  border-color:#3f6170 !important;
+  box-shadow:0 0 0 2px rgba(63,97,112,0.12) !important;
+}
+#exportPdfModal .export-projects-toggle.is-active{
+  background:#3f6170 !important;
+  border-color:#365563 !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+}
+#exportPdfModal .export-project-row.is-filtered-out{
+  display:none !important;
+}

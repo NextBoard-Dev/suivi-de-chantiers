@@ -220,6 +220,23 @@ window.supabaseLogin = async function(email, password){
 
 
 
+
+let _supabaseSaveDebounceTimer = null;
+let _supabaseSaveDebounceState = null;
+function scheduleSaveAppStateToSupabaseDebounced(stateObj, delay=650){
+  _supabaseSaveDebounceState = stateObj;
+  if(_supabaseSaveDebounceTimer) clearTimeout(_supabaseSaveDebounceTimer);
+  _supabaseSaveDebounceTimer = setTimeout(async ()=>{
+    const payload = _supabaseSaveDebounceState;
+    _supabaseSaveDebounceTimer = null;
+    _supabaseSaveDebounceState = null;
+    try{
+      if(window.saveAppStateToSupabase && payload){
+        await window.saveAppStateToSupabase(payload);
+      }
+    }catch(e){ softCatch(e); }
+  }, delay);
+}
 window.saveAppStateToSupabase = async function(stateObj){
   const sb = _getSupabaseClient();
   if(!sb) return false;
@@ -1037,6 +1054,8 @@ let workloadRangeEndProject = "";
 let workloadRangeYearProject = "";
 let ganttExportContext = "master"; // master | project
 let unifiedExportSelectedProjectIds = [];
+let unifiedExportProjectSearchText = "";
+let unifiedExportHideCompletedProjects = false;
 
 function resetMasterWorkloadFilters(){
   workloadRangeType = "all";
@@ -1951,7 +1970,7 @@ function renderConfigVendorsList(){
       });
       renderConfigVendorsList();
       refreshVendorsList();
-      renderAll();
+      renderCurrentViewAfterConfigChange();
     };
   });
 
@@ -1971,7 +1990,7 @@ function renderConfigVendorsList(){
       saveState();
       renderConfigVendorsList();
       refreshVendorsList();
-      renderAll();
+      renderCurrentViewAfterConfigChange();
     };
   });
 }
@@ -2272,7 +2291,7 @@ function renderConfigInternalTechList(){
       saveState();
       renderConfigInternalTechList();
       refreshInternalTechsList();
-      renderAll();
+      renderCurrentViewAfterConfigChange();
     };
   });
 
@@ -2296,7 +2315,7 @@ function renderConfigInternalTechList(){
       saveState();
       renderConfigInternalTechList();
       refreshInternalTechsList();
-      renderAll();
+      renderCurrentViewAfterConfigChange();
     };
   });
 }
@@ -2475,7 +2494,19 @@ function navigateTo(projectId=null, taskId=null, push=true){
 }
 function selectTaskInProject(taskId){
   selectedTaskId = taskId || null;
-  renderProject();
+  renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
+  scheduleDeferredProjectHeavyRefresh();
+}
+function renderCurrentViewAfterConfigChange(){
+  if(selectedProjectId){
+    renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
+    scheduleDeferredProjectHeavyRefresh();
+  }else{
+    renderMaster();
+  }
+  updateSidebarTop();
+  updateSidebarScrollState();
+  applySidebarTopLock();
 }
 const FLOAT_Z = 1000000;
 
@@ -4812,8 +4843,8 @@ function saveState(opts={}){
     if(!skipSupabase){
       try{
         if(window.saveAppStateToSupabase){
-          // Sauvegarde cloud en format natif PC pour eviter toute perte de champs.
-          window.saveAppStateToSupabase(normalized);
+          // Sauvegarde cloud non bloquante regroupee pour limiter l'egress lors des micro-actions.
+          scheduleSaveAppStateToSupabaseDebounced(normalized);
         }
       }catch(e){ softCatch(e); }
     }
@@ -9849,8 +9880,8 @@ function saveHoursTaskModal(){
   closeHoursTaskModal(false);
   markDirty();
   updateTimeLogUI(t, true);
-  renderMaster();
-  renderProject();
+  renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
+  scheduleDeferredProjectHeavyRefresh();
   saveState();
   if(!_outsideRangeFlow && !_missingHoursFlow){
     const qualityAfterSave = collectDataQualityIssues(state);
@@ -9897,9 +9928,13 @@ function checkTimeLogReminders(){
 
 
 
-function renderProject(){
+function renderProject(opts={}){
+  const skipTabsRender = !!opts.skipTabsRender;
+  const skipHeavyRender = !!opts.skipHeavyRender;
+  const skipTimeLogUiSync = !!opts.skipTimeLogUiSync;
+  const allowHeavyRender = !skipHeavyRender;
   computeTaskOrderMap();
-  renderTabs();
+  if(!skipTabsRender) renderTabs();
   closeAllOverlays();
   ensureProjectHeaderNodes();
   const p=state.projects.find(x=>x.id===selectedProjectId);
@@ -10130,7 +10165,9 @@ function renderProject(){
 
     setInputValue("t_end", endVal);
     setTaskProgressUI(taskProgress(t));
-    updateTimeLogUI(t, true);
+    if(!skipTimeLogUiSync && !isHoursTaskModalOpen()){
+      updateTimeLogUI(t, true);
+    }
     if(window.__fpStart){ try{ window.__fpStart.setDate(startVal || null, true, "Y-m-d"); }catch(e){ softCatch(e); } }
     if(window.__fpEnd){ try{ window.__fpEnd.setDate(endVal || null, true, "Y-m-d"); }catch(e){ softCatch(e); } }
 
@@ -10144,7 +10181,9 @@ function renderProject(){
 
     setInputValue("t_room", ""); setInputValue("t_owner", ""); setInputValue("t_vendor", ""); setInputValue("t_internal_tech_filter", ""); setSelectedInternalTechValues([]); setInputValue("t_start", ""); setInputValue("t_end", "");
     setTaskProgressUI(0);
-    updateTimeLogUI(null);
+    if(!skipTimeLogUiSync && !isHoursTaskModalOpen()){
+      updateTimeLogUI(null);
+    }
     if(window.__fpStart){ try{ window.__fpStart.setDate(null); }catch(e){ softCatch(e); } }
     if(window.__fpEnd){ try{ window.__fpEnd.setDate(null); }catch(e){ softCatch(e); } }
 
@@ -10158,7 +10197,9 @@ function renderProject(){
 
 
 
-  renderGantt(p.id);
+  if(allowHeavyRender){
+    renderGantt(p.id);
+  }
 
   renderProjectTasks(p.id);
 
@@ -10166,23 +10207,17 @@ function renderProject(){
 
   const projRange = {type:workloadRangeTypeProject, year:workloadRangeYearProject, start:workloadRangeStartProject, end:workloadRangeEndProject};
 
-  renderWorkloadChartFor(
-
-    projectTasks,
-
-    "workloadChartProject",
-
-    "workloadPieProject",
-
-    {type:"workloadRangeTypeProject", year:"workloadRangeYearProject", start:"workloadRangeStartProject", end:"workloadRangeEndProject"},
-
-    projRange,
-
-    projectTasks,
-
-    true
-
-  );
+  if(allowHeavyRender){
+    renderWorkloadChartFor(
+      projectTasks,
+      "workloadChartProject",
+      "workloadPieProject",
+      {type:"workloadRangeTypeProject", year:"workloadRangeYearProject", start:"workloadRangeStartProject", end:"workloadRangeEndProject"},
+      projRange,
+      projectTasks,
+      true
+    );
+  }
 
   workloadRangeTypeProject = projRange.type;
 
@@ -10199,7 +10234,7 @@ function renderProject(){
   if(projectHoursReport){
     projectHoursReport.innerHTML = buildProjectRealHoursReportInnerHTML(p.id);
   }
-  if(!runtimePerf.degradedMode){
+  if(!runtimePerf.degradedMode && allowHeavyRender){
     animateBadgeChanges(el("viewProject"));
     animateCardsInView("viewProject");
   }
@@ -10207,6 +10242,18 @@ function renderProject(){
 }
 
 
+
+let _projectHeavyRefreshTimer = null;
+function scheduleDeferredProjectHeavyRefresh(delayMs=180){
+  if(_projectHeavyRefreshTimer){
+    clearTimeout(_projectHeavyRefreshTimer);
+  }
+  _projectHeavyRefreshTimer = setTimeout(()=>{
+    _projectHeavyRefreshTimer = null;
+    if(!selectedProjectId) return;
+    renderProject({ skipTabsRender:true });
+  }, Math.max(0, Number(delayMs) || 0));
+}
 
 function renderAll(){
   const renderT0 = performance.now();
@@ -10234,11 +10281,12 @@ function renderAll(){
 
   renderFilters();
 
-  renderTabs();
-
-  if(selectedProjectId) renderProject();
-
-  else renderMaster();
+  if(selectedProjectId){
+    renderProject({ skipTabsRender:true });
+  }else{
+    renderTabs();
+    renderMaster();
+  }
 
   updateSidebarTop();
   updateSidebarScrollState();
@@ -10278,6 +10326,21 @@ function getProjectsSortedForExport(){
   return [...(state?.projects || [])].sort((a,b)=>
     (a?.name || "").localeCompare((b?.name || ""), "fr", { sensitivity:"base" })
   );
+}
+
+function getUnifiedExportProjectCompletion(projectId){
+  const tasks = (state?.tasks || []).filter((t)=>t?.projectId === projectId && t.start && t.end);
+  if(!tasks.length) return 0;
+  let weighted = 0;
+  let weight = 0;
+  tasks.forEach((t)=>{
+    const start = new Date(String(t.start || "") + "T00:00:00");
+    const end = new Date(String(t.end || "") + "T00:00:00");
+    const days = (!isNaN(start) && !isNaN(end)) ? Math.max(1, Math.round((end - start) / 86400000) + 1) : 1;
+    weighted += Number(taskProgress(t) || 0) * days;
+    weight += days;
+  });
+  return weight ? Math.round(weighted / weight) : 0;
 }
 
 function getUnifiedDefaultExportProjectIds(){
@@ -10614,26 +10677,34 @@ function renderUnifiedExportModulesList(){
     const projects = getProjectsSortedForExport();
     unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(unifiedExportSelectedProjectIds);
     const selected = new Set(unifiedExportSelectedProjectIds);
-    const rows = projects.map((p)=>`
-      <label class="export-module-row export-project-row">
+    const rows = projects.map((p)=>{
+      const completion = getUnifiedExportProjectCompletion(p.id);
+      const searchValue = `${p.name || ""} ${p.site || ""} ${p.subproject || ""}`.toLowerCase();
+      return `
+      <label class="export-module-row export-project-row" data-export-project-row="1" data-export-project-search="${attrEscape(searchValue)}" data-export-project-completion="${completion}">
         <input type="checkbox" data-export-project-id="${attrEscape(p.id)}" ${selected.has(p.id) ? "checked" : ""}>
         <span>
           <span class="export-module-label">${attrEscape(p.name || "Chantier")}</span>
-          <span class="export-module-sub">${attrEscape((p.site || "-") + (p.subproject ? ` • ${p.subproject}` : ""))}</span>
+          <span class="export-module-sub">${attrEscape((p.site || "-") + (p.subproject ? ` • ${p.subproject}` : "") + ` • ${completion}%`)}</span>
         </span>
       </label>
-    `).join("");
-    return `
+    `;
+    }).join("");
+return `
       <div class="export-projects-head">
         <span class="export-module-label">Chantiers à regrouper</span>
         <span class="export-projects-actions">
           <button type="button" class="btn btn-ghost btn-xs" id="btnExportProjectsActiveOnly">Actif uniquement</button>
-          <button type="button" class="btn btn-ghost btn-xs" id="btnExportProjectsAll">Tous</button>
+          <button type="button" class="btn btn-ghost btn-xs" id="btnExportProjectsAll">Tous visibles</button>
           <button type="button" class="btn btn-ghost btn-xs" id="btnExportProjectsNone">Aucun</button>
         </span>
       </div>
+      <div class="export-projects-tools">
+        <input type="search" id="exportProjectsSearch" class="export-projects-search" placeholder="Rechercher un chantier, site, sous-projet..." value="${attrEscape(unifiedExportProjectSearchText)}" autocomplete="off">
+        <button type="button" class="btn btn-ghost btn-xs export-projects-toggle${unifiedExportHideCompletedProjects ? " is-active" : ""}" id="btnExportProjectsHideCompleted" aria-pressed="${unifiedExportHideCompletedProjects ? "true" : "false"}">Masquer 100%</button>
+      </div>
       ${rows}
-    `;
+`;
   })();
 
   list.innerHTML = projectPickerHtml + hintHtml + defs.map((d)=>{
@@ -10658,24 +10729,63 @@ function renderUnifiedExportModulesList(){
     n.addEventListener("change", updateUnifiedHoursExclusiveUI);
   });
 
+  const projectRows = Array.from(list.querySelectorAll("[data-export-project-row]"));
   const projectChecks = Array.from(list.querySelectorAll("input[data-export-project-id]"));
+  const searchInput = list.querySelector("#exportProjectsSearch");
+  const hideCompletedBtn = list.querySelector("#btnExportProjectsHideCompleted");
+  const getVisibleProjectIdsFromUi = ()=> projectRows
+    .filter((row)=>!row.classList.contains("is-filtered-out"))
+    .map((row)=>normId(row.querySelector("input[data-export-project-id]")?.getAttribute("data-export-project-id")))
+    .filter(Boolean);
+  const applyProjectFilters = ()=>{
+    const query = String(unifiedExportProjectSearchText || "").trim().toLowerCase();
+    const selectedIds = new Set(unifiedExportSelectedProjectIds);
+    let changedSelection = false;
+    projectRows.forEach((row)=>{
+      const matchesSearch = !query || String(row.getAttribute("data-export-project-search") || "").includes(query);
+      const completion = Number(row.getAttribute("data-export-project-completion") || 0);
+      const hiddenByCompletion = !!unifiedExportHideCompletedProjects && completion >= 100;
+      const hidden = !matchesSearch || hiddenByCompletion;
+      row.classList.toggle("is-filtered-out", hidden);
+      const input = row.querySelector("input[data-export-project-id]");
+      const id = normId(input?.getAttribute("data-export-project-id"));
+      if(hiddenByCompletion && id && selectedIds.has(id)){
+        selectedIds.delete(id);
+        changedSelection = true;
+      }
+    });
+    hideCompletedBtn?.classList.toggle("is-active", !!unifiedExportHideCompletedProjects);
+    hideCompletedBtn?.setAttribute("aria-pressed", unifiedExportHideCompletedProjects ? "true" : "false");
+    if(changedSelection){
+      unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(Array.from(selectedIds), { allowEmpty:true });
+    }
+  };
   const applyProjectSelectionToUi = ()=>{
     unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(unifiedExportSelectedProjectIds, { allowEmpty:true });
     const selected = new Set(unifiedExportSelectedProjectIds);
     projectChecks.forEach((n)=>{ n.checked = selected.has(normId(n.getAttribute("data-export-project-id"))); });
+    applyProjectFilters();
   };
   const syncProjectSelectionFromUi = ()=>{
     const ids = projectChecks.filter(n=>n.checked).map(n=>normId(n.getAttribute("data-export-project-id")));
     unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(ids, { allowEmpty:true });
     applyProjectSelectionToUi();
   };
+  searchInput?.addEventListener("input", ()=>{
+    unifiedExportProjectSearchText = String(searchInput.value || "");
+    applyProjectFilters();
+  });
+  hideCompletedBtn?.addEventListener("click", ()=>{
+    unifiedExportHideCompletedProjects = !unifiedExportHideCompletedProjects;
+    applyProjectSelectionToUi();
+  });
   projectChecks.forEach((n)=> n.addEventListener("change", syncProjectSelectionFromUi));
   list.querySelector("#btnExportProjectsActiveOnly")?.addEventListener("click", ()=>{
     unifiedExportSelectedProjectIds = getActiveProjectIdsForToday();
     applyProjectSelectionToUi();
   });
   list.querySelector("#btnExportProjectsAll")?.addEventListener("click", ()=>{
-    unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(getProjectsSortedForExport().map(p=>p.id));
+    unifiedExportSelectedProjectIds = normalizeUnifiedExportProjectIds(getVisibleProjectIdsFromUi(), { allowEmpty:true });
     applyProjectSelectionToUi();
   });
   list.querySelector("#btnExportProjectsNone")?.addEventListener("click", ()=>{
@@ -11240,7 +11350,7 @@ function bind(){
     if(input) input.value = "";
     refreshVendorsList();
     renderConfigVendorsList();
-    renderAll();
+    renderCurrentViewAfterConfigChange();
   });
 el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     if(getCurrentRole()!=="admin") return;
@@ -11276,7 +11386,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     refreshInternalTechsList();
     refreshInternalTechSiteSelect();
     renderConfigInternalTechList();
-    renderAll();
+    renderCurrentViewAfterConfigChange();
   });
   el("cfg_vac_year")?.addEventListener("change", ()=>{
     initVacationConfigUI();
@@ -11718,6 +11828,8 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     renderAll();
 
+    saveState();
+
   });
 
   el("btnSaveProject")?.addEventListener("click", ()=>{
@@ -11747,11 +11859,13 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     const constraintsInput = el("p_constraints");
     p.constraints = constraintsInput ? constraintsInput.value.trim() : (p.constraints||"");
 
-    renderTabs();
-
     markDirty();
 
-    renderProject();
+    renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
+
+    scheduleDeferredProjectHeavyRefresh();
+
+    saveState();
 
   });
 
@@ -11795,7 +11909,9 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     markDirty();
 
-    renderProject();
+    renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
+
+    scheduleDeferredProjectHeavyRefresh();
 
   });
 
@@ -11850,7 +11966,9 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     markDirty();
 
-    renderProject();
+    renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
+
+    scheduleDeferredProjectHeavyRefresh();
 
     el("btnNewTask")?.classList.remove("btn-armed");
 
@@ -11874,7 +11992,9 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     markDirty();
 
-    renderProject();
+    renderProject({ skipTabsRender:true, skipHeavyRender:true, skipTimeLogUiSync:true });
+
+    scheduleDeferredProjectHeavyRefresh();
 
     el("btnNewTask")?.classList.remove("btn-armed");
 
@@ -12037,6 +12157,8 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
 
     markDirty();
 
+    saveState();
+
     renderProject();
 
     refreshVendorsList();
@@ -12109,7 +12231,6 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     upsertTimeLog(t.id, t.projectId, minutes, "", selectedDate, roleKey);
     markDirty();
     updateTimeLogUI(t, true);
-    renderMaster();
     renderProject();
     saveState();
   });
@@ -12122,8 +12243,19 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     renderMaster();
     saveUIState();
   });
+  const missingOnlyWrap = el("missingOnlyToggleWrap");
+  const missingOnlyInput = el("toggleMissingOnly");
+  if(missingOnlyWrap && missingOnlyInput){
+    missingOnlyWrap.addEventListener("click", (e)=>{
+      if(e.target === missingOnlyInput) return;
+      e.preventDefault();
+      missingOnlyInput.checked = !missingOnlyInput.checked;
+      missingOnlyInput.dispatchEvent(new Event("change", { bubbles:true }));
+    });
+  }
   el("btnToggleCompleted")?.addEventListener("click", ()=>{
     showCompletedMaster = !showCompletedMaster;
+    renderTabs();
     renderMaster();
     saveUIState();
   });
@@ -13724,6 +13856,16 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
+
+
+
+
+
+
+
+
+
 
 
 
