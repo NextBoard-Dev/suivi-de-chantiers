@@ -4866,6 +4866,15 @@ function renderMasterAndSaveUI(opts){
   renderMaster(opts || {});
   saveUIState();
 }
+function resetSidebarFilters(){
+  ["filterSite","filterProject","filterStatus","filterSearch","filterStartAfter","filterEndBefore"].forEach((id)=>{
+    const node = el(id);
+    if(node) node.value = "";
+  });
+  const missingOnly = el("toggleMissingOnly");
+  if(missingOnly) missingOnly.checked = false;
+  renderMasterAndSaveUI();
+}
 
 function saveUndoSnapshot(){
   try{
@@ -12171,6 +12180,9 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     renderTabs();
     renderMasterAndSaveUI({ skipTabsRender:true });
   });
+  el("btnResetSidebarFilters")?.addEventListener("click", ()=>{
+    resetSidebarFilters();
+  });
   el("btnProcessMissingHours")?.addEventListener("click", ()=>{
     startMissingHoursFlow();
   });
@@ -13768,6 +13780,8 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
+
 
 
 
