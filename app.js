@@ -11515,7 +11515,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     showSaveToast(supabaseOk ? "ok" : "error", "Sauvegarde terminée", detailParts.join(" | "));
 
     flashSaved();
-    renderAll();
+    schedulePostSaveRenderAll(120);
     el("btnNewTask")?.classList.remove("btn-armed");
   });
 
@@ -13766,6 +13766,10 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
+
+
+
 
 
 
