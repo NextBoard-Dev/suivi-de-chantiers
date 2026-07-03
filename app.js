@@ -4862,6 +4862,11 @@ function saveUIState(){
   }catch(e){ softCatch(e); }
 }
 
+function renderMasterAndSaveUI(opts){
+  renderMaster(opts || {});
+  saveUIState();
+}
+
 function saveUndoSnapshot(){
   try{
     lastUndoSnapshot = {
@@ -12096,8 +12101,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
     const n=el(id);
     if(n) n.addEventListener("input", ()=>{ 
       if(id==="filterSite") updateSitePhoto(n.value || "");
-      renderMaster(); 
-      saveUIState(); 
+      renderMasterAndSaveUI(); 
     });
   });
 
@@ -12146,12 +12150,11 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
   });
   const search = el("filterSearch");
   if(search){
-    const onSearch = debounce(()=>{ renderMaster(); saveUIState(); }, 250);
+    const onSearch = debounce(()=>{ renderMasterAndSaveUI(); }, 250);
     search.addEventListener("input", onSearch);
   }
   el("toggleMissingOnly")?.addEventListener("change", ()=>{
-    renderMaster();
-    saveUIState();
+    renderMasterAndSaveUI();
   });
   const missingOnlyWrap = el("missingOnlyToggleWrap");
   const missingOnlyInput = el("toggleMissingOnly");
@@ -12166,8 +12169,7 @@ el("btnInternalTechAdd")?.addEventListener("click", ()=>{
   el("btnToggleCompleted")?.addEventListener("click", ()=>{
     showCompletedMaster = !showCompletedMaster;
     renderTabs();
-    renderMaster({ skipTabsRender:true });
-    saveUIState();
+    renderMasterAndSaveUI({ skipTabsRender:true });
   });
   el("btnProcessMissingHours")?.addEventListener("click", ()=>{
     startMissingHoursFlow();
@@ -13766,6 +13768,8 @@ function buildProjectGanttPdfStaticTable(rangeStart, rangeEnd, tasksAllOverride=
   html += "</tbody></table>";
   return html;
 }
+
+
 
 
 
