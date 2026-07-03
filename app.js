@@ -1401,15 +1401,49 @@ function scrollViewToTop(){
 
 // verrouille la position de la sidebar une fois la mise en page stabilisée
 
+function getGanttScrollers(ganttRoot){
+  const out = [];
+  const root = ganttRoot || document;
+  if(root?.matches?.(".tablewrap.gantt-table")) out.push(root);
+  root?.querySelectorAll?.(".tablewrap.gantt-table")?.forEach(n=>out.push(n));
+  return out;
+}
+
+function applyGanttTodayColumnMarker(ganttRoot){
+  try{
+    const now = new Date();
+    const dayIndexMondayFirst = (now.getDay() + 6) % 7; // lundi=0 ... dimanche=6
+    const todayLineX = `${(((dayIndexMondayFirst + 0.5) / 7) * 100).toFixed(2)}%`;
+    getGanttScrollers(ganttRoot).forEach(scroller=>{
+      scroller.querySelectorAll("th.week-today-marker").forEach(n=>n.classList.remove("week-today-marker"));
+      scroller.querySelectorAll("td.week-today-col").forEach(n=>{
+        n.classList.remove("week-today-col");
+        n.style.removeProperty("--today-line-x");
+      });
+      const headerCells = Array.from(scroller.querySelectorAll("thead tr th"));
+      const todayTh = headerCells.find(th=>th.classList.contains("week-cell") && th.classList.contains("week-today"));
+      if(!todayTh) return;
+      todayTh.classList.add("week-today-marker");
+      todayTh.style.setProperty("--today-line-x", todayLineX);
+      const idx = headerCells.indexOf(todayTh) + 1;
+      if(idx <= 0) return;
+      scroller.querySelectorAll(`tbody tr td:nth-child(${idx})`).forEach(td=>{
+        td.classList.add("week-today-col");
+        td.style.setProperty("--today-line-x", todayLineX);
+      });
+    });
+  }catch(e){ softCatch(e); }
+}
+
 function scrollGanttToCurrentWeek(ganttRoot){
   try{
-    if(!ganttRoot) return;
-    const scroller = ganttRoot.querySelector(".tablewrap.gantt-table");
-    if(!scroller) return;
-    const currentWeekCell = scroller.querySelector("th.week-cell.week-today");
-    if(!currentWeekCell) return;
-    const target = Math.max(0, currentWeekCell.offsetLeft - Math.round(scroller.clientWidth * 0.35));
-    scroller.scrollLeft = target;
+    applyGanttTodayColumnMarker(ganttRoot);
+    getGanttScrollers(ganttRoot).forEach(scroller=>{
+      const currentWeekCell = scroller.querySelector("th.week-cell.week-today");
+      if(!currentWeekCell) return;
+      const target = Math.max(0, currentWeekCell.offsetLeft - Math.round(scroller.clientWidth * 0.35));
+      scroller.scrollLeft = target;
+    });
   }catch(e){ softCatch(e); }
 }
 
@@ -10190,6 +10224,17 @@ function renderProjectLiteThenHeavy(delayMs=180){
 function saveStateAndRenderProjectLite(delayMs=180, saveOpts={}){
   saveState(saveOpts);
   renderProjectLiteThenHeavy(delayMs);
+}
+
+let _postSaveRenderTimer = null;
+function schedulePostSaveRenderAll(delayMs=120){
+  if(_postSaveRenderTimer){
+    clearTimeout(_postSaveRenderTimer);
+  }
+  _postSaveRenderTimer = setTimeout(()=>{
+    _postSaveRenderTimer = null;
+    renderAll();
+  }, Math.max(0, Number(delayMs) || 0));
 }
 
 function renderAll(){

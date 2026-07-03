@@ -5462,6 +5462,37 @@ h3,
   background-image:none !important;
 }
 
+/* Gantt: repere vertical du jour dans la colonne courante */
+.gantt-table th.week-cell.week-today{
+  position:relative;
+}
+.gantt-table th.week-cell.week-today::before{
+  content:"";
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:var(--today-line-x, 50%);
+  width:2px;
+  background:#e11d48;
+  transform:translateX(-50%);
+  z-index:3;
+}
+.gantt-table td.week-today-col{
+  position:relative;
+}
+.gantt-table td.week-today-col::before{
+  content:"";
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:var(--today-line-x, 50%);
+  width:2px;
+  background:rgba(225,29,72,0.82);
+  transform:translateX(-50%);
+  pointer-events:none;
+  z-index:2;
+}
+
 /* Modale Export PDF: harmonisation couleurs boutons */
 #exportPdfModal .btn,
 #exportPdfModal .btn.btn-ghost{
