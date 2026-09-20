@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Redirection</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
   <meta http-equiv="refresh" content="0;url=/suivi-de-chantiers/" />
   <script>
     (function () {
@@ -18,6 +20,66 @@
       window.location.replace(targetPath + search + hash);
     })();
   </script>
+
+<!-- NEXTBOARD BRANDING V3 STYLE START -->
+<style id="nextboard-branding-v3-style">
+.nextboard-brand { box-sizing:border-box; display:flex; flex-direction:column; align-items:center; gap:3px; margin:0 0 12px; text-align:center; color:inherit; }
+.nextboard-brand--header { flex-direction:row; align-items:center; text-align:left; gap:10px; margin:0 0 10px; }
+.nextboard-brand--mobile { flex-direction:row; align-items:center; text-align:left; gap:8px; margin:8px 12px; min-height:34px; }
+.nextboard-brand-logo { display:block; width:min(150px, 88%); max-width:160px; max-height:58px; height:auto; object-fit:contain; background:transparent !important; border:0 !important; box-shadow:none !important; }
+.nextboard-brand--header .nextboard-brand-logo { height:40px; width:auto; }
+.nextboard-brand--mobile .nextboard-brand-logo { width:32px; height:auto; max-height:32px; }
+.nextboard-brand-copy { min-width:0; }
+.nextboard-brand-title { margin:0; font:inherit; font-size:13px; line-height:1.12; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:inherit; }
+.nextboard-brand-subtitle { margin:3px 0 0; font:inherit; font-size:10px; line-height:1.25; font-weight:600; letter-spacing:.06em; text-transform:uppercase; opacity:.72; color:inherit; }
+.nextboard-brand-signature { margin:5px 0 0; font:inherit; font-size:12px; line-height:1.25; font-weight:600; opacity:.86; color:inherit; }
+.nextboard-copyright { box-sizing:border-box; margin-top:auto; padding:10px 4px 0; font:inherit; font-size:11px; line-height:1.25; opacity:.68; color:inherit; text-align:center; text-transform:none !important; letter-spacing:normal !important; }
+.nextboard-copyright .copy-symbol { font-size:1.12em; vertical-align:-0.02em; }
+.nextboard-copyright--mobile { position:static; margin:10px 12px; padding:0; font-size:10px; text-align:center; opacity:.62; }
+@media (max-width: 520px) { .nextboard-brand--header { flex-direction:row; } .nextboard-brand-title { font-size:12px; } .nextboard-brand-subtitle { font-size:9px; } .nextboard-copyright { font-size:10px; } }
+</style>
+<!-- NEXTBOARD BRANDING V3 STYLE END -->
 </head>
-<body></body>
+<body>
+<!-- NEXTBOARD BRANDING V3 SCRIPT START -->
+<script id="nextboard-branding-v3-script">
+(function() {
+  const cfg = {"logo": "assets/branding/nextboard-brand-v3.png", "title": "SUIVI DE CHANTIERS", "subtitle": "PILOTAGE DES CHANTIERS", "signature": "", "mode": "sidebar"};
+  const copyrightHtml = '<span class="copy-symbol">©</span> 2026 NextBo@rd — Sébastien Duc. Tous droits réservés.';
+  function brandHtml() {
+    const modeClass = cfg.mode === 'mobile' ? ' nextboard-brand--mobile' : (cfg.mode === 'header' ? ' nextboard-brand--header' : '');
+    const sig = cfg.signature ? '<div class="nextboard-brand-signature">'+cfg.signature+'</div>' : '';
+    return '<div class="nextboard-brand'+modeClass+'" data-nextboard-branding-v3="true">'
+      + '<img class="nextboard-brand-logo" src="'+cfg.logo+'" alt="NextBo@rd">'
+      + '<div class="nextboard-brand-copy"><div class="nextboard-brand-title">'+cfg.title+'</div><div class="nextboard-brand-subtitle">'+cfg.subtitle+'</div>'+sig+'</div>'
+      + '</div>';
+  }
+  function install() {
+    const sidebar = document.querySelector('aside.sidebar, .sidebar, .sb');
+    const oldBrand = document.querySelector('.sidebar__brand, .sb-logo');
+    const projectIcon = oldBrand ? oldBrand.querySelector('.sidebar__project-icon') : null;
+    const footer = document.querySelector('.sidebar-footer');
+    if (cfg.mode === 'mobile') {
+      const root = document.getElementById('root') || document.body;
+      if (!document.querySelector('[data-nextboard-branding-v3="true"]')) root.insertAdjacentHTML('afterbegin', brandHtml());
+      if (!document.querySelector('.nextboard-copyright')) root.insertAdjacentHTML('beforeend','<div class="nextboard-copyright nextboard-copyright--mobile">'+copyrightHtml+'</div>');
+    } else if (oldBrand) {
+      if (!oldBrand.querySelector('[data-nextboard-branding-v3="true"]')) oldBrand.innerHTML = brandHtml() + (projectIcon ? projectIcon.outerHTML : '');
+      if (!document.querySelector('.nextboard-copyright')) (footer || sidebar || oldBrand).insertAdjacentHTML('beforeend','<div class="nextboard-copyright">'+copyrightHtml+'</div>');
+    } else if (sidebar) {
+      if (!document.querySelector('[data-nextboard-branding-v3="true"]')) sidebar.insertAdjacentHTML('afterbegin', brandHtml());
+      if (!document.querySelector('.nextboard-copyright')) sidebar.insertAdjacentHTML('beforeend','<div class="nextboard-copyright">'+copyrightHtml+'</div>');
+    } else {
+      const target = document.querySelector('.topbar, .page-header, header, main, body');
+      if (target && !document.querySelector('[data-nextboard-branding-v3="true"]')) target.insertAdjacentHTML('afterbegin', brandHtml());
+      if (!document.querySelector('.nextboard-copyright')) document.body.insertAdjacentHTML('beforeend','<div class="nextboard-copyright">'+copyrightHtml+'</div>');
+    }
+    document.documentElement.dataset.nextboardBrandingV3 = 'done';
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install();
+  setTimeout(install, 600);
+})();
+</script>
+<!-- NEXTBOARD BRANDING V3 SCRIPT END -->
+</body>
 </html>

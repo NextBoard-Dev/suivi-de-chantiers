@@ -63,17 +63,10 @@ export default function MobileLayout() {
       <header className="sticky top-0 z-50" style={{ background: HEADER_BG, borderBottom: `1px solid ${BORDER_CLR}` }}>
         <div className="flex items-center gap-3 px-4 py-2">
 
-          {/* Logo bloc */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: PRIMARY, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <span style={{ color: "white", fontWeight: 900, fontSize: 11, letterSpacing: "-0.5px" }}>SC</span>
-            </div>
-            <div>
-              <p style={{ fontSize: 14, fontWeight: 900, color: TEXT_DARK, letterSpacing: "-0.3px", lineHeight: 1.1 }}>
-                Suivi <span style={{ color: PRIMARY }}>Ch@ntiers</span>
-              </p>
-              <p style={{ fontSize: 8, color: TEXT_DIM, letterSpacing: "0.06em" }}>Gestion de travaux</p>
-            </div>
+          {/* Logo officiel NextBo@rd V3 — asset mobile local */}
+          <div className="shrink-0" style={{ width: 112, height: 32, position: "relative", overflow: "hidden" }}>
+            <img src={import.meta.env.BASE_URL + "branding/nextboard-logo-v3.png"} alt="NextBo@rd" width={2800} height={2114}
+              style={{ width: 112, height: "auto", maxWidth: "none", position: "absolute", top: "50%", left: 0, transform: "translateY(-50%)", objectFit: "contain", display: "block" }} />
           </div>
 
           {/* Séparateur vertical */}

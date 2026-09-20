@@ -1318,12 +1318,14 @@ const uiUpperNoAccent = (value="")=>
 
 function applyUiUpperNoAccent(root=document.body){
   if(!root) return;
+  if(root.nodeType === Node.ELEMENT_NODE && root.closest?.(".nb-brand-case")) return;
   if(root.nodeType === Node.TEXT_NODE){
     const parent = root.parentElement;
     if(parent){
       const tag = parent.tagName;
       if(tag==="SCRIPT" || tag==="STYLE" || tag==="NOSCRIPT" || tag==="TEXTAREA") return;
       if(parent.closest("[contenteditable='true']")) return;
+      if(parent.closest(".nb-brand-case")) return;
     }
     if(root.nodeValue && root.nodeValue.trim()){
       root.nodeValue = uiUpperNoAccent(root.nodeValue);
@@ -1338,6 +1340,7 @@ function applyUiUpperNoAccent(root=document.body){
       const tag = parent.tagName;
       if(tag==="SCRIPT" || tag==="STYLE" || tag==="NOSCRIPT" || tag==="TEXTAREA") return NodeFilter.FILTER_REJECT;
       if(parent.closest("[contenteditable='true']")) return NodeFilter.FILTER_REJECT;
+      if(parent.closest(".nb-brand-case")) return NodeFilter.FILTER_REJECT;
       return NodeFilter.FILTER_ACCEPT;
     }
   });
