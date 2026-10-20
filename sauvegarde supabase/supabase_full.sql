@@ -386,75 +386,75 @@ ALTER TABLE ONLY "public"."user_profiles"
 ALTER TABLE "public"."app_states" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "app_states_delete_own" ON "public"."app_states" FOR DELETE TO "authenticated" USING (("auth"."uid"() = "user_id"));
 
 
 
-CREATE POLICY "app_states_insert_own" ON "public"."app_states" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 
-CREATE POLICY "app_states_select_own" ON "public"."app_states" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "user_id"));
 
 
 
-CREATE POLICY "app_states_update_own" ON "public"."app_states" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+
+
 
 
 
 ALTER TABLE "public"."chantier_internal_techs" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "chantier_internal_techs_select_auth" ON "public"."chantier_internal_techs" FOR SELECT TO "authenticated" USING (true);
+
 
 
 
 ALTER TABLE "public"."chantier_tasks" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "chantier_tasks_select_auth" ON "public"."chantier_tasks" FOR SELECT TO "authenticated" USING (true);
+
 
 
 
 ALTER TABLE "public"."chantier_time_logs" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "chantier_time_logs_select_auth" ON "public"."chantier_time_logs" FOR SELECT TO "authenticated" USING (true);
+
 
 
 
 ALTER TABLE "public"."chantier_vendors" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "chantier_vendors_select_auth" ON "public"."chantier_vendors" FOR SELECT TO "authenticated" USING (true);
+
 
 
 
 ALTER TABLE "public"."chantiers" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "chantiers_select_auth" ON "public"."chantiers" FOR SELECT TO "authenticated" USING (true);
+
 
 
 
 ALTER TABLE "public"."dashboard_logins" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "dashboard_logins_select_auth" ON "public"."dashboard_logins" FOR SELECT TO "authenticated" USING (true);
+
 
 
 
 ALTER TABLE "public"."dashboard_sessions" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "dashboard_sessions_select_auth" ON "public"."dashboard_sessions" FOR SELECT TO "authenticated" USING (true);
+
 
 
 
 ALTER TABLE "public"."dashboard_users" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "dashboard_users_select_auth" ON "public"."dashboard_users" FOR SELECT TO "authenticated" USING (true);
+
 
 
 
@@ -470,7 +470,7 @@ ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
 
 
 GRANT USAGE ON SCHEMA "public" TO "postgres";
-GRANT USAGE ON SCHEMA "public" TO "anon";
+
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
 GRANT USAGE ON SCHEMA "public" TO "service_role";
 
@@ -644,7 +644,7 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."prune_dashboard_logins"() TO "anon";
+
 GRANT ALL ON FUNCTION "public"."prune_dashboard_logins"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."prune_dashboard_logins"() TO "service_role";
 
@@ -671,22 +671,22 @@ GRANT ALL ON FUNCTION "public"."prune_dashboard_logins"() TO "service_role";
 
 
 
-GRANT SELECT,INSERT,MAINTAIN,UPDATE ON TABLE "public"."app_states" TO "authenticated";
+GRANT SELECT,INSERT,UPDATE ON TABLE "public"."app_states" TO "authenticated";
 GRANT ALL ON TABLE "public"."app_states" TO "service_role";
 
 
 
-GRANT SELECT,MAINTAIN ON TABLE "public"."chantier_internal_techs" TO "authenticated";
+GRANT SELECT ON TABLE "public"."chantier_internal_techs" TO "authenticated";
 GRANT ALL ON TABLE "public"."chantier_internal_techs" TO "service_role";
 
 
 
-GRANT SELECT,MAINTAIN ON TABLE "public"."chantier_tasks" TO "authenticated";
+GRANT SELECT ON TABLE "public"."chantier_tasks" TO "authenticated";
 GRANT ALL ON TABLE "public"."chantier_tasks" TO "service_role";
 
 
 
-GRANT SELECT,MAINTAIN ON TABLE "public"."chantier_time_logs" TO "authenticated";
+GRANT SELECT ON TABLE "public"."chantier_time_logs" TO "authenticated";
 GRANT ALL ON TABLE "public"."chantier_time_logs" TO "service_role";
 
 
@@ -695,44 +695,44 @@ GRANT ALL ON TABLE "public"."chantier_time_logs_mobile_dev" TO "service_role";
 
 
 
-GRANT SELECT,MAINTAIN ON TABLE "public"."chantier_vendors" TO "authenticated";
+GRANT SELECT ON TABLE "public"."chantier_vendors" TO "authenticated";
 GRANT ALL ON TABLE "public"."chantier_vendors" TO "service_role";
 
 
 
-GRANT SELECT,MAINTAIN ON TABLE "public"."chantiers" TO "authenticated";
+GRANT SELECT ON TABLE "public"."chantiers" TO "authenticated";
 GRANT ALL ON TABLE "public"."chantiers" TO "service_role";
 
 
 
-GRANT SELECT,INSERT,MAINTAIN ON TABLE "public"."dashboard_logins" TO "authenticated";
+GRANT SELECT,INSERT ON TABLE "public"."dashboard_logins" TO "authenticated";
 GRANT ALL ON TABLE "public"."dashboard_logins" TO "service_role";
 
 
 
-GRANT ALL ON SEQUENCE "public"."dashboard_logins_id_seq" TO "anon";
+
 GRANT ALL ON SEQUENCE "public"."dashboard_logins_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."dashboard_logins_id_seq" TO "service_role";
 
 
 
-GRANT INSERT,MAINTAIN ON TABLE "public"."dashboard_sessions" TO "authenticated";
+GRANT INSERT ON TABLE "public"."dashboard_sessions" TO "authenticated";
 GRANT ALL ON TABLE "public"."dashboard_sessions" TO "service_role";
 
 
 
-GRANT ALL ON SEQUENCE "public"."dashboard_sessions_id_seq" TO "anon";
+
 GRANT ALL ON SEQUENCE "public"."dashboard_sessions_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."dashboard_sessions_id_seq" TO "service_role";
 
 
 
-GRANT SELECT,INSERT,MAINTAIN,UPDATE ON TABLE "public"."dashboard_users" TO "authenticated";
+GRANT SELECT,INSERT,UPDATE ON TABLE "public"."dashboard_users" TO "authenticated";
 GRANT ALL ON TABLE "public"."dashboard_users" TO "service_role";
 
 
 
-GRANT SELECT,INSERT,MAINTAIN,UPDATE ON TABLE "public"."user_profiles" TO "authenticated";
+GRANT SELECT,INSERT,UPDATE ON TABLE "public"."user_profiles" TO "authenticated";
 GRANT ALL ON TABLE "public"."user_profiles" TO "service_role";
 
 
@@ -743,30 +743,6 @@ GRANT ALL ON TABLE "public"."user_profiles" TO "service_role";
 
 
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "service_role";
-
-
-
-
-
-
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "service_role";
-
-
-
-
-
-
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
 
 
 
@@ -791,10 +767,33 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-
-
-
-
-
-
-
+-- Politiques relevees en production le 20 octobre 2026.
+CREATE POLICY "app_states_delete_own" ON public."app_states" AS PERMISSIVE FOR DELETE TO "authenticated" USING ((auth.uid() = user_id));
+CREATE POLICY "app_states_insert_own" ON public."app_states" AS PERMISSIVE FOR INSERT TO "authenticated" WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "app_states_select_own" ON public."app_states" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((auth.uid() = user_id));
+CREATE POLICY "app_states_update_own" ON public."app_states" AS PERMISSIVE FOR UPDATE TO "authenticated" USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "chantier_internal_techs_select_auth" ON public."chantier_internal_techs" AS PERMISSIVE FOR SELECT TO "authenticated" USING (true);
+CREATE POLICY "chantier_tasks_select_auth" ON public."chantier_tasks" AS PERMISSIVE FOR SELECT TO "authenticated" USING (true);
+CREATE POLICY "chantier_time_logs_select_auth" ON public."chantier_time_logs" AS PERMISSIVE FOR SELECT TO "authenticated" USING (true);
+CREATE POLICY "chantier_vendors_select_auth" ON public."chantier_vendors" AS PERMISSIVE FOR SELECT TO "authenticated" USING (true);
+CREATE POLICY "chantiers_select_auth" ON public."chantiers" AS PERMISSIVE FOR SELECT TO "authenticated" USING (true);
+CREATE POLICY "dashboard_logins_delete_auth" ON public."dashboard_logins" AS PERMISSIVE FOR DELETE TO "authenticated" USING ((user_id = (auth.uid())::text));
+CREATE POLICY "dashboard_logins_insert_auth" ON public."dashboard_logins" AS PERMISSIVE FOR INSERT TO "authenticated" WITH CHECK ((user_id = (auth.uid())::text));
+CREATE POLICY "dashboard_logins_select_auth" ON public."dashboard_logins" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((user_id = (auth.uid())::text));
+CREATE POLICY "dashboard_logins_update_auth" ON public."dashboard_logins" AS PERMISSIVE FOR UPDATE TO "authenticated" USING ((user_id = (auth.uid())::text)) WITH CHECK ((user_id = (auth.uid())::text));
+CREATE POLICY "dashboard_sessions_delete_auth" ON public."dashboard_sessions" AS PERMISSIVE FOR DELETE TO "authenticated" USING ((lower(email) = lower(COALESCE((auth.jwt() ->> 'email'::text), ''::text))));
+CREATE POLICY "dashboard_sessions_insert_auth" ON public."dashboard_sessions" AS PERMISSIVE FOR INSERT TO "authenticated" WITH CHECK (((token_hash IS NOT NULL) AND (length(token_hash) >= 32) AND (expires_at IS NOT NULL) AND (created_at IS NOT NULL)));
+CREATE POLICY "dashboard_sessions_select_auth" ON public."dashboard_sessions" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((lower(email) = lower(COALESCE((auth.jwt() ->> 'email'::text), ''::text))));
+CREATE POLICY "dashboard_sessions_update_auth" ON public."dashboard_sessions" AS PERMISSIVE FOR UPDATE TO "authenticated" USING ((lower(email) = lower(COALESCE((auth.jwt() ->> 'email'::text), ''::text)))) WITH CHECK ((lower(email) = lower(COALESCE((auth.jwt() ->> 'email'::text), ''::text))));
+CREATE POLICY "dashboard_users_delete_auth" ON public."dashboard_users" AS PERMISSIVE FOR DELETE TO "authenticated" USING ((user_id = auth.uid()));
+CREATE POLICY "dashboard_users_insert_auth" ON public."dashboard_users" AS PERMISSIVE FOR INSERT TO "authenticated" WITH CHECK ((user_id = auth.uid()));
+CREATE POLICY "dashboard_users_select_auth" ON public."dashboard_users" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((user_id = auth.uid()));
+CREATE POLICY "dashboard_users_update_auth" ON public."dashboard_users" AS PERMISSIVE FOR UPDATE TO "authenticated" USING ((user_id = auth.uid())) WITH CHECK ((user_id = auth.uid()));
+ALTER TABLE public.chantier_time_logs_mobile_dev ENABLE ROW LEVEL SECURITY;
+-- Aucun client n'accede a cette table technique ; service_role uniquement.
+REVOKE ALL ON FUNCTION public.prune_dashboard_logins() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.prune_dashboard_logins() TO service_role;
+-- Aligner les droits explicites sur les politiques et privileges actuels.
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.dashboard_logins, public.dashboard_sessions, public.dashboard_users TO authenticated;
+-- Les nouvelles tables restent fermees jusqu'a leur GRANT explicite.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated;
